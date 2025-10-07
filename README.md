@@ -13,6 +13,9 @@ A simple sales order management system for CBL TSOs to place orders for batterie
 - Orders are saved with unique order IDs
 - View recent orders
 - Cross-platform support (Web, Mobile responsive)
+- **Hot Reloading**: Automatic server restart on code changes
+- **Material-UI**: Professional, modern interface
+- **Sidebar Navigation**: Easy access to Dashboard, New Orders, and Placed Orders
 
 ## Setup Instructions
 
@@ -29,11 +32,26 @@ mysql -u root -p < database.sql
 ```
 
 ### 3. Run the Application
+
+**For Windows (with hot reloading):**
 ```bash
-npm start
+# Start both servers with hot reloading
+start-windows.bat
+
+# Or manually:
+npm run dev          # Backend with hot reloading
+cd frontend && npm start  # Frontend with hot reloading
 ```
 
-The application will be available at: http://localhost:3001
+**Access Points:**
+- Frontend: http://localhost:3002 (main application)
+- Backend API: http://localhost:3001 (API endpoints only)
+
+### 4. Stop the Application
+```bash
+# Stop all servers
+stop-windows.bat
+```
 
 ## Database Configuration
 

@@ -12,11 +12,11 @@ cd ..
 
 echo.
 echo Starting Backend and Frontend...
-echo Backend will run on port 3001
-echo Frontend will run on port 3002
+echo Backend will run on port 3001 (with hot reloading)
+echo Frontend will run on port 3002 (with hot reloading)
 echo.
 
-start "Backend Server" cmd /k "npm run start:backend"
+start "Backend Server" cmd /k "npm run dev"
 timeout /t 3 /nobreak > nul
 start "Frontend Server" cmd /k "cd frontend && set PORT=3002 && npm start"
 

@@ -11,6 +11,8 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(bodyParser.json());
 
+// API Routes only - no static file serving needed
+
 // MySQL connection
 const db = mysql.createConnection({
     host: 'localhost',
