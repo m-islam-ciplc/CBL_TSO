@@ -43,6 +43,7 @@ function NewOrders() {
   });
 
   const [loading, setLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(true);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   useEffect(() => {
@@ -51,6 +52,7 @@ function NewOrders() {
 
   const loadDropdownData = async () => {
     try {
+      setDataLoading(true);
       const [orderTypes, dealers, warehouses, products] = await Promise.all([
         axios.get('/api/order-types'),
         axios.get('/api/dealers'),
@@ -65,7 +67,10 @@ function NewOrders() {
         products: products.data
       });
     } catch (error) {
+      console.error('Failed to load dropdown data:', error);
       showSnackbar('Failed to load form data', 'error');
+    } finally {
+      setDataLoading(false);
     }
   };
 
@@ -115,44 +120,52 @@ function NewOrders() {
   };
 
   return (
-    <Container maxWidth="md" sx={{ mt: 4 }}>
+    <Container maxWidth="lg" sx={{ mt: 3, px: 2 }}>
       <Typography variant="h4" gutterBottom>
         New Orders
       </Typography>
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
         Create new sales orders for dealers
       </Typography>
 
-      <Card>
-        <CardContent>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+      <Card sx={{ mx: 0 }}>
+        <CardContent sx={{ p: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
             <AddIcon sx={{ mr: 1 }} />
             <Typography variant="h5">Create New Order</Typography>
           </Box>
 
-          <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
-            <Grid container spacing={3}>
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth>
-                  <InputLabel>Order Type</InputLabel>
-                  <Select
-                    name="order_type_id"
-                    value={formData.order_type_id}
-                    onChange={handleInputChange}
-                    label="Order Type"
-                    required
-                  >
-                    {dropdownData.orderTypes.map(type => (
-                      <MenuItem key={type.id} value={type.id}>
-                        {type.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
+          {dataLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
+              <CircularProgress />
+              <Typography sx={{ ml: 2 }}>Loading form data...</Typography>
+            </Box>
+          ) : (
+            <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={8} md={6}>
+                  <FormControl fullWidth sx={{ minWidth: 200 }}>
+                    <InputLabel>Order Type</InputLabel>
+                    <Select
+                      name="order_type_id"
+                      value={formData.order_type_id}
+                      onChange={handleInputChange}
+                      label="Order Type"
+                      required
+                      disabled={dropdownData.orderTypes.length === 0}
+                      sx={{ minHeight: 48 }}
+                    >
+                      {dropdownData.orderTypes.map(type => (
+                        <MenuItem key={type.id} value={type.id}>
+                          {type.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
 
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth>
+              <Grid item xs={12} sm={8} md={6}>
+                <FormControl fullWidth sx={{ minWidth: 200 }}>
                   <InputLabel>Dealer</InputLabel>
                   <Select
                     name="dealer_id"
@@ -160,6 +173,7 @@ function NewOrders() {
                     onChange={handleInputChange}
                     label="Dealer"
                     required
+                    sx={{ minHeight: 48 }}
                   >
                     {dropdownData.dealers.map(dealer => (
                       <MenuItem key={dealer.id} value={dealer.id}>
@@ -170,8 +184,8 @@ function NewOrders() {
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth>
+              <Grid item xs={12} sm={8} md={6}>
+                <FormControl fullWidth sx={{ minWidth: 200 }}>
                   <InputLabel>Warehouse</InputLabel>
                   <Select
                     name="warehouse_id"
@@ -179,6 +193,7 @@ function NewOrders() {
                     onChange={handleInputChange}
                     label="Warehouse"
                     required
+                    sx={{ minHeight: 48 }}
                   >
                     {dropdownData.warehouses.map(warehouse => (
                       <MenuItem key={warehouse.id} value={warehouse.id}>
@@ -189,8 +204,8 @@ function NewOrders() {
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth>
+              <Grid item xs={12} sm={8} md={6}>
+                <FormControl fullWidth sx={{ minWidth: 200 }}>
                   <InputLabel>Product</InputLabel>
                   <Select
                     name="product_id"
@@ -198,6 +213,7 @@ function NewOrders() {
                     onChange={handleInputChange}
                     label="Product"
                     required
+                    sx={{ minHeight: 48 }}
                   >
                     {dropdownData.products.map(product => (
                       <MenuItem key={product.id} value={product.id}>
@@ -208,7 +224,7 @@ function NewOrders() {
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12} sm={6}>
+              <Grid item xs={12} sm={4} md={3}>
                 <TextField
                   fullWidth
                   name="quantity"
@@ -218,10 +234,11 @@ function NewOrders() {
                   onChange={handleInputChange}
                   inputProps={{ min: 1 }}
                   required
+                  sx={{ minHeight: 48 }}
                 />
               </Grid>
 
-              <Grid item xs={12}>
+              <Grid item xs={12} sm={8} md={6}>
                 <Button
                   type="submit"
                   fullWidth
@@ -229,47 +246,50 @@ function NewOrders() {
                   size="large"
                   disabled={loading}
                   startIcon={loading ? <CircularProgress size={20} /> : <AddIcon />}
-                  sx={{ mt: 2 }}
+                  sx={{ mt: 2, py: 1.5 }}
                 >
                   {loading ? 'Creating Order...' : 'Create Order'}
                 </Button>
               </Grid>
             </Grid>
           </Box>
+          )}
         </CardContent>
       </Card>
 
       {/* Quick Stats */}
-      <Grid container spacing={2} sx={{ mt: 3 }}>
-        <Grid item xs={12} sm={3}>
-          <Paper sx={{ p: 2, textAlign: 'center' }}>
-            <BusinessIcon color="primary" sx={{ fontSize: 30, mb: 1 }} />
-            <Typography variant="h6">{dropdownData.dealers.length}</Typography>
-            <Typography variant="body2" color="text.secondary">Dealers</Typography>
-          </Paper>
+      {!dataLoading && (
+        <Grid container spacing={2} sx={{ mt: 2 }}>
+          <Grid item xs={12} sm={6} md={3}>
+            <Paper sx={{ p: 2, textAlign: 'center' }}>
+              <BusinessIcon color="primary" sx={{ fontSize: 30, mb: 1 }} />
+              <Typography variant="h6">{dropdownData.dealers.length}</Typography>
+              <Typography variant="body2" color="text.secondary">Dealers</Typography>
+            </Paper>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Paper sx={{ p: 2, textAlign: 'center' }}>
+              <ShippingIcon color="primary" sx={{ fontSize: 30, mb: 1 }} />
+              <Typography variant="h6">{dropdownData.warehouses.length}</Typography>
+              <Typography variant="body2" color="text.secondary">Warehouses</Typography>
+            </Paper>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Paper sx={{ p: 2, textAlign: 'center' }}>
+              <InventoryIcon color="primary" sx={{ fontSize: 30, mb: 1 }} />
+              <Typography variant="h6">{dropdownData.products.length}</Typography>
+              <Typography variant="body2" color="text.secondary">Products</Typography>
+            </Paper>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Paper sx={{ p: 2, textAlign: 'center' }}>
+              <AddIcon color="primary" sx={{ fontSize: 30, mb: 1 }} />
+              <Typography variant="h6">New Order</Typography>
+              <Typography variant="body2" color="text.secondary">Ready to Create</Typography>
+            </Paper>
+          </Grid>
         </Grid>
-        <Grid item xs={12} sm={3}>
-          <Paper sx={{ p: 2, textAlign: 'center' }}>
-            <ShippingIcon color="primary" sx={{ fontSize: 30, mb: 1 }} />
-            <Typography variant="h6">{dropdownData.warehouses.length}</Typography>
-            <Typography variant="body2" color="text.secondary">Warehouses</Typography>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} sm={3}>
-          <Paper sx={{ p: 2, textAlign: 'center' }}>
-            <InventoryIcon color="primary" sx={{ fontSize: 30, mb: 1 }} />
-            <Typography variant="h6">{dropdownData.products.length}</Typography>
-            <Typography variant="body2" color="text.secondary">Products</Typography>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} sm={3}>
-          <Paper sx={{ p: 2, textAlign: 'center' }}>
-            <AddIcon color="primary" sx={{ fontSize: 30, mb: 1 }} />
-            <Typography variant="h6">New Order</Typography>
-            <Typography variant="body2" color="text.secondary">Ready to Create</Typography>
-          </Paper>
-        </Grid>
-      </Grid>
+      )}
 
       <Snackbar
         open={snackbar.open}

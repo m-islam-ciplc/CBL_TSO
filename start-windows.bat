@@ -25,4 +25,5 @@ echo Both servers are starting...
 echo Backend: http://localhost:3001
 echo Frontend: http://localhost:3002
 echo.
-pause
+echo Servers are running in background. Close this window when done.
+echo.

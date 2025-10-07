@@ -21,11 +21,18 @@ const db = mysql.createConnection({
     database: 'cbl_ordres'
 });
 
+// Connect to database first, then start server
 db.connect((err) => {
     if (err) {
         console.error('Database connection failed:', err);
+        process.exit(1); // Exit if database connection fails
     } else {
         console.log('Connected to MySQL database');
+
+        // Start server only after database connection is established
+        app.listen(PORT, () => {
+            console.log(`CBL Sales Order server running on port ${PORT}`);
+        });
     }
 });
 
@@ -117,9 +124,5 @@ app.get('/api/orders', (req, res) => {
             res.json(results);
         }
     });
-});
-
-app.listen(PORT, () => {
-    console.log(`CBL Sales Order server running on port ${PORT}`);
 });
 
