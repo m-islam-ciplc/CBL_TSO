@@ -23,12 +23,13 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   CarOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 
-function PlacedOrders() {
+function PlacedOrders({ refreshTrigger }) {
   const [orders, setOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -38,6 +39,10 @@ function PlacedOrders() {
   useEffect(() => {
     loadOrders();
   }, []);
+
+  useEffect(() => {
+    loadOrders();
+  }, [refreshTrigger]);
 
   useEffect(() => {
     filterOrders();
@@ -96,6 +101,16 @@ function PlacedOrders() {
     );
   }
 
+  const handleDeleteOrder = async (orderId) => {
+    try {
+      await axios.delete(`/api/orders/${orderId}`);
+      message.success('Order deleted successfully');
+      loadOrders(); // Refresh the orders list
+    } catch (error) {
+      message.error('Failed to delete order');
+    }
+  };
+
   const columns = [
     {
       title: 'Order ID',
@@ -115,10 +130,11 @@ function PlacedOrders() {
       ellipsis: true,
     },
     {
-      title: 'Warehouse',
-      dataIndex: 'warehouse_name',
-      key: 'warehouse_name',
+      title: 'Territory',
+      dataIndex: 'dealer_territory',
+      key: 'dealer_territory',
       ellipsis: true,
+      render: (territory) => territory || 'N/A',
     },
     {
       title: 'Product',
@@ -155,11 +171,22 @@ function PlacedOrders() {
       title: 'Actions',
       key: 'actions',
       render: (_, record) => (
-        <Tooltip title="View Details">
-          <Button type="text" size="small" icon={<EyeOutlined />} />
-        </Tooltip>
+        <Space>
+          <Tooltip title="View Details">
+            <Button type="text" size="small" icon={<EyeOutlined />} />
+          </Tooltip>
+          <Tooltip title="Delete Order">
+            <Button
+              type="text"
+              size="small"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => handleDeleteOrder(record.id)}
+            />
+          </Tooltip>
+        </Space>
       ),
-      width: 80,
+      width: 100,
     },
   ];
 

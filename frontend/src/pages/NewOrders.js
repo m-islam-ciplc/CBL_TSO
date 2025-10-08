@@ -25,7 +25,7 @@ import {
 const { Title, Text } = Typography;
 const { Option } = Select;
 
-function NewOrders() {
+function NewOrders({ onOrderCreated }) {
   const [form] = Form.useForm();
   const [dropdownData, setDropdownData] = useState({
     orderTypes: [],
@@ -149,6 +149,7 @@ function NewOrders() {
         message.success(`Order created successfully! Order ID: ${response.data.order_id}`);
         form.resetFields();
         setFilteredDealers(dropdownData.dealers); // Reset dealer filter
+        onOrderCreated(); // Trigger refresh of orders table
       }
     } catch (error) {
       message.error('Failed to create order');

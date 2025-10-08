@@ -25,9 +25,14 @@ function AppContent() {
     orders: 0,
   });
 
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+
+  const refreshOrders = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
 
   const handleMenuClick = (e) => {
     navigate(`/${e.key}`);
@@ -146,8 +151,8 @@ function AppContent() {
           <Routes>
             <Route path="/" element={<Dashboard setStats={setStats} />} />
             <Route path="/dashboard" element={<Dashboard setStats={setStats} />} />
-            <Route path="/new-orders" element={<NewOrders />} />
-            <Route path="/placed-orders" element={<PlacedOrders />} />
+            <Route path="/new-orders" element={<NewOrders onOrderCreated={refreshOrders} />} />
+            <Route path="/placed-orders" element={<PlacedOrders refreshTrigger={refreshTrigger} />} />
           </Routes>
         </Content>
       </Layout>

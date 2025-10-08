@@ -116,12 +116,32 @@ app.get('/api/orders', (req, res) => {
         JOIN products p ON o.product_id = p.id
         ORDER BY o.created_at DESC
     `;
-    
+
     db.query(query, (err, results) => {
         if (err) {
             res.status(500).json({ error: err.message });
         } else {
             res.json(results);
+        }
+    });
+});
+
+// Delete an order by ID
+app.delete('/api/orders/:id', (req, res) => {
+    const orderId = req.params.id;
+
+    const query = 'DELETE FROM orders WHERE id = ?';
+
+    db.query(query, [orderId], (err, results) => {
+        if (err) {
+            res.status(500).json({ error: err.message });
+        } else if (results.affectedRows === 0) {
+            res.status(404).json({ error: 'Order not found' });
+        } else {
+            res.json({
+                success: true,
+                message: 'Order deleted successfully'
+            });
         }
     });
 });
