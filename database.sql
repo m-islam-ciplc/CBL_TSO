@@ -19,7 +19,12 @@ CREATE TABLE IF NOT EXISTS warehouses (
 -- Dealers table
 CREATE TABLE IF NOT EXISTS dealers (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL UNIQUE,
+    dealer_code VARCHAR(50) NOT NULL UNIQUE,
+    name VARCHAR(255) NOT NULL,
+    address TEXT,
+    contact VARCHAR(100),
+    territory_code VARCHAR(50),
+    territory_name VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -49,6 +54,6 @@ CREATE TABLE IF NOT EXISTS orders (
 -- Insert initial data
 INSERT INTO order_types (name) VALUES ('RO');
 INSERT INTO warehouses (name) VALUES ('Narayanganj Factory');
-INSERT INTO dealers (name) VALUES ('Kalam Enterprise');
+-- Dealers data will be imported from VW_ALL_CUSTOMER_INFO.xlsx file
 INSERT INTO products (name) VALUES ('6DGA-175T(H) Dimitris');
 

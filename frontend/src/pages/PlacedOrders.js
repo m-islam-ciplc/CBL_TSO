@@ -1,42 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
-  Container,
-  Typography,
   Card,
-  CardContent,
-  Box,
+  Typography,
   Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Chip,
-  IconButton,
-  Tooltip,
-  CircularProgress,
-  Alert,
-  Snackbar,
-  TextField,
-  InputAdornment,
-  Grid,
+  Input,
   Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
   Button,
-} from '@mui/material';
+  Space,
+  Tag,
+  Tooltip,
+  Spin,
+  message,
+  Row,
+  Col,
+} from 'antd';
 import {
-  Refresh as RefreshIcon,
-  Search as SearchIcon,
-  FilterList as FilterIcon,
-  Visibility as VisibilityIcon,
-  CheckCircle as CheckCircleIcon,
-  Schedule as ScheduleIcon,
-  LocalShipping as ShippingIcon,
-} from '@mui/icons-material';
+  ReloadOutlined,
+  SearchOutlined,
+  FilterOutlined,
+  EyeOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  CarOutlined,
+} from '@ant-design/icons';
+
+const { Title, Text } = Typography;
+const { Option } = Select;
 
 function PlacedOrders() {
   const [orders, setOrders] = useState([]);
@@ -44,7 +34,6 @@ function PlacedOrders() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   useEffect(() => {
     loadOrders();
@@ -60,7 +49,7 @@ function PlacedOrders() {
       const response = await axios.get('/api/orders');
       setOrders(response.data);
     } catch (error) {
-      showSnackbar('Failed to load orders', 'error');
+      message.error('Failed to load orders');
     } finally {
       setLoading(false);
     }
@@ -86,203 +75,178 @@ function PlacedOrders() {
     setFilteredOrders(filtered);
   };
 
-  const showSnackbar = (message, severity) => {
-    setSnackbar({ open: true, message, severity });
-  };
-
-  const handleSnackbarClose = () => {
-    setSnackbar({ ...snackbar, open: false });
-  };
-
-  const getStatusColor = (status) => {
+  const getStatusTag = (status) => {
     switch (status) {
       case 'completed':
-        return 'success';
+        return <Tag color="success" icon={<CheckCircleOutlined />}>Completed</Tag>;
       case 'processing':
-        return 'warning';
+        return <Tag color="warning" icon={<ClockCircleOutlined />}>Processing</Tag>;
       case 'shipped':
-        return 'info';
+        return <Tag color="blue" icon={<CarOutlined />}>Shipped</Tag>;
       default:
-        return 'default';
-    }
-  };
-
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircleIcon />;
-      case 'processing':
-        return <ScheduleIcon />;
-      case 'shipped':
-        return <ShippingIcon />;
-      default:
-        return <VisibilityIcon />;
+        return <Tag color="default" icon={<EyeOutlined />}>New</Tag>;
     }
   };
 
   if (loading) {
     return (
-      <Container sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-        <CircularProgress />
-      </Container>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+        <Spin size="large" />
+      </div>
     );
   }
 
+  const columns = [
+    {
+      title: 'Order ID',
+      dataIndex: 'order_id',
+      key: 'order_id',
+      render: (orderId) => (
+        <Tag color="blue" style={{ fontSize: '12px' }}>
+          {orderId}
+        </Tag>
+      ),
+      width: 120,
+    },
+    {
+      title: 'Dealer',
+      dataIndex: 'dealer_name',
+      key: 'dealer_name',
+      ellipsis: true,
+    },
+    {
+      title: 'Warehouse',
+      dataIndex: 'warehouse_name',
+      key: 'warehouse_name',
+      ellipsis: true,
+    },
+    {
+      title: 'Product',
+      dataIndex: 'product_name',
+      key: 'product_name',
+      ellipsis: true,
+    },
+    {
+      title: 'Quantity',
+      dataIndex: 'quantity',
+      key: 'quantity',
+      render: (quantity) => (
+        <Tag color="orange" style={{ fontSize: '12px' }}>
+          {quantity}
+        </Tag>
+      ),
+      width: 80,
+    },
+    {
+      title: 'Status',
+      dataIndex: 'status',
+      key: 'status',
+      render: (status) => getStatusTag(status || 'new'),
+      width: 120,
+    },
+    {
+      title: 'Created',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      render: (date) => new Date(date).toLocaleString(),
+      width: 150,
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      render: (_, record) => (
+        <Tooltip title="View Details">
+          <Button type="text" size="small" icon={<EyeOutlined />} />
+        </Tooltip>
+      ),
+      width: 80,
+    },
+  ];
+
   return (
-    <Container maxWidth="lg" sx={{ mt: 4 }}>
-      <Typography variant="h4" gutterBottom>
+    <div>
+      <Title level={3} style={{ marginBottom: '8px' }}>
         Placed Orders
-      </Typography>
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+      </Title>
+      <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
         View and manage orders placed by TSOs
-      </Typography>
+      </Text>
 
       {/* Filters */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} sm={6} md={4}>
-              <TextField
-                fullWidth
-                label="Search orders"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={4}>
-              <FormControl fullWidth>
-                <InputLabel>Status</InputLabel>
-                <Select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  label="Status"
-                >
-                  <MenuItem value="all">All Orders</MenuItem>
-                  <MenuItem value="new">New</MenuItem>
-                  <MenuItem value="processing">Processing</MenuItem>
-                  <MenuItem value="shipped">Shipped</MenuItem>
-                  <MenuItem value="completed">Completed</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6} md={4}>
-              <Button
-                fullWidth
-                variant="outlined"
-                startIcon={<RefreshIcon />}
-                onClick={loadOrders}
-              >
-                Refresh
-              </Button>
-            </Grid>
-          </Grid>
-        </CardContent>
+      <Card style={{ marginBottom: '16px' }}>
+        <Row gutter={[16, 16]} align="middle" style={{ padding: '16px 0' }}>
+          <Col xs={24} sm={12} md={8}>
+            <Input
+              placeholder="Search orders..."
+              prefix={<SearchOutlined />}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              size="middle"
+            />
+          </Col>
+          <Col xs={24} sm={12} md={8}>
+            <Select
+              placeholder="Filter by status"
+              value={statusFilter}
+              onChange={setStatusFilter}
+              style={{ width: '100%' }}
+              size="middle"
+            >
+              <Option value="all">All Orders</Option>
+              <Option value="new">New</Option>
+              <Option value="processing">Processing</Option>
+              <Option value="shipped">Shipped</Option>
+              <Option value="completed">Completed</Option>
+            </Select>
+          </Col>
+          <Col xs={24} sm={12} md={8}>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={loadOrders}
+              style={{ width: '100%' }}
+            >
+              Refresh
+            </Button>
+          </Col>
+        </Row>
       </Card>
 
       {/* Orders Table */}
       <Card>
-        <CardContent>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-            <Typography variant="h6">
-              Orders ({filteredOrders.length})
-            </Typography>
-          </Box>
+        <div style={{ marginBottom: '16px' }}>
+          <Text strong style={{ fontSize: '16px' }}>
+            Orders ({filteredOrders.length})
+          </Text>
+        </div>
 
-          {filteredOrders.length === 0 ? (
-            <Box sx={{ textAlign: 'center', py: 8 }}>
-              <VisibilityIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
-              <Typography variant="h6" color="text.secondary">
-                No orders found
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {searchTerm ? 'Try adjusting your search criteria' : 'No orders have been placed yet'}
-              </Typography>
-            </Box>
-          ) : (
-            <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider' }}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell><strong>Order ID</strong></TableCell>
-                    <TableCell><strong>Dealer</strong></TableCell>
-                    <TableCell><strong>Warehouse</strong></TableCell>
-                    <TableCell><strong>Product</strong></TableCell>
-                    <TableCell><strong>Quantity</strong></TableCell>
-                    <TableCell><strong>Status</strong></TableCell>
-                    <TableCell><strong>Created</strong></TableCell>
-                    <TableCell><strong>Actions</strong></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {filteredOrders.map(order => (
-                    <TableRow key={order.id} hover>
-                      <TableCell>
-                        <Chip
-                          label={order.order_id}
-                          size="small"
-                          color="primary"
-                          variant="outlined"
-                        />
-                      </TableCell>
-                      <TableCell>{order.dealer_name}</TableCell>
-                      <TableCell>{order.warehouse_name}</TableCell>
-                      <TableCell>{order.product_name}</TableCell>
-                      <TableCell>
-                        <Chip
-                          label={order.quantity}
-                          size="small"
-                          color="secondary"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={order.status || 'New'}
-                          size="small"
-                          color={getStatusColor(order.status)}
-                          icon={getStatusIcon(order.status)}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {new Date(order.created_at).toLocaleString()}
-                      </TableCell>
-                      <TableCell>
-                        <Tooltip title="View Details">
-                          <IconButton size="small">
-                            <VisibilityIcon />
-                          </IconButton>
-                        </Tooltip>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-        </CardContent>
+        {filteredOrders.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '40px 0' }}>
+            <EyeOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />
+            <Title level={5} type="secondary">
+              No orders found
+            </Title>
+            <Text type="secondary">
+              {searchTerm ? 'Try adjusting your search criteria' : 'No orders have been placed yet'}
+            </Text>
+          </div>
+        ) : (
+          <Table
+            columns={columns}
+            dataSource={filteredOrders}
+            rowKey="id"
+            pagination={{
+              total: filteredOrders.length,
+              pageSize: 10,
+              showSizeChanger: true,
+              showQuickJumper: true,
+              showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} orders`,
+            }}
+            scroll={{ x: 800 }}
+            size="small"
+          />
+        )}
       </Card>
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={handleSnackbarClose}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Alert
-          onClose={handleSnackbarClose}
-          severity={snackbar.severity}
-          sx={{ width: '100%' }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </Container>
+    </div>
   );
 }
 

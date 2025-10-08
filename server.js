@@ -62,7 +62,7 @@ app.get('/api/warehouses', (req, res) => {
 
 // Get all dealers
 app.get('/api/dealers', (req, res) => {
-    db.query('SELECT * FROM dealers', (err, results) => {
+    db.query('SELECT * FROM dealers ORDER BY name', (err, results) => {
         if (err) {
             res.status(500).json({ error: err.message });
         } else {
@@ -108,7 +108,7 @@ app.post('/api/orders', (req, res) => {
 // Get all orders
 app.get('/api/orders', (req, res) => {
     const query = `
-        SELECT o.*, ot.name as order_type, d.name as dealer_name, w.name as warehouse_name, p.name as product_name
+        SELECT o.*, ot.name as order_type, d.name as dealer_name, d.territory_name as dealer_territory, w.name as warehouse_name, p.name as product_name
         FROM orders o
         JOIN order_types ot ON o.order_type_id = ot.id
         JOIN dealers d ON o.dealer_id = d.id

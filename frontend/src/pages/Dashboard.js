@@ -1,21 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Row, Col, Card, Statistic, Typography, List, Avatar, Spin, Alert, Space } from 'antd';
 import {
-  Container,
-  Grid,
-  Card,
-  CardContent,
-  Typography,
-  Box,
-  CircularProgress,
-  Alert,
-} from '@mui/material';
-import {
-  Business as BusinessIcon,
-  Inventory as InventoryIcon,
-  LocalShipping as ShippingIcon,
-  Assignment as OrderIcon,
-} from '@mui/icons-material';
+  UserOutlined,
+  ShopOutlined,
+  AppstoreOutlined,
+  ShoppingCartOutlined,
+  CheckCircleOutlined,
+  DatabaseOutlined,
+  BarChartOutlined,
+} from '@ant-design/icons';
+
+const { Title, Text } = Typography;
 
 function Dashboard({ setStats }) {
   const [data, setData] = useState({
@@ -66,107 +62,144 @@ function Dashboard({ setStats }) {
 
   if (loading) {
     return (
-      <Container sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-        <CircularProgress />
-      </Container>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+        <Spin size="large" />
+      </div>
     );
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4 }}>
-      <Typography variant="h4" gutterBottom sx={{ mb: 4 }}>
+    <div>
+      <Title level={3} style={{ marginBottom: '24px' }}>
         Dashboard
-      </Typography>
+      </Title>
 
-      <Grid container spacing={3}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <BusinessIcon sx={{ fontSize: 40, mb: 1 }} />
-              <Typography variant="h6">{data.dealers.length}</Typography>
-              <Typography variant="body2">Dealers</Typography>
-            </CardContent>
+      {/* Statistics Cards */}
+      <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
+        <Col xs={24} sm={12} md={6}>
+          <Card style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
+            <Statistic
+              title={<span style={{ color: 'white' }}>Dealers</span>}
+              value={data.dealers.length}
+              prefix={<UserOutlined />}
+              valueStyle={{ color: 'white', fontSize: '24px' }}
+            />
           </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', color: 'white' }}>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <ShippingIcon sx={{ fontSize: 40, mb: 1 }} />
-              <Typography variant="h6">{data.warehouses.length}</Typography>
-              <Typography variant="body2">Warehouses</Typography>
-            </CardContent>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card style={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', color: 'white' }}>
+            <Statistic
+              title={<span style={{ color: 'white' }}>Warehouses</span>}
+              value={data.warehouses.length}
+              prefix={<ShopOutlined />}
+              valueStyle={{ color: 'white', fontSize: '24px' }}
+            />
           </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', color: 'white' }}>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <InventoryIcon sx={{ fontSize: 40, mb: 1 }} />
-              <Typography variant="h6">{data.products.length}</Typography>
-              <Typography variant="body2">Products</Typography>
-            </CardContent>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', color: 'white' }}>
+            <Statistic
+              title={<span style={{ color: 'white' }}>Products</span>}
+              value={data.products.length}
+              prefix={<AppstoreOutlined />}
+              valueStyle={{ color: 'white', fontSize: '24px' }}
+            />
           </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', color: 'white' }}>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <OrderIcon sx={{ fontSize: 40, mb: 1 }} />
-              <Typography variant="h6">{data.orders.length}</Typography>
-              <Typography variant="body2">Total Orders</Typography>
-            </CardContent>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card style={{ background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', color: 'white' }}>
+            <Statistic
+              title={<span style={{ color: 'white' }}>Total Orders</span>}
+              value={data.orders.length}
+              prefix={<ShoppingCartOutlined />}
+              valueStyle={{ color: 'white', fontSize: '24px' }}
+            />
           </Card>
-        </Grid>
-      </Grid>
+        </Col>
+      </Row>
 
-      <Grid container spacing={3} sx={{ mt: 2 }}>
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
+      {/* Content Cards */}
+      <Row gutter={[16, 16]}>
+        <Col xs={24} md={12}>
+          <Card
+            title={
+              <Space>
+                <BarChartOutlined />
                 Recent Orders
-              </Typography>
-              {data.orders.length === 0 ? (
-                <Typography color="text.secondary">
-                  No orders yet. Create your first order!
-                </Typography>
-              ) : (
-                <Box sx={{ maxHeight: 300, overflow: 'auto' }}>
-                  {data.orders.slice(0, 5).map(order => (
-                    <Box key={order.id} sx={{ py: 1, borderBottom: '1px solid #eee' }}>
-                      <Typography variant="body2" fontWeight="bold">
-                        {order.order_id}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {order.dealer_name} • {order.product_name} • Qty: {order.quantity}
-                      </Typography>
-                    </Box>
-                  ))}
-                </Box>
-              )}
-            </CardContent>
+              </Space>
+            }
+            style={{ height: '400px' }}
+          >
+            {data.orders.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                <ShoppingCartOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />
+                <Title level={5} type="secondary">
+                  No orders yet
+                </Title>
+                <Text type="secondary">
+                  Create your first order to get started
+                </Text>
+              </div>
+            ) : (
+              <List
+                dataSource={data.orders.slice(0, 5)}
+                renderItem={order => (
+                  <List.Item key={order.id}>
+                    <List.Item.Meta
+                      avatar={<Avatar style={{ backgroundColor: '#1890ff' }}>{order.order_id.substring(4, 6)}</Avatar>}
+                      title={<Text strong>{order.order_id}</Text>}
+                      description={
+                        <div>
+                          <Text>{order.dealer_name}</Text>
+                          <br />
+                          <Text type="secondary" style={{ fontSize: '12px' }}>
+                            {order.product_name} • Qty: {order.quantity}
+                          </Text>
+                        </div>
+                      }
+                    />
+                  </List.Item>
+                )}
+                style={{ maxHeight: '300px', overflow: 'auto' }}
+              />
+            )}
           </Card>
-        </Grid>
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
+        </Col>
+        <Col xs={24} md={12}>
+          <Card
+            title={
+              <Space>
+                <CheckCircleOutlined />
                 System Status
-              </Typography>
-              <Box sx={{ mt: 2 }}>
-                <Alert severity="success" sx={{ mb: 1 }}>
-                  ✅ Backend Connected
-                </Alert>
-                <Alert severity="success" sx={{ mb: 1 }}>
-                  ✅ Database Connected
-                </Alert>
-                <Alert severity="info">
-                  📊 {data.orders.length} orders processed
-                </Alert>
-              </Box>
-            </CardContent>
+              </Space>
+            }
+          >
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Alert
+                message="Backend Connected"
+                description="API server is responding correctly"
+                type="success"
+                showIcon
+                style={{ marginBottom: '8px' }}
+              />
+              <Alert
+                message="Database Connected"
+                description={`Connected to cbl_ordres with ${data.dealers.length} dealers and ${data.products.length} products`}
+                type="success"
+                showIcon
+                style={{ marginBottom: '8px' }}
+              />
+              <Alert
+                message={`${data.orders.length} Orders Processed`}
+                description="Order management system is operational"
+                type="info"
+                showIcon
+              />
+            </Space>
           </Card>
-        </Grid>
-      </Grid>
-    </Container>
+        </Col>
+      </Row>
+    </div>
   );
 }
 

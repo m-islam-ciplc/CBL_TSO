@@ -1,16 +1,17 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { ThemeProvider } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
-import theme from './theme';
+import { ConfigProvider } from 'antd';
 import App from './App';
+import { antTheme } from './ant-theme';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
+    <ConfigProvider
+      theme={antTheme}
+      componentSize="small"
+    >
       <App />
-    </ThemeProvider>
+    </ConfigProvider>
   </React.StrictMode>
 );

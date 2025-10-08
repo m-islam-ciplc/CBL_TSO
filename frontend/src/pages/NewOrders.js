@@ -1,50 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
-  Container,
   Card,
-  CardContent,
-  Typography,
-  Box,
-  Grid,
-  TextField,
-  Button,
+  Form,
+  Input,
   Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  CircularProgress,
-  Snackbar,
-  Alert,
-  Paper,
-  Chip,
-} from '@mui/material';
+  Button,
+  Row,
+  Col,
+  Typography,
+  Spin,
+  message,
+  Space,
+  Statistic,
+} from 'antd';
 import {
-  Add as AddIcon,
-  Business as BusinessIcon,
-  Inventory as InventoryIcon,
-  LocalShipping as ShippingIcon,
-} from '@mui/icons-material';
+  PlusOutlined,
+  UserOutlined,
+  ShopOutlined,
+  AppstoreOutlined,
+  ShoppingCartOutlined,
+} from '@ant-design/icons';
+
+const { Title, Text } = Typography;
+const { Option } = Select;
 
 function NewOrders() {
-  const [formData, setFormData] = useState({
-    order_type_id: '',
-    dealer_id: '',
-    warehouse_id: '',
-    product_id: '',
-    quantity: ''
-  });
-
+  const [form] = Form.useForm();
   const [dropdownData, setDropdownData] = useState({
     orderTypes: [],
     dealers: [],
     warehouses: [],
     products: []
   });
-
   const [loading, setLoading] = useState(false);
-  const [dataLoading, setDataLoading] = useState(true);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   useEffect(() => {
     loadDropdownData();
@@ -52,7 +41,6 @@ function NewOrders() {
 
   const loadDropdownData = async () => {
     try {
-      setDataLoading(true);
       const [orderTypes, dealers, warehouses, products] = await Promise.all([
         axios.get('/api/order-types'),
         axios.get('/api/dealers'),
@@ -68,244 +56,191 @@ function NewOrders() {
       });
     } catch (error) {
       console.error('Failed to load dropdown data:', error);
-      showSnackbar('Failed to load form data', 'error');
-    } finally {
-      setDataLoading(false);
+      message.error('Failed to load form data');
     }
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (values) => {
     setLoading(true);
-
     try {
+      // Get the single warehouse ID (since there's only one warehouse)
+      const warehouses = await axios.get('/api/warehouses');
+      const warehouseId = warehouses.data[0]?.id;
+
       const orderData = {
-        ...formData,
-        quantity: parseInt(formData.quantity)
+        order_type_id: values.orderType,
+        dealer_id: values.dealer,
+        warehouse_id: warehouseId, // Auto-filled warehouse
+        product_id: values.product,
+        quantity: parseInt(values.quantity)
       };
 
       const response = await axios.post('/api/orders', orderData);
 
       if (response.data.success) {
-        showSnackbar(`Order created successfully! Order ID: ${response.data.order_id}`, 'success');
-        setFormData({
-          order_type_id: '',
-          dealer_id: '',
-          warehouse_id: '',
-          product_id: '',
-          quantity: ''
-        });
+        message.success(`Order created successfully! Order ID: ${response.data.order_id}`);
+        form.resetFields();
       }
     } catch (error) {
-      showSnackbar('Failed to create order', 'error');
+      message.error('Failed to create order');
     } finally {
       setLoading(false);
     }
   };
 
-  const showSnackbar = (message, severity) => {
-    setSnackbar({ open: true, message, severity });
-  };
-
-  const handleSnackbarClose = () => {
-    setSnackbar({ ...snackbar, open: false });
-  };
-
   return (
-    <Container maxWidth="lg" sx={{ mt: 3, px: 2 }}>
-      <Typography variant="h4" gutterBottom>
+    <div>
+      <Title level={3} style={{ marginBottom: '8px' }}>
         New Orders
-      </Typography>
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+      </Title>
+      <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
         Create new sales orders for dealers
-      </Typography>
+      </Text>
 
-      <Card sx={{ mx: 0 }}>
-        <CardContent sx={{ p: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-            <AddIcon sx={{ mr: 1 }} />
-            <Typography variant="h5">Create New Order</Typography>
-          </Box>
+      <Card style={{ marginBottom: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', padding: '16px 24px 0' }}>
+          <PlusOutlined style={{ marginRight: '8px' }} />
+          <Title level={4} style={{ margin: 0 }}>Create New Order</Title>
+        </div>
 
-          {dataLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
-              <CircularProgress />
-              <Typography sx={{ ml: 2 }}>Loading form data...</Typography>
-            </Box>
-          ) : (
-            <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={8} md={6}>
-                  <FormControl fullWidth sx={{ minWidth: 200 }}>
-                    <InputLabel>Order Type</InputLabel>
-                    <Select
-                      name="order_type_id"
-                      value={formData.order_type_id}
-                      onChange={handleInputChange}
-                      label="Order Type"
-                      required
-                      disabled={dropdownData.orderTypes.length === 0}
-                      sx={{ minHeight: 48 }}
-                    >
-                      {dropdownData.orderTypes.map(type => (
-                        <MenuItem key={type.id} value={type.id}>
-                          {type.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
+        <Form
+          form={form}
+          onFinish={handleSubmit}
+          layout="vertical"
+          style={{ padding: '0 24px 24px' }}
+        >
+            <Row gutter={[16, 16]}>
+              <Col xs={24} sm={12} md={8}>
+                <Form.Item
+                  name="orderType"
+                  label="Order Type"
+                  rules={[{ required: true, message: 'Please select order type' }]}
+                >
+                  <Select placeholder="Select order type" size="middle">
+                    {dropdownData.orderTypes.map(type => (
+                      <Option key={type.id} value={type.id}>
+                        {type.name}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </Col>
 
-              <Grid item xs={12} sm={8} md={6}>
-                <FormControl fullWidth sx={{ minWidth: 200 }}>
-                  <InputLabel>Dealer</InputLabel>
+              <Col xs={24} sm={12} md={8}>
+                <Form.Item
+                  name="dealer"
+                  label="Dealer"
+                  rules={[{ required: true, message: 'Please select dealer' }]}
+                >
                   <Select
-                    name="dealer_id"
-                    value={formData.dealer_id}
-                    onChange={handleInputChange}
-                    label="Dealer"
-                    required
-                    sx={{ minHeight: 48 }}
+                    placeholder="Search and select dealer"
+                    size="middle"
+                    showSearch
+                    filterOption={(input, option) =>
+                      (option?.children ?? '').toLowerCase().includes(input.toLowerCase())
+                    }
                   >
                     {dropdownData.dealers.map(dealer => (
-                      <MenuItem key={dealer.id} value={dealer.id}>
+                      <Option key={dealer.id} value={dealer.id}>
                         {dealer.name}
-                      </MenuItem>
+                      </Option>
                     ))}
                   </Select>
-                </FormControl>
-              </Grid>
+                </Form.Item>
+              </Col>
 
-              <Grid item xs={12} sm={8} md={6}>
-                <FormControl fullWidth sx={{ minWidth: 200 }}>
-                  <InputLabel>Warehouse</InputLabel>
+              <Col xs={24} sm={12} md={8}>
+                <Form.Item
+                  name="product"
+                  label="Product"
+                  rules={[{ required: true, message: 'Please select product' }]}
+                >
                   <Select
-                    name="warehouse_id"
-                    value={formData.warehouse_id}
-                    onChange={handleInputChange}
-                    label="Warehouse"
-                    required
-                    sx={{ minHeight: 48 }}
-                  >
-                    {dropdownData.warehouses.map(warehouse => (
-                      <MenuItem key={warehouse.id} value={warehouse.id}>
-                        {warehouse.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-
-              <Grid item xs={12} sm={8} md={6}>
-                <FormControl fullWidth sx={{ minWidth: 200 }}>
-                  <InputLabel>Product</InputLabel>
-                  <Select
-                    name="product_id"
-                    value={formData.product_id}
-                    onChange={handleInputChange}
-                    label="Product"
-                    required
-                    sx={{ minHeight: 48 }}
+                    placeholder="Search and select product"
+                    size="middle"
+                    showSearch
+                    filterOption={(input, option) =>
+                      (option?.children ?? '').toLowerCase().includes(input.toLowerCase())
+                    }
                   >
                     {dropdownData.products.map(product => (
-                      <MenuItem key={product.id} value={product.id}>
+                      <Option key={product.id} value={product.id}>
                         {product.name}
-                      </MenuItem>
+                      </Option>
                     ))}
                   </Select>
-                </FormControl>
-              </Grid>
+                </Form.Item>
+              </Col>
 
-              <Grid item xs={12} sm={4} md={3}>
-                <TextField
-                  fullWidth
+              <Col xs={24} sm={12} md={6}>
+                <Form.Item
                   name="quantity"
                   label="Quantity"
-                  type="number"
-                  value={formData.quantity}
-                  onChange={handleInputChange}
-                  inputProps={{ min: 1 }}
-                  required
-                  sx={{ minHeight: 48 }}
-                />
-              </Grid>
-
-              <Grid item xs={12} sm={8} md={6}>
-                <Button
-                  type="submit"
-                  fullWidth
-                  variant="contained"
-                  size="large"
-                  disabled={loading}
-                  startIcon={loading ? <CircularProgress size={20} /> : <AddIcon />}
-                  sx={{ mt: 2, py: 1.5 }}
+                  rules={[
+                    { required: true, message: 'Please enter quantity' },
+                    { type: 'number', min: 1, message: 'Quantity must be at least 1' }
+                  ]}
                 >
-                  {loading ? 'Creating Order...' : 'Create Order'}
-                </Button>
-              </Grid>
-            </Grid>
-          </Box>
-          )}
-        </CardContent>
+                  <Input type="number" placeholder="Enter quantity" size="middle" />
+                </Form.Item>
+              </Col>
+
+              <Col xs={24} sm={12} md={6}>
+                <Form.Item>
+                  <Button
+                    type="primary"
+                    htmlType="submit"
+                    loading={loading}
+                    icon={<PlusOutlined />}
+                    size="large"
+                    block
+                  >
+                    {loading ? 'Creating Order...' : 'Create Order'}
+                  </Button>
+                </Form.Item>
+              </Col>
+            </Row>
+          </Form>
+        )}
       </Card>
 
       {/* Quick Stats */}
-      {!dataLoading && (
-        <Grid container spacing={2} sx={{ mt: 2 }}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Paper sx={{ p: 2, textAlign: 'center' }}>
-              <BusinessIcon color="primary" sx={{ fontSize: 30, mb: 1 }} />
-              <Typography variant="h6">{dropdownData.dealers.length}</Typography>
-              <Typography variant="body2" color="text.secondary">Dealers</Typography>
-            </Paper>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Paper sx={{ p: 2, textAlign: 'center' }}>
-              <ShippingIcon color="primary" sx={{ fontSize: 30, mb: 1 }} />
-              <Typography variant="h6">{dropdownData.warehouses.length}</Typography>
-              <Typography variant="body2" color="text.secondary">Warehouses</Typography>
-            </Paper>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Paper sx={{ p: 2, textAlign: 'center' }}>
-              <InventoryIcon color="primary" sx={{ fontSize: 30, mb: 1 }} />
-              <Typography variant="h6">{dropdownData.products.length}</Typography>
-              <Typography variant="body2" color="text.secondary">Products</Typography>
-            </Paper>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Paper sx={{ p: 2, textAlign: 'center' }}>
-              <AddIcon color="primary" sx={{ fontSize: 30, mb: 1 }} />
-              <Typography variant="h6">New Order</Typography>
-              <Typography variant="body2" color="text.secondary">Ready to Create</Typography>
-            </Paper>
-          </Grid>
-        </Grid>
-      )}
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={handleSnackbarClose}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Alert
-          onClose={handleSnackbarClose}
-          severity={snackbar.severity}
-          sx={{ width: '100%' }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </Container>
+      <Row gutter={[16, 16]}>
+          <Col xs={24} sm={12} md={8}>
+            <Card size="small" style={{ textAlign: 'center' }}>
+              <Statistic
+                title="Dealers"
+                value={dropdownData.dealers.length}
+                prefix={<UserOutlined />}
+                valueStyle={{ fontSize: '20px' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={8}>
+            <Card size="small" style={{ textAlign: 'center' }}>
+              <Statistic
+                title="Products"
+                value={dropdownData.products.length}
+                prefix={<AppstoreOutlined />}
+                valueStyle={{ fontSize: '20px' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={8}>
+            <Card size="small" style={{ textAlign: 'center' }}>
+              <Statistic
+                title="New Order"
+                value="Ready"
+                prefix={<PlusOutlined />}
+                valueStyle={{ fontSize: '16px', color: '#52c41a' }}
+              />
+              <div style={{ fontSize: '12px', color: '#8c8c8c', marginTop: '4px' }}>
+                Ready to Create
+              </div>
+            </Card>
+          </Col>
+        </Row>
+    </div>
   );
 }
 
