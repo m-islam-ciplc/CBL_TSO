@@ -31,9 +31,11 @@ function NewOrders() {
     orderTypes: [],
     dealers: [],
     warehouses: [],
-    products: []
+    products: [],
+    territories: []
   });
   const [loading, setLoading] = useState(false);
+  const [filteredDealers, setFilteredDealers] = useState([]);
 
   useEffect(() => {
     loadDropdownData();
@@ -48,15 +50,81 @@ function NewOrders() {
         axios.get('/api/products')
       ]);
 
+      // Extract unique territories from dealers data
+      const territoriesMap = new Map();
+      dealers.data.forEach(dealer => {
+        if (dealer.territory_code && dealer.territory_name) {
+          territoriesMap.set(dealer.territory_code, {
+            code: dealer.territory_code,
+            name: dealer.territory_name
+          });
+        }
+      });
+      const territories = Array.from(territoriesMap.values());
+
       setDropdownData({
         orderTypes: orderTypes.data,
         dealers: dealers.data,
         warehouses: warehouses.data,
-        products: products.data
+        products: products.data,
+        territories: territories
       });
+
+      setFilteredDealers(dealers.data);
     } catch (error) {
       console.error('Failed to load dropdown data:', error);
       message.error('Failed to load form data');
+    }
+  };
+
+  // Territory filtering logic
+  const filterDealersByTerritory = (territoryCode, territoryName) => {
+    if (!territoryCode && !territoryName) {
+      setFilteredDealers(dropdownData.dealers);
+      return;
+    }
+
+    const filtered = dropdownData.dealers.filter(dealer => {
+      if (territoryCode && dealer.territory_code !== territoryCode) return false;
+      if (territoryName && dealer.territory_name !== territoryName) return false;
+      return true;
+    });
+
+    setFilteredDealers(filtered);
+  };
+
+  const handleTerritoryChange = (field, value) => {
+    if (field === 'territoryCode') {
+      // Find the corresponding territory name
+      const territory = dropdownData.territories.find(t => t.code === value);
+      if (territory) {
+        form.setFieldsValue({ territoryName: territory.name });
+        filterDealersByTerritory(value, territory.name);
+      } else {
+        filterDealersByTerritory(value, null);
+      }
+    } else if (field === 'territoryName') {
+      // Find the corresponding territory code
+      const territory = dropdownData.territories.find(t => t.name === value);
+      if (territory) {
+        form.setFieldsValue({ territoryCode: territory.code });
+        filterDealersByTerritory(territory.code, value);
+      } else {
+        filterDealersByTerritory(null, value);
+      }
+    }
+  };
+
+  const handleDealerChange = (dealerId) => {
+    // Find the selected dealer and auto-populate territory fields
+    const dealer = dropdownData.dealers.find(d => d.id === dealerId);
+    if (dealer) {
+      form.setFieldsValue({
+        territoryCode: dealer.territory_code,
+        territoryName: dealer.territory_name
+      });
+      // Filter dealers to show only this dealer's territory
+      filterDealersByTerritory(dealer.territory_code, dealer.territory_name);
     }
   };
 
@@ -80,6 +148,7 @@ function NewOrders() {
       if (response.data.success) {
         message.success(`Order created successfully! Order ID: ${response.data.order_id}`);
         form.resetFields();
+        setFilteredDealers(dropdownData.dealers); // Reset dealer filter
       }
     } catch (error) {
       message.error('Failed to create order');
@@ -110,13 +179,13 @@ function NewOrders() {
           style={{ padding: '0 24px 24px' }}
         >
             <Row gutter={[16, 16]}>
-              <Col xs={24} sm={12} md={8}>
+              <Col xs={24} sm={6} md={4}>
                 <Form.Item
                   name="orderType"
                   label="Order Type"
                   rules={[{ required: true, message: 'Please select order type' }]}
                 >
-                  <Select placeholder="Select order type" size="middle">
+                  <Select placeholder="Type" size="middle" style={{ width: '80px' }}>
                     {dropdownData.orderTypes.map(type => (
                       <Option key={type.id} value={type.id}>
                         {type.name}
@@ -126,21 +195,70 @@ function NewOrders() {
                 </Form.Item>
               </Col>
 
-              <Col xs={24} sm={12} md={8}>
+              <Col xs={24} sm={6} md={4}>
+                <Form.Item
+                  name="territoryCode"
+                  label="Territory Code"
+                  rules={[{ required: false, message: 'Please select territory code' }]}
+                >
+                  <Select
+                    placeholder="Code"
+                    size="middle"
+                    showSearch
+                    filterOption={(input, option) =>
+                      (option?.children ?? '').toLowerCase().includes(input.toLowerCase())
+                    }
+                    onChange={(value) => handleTerritoryChange('territoryCode', value)}
+                    allowClear
+                    style={{ width: '100px' }}
+                  >
+                    {dropdownData.territories.map(territory => (
+                      <Option key={territory.code} value={territory.code}>
+                        {territory.code}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </Col>
+
+              <Col xs={24} sm={6} md={4}>
+                <Form.Item
+                  name="territoryName"
+                  label="Territory Name"
+                  rules={[{ required: false, message: 'Please select territory name' }]}
+                >
+                  <Select
+                    placeholder="Territory"
+                    size="middle"
+                    showSearch
+                    filterOption={(input, option) =>
+                      (option?.children ?? '').toLowerCase().includes(input.toLowerCase())
+                    }
+                    onChange={(value) => handleTerritoryChange('territoryName', value)}
+                    allowClear
+                  >
+                    {dropdownData.territories.map(territory => (
+                      <Option key={territory.name} value={territory.name}>
+                        {territory.name}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </Col>
+
+              <Col xs={24} sm={6} md={4}>
                 <Form.Item
                   name="dealer"
                   label="Dealer"
                   rules={[{ required: true, message: 'Please select dealer' }]}
                 >
                   <Select
-                    placeholder="Search and select dealer"
+                    placeholder={filteredDealers.length === 0 ? "Select territory first" : "Select dealer"}
                     size="middle"
-                    showSearch
-                    filterOption={(input, option) =>
-                      (option?.children ?? '').toLowerCase().includes(input.toLowerCase())
-                    }
+                    disabled={filteredDealers.length === 0}
+                    onChange={handleDealerChange}
                   >
-                    {dropdownData.dealers.map(dealer => (
+                    {filteredDealers.map(dealer => (
                       <Option key={dealer.id} value={dealer.id}>
                         {dealer.name}
                       </Option>
@@ -149,14 +267,14 @@ function NewOrders() {
                 </Form.Item>
               </Col>
 
-              <Col xs={24} sm={12} md={8}>
+              <Col xs={24} sm={6} md={4}>
                 <Form.Item
                   name="product"
                   label="Product"
                   rules={[{ required: true, message: 'Please select product' }]}
                 >
                   <Select
-                    placeholder="Search and select product"
+                    placeholder="Product"
                     size="middle"
                     showSearch
                     filterOption={(input, option) =>
@@ -172,7 +290,7 @@ function NewOrders() {
                 </Form.Item>
               </Col>
 
-              <Col xs={24} sm={12} md={6}>
+              <Col xs={24} sm={4} md={3}>
                 <Form.Item
                   name="quantity"
                   label="Quantity"
@@ -181,11 +299,11 @@ function NewOrders() {
                     { type: 'number', min: 1, message: 'Quantity must be at least 1' }
                   ]}
                 >
-                  <Input type="number" placeholder="Enter quantity" size="middle" />
+                  <Input type="number" placeholder="Qty" size="middle" style={{ width: '80px' }} />
                 </Form.Item>
               </Col>
 
-              <Col xs={24} sm={12} md={6}>
+              <Col xs={24} sm={8} md={5}>
                 <Form.Item>
                   <Button
                     type="primary"
@@ -193,9 +311,9 @@ function NewOrders() {
                     loading={loading}
                     icon={<PlusOutlined />}
                     size="large"
-                    block
+                    style={{ width: '100%' }}
                   >
-                    {loading ? 'Creating Order...' : 'Create Order'}
+                    {loading ? 'Creating...' : 'Create Order'}
                   </Button>
                 </Form.Item>
               </Col>
