@@ -43,12 +43,20 @@ function NewOrders({ onOrderCreated }) {
 
   const loadDropdownData = async () => {
     try {
+      console.log('🔄 Loading dropdown data...');
       const [orderTypes, dealers, warehouses, products] = await Promise.all([
         axios.get('/api/order-types'),
         axios.get('/api/dealers'),
         axios.get('/api/warehouses'),
         axios.get('/api/products')
       ]);
+
+      console.log('📊 Data loaded:', {
+        orderTypes: orderTypes.data.length,
+        dealers: dealers.data.length,
+        warehouses: warehouses.data.length,
+        products: products.data.length
+      });
 
       // Extract unique territories from dealers data
       const territoriesMap = new Map();
@@ -62,6 +70,8 @@ function NewOrders({ onOrderCreated }) {
       });
       const territories = Array.from(territoriesMap.values());
 
+      console.log('🏷️ Territories extracted:', territories.length);
+
       setDropdownData({
         orderTypes: orderTypes.data,
         dealers: dealers.data,
@@ -71,22 +81,37 @@ function NewOrders({ onOrderCreated }) {
       });
 
       setFilteredDealers(dealers.data);
+
+      // Initialize form with default values when data is loaded
+      if (orderTypes.data.length > 0 && warehouses.data.length > 0 && products.data.length > 0) {
+        form.setFieldsValue({
+          orderType: orderTypes.data[0].id,
+          warehouse: warehouses.data[0].id,
+          territoryCode: '',
+          territoryName: '',
+          dealer: '',
+          product: products.data[0].id,
+          quantity: 1
+        });
+      }
+
+      console.log('✅ Data loading complete');
     } catch (error) {
-      console.error('Failed to load dropdown data:', error);
+      console.error('❌ Failed to load dropdown data:', error);
       message.error('Failed to load form data');
     }
   };
 
   // Territory filtering logic
   const filterDealersByTerritory = (territoryCode, territoryName) => {
-    if (!territoryCode && !territoryName) {
+    if ((!territoryCode || territoryCode === '') && (!territoryName || territoryName === '')) {
       setFilteredDealers(dropdownData.dealers);
       return;
     }
 
     const filtered = dropdownData.dealers.filter(dealer => {
-      if (territoryCode && dealer.territory_code !== territoryCode) return false;
-      if (territoryName && dealer.territory_name !== territoryName) return false;
+      if (territoryCode && territoryCode !== '' && dealer.territory_code !== territoryCode) return false;
+      if (territoryName && territoryName !== '' && dealer.territory_name !== territoryName) return false;
       return true;
     });
 
@@ -129,21 +154,23 @@ function NewOrders({ onOrderCreated }) {
   };
 
   const handleSubmit = async (values) => {
+    console.log('🚀 Form submitted with values:', values);
+    console.log('📋 Form validation passed, processing order...');
     setLoading(true);
-    try {
-      // Get the single warehouse ID (since there's only one warehouse)
-      const warehouses = await axios.get('/api/warehouses');
-      const warehouseId = warehouses.data[0]?.id;
 
+    try {
       const orderData = {
         order_type_id: values.orderType,
         dealer_id: values.dealer,
-        warehouse_id: warehouseId, // Auto-filled warehouse
+        warehouse_id: values.warehouse, // Use form value
         product_id: values.product,
         quantity: parseInt(values.quantity)
       };
 
+      console.log('📤 Sending order data:', orderData);
+
       const response = await axios.post('/api/orders', orderData);
+      console.log('✅ Order creation response:', response.data);
 
       if (response.data.success) {
         message.success(`Order created successfully! Order ID: ${response.data.order_id}`);
@@ -152,7 +179,8 @@ function NewOrders({ onOrderCreated }) {
         onOrderCreated(); // Trigger refresh of orders table
       }
     } catch (error) {
-      message.error('Failed to create order');
+      console.error('❌ Order creation failed:', error);
+      message.error(`Failed to create order: ${error.response?.data?.error || error.message}`);
     } finally {
       setLoading(false);
     }
@@ -176,6 +204,10 @@ function NewOrders({ onOrderCreated }) {
         <Form
           form={form}
           onFinish={handleSubmit}
+          onFinishFailed={(errorInfo) => {
+            console.log('❌ Form validation failed:', errorInfo);
+            message.error('Please fill all required fields correctly');
+          }}
           layout="vertical"
           style={{ padding: '0 24px 24px' }}
         >
@@ -190,6 +222,22 @@ function NewOrders({ onOrderCreated }) {
                     {dropdownData.orderTypes.map(type => (
                       <Option key={type.id} value={type.id}>
                         {type.name}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </Col>
+
+              <Col xs={24} sm={6} md={4}>
+                <Form.Item
+                  name="warehouse"
+                  label="Warehouse"
+                  rules={[{ required: true, message: 'Please select warehouse' }]}
+                >
+                  <Select placeholder="Warehouse" size="middle" style={{ width: '120px' }}>
+                    {dropdownData.warehouses.map(warehouse => (
+                      <Option key={warehouse.id} value={warehouse.id}>
+                        {warehouse.name}
                       </Option>
                     ))}
                   </Select>
