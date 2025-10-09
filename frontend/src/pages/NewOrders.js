@@ -84,7 +84,7 @@ function NewOrders({ onOrderCreated }) {
 
       // Initialize form with default values when data is loaded
       if (orderTypes.data.length > 0 && warehouses.data.length > 0 && products.data.length > 0) {
-        form.setFieldsValue({
+        const initialValues = {
           orderType: orderTypes.data[0].id,
           warehouse: warehouses.data[0].id,
           territoryCode: '',
@@ -92,7 +92,10 @@ function NewOrders({ onOrderCreated }) {
           dealer: '',
           product: products.data[0].id,
           quantity: 1
-        });
+        };
+
+        form.setFieldsValue(initialValues);
+        console.log('📝 Form initialized with values:', initialValues);
       }
 
       console.log('✅ Data loading complete');
@@ -162,7 +165,7 @@ function NewOrders({ onOrderCreated }) {
       const orderData = {
         order_type_id: values.orderType,
         dealer_id: values.dealer,
-        warehouse_id: values.warehouse, // Use form value
+        warehouse_id: values.warehouse,
         product_id: values.product,
         quantity: parseInt(values.quantity)
       };
@@ -180,6 +183,8 @@ function NewOrders({ onOrderCreated }) {
       }
     } catch (error) {
       console.error('❌ Order creation failed:', error);
+      console.error('Error response:', error.response);
+      console.error('Error data:', error.response?.data);
       message.error(`Failed to create order: ${error.response?.data?.error || error.message}`);
     } finally {
       setLoading(false);
@@ -206,6 +211,7 @@ function NewOrders({ onOrderCreated }) {
           onFinish={handleSubmit}
           onFinishFailed={(errorInfo) => {
             console.log('❌ Form validation failed:', errorInfo);
+            console.log('Error fields:', errorInfo.errorFields);
             message.error('Please fill all required fields correctly');
           }}
           layout="vertical"
@@ -218,7 +224,15 @@ function NewOrders({ onOrderCreated }) {
                   label="Order Type"
                   rules={[{ required: true, message: 'Please select order type' }]}
                 >
-                  <Select placeholder="Type" size="middle" style={{ width: '80px' }}>
+                  <Select
+                    placeholder="Search order type"
+                    size="middle"
+                    showSearch
+                    filterOption={(input, option) =>
+                      (option?.children ?? '').toLowerCase().includes(input.toLowerCase())
+                    }
+                    style={{ width: '100px' }}
+                  >
                     {dropdownData.orderTypes.map(type => (
                       <Option key={type.id} value={type.id}>
                         {type.name}
@@ -234,7 +248,15 @@ function NewOrders({ onOrderCreated }) {
                   label="Warehouse"
                   rules={[{ required: true, message: 'Please select warehouse' }]}
                 >
-                  <Select placeholder="Warehouse" size="middle" style={{ width: '120px' }}>
+                  <Select
+                    placeholder="Search warehouse"
+                    size="middle"
+                    showSearch
+                    filterOption={(input, option) =>
+                      (option?.children ?? '').toLowerCase().includes(input.toLowerCase())
+                    }
+                    style={{ width: '140px' }}
+                  >
                     {dropdownData.warehouses.map(warehouse => (
                       <Option key={warehouse.id} value={warehouse.id}>
                         {warehouse.name}
@@ -302,8 +324,12 @@ function NewOrders({ onOrderCreated }) {
                   rules={[{ required: true, message: 'Please select dealer' }]}
                 >
                   <Select
-                    placeholder={filteredDealers.length === 0 ? "Select territory first" : "Select dealer"}
+                    placeholder={filteredDealers.length === 0 ? "Select territory first" : "Search dealer"}
                     size="middle"
+                    showSearch
+                    filterOption={(input, option) =>
+                      (option?.children ?? '').toLowerCase().includes(input.toLowerCase())
+                    }
                     disabled={filteredDealers.length === 0}
                     onChange={handleDealerChange}
                   >

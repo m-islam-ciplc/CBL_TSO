@@ -13,6 +13,7 @@ import {
 import Dashboard from './pages/Dashboard';
 import NewOrders from './pages/NewOrders';
 import PlacedOrders from './pages/PlacedOrders';
+import DealerManagement from './pages/DealerManagement';
 
 const { Header, Sider, Content } = Layout;
 const { Title } = Typography;
@@ -153,6 +154,7 @@ function AppContent() {
             <Route path="/dashboard" element={<Dashboard setStats={setStats} />} />
             <Route path="/new-orders" element={<NewOrders onOrderCreated={refreshOrders} />} />
             <Route path="/placed-orders" element={<PlacedOrders refreshTrigger={refreshTrigger} />} />
+            <Route path="/dealer-management" element={<DealerManagement />} />
           </Routes>
         </Content>
       </Layout>

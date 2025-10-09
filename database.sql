@@ -16,16 +16,41 @@ CREATE TABLE IF NOT EXISTS warehouses (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Dealers table
+-- Dealers table - Comprehensive schema with all columns from VW_ALL_CUSTOMER_INFO
 CREATE TABLE IF NOT EXISTS dealers (
     id INT AUTO_INCREMENT PRIMARY KEY,
     dealer_code VARCHAR(50) NOT NULL UNIQUE,
     name VARCHAR(255) NOT NULL,
+    short_name VARCHAR(255),
+    proprietor_name VARCHAR(255),
     address TEXT,
     contact VARCHAR(100),
+    email VARCHAR(100),
+    nat_code VARCHAR(50),
+    nat_name VARCHAR(100),
+    div_code VARCHAR(50),
+    div_name VARCHAR(100),
     territory_code VARCHAR(50),
     territory_name VARCHAR(100),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    dist_code VARCHAR(50),
+    dist_name VARCHAR(100),
+    thana_code VARCHAR(50),
+    thana_name VARCHAR(100),
+    sr_code VARCHAR(50),
+    sr_name VARCHAR(100),
+    nsm_code VARCHAR(50),
+    nsm_name VARCHAR(100),
+    cust_origin VARCHAR(50),
+    dealer_status VARCHAR(10),
+    active_status VARCHAR(10),
+    dealer_proptr VARCHAR(10),
+    dealer_type VARCHAR(10),
+    price_type VARCHAR(10),
+    cust_disc_category VARCHAR(10),
+    party_type VARCHAR(50),
+    erp_status VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- Products table
