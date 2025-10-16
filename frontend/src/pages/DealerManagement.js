@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import * as XLSX from 'xlsx';
 import {
   Card,
   Typography,
@@ -38,6 +39,15 @@ function DealerManagement() {
   const [territoryFilter, setTerritoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [territories, setTerritories] = useState([]);
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 20,
+    showSizeChanger: true,
+    showQuickJumper: true,
+    showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} dealers`,
+    pageSizeOptions: ['10', '20', '50', '100'],
+    defaultPageSize: 20,
+  });
 
   useEffect(() => {
     loadDealers();
@@ -46,6 +56,154 @@ function DealerManagement() {
   useEffect(() => {
     filterDealers();
   }, [dealers, searchTerm, territoryFilter, statusFilter]);
+
+  const downloadTemplate = () => {
+    // Create template data matching VW_ALL_CUSTOMER_INFO format
+    const templateData = [
+      [
+        'DEALER_CODE',
+        'DEALER_NAME',
+        'SHORT_NAME',
+        'PROPRIETOR_NAME',
+        'DEALER_ADDRESS',
+        'DEALER_CONTACT',
+        'DEALER_EMAIL',
+        'NAT_CODE',
+        'NAT_NAME',
+        'DIV_CODE',
+        'DIV_NAME',
+        'TERRITORY_CODE',
+        'TERRITORY_NAME',
+        'DIST_CODE',
+        'DIST_NAME',
+        'THANA_CODE',
+        'THANA_NAME',
+        'SR_CODE',
+        'SR_NAME',
+        'NSM_CODE',
+        'NSM_NAME',
+        'CUST_ORIGIN',
+        'DEALER_STATUS',
+        'ACTIVE_STATUS',
+        'DEALER_PROPTR',
+        'DEALER_TYPE',
+        'PRICE_TYPE',
+        'CUST_DISC_CATEGORY',
+        'PARTY_TYPE',
+        'ERP_STATUS'
+      ],
+      [
+        'NEW001', // DEALER_CODE - User should replace with actual code
+        'Sample Dealer Name', // DEALER_NAME - User should replace
+        'Sample Dealer', // SHORT_NAME - User should replace
+        'Sample Proprietor', // PROPRIETOR_NAME - User should replace
+        'Sample Address, City, Country', // DEALER_ADDRESS - User should replace
+        '01712345678', // DEALER_CONTACT - User should replace
+        'sample@email.com', // DEALER_EMAIL - User should replace
+        '01', // NAT_CODE - National code
+        'National-1', // NAT_NAME - National name
+        '005', // DIV_CODE - Division code
+        'Tangail Zone', // DIV_NAME - Division name
+        '0017', // TERRITORY_CODE - Territory code
+        'Tangail Territory', // TERRITORY_NAME - Territory name
+        '0063', // DIST_CODE - District code
+        'Tangail', // DIST_NAME - District name
+        '0315', // THANA_CODE - Thana code
+        'Tangail Sadar', // THANA_NAME - Thana name
+        'SR0009', // SR_CODE - Sales rep code
+        'Md. Shamsir Ali', // SR_NAME - Sales rep name
+        'NSM001', // NSM_CODE - NSM code
+        'Karar Kabir Rabib', // NSM_NAME - NSM name
+        'CBL', // CUST_ORIGIN - Customer origin
+        'O', // DEALER_STATUS - O for active, N for inactive
+        'A', // ACTIVE_STATUS - A for active
+        'Y', // DEALER_PROPTR - Y for proprietor
+        'DI', // DEALER_TYPE - DI for distributor
+        'T', // PRICE_TYPE - T for trade price
+        'N', // CUST_DISC_CATEGORY - N for normal
+        'Credit', // PARTY_TYPE - Credit or Cash
+        'ERP-2' // ERP_STATUS - ERP system status
+      ],
+      [
+        'NEW002', // Another sample row
+        'Another Dealer Name',
+        'Another Dealer',
+        'Another Proprietor',
+        'Another Address, City, Country',
+        '01812345678',
+        'another@email.com',
+        '01',
+        'National-1',
+        '005',
+        'Tangail Zone',
+        '0017',
+        'Tangail Territory',
+        '0063',
+        'Tangail',
+        '0315',
+        'Tangail Sadar',
+        'SR0009',
+        'Md. Shamsir Ali',
+        'NSM001',
+        'Karar Kabir Rabib',
+        'CBL',
+        'O',
+        'A',
+        'Y',
+        'DI',
+        'T',
+        'N',
+        'Credit',
+        'ERP-2'
+      ]
+    ];
+
+    // Create workbook and worksheet
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(templateData);
+
+    // Set column widths for better readability
+    ws['!cols'] = [
+      { wch: 12 }, // DEALER_CODE
+      { wch: 25 }, // DEALER_NAME
+      { wch: 20 }, // SHORT_NAME
+      { wch: 18 }, // PROPRIETOR_NAME
+      { wch: 30 }, // DEALER_ADDRESS
+      { wch: 15 }, // DEALER_CONTACT
+      { wch: 20 }, // DEALER_EMAIL
+      { wch: 10 }, // NAT_CODE
+      { wch: 12 }, // NAT_NAME
+      { wch: 10 }, // DIV_CODE
+      { wch: 15 }, // DIV_NAME
+      { wch: 12 }, // TERRITORY_CODE
+      { wch: 18 }, // TERRITORY_NAME
+      { wch: 10 }, // DIST_CODE
+      { wch: 12 }, // DIST_NAME
+      { wch: 10 }, // THANA_CODE
+      { wch: 15 }, // THANA_NAME
+      { wch: 10 }, // SR_CODE
+      { wch: 18 }, // SR_NAME
+      { wch: 10 }, // NSM_CODE
+      { wch: 18 }, // NSM_NAME
+      { wch: 10 }, // CUST_ORIGIN
+      { wch: 12 }, // DEALER_STATUS
+      { wch: 12 }, // ACTIVE_STATUS
+      { wch: 12 }, // DEALER_PROPTR
+      { wch: 10 }, // DEALER_TYPE
+      { wch: 10 }, // PRICE_TYPE
+      { wch: 15 }, // CUST_DISC_CATEGORY
+      { wch: 10 }, // PARTY_TYPE
+      { wch: 10 }  // ERP_STATUS
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Dealer_Template');
+
+    // Generate and download file
+    const fileName = `dealer_import_template_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+
+    message.success(`Template downloaded: ${fileName}`);
+  };
 
   const loadDealers = async () => {
     try {
@@ -87,6 +245,13 @@ function DealerManagement() {
     }
 
     setFilteredDealers(filtered);
+    // Reset pagination when filters change
+    setPagination(prev => ({ ...prev, current: 1 }));
+  };
+
+  const handleTableChange = (newPagination) => {
+    console.log('Table pagination changed:', newPagination);
+    setPagination(newPagination);
   };
 
   const handleImport = async (file) => {
@@ -203,7 +368,7 @@ function DealerManagement() {
           <Col>
             <Button
               icon={<DownloadOutlined />}
-              onClick={() => message.info('Template download feature coming soon')}
+              onClick={downloadTemplate}
             >
               Download Template
             </Button>
@@ -305,13 +470,8 @@ function DealerManagement() {
           dataSource={filteredDealers}
           loading={loading}
           rowKey="id"
-          pagination={{
-            total: filteredDealers.length,
-            pageSize: 20,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} dealers`,
-          }}
+          pagination={pagination}
+          onChange={handleTableChange}
           scroll={{ x: 1000 }}
           size="small"
         />

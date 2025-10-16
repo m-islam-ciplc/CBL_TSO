@@ -28,14 +28,16 @@ const storage = multer.diskStorage({
 const upload = multer({
     storage: storage,
     fileFilter: function (req, file, cb) {
-        // Accept Excel files only
+        // Accept Excel and CSV files
         if (file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
             file.mimetype === 'application/vnd.ms-excel' ||
+            file.mimetype === 'text/csv' ||
             file.originalname.endsWith('.xlsx') ||
-            file.originalname.endsWith('.xls')) {
+            file.originalname.endsWith('.xls') ||
+            file.originalname.endsWith('.csv')) {
             cb(null, true);
         } else {
-            cb(new Error('Only Excel files are allowed'), false);
+            cb(new Error('Only Excel and CSV files are allowed'), false);
         }
     }
 });
@@ -92,24 +94,58 @@ app.post('/api/dealers/import', upload.single('file'), async (req, res) => {
         const headers = jsonData[0];
         console.log('📋 Headers found:', headers.length);
 
-        // Map column indices
+        // Map column indices - comprehensive mapping for all 30 columns
         const columnMap = {};
         headers.forEach((header, index) => {
-            const headerStr = header?.toString().toUpperCase() || '';
-            if (headerStr.includes('DEALER_CODE')) columnMap.dealerCode = index;
-            if (headerStr.includes('DEALER_NAME')) columnMap.dealerName = index;
-            if (headerStr.includes('SHORT_NAME')) columnMap.shortName = index;
-            if (headerStr.includes('PROPRIETOR_NAME')) columnMap.proprietorName = index;
-            if (headerStr.includes('DEALER_ADDRESS')) columnMap.address = index;
-            if (headerStr.includes('DEALER_CONTACT')) columnMap.contact = index;
-            if (headerStr.includes('DEALER_EMAIL')) columnMap.email = index;
-            if (headerStr.includes('TERRITORY_CODE')) columnMap.territoryCode = index;
-            if (headerStr.includes('TERRITORY_NAME')) columnMap.territoryName = index;
-            if (headerStr.includes('DEALER_STATUS')) columnMap.status = index;
-            if (headerStr.includes('DEALER_TYPE')) columnMap.type = index;
+            const headerStr = header?.toString().toLowerCase().trim() || '';
+            
+            // Map all columns from VW_ALL_CUSTOMER_INFO.xlsx
+            if (headerStr.includes('dealer_code') || headerStr.includes('dealer code')) columnMap.dealerCode = index;
+            if (headerStr.includes('dealer_name') || headerStr.includes('dealer name') || headerStr === 'dealername') columnMap.dealerName = index;
+            if (headerStr.includes('short_name') || headerStr.includes('short name')) columnMap.shortName = index;
+            if (headerStr.includes('proprietor_name') || headerStr.includes('proprietor name')) columnMap.proprietorName = index;
+            if (headerStr.includes('dealer_address') || headerStr.includes('dealer address')) columnMap.address = index;
+            if (headerStr.includes('dealer_contact') || headerStr.includes('dealer contact')) columnMap.contact = index;
+            if (headerStr.includes('dealer_email') || headerStr.includes('dealer email')) columnMap.email = index;
+            if (headerStr.includes('nat_code') || headerStr.includes('nat code')) columnMap.natCode = index;
+            if (headerStr.includes('nat_name') || headerStr.includes('nat name')) columnMap.natName = index;
+            if (headerStr.includes('div_code') || headerStr.includes('div code')) columnMap.divCode = index;
+            if (headerStr.includes('div_name') || headerStr.includes('div name')) columnMap.divName = index;
+            if (headerStr.includes('territory_code') || headerStr.includes('territory code')) columnMap.territoryCode = index;
+            if (headerStr.includes('territory_name') || headerStr.includes('territory name')) columnMap.territoryName = index;
+            if (headerStr.includes('dist_code') || headerStr.includes('dist code')) columnMap.distCode = index;
+            if (headerStr.includes('dist_name') || headerStr.includes('dist name')) columnMap.distName = index;
+            if (headerStr.includes('thana_code') || headerStr.includes('thana code')) columnMap.thanaCode = index;
+            if (headerStr.includes('thana_name') || headerStr.includes('thana name')) columnMap.thanaName = index;
+            if (headerStr.includes('sr_code') || headerStr.includes('sr code')) columnMap.srCode = index;
+            if (headerStr.includes('sr_name') || headerStr.includes('sr name')) columnMap.srName = index;
+            if (headerStr.includes('nsm_code') || headerStr.includes('nsm code')) columnMap.nsmCode = index;
+            if (headerStr.includes('nsm_name') || headerStr.includes('nsm name')) columnMap.nsmName = index;
+            if (headerStr.includes('cust_origin') || headerStr.includes('cust origin')) columnMap.custOrigin = index;
+            if (headerStr.includes('dealer_status') || headerStr.includes('dealer status')) columnMap.dealerStatus = index;
+            if (headerStr.includes('active_status') || headerStr.includes('active status')) columnMap.activeStatus = index;
+            if (headerStr.includes('dealer_proptr') || headerStr.includes('dealer proptr')) columnMap.dealerProptr = index;
+            if (headerStr.includes('dealer_type') || headerStr.includes('dealer type')) columnMap.dealerType = index;
+            if (headerStr.includes('price_type') || headerStr.includes('price type')) columnMap.priceType = index;
+            if (headerStr.includes('cust_disc_category') || headerStr.includes('cust disc category')) columnMap.custDiscCategory = index;
+            if (headerStr.includes('party_type') || headerStr.includes('party type')) columnMap.partyType = index;
+            if (headerStr.includes('erp_status') || headerStr.includes('erp status')) columnMap.erpStatus = index;
         });
 
         console.log('📋 Column mapping:', columnMap);
+
+        // Check if required columns are found
+        if (columnMap.dealerName === undefined) {
+            console.log('❌ Required DEALER_NAME column not found. Available headers:', headers);
+            return res.status(400).json({ 
+                error: 'Required column (DEALER_NAME) not found in Excel file',
+                availableHeaders: headers
+            });
+        }
+
+        // If dealer_code is missing, we'll generate it from dealer_name
+        const hasDealerCode = columnMap.dealerCode !== undefined;
+        console.log(`📋 Dealer code column: ${hasDealerCode ? 'Found' : 'Will generate from dealer name'}`);
 
         // Start transaction
         await db.promise().beginTransaction();
@@ -119,44 +155,83 @@ app.post('/api/dealers/import', upload.single('file'), async (req, res) => {
         let errorCount = 0;
 
         // Process each row
+        console.log(`📊 Processing ${jsonData.length - 1} data rows...`);
         for (let i = 1; i < jsonData.length; i++) {
             const row = jsonData[i];
+            if (!row || row.length === 0) continue;
+            
+            console.log(`📝 Processing row ${i}:`, row.slice(0, 5)); // Log first 5 columns
+
+            const dealerName = row[columnMap.dealerName]?.toString().trim();
+            
+            // Skip if dealer name is missing
+            if (!dealerName) {
+                console.log(`⚠️ Skipping row ${i}: Missing dealer name`);
+                errorCount++;
+                continue;
+            }
+
+            // Generate dealer_code from dealer_name if not provided
+            const dealerCode = hasDealerCode 
+                ? row[columnMap.dealerCode]?.toString().trim() 
+                : dealerName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 20);
+
+            const dealerData = [
+                dealerCode,
+                dealerName,
+                row[columnMap.shortName]?.toString().trim() || null,
+                row[columnMap.proprietorName]?.toString().trim() || null,
+                row[columnMap.address]?.toString().trim() || null,
+                row[columnMap.contact]?.toString().trim() || null,
+                row[columnMap.email]?.toString().trim() || null,
+                row[columnMap.natCode]?.toString().trim() || null,
+                row[columnMap.natName]?.toString().trim() || null,
+                row[columnMap.divCode]?.toString().trim() || null,
+                row[columnMap.divName]?.toString().trim() || null,
+                row[columnMap.territoryCode]?.toString().trim() || null,
+                row[columnMap.territoryName]?.toString().trim() || null,
+                row[columnMap.distCode]?.toString().trim() || null,
+                row[columnMap.distName]?.toString().trim() || null,
+                row[columnMap.thanaCode]?.toString().trim() || null,
+                row[columnMap.thanaName]?.toString().trim() || null,
+                row[columnMap.srCode]?.toString().trim() || null,
+                row[columnMap.srName]?.toString().trim() || null,
+                row[columnMap.nsmCode]?.toString().trim() || null,
+                row[columnMap.nsmName]?.toString().trim() || null,
+                row[columnMap.custOrigin]?.toString().trim() || null,
+                row[columnMap.dealerStatus]?.toString().trim() || null,
+                row[columnMap.activeStatus]?.toString().trim() || null,
+                row[columnMap.dealerProptr]?.toString().trim() || null,
+                row[columnMap.dealerType]?.toString().trim() || null,
+                row[columnMap.priceType]?.toString().trim() || null,
+                row[columnMap.custDiscCategory]?.toString().trim() || null,
+                row[columnMap.partyType]?.toString().trim() || null,
+                row[columnMap.erpStatus]?.toString().trim() || null
+            ];
 
             try {
-                const dealerData = [
-                    row[columnMap.dealerCode]?.toString().trim(),
-                    row[columnMap.dealerName]?.toString().trim(),
-                    row[columnMap.shortName]?.toString().trim() || null,
-                    row[columnMap.proprietorName]?.toString().trim() || null,
-                    row[columnMap.address]?.toString().trim() || null,
-                    row[columnMap.contact]?.toString().trim() || null,
-                    row[columnMap.email]?.toString().trim() || null,
-                    row[columnMap.territoryCode]?.toString().trim() || null,
-                    row[columnMap.territoryName]?.toString().trim() || null,
-                    row[columnMap.status]?.toString().trim() || null,
-                    row[columnMap.type]?.toString().trim() || null
-                ];
-
-                // Skip if required fields are missing
-                if (!dealerData[0] || !dealerData[1]) {
-                    errorCount++;
-                    continue;
-                }
 
                 await db.promise().query(`
                     INSERT INTO dealers (
                         dealer_code, name, short_name, proprietor_name, address, contact, email,
-                        territory_code, territory_name, dealer_status, dealer_type
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        nat_code, nat_name, div_code, div_name, territory_code, territory_name,
+                        dist_code, dist_name, thana_code, thana_name, sr_code, sr_name,
+                        nsm_code, nsm_name, cust_origin, dealer_status, active_status,
+                        dealer_proptr, dealer_type, price_type, cust_disc_category, party_type, erp_status
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `, dealerData);
 
                 importedCount++;
+                console.log(`✅ Imported dealer: ${dealerData[1]} (${dealerData[0]})`);
 
             } catch (error) {
                 if (error.code === 'ER_DUP_ENTRY') {
+                    console.log(`🔄 Duplicate dealer: ${dealerData[1]} (${dealerData[0]})`);
                     duplicateCount++;
                 } else {
-                    console.error('Error inserting row:', error.message);
+                    console.log(`❌ Error importing row ${i}:`, error.message);
+                    console.log(`❌ Dealer data:`, dealerData || 'Not defined');
+                    console.log(`❌ Full error:`, error);
                     errorCount++;
                 }
             }
@@ -165,10 +240,13 @@ app.post('/api/dealers/import', upload.single('file'), async (req, res) => {
         // Commit transaction
         await db.promise().commit();
 
-        // Clean up uploaded file
-        fs.unlinkSync(req.file.path);
-
         console.log(`✅ Import completed: ${importedCount} imported, ${duplicateCount} duplicates, ${errorCount} errors`);
+
+        // Clean up uploaded file
+        if (fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+            console.log('🗑️ Cleaned up uploaded file');
+        }
 
         res.json({
             success: true,

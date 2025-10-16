@@ -44,6 +44,7 @@ function AppContent() {
     if (path === '/' || path === '/dashboard') return 'dashboard';
     if (path === '/new-orders') return 'new-orders';
     if (path === '/placed-orders') return 'placed-orders';
+    if (path === '/dealer-management') return 'dealer-management';
     return 'dashboard';
   };
 
@@ -62,6 +63,11 @@ function AppContent() {
       key: 'placed-orders',
       icon: <OrderedListOutlined />,
       label: 'Placed Orders',
+    },
+    {
+      key: 'dealer-management',
+      icon: <UserOutlined />,
+      label: 'Dealer Management',
     },
   ];
 

@@ -35,6 +35,15 @@ function PlacedOrders({ refreshTrigger }) {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    showSizeChanger: true,
+    showQuickJumper: true,
+    showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} orders`,
+    pageSizeOptions: ['5', '10', '20', '50', '100'],
+    defaultPageSize: 10,
+  });
 
   useEffect(() => {
     loadOrders();
@@ -78,6 +87,13 @@ function PlacedOrders({ refreshTrigger }) {
     }
 
     setFilteredOrders(filtered);
+    // Reset pagination when filters change
+    setPagination(prev => ({ ...prev, current: 1 }));
+  };
+
+  const handleTableChange = (newPagination) => {
+    console.log('Table pagination changed:', newPagination);
+    setPagination(newPagination);
   };
 
   const getStatusTag = (status) => {
@@ -261,13 +277,8 @@ function PlacedOrders({ refreshTrigger }) {
             columns={columns}
             dataSource={filteredOrders}
             rowKey="id"
-            pagination={{
-              total: filteredOrders.length,
-              pageSize: 10,
-              showSizeChanger: true,
-              showQuickJumper: true,
-              showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} orders`,
-            }}
+            pagination={pagination}
+            onChange={handleTableChange}
             scroll={{ x: 800 }}
             size="small"
           />
