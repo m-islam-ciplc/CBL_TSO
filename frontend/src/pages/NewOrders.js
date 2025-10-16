@@ -90,7 +90,7 @@ function NewOrders({ onOrderCreated }) {
           territoryCode: '',
           territoryName: '',
           dealer: '',
-          product: products.data[0].id,
+          product: '',
           quantity: 1
         };
 
@@ -167,7 +167,7 @@ function NewOrders({ onOrderCreated }) {
         dealer_id: values.dealer,
         warehouse_id: values.warehouse,
         product_id: values.product,
-        quantity: parseInt(values.quantity)
+        quantity: Number(values.quantity)
       };
 
       console.log('📤 Sending order data:', orderData);
@@ -349,7 +349,7 @@ function NewOrders({ onOrderCreated }) {
                   rules={[{ required: true, message: 'Please select product' }]}
                 >
                   <Select
-                    placeholder="Product"
+                    placeholder="Search product"
                     size="middle"
                     showSearch
                     filterOption={(input, option) =>
@@ -371,10 +371,25 @@ function NewOrders({ onOrderCreated }) {
                   label="Quantity"
                   rules={[
                     { required: true, message: 'Please enter quantity' },
-                    { type: 'number', min: 1, message: 'Quantity must be at least 1' }
+                    {
+                      validator: (_, value) => {
+                        if (!value) return Promise.reject('Please enter quantity');
+                        const num = Number(value);
+                        if (isNaN(num)) return Promise.reject('Please enter a valid number');
+                        if (num < 1) return Promise.reject('Quantity must be at least 1');
+                        return Promise.resolve();
+                      }
+                    }
                   ]}
                 >
-                  <Input type="number" placeholder="Qty" size="middle" style={{ width: '80px' }} />
+                  <Input
+                    type="number"
+                    placeholder="Qty"
+                    size="middle"
+                    style={{ width: '80px' }}
+                    min={1}
+                    step={1}
+                  />
                 </Form.Item>
               </Col>
 
