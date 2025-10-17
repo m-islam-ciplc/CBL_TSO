@@ -14,6 +14,7 @@ import Dashboard from './pages/Dashboard';
 import NewOrders from './pages/NewOrders';
 import PlacedOrders from './pages/PlacedOrders';
 import DealerManagement from './pages/DealerManagement';
+import ProductManagement from './pages/ProductManagement';
 
 const { Header, Sider, Content } = Layout;
 const { Title } = Typography;
@@ -68,6 +69,11 @@ function AppContent() {
       key: 'dealer-management',
       icon: <UserOutlined />,
       label: 'Dealer Management',
+    },
+    {
+      key: 'product-management',
+      icon: <ShoppingCartOutlined />,
+      label: 'Product Management',
     },
   ];
 
@@ -160,7 +166,8 @@ function AppContent() {
             <Route path="/dashboard" element={<Dashboard setStats={setStats} />} />
             <Route path="/new-orders" element={<NewOrders onOrderCreated={refreshOrders} />} />
             <Route path="/placed-orders" element={<PlacedOrders refreshTrigger={refreshTrigger} />} />
-            <Route path="/dealer-management" element={<DealerManagement />} />
+                <Route path="/dealer-management" element={<DealerManagement />} />
+                <Route path="/product-management" element={<ProductManagement />} />
           </Routes>
         </Content>
       </Layout>

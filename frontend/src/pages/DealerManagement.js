@@ -199,7 +199,7 @@ function DealerManagement() {
     XLSX.utils.book_append_sheet(wb, ws, 'Dealer_Template');
 
     // Generate and download file
-    const fileName = `dealer_import_template_${new Date().toISOString().split('T')[0]}.xlsx`;
+    const fileName = `Dealer_Import_Template_${new Date().toISOString().split('T')[0]}.xlsx`;
     XLSX.writeFile(wb, fileName);
 
     message.success(`Template downloaded: ${fileName}`);
@@ -296,18 +296,25 @@ function DealerManagement() {
       dataIndex: 'dealer_code',
       key: 'dealer_code',
       width: 100,
+      sorter: (a, b) => a.dealer_code.localeCompare(b.dealer_code),
     },
     {
       title: 'Name',
       dataIndex: 'name',
       key: 'name',
       ellipsis: true,
+      sorter: (a, b) => a.name.localeCompare(b.name),
     },
     {
       title: 'Territory',
       dataIndex: 'territory_name',
       key: 'territory_name',
       render: (territory) => territory || 'N/A',
+      sorter: (a, b) => {
+        const territoryA = a.territory_name || 'N/A';
+        const territoryB = b.territory_name || 'N/A';
+        return territoryA.localeCompare(territoryB);
+      },
     },
     {
       title: 'Status',
@@ -315,12 +322,22 @@ function DealerManagement() {
       key: 'dealer_status',
       render: getStatusTag,
       width: 100,
+      sorter: (a, b) => {
+        const statusA = a.dealer_status || '';
+        const statusB = b.dealer_status || '';
+        return statusA.localeCompare(statusB);
+      },
     },
     {
       title: 'Type',
       dataIndex: 'dealer_type',
       key: 'dealer_type',
       width: 80,
+      sorter: (a, b) => {
+        const typeA = a.dealer_type || '';
+        const typeB = b.dealer_type || '';
+        return typeA.localeCompare(typeB);
+      },
     },
     {
       title: 'Contact',
@@ -328,6 +345,11 @@ function DealerManagement() {
       key: 'contact',
       width: 150,
       render: (contact) => contact || 'N/A',
+      sorter: (a, b) => {
+        const contactA = a.contact || 'N/A';
+        const contactB = b.contact || 'N/A';
+        return contactA.localeCompare(contactB);
+      },
     },
     {
       title: 'Address',
@@ -335,6 +357,11 @@ function DealerManagement() {
       key: 'address',
       ellipsis: true,
       render: (address) => address ? address.substring(0, 50) + '...' : 'N/A',
+      sorter: (a, b) => {
+        const addressA = a.address || 'N/A';
+        const addressB = b.address || 'N/A';
+        return addressA.localeCompare(addressB);
+      },
     },
   ];
 
