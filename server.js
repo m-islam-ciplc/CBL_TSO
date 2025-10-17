@@ -513,47 +513,142 @@ app.get('/api/products', (req, res) => {
     });
 });
 
-// Create new order
-app.post('/api/orders', (req, res) => {
-    const { order_type_id, dealer_id, warehouse_id, product_id, quantity } = req.body;
-    const order_id = 'ORD-' + uuidv4().substring(0, 8).toUpperCase();
-    
-    const query = `
-        INSERT INTO orders (order_id, order_type_id, dealer_id, warehouse_id, product_id, quantity) 
-        VALUES (?, ?, ?, ?, ?, ?)
-    `;
-    
-    db.query(query, [order_id, order_type_id, dealer_id, warehouse_id, product_id, quantity], (err, results) => {
-        if (err) {
-            res.status(500).json({ error: err.message });
-        } else {
+// Create new order with multiple products
+app.post('/api/orders', async (req, res) => {
+    try {
+        const { order_type_id, dealer_id, warehouse_id, order_items } = req.body;
+        
+        // Validate required fields
+        if (!order_type_id || !dealer_id || !warehouse_id || !order_items || !Array.isArray(order_items) || order_items.length === 0) {
+            return res.status(400).json({ 
+                error: 'Missing required fields: order_type_id, dealer_id, warehouse_id, and order_items array' 
+            });
+        }
+
+        // Validate each order item
+        for (const item of order_items) {
+            if (!item.product_id || !item.quantity || item.quantity <= 0) {
+                return res.status(400).json({ 
+                    error: 'Each order item must have product_id and quantity > 0' 
+                });
+            }
+        }
+
+        const order_id = 'ORD-' + uuidv4().substring(0, 8).toUpperCase();
+        
+        // Start transaction
+        await db.promise().beginTransaction();
+        
+        try {
+            // Create the main order
+            await db.promise().query(`
+                INSERT INTO orders (order_id, order_type_id, dealer_id, warehouse_id) 
+                VALUES (?, ?, ?, ?)
+            `, [order_id, order_type_id, dealer_id, warehouse_id]);
+
+            // Add order items
+            for (const item of order_items) {
+                await db.promise().query(`
+                    INSERT INTO order_items (order_id, product_id, quantity) 
+                    VALUES (?, ?, ?)
+                `, [order_id, item.product_id, item.quantity]);
+            }
+
+            // Commit transaction
+            await db.promise().commit();
+
             res.json({ 
                 success: true, 
                 order_id: order_id,
-                message: 'Order created successfully' 
+                message: `Order created successfully with ${order_items.length} product(s)`,
+                item_count: order_items.length
             });
+
+        } catch (error) {
+            // Rollback transaction on error
+            await db.promise().rollback();
+            throw error;
         }
-    });
+
+    } catch (error) {
+        console.error('Order creation error:', error);
+        res.status(500).json({ error: error.message });
+    }
 });
 
-// Get all orders
+// Get all orders with their items
 app.get('/api/orders', (req, res) => {
     const query = `
-        SELECT o.*, ot.name as order_type, d.name as dealer_name, d.territory_name as dealer_territory, w.name as warehouse_name, p.name as product_name
+        SELECT 
+            o.*, 
+            ot.name as order_type, 
+            d.name as dealer_name, 
+            d.territory_name as dealer_territory, 
+            w.name as warehouse_name,
+            COUNT(oi.id) as item_count
         FROM orders o
-        JOIN order_types ot ON o.order_type_id = ot.id
-        JOIN dealers d ON o.dealer_id = d.id
-        JOIN warehouses w ON o.warehouse_id = w.id
-        JOIN products p ON o.product_id = p.id
+        LEFT JOIN order_types ot ON o.order_type_id = ot.id
+        LEFT JOIN dealers d ON o.dealer_id = d.id
+        LEFT JOIN warehouses w ON o.warehouse_id = w.id
+        LEFT JOIN order_items oi ON o.order_id = oi.order_id
+        GROUP BY o.id, o.order_id, o.order_type_id, o.dealer_id, o.warehouse_id, o.created_at, ot.name, d.name, d.territory_name, w.name
         ORDER BY o.created_at DESC
     `;
-
+    
     db.query(query, (err, results) => {
         if (err) {
             res.status(500).json({ error: err.message });
         } else {
             res.json(results);
         }
+    });
+});
+
+// Get order details with items
+app.get('/api/orders/:orderId', (req, res) => {
+    const { orderId } = req.params;
+    
+    // Get order details
+    const orderQuery = `
+        SELECT o.*, ot.name as order_type, d.name as dealer_name, d.territory_name as dealer_territory, w.name as warehouse_name
+        FROM orders o
+        LEFT JOIN order_types ot ON o.order_type_id = ot.id
+        LEFT JOIN dealers d ON o.dealer_id = d.id
+        LEFT JOIN warehouses w ON o.warehouse_id = w.id
+        WHERE o.order_id = ?
+    `;
+    
+    db.query(orderQuery, [orderId], (err, orderResults) => {
+        if (err) {
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        
+        if (orderResults.length === 0) {
+            res.status(404).json({ error: 'Order not found' });
+            return;
+        }
+        
+        // Get order items
+        const itemsQuery = `
+            SELECT oi.*, p.name as product_name, p.product_code
+            FROM order_items oi
+            LEFT JOIN products p ON oi.product_id = p.id
+            WHERE oi.order_id = ?
+            ORDER BY oi.id
+        `;
+        
+        db.query(itemsQuery, [orderId], (err, itemsResults) => {
+            if (err) {
+                res.status(500).json({ error: err.message });
+                return;
+            }
+            
+            const order = orderResults[0];
+            order.items = itemsResults;
+            
+            res.json(order);
+        });
     });
 });
 

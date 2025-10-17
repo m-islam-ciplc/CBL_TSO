@@ -153,21 +153,15 @@ function PlacedOrders({ refreshTrigger }) {
       render: (territory) => territory || 'N/A',
     },
     {
-      title: 'Product',
-      dataIndex: 'product_name',
-      key: 'product_name',
-      ellipsis: true,
-    },
-    {
-      title: 'Quantity',
-      dataIndex: 'quantity',
-      key: 'quantity',
-      render: (quantity) => (
-        <Tag color="orange" style={{ fontSize: '12px' }}>
-          {quantity}
+      title: 'Items',
+      dataIndex: 'item_count',
+      key: 'item_count',
+      render: (count) => (
+        <Tag color="green" style={{ fontSize: '12px' }}>
+          {count} item{count !== 1 ? 's' : ''}
         </Tag>
       ),
-      width: 80,
+      width: 100,
     },
     {
       title: 'Status',
