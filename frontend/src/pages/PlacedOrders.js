@@ -14,6 +14,8 @@ import {
   message,
   Row,
   Col,
+  Modal,
+  List,
 } from 'antd';
 import {
   ReloadOutlined,
@@ -35,6 +37,9 @@ function PlacedOrders({ refreshTrigger }) {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [orderDetailsModal, setOrderDetailsModal] = useState(false);
+  const [orderDetailsLoading, setOrderDetailsLoading] = useState(false);
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
@@ -127,6 +132,19 @@ function PlacedOrders({ refreshTrigger }) {
     }
   };
 
+  const handleViewProducts = async (orderId) => {
+    setOrderDetailsLoading(true);
+    try {
+      const response = await axios.get(`/api/orders/${orderId}`);
+      setSelectedOrder(response.data);
+      setOrderDetailsModal(true);
+    } catch (error) {
+      message.error('Failed to load order details');
+    } finally {
+      setOrderDetailsLoading(false);
+    }
+  };
+
   const columns = [
     {
       title: 'Order ID',
@@ -153,15 +171,27 @@ function PlacedOrders({ refreshTrigger }) {
       render: (territory) => territory || 'N/A',
     },
     {
-      title: 'Items',
-      dataIndex: 'item_count',
-      key: 'item_count',
-      render: (count) => (
-        <Tag color="green" style={{ fontSize: '12px' }}>
-          {count} item{count !== 1 ? 's' : ''}
-        </Tag>
-      ),
-      width: 100,
+      title: 'Products',
+      key: 'products',
+      render: (_, record) => {
+        // For now, show item count. We'll enhance this to show actual products
+        return (
+          <div>
+            <Tag color="green" style={{ fontSize: '12px', marginBottom: '4px' }}>
+              {record.item_count} item{record.item_count !== 1 ? 's' : ''}
+            </Tag>
+            <Button 
+              type="link" 
+              size="small" 
+              onClick={() => handleViewProducts(record.order_id)}
+              style={{ padding: 0, height: 'auto', fontSize: '11px' }}
+            >
+              View Details
+            </Button>
+          </div>
+        );
+      },
+      width: 120,
     },
     {
       title: 'Status',
@@ -278,6 +308,77 @@ function PlacedOrders({ refreshTrigger }) {
           />
         )}
       </Card>
+
+      {/* Order Details Modal */}
+      <Modal
+        title={`Order Details - ${selectedOrder?.order_id || ''}`}
+        open={orderDetailsModal}
+        onCancel={() => setOrderDetailsModal(false)}
+        footer={[
+          <Button key="close" onClick={() => setOrderDetailsModal(false)}>
+            Close
+          </Button>
+        ]}
+        width={800}
+      >
+        {orderDetailsLoading ? (
+          <div style={{ textAlign: 'center', padding: '40px' }}>
+            <Spin size="large" />
+          </div>
+        ) : selectedOrder ? (
+          <div>
+            {/* Order Summary */}
+            <Card size="small" style={{ marginBottom: '16px' }}>
+              <Row gutter={[16, 8]}>
+                <Col span={12}>
+                  <Text strong>Order ID:</Text> {selectedOrder.order_id}
+                </Col>
+                <Col span={12}>
+                  <Text strong>Dealer:</Text> {selectedOrder.dealer_name}
+                </Col>
+                <Col span={12}>
+                  <Text strong>Territory:</Text> {selectedOrder.dealer_territory || 'N/A'}
+                </Col>
+                <Col span={12}>
+                  <Text strong>Warehouse:</Text> {selectedOrder.warehouse_name}
+                </Col>
+                <Col span={12}>
+                  <Text strong>Order Type:</Text> {selectedOrder.order_type}
+                </Col>
+                <Col span={12}>
+                  <Text strong>Created:</Text> {new Date(selectedOrder.created_at).toLocaleString()}
+                </Col>
+              </Row>
+            </Card>
+
+            {/* Products List */}
+            <Title level={5}>Products ({selectedOrder.items?.length || 0} items)</Title>
+            {selectedOrder.items && selectedOrder.items.length > 0 ? (
+              <List
+                dataSource={selectedOrder.items}
+                renderItem={(item, index) => (
+                  <List.Item>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                      <div>
+                        <Text strong>#{index + 1}</Text>
+                        <br />
+                        <Text strong>{item.product_code}</Text> - {item.product_name}
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <Tag color="blue" style={{ fontSize: '14px', padding: '4px 8px' }}>
+                          Qty: {item.quantity}
+                        </Tag>
+                      </div>
+                    </div>
+                  </List.Item>
+                )}
+              />
+            ) : (
+              <Text type="secondary">No products found</Text>
+            )}
+          </div>
+        ) : null}
+      </Modal>
     </div>
   );
 }
