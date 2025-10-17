@@ -26,6 +26,7 @@ import {
   ClockCircleOutlined,
   CarOutlined,
   DeleteOutlined,
+  DownOutlined,
 } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
@@ -40,6 +41,8 @@ function PlacedOrders({ refreshTrigger }) {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orderDetailsModal, setOrderDetailsModal] = useState(false);
   const [orderDetailsLoading, setOrderDetailsLoading] = useState(false);
+  const [expandedRowKeys, setExpandedRowKeys] = useState([]);
+  const [orderProducts, setOrderProducts] = useState({});
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
@@ -132,6 +135,25 @@ function PlacedOrders({ refreshTrigger }) {
     }
   };
 
+  const handleExpand = async (expanded, record) => {
+    if (expanded && !orderProducts[record.order_id]) {
+      // Load products for this order if not already loaded
+      try {
+        const response = await axios.get(`/api/orders/${record.order_id}`);
+        setOrderProducts(prev => ({
+          ...prev,
+          [record.order_id]: response.data.items || []
+        }));
+      } catch (error) {
+        console.error('Failed to load products for order:', error);
+        setOrderProducts(prev => ({
+          ...prev,
+          [record.order_id]: []
+        }));
+      }
+    }
+  };
+
   const handleViewProducts = async (orderId) => {
     setOrderDetailsLoading(true);
     try {
@@ -174,20 +196,11 @@ function PlacedOrders({ refreshTrigger }) {
       title: 'Products',
       key: 'products',
       render: (_, record) => {
-        // For now, show item count. We'll enhance this to show actual products
         return (
           <div>
-            <Tag color="green" style={{ fontSize: '12px', marginBottom: '4px' }}>
+            <Tag color="green" style={{ fontSize: '12px' }}>
               {record.item_count} item{record.item_count !== 1 ? 's' : ''}
             </Tag>
-            <Button 
-              type="link" 
-              size="small" 
-              onClick={() => handleViewProducts(record.order_id)}
-              style={{ padding: 0, height: 'auto', fontSize: '11px' }}
-            >
-              View Details
-            </Button>
           </div>
         );
       },
@@ -305,6 +318,47 @@ function PlacedOrders({ refreshTrigger }) {
             onChange={handleTableChange}
             scroll={{ x: 800 }}
             size="small"
+            expandable={{
+              expandedRowKeys,
+              onExpandedRowsChange: setExpandedRowKeys,
+              onExpand: handleExpand,
+              expandedRowRender: (record) => {
+                const products = orderProducts[record.order_id] || [];
+                return (
+                  <div style={{ padding: '16px', backgroundColor: '#fafafa', margin: '8px 0', borderRadius: '6px' }}>
+                    <Title level={5} style={{ marginBottom: '12px' }}>
+                      Products ({products.length} items)
+                    </Title>
+                    {products.length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {products.map((product, index) => (
+                          <div key={product.id} style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center',
+                            padding: '8px 12px',
+                            backgroundColor: 'white',
+                            borderRadius: '4px',
+                            border: '1px solid #e8e8e8'
+                          }}>
+                            <div>
+                              <Text strong>#{index + 1}</Text>
+                              <br />
+                              <Text strong style={{ color: '#1890ff' }}>{product.product_code}</Text> - {product.product_name}
+                            </div>
+                            <Tag color="blue" style={{ fontSize: '12px', padding: '2px 8px' }}>
+                              Qty: {product.quantity}
+                            </Tag>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <Text type="secondary">Loading products...</Text>
+                    )}
+                  </div>
+                );
+              }
+            }}
           />
         )}
       </Card>
