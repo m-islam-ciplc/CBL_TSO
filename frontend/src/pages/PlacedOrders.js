@@ -172,7 +172,7 @@ function PlacedOrders({ refreshTrigger }) {
       dataIndex: 'dealer_name',
       key: 'dealer_name',
       ellipsis: true,
-      width: 200,
+      width: 300,
     },
     {
       title: 'Territory',
@@ -232,7 +232,7 @@ function PlacedOrders({ refreshTrigger }) {
           </div>
         );
       },
-      width: 350,
+      width: 500,
     },
     {
       title: 'Status',
@@ -339,7 +339,7 @@ function PlacedOrders({ refreshTrigger }) {
             rowKey="id"
             pagination={pagination}
             onChange={handleTableChange}
-            scroll={{ x: 800 }}
+            scroll={{ x: 'max-content' }}
             size="small"
           />
         )}

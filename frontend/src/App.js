@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { Layout, Menu, Typography, Badge, Row, Col, Card, Statistic } from 'antd';
+import { Layout, Menu, Typography, Badge, Row, Col, Card, Statistic, Space } from 'antd';
 import {
   DashboardOutlined,
   PlusOutlined,
@@ -16,7 +16,7 @@ import PlacedOrders from './pages/PlacedOrders';
 import DealerManagement from './pages/DealerManagement';
 import ProductManagement from './pages/ProductManagement';
 
-const { Header, Sider, Content } = Layout;
+const { Header, Content } = Layout;
 const { Title } = Typography;
 
 function AppContent() {
@@ -28,7 +28,6 @@ function AppContent() {
   });
 
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -79,98 +78,74 @@ function AppContent() {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider
-        collapsible
-        collapsed={collapsed}
-        onCollapse={setCollapsed}
-        theme="light"
-        style={{
-          background: 'linear-gradient(180deg, #2c3e50 0%, #34495e 100%)',
-          color: 'white',
-        }}
-      >
-        <div style={{
-          padding: collapsed ? '16px 8px' : '24px 16px',
-          textAlign: 'center',
-          borderBottom: '1px solid rgba(255,255,255,0.2)',
-        }}>
-          <Title level={collapsed ? 5 : 4} style={{ color: 'white', margin: 0 }}>
-            {!collapsed && 'CBL Sales Order'}
+      <Header style={{
+        background: 'linear-gradient(90deg, #2c3e50 0%, #34495e 100%)',
+        padding: '0 24px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+        zIndex: 1000,
+      }}>
+        {/* Logo and Title */}
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <Title level={4} style={{ color: 'white', margin: 0, marginRight: '24px' }}>
+            CBL Sales Order
           </Title>
-          {collapsed && <div style={{ color: 'rgba(255,255,255,0.7)' }}>CBL</div>}
         </div>
 
+        {/* Navigation Menu */}
         <Menu
-          theme="light"
-          mode="inline"
+          theme="dark"
+          mode="horizontal"
           selectedKeys={[getSelectedKey()]}
           onClick={handleMenuClick}
           items={menuItems}
           style={{
             background: 'transparent',
             border: 'none',
+            flex: 1,
+            justifyContent: 'center',
           }}
         />
 
-        {/* Statistics Section */}
-        <div style={{
-          padding: collapsed ? '8px' : '16px',
-          borderTop: '1px solid rgba(255,255,255,0.2)',
-        }}>
-          <div style={{ marginBottom: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-              <UserOutlined style={{ color: 'rgba(255,255,255,0.7)', marginRight: '8px' }} />
-              {!collapsed && <span style={{ color: 'white', fontSize: '12px' }}>DEALERS</span>}
+        {/* Statistics */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <Space size="small">
+            <div style={{ textAlign: 'center', color: 'white' }}>
+              <div style={{ fontSize: '12px', opacity: 0.8 }}>DEALERS</div>
+              <div style={{ fontSize: '16px', fontWeight: 'bold' }}>{stats.dealers}</div>
             </div>
-            <div style={{ color: 'white', fontSize: '18px', fontWeight: 'bold' }}>
-              {stats.dealers}
+            <div style={{ textAlign: 'center', color: 'white' }}>
+              <div style={{ fontSize: '12px', opacity: 0.8 }}>WAREHOUSES</div>
+              <div style={{ fontSize: '16px', fontWeight: 'bold' }}>{stats.warehouses}</div>
             </div>
-          </div>
-
-          <div style={{ marginBottom: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-              <ShopOutlined style={{ color: 'rgba(255,255,255,0.7)', marginRight: '8px' }} />
-              {!collapsed && <span style={{ color: 'white', fontSize: '12px' }}>WAREHOUSES</span>}
+            <div style={{ textAlign: 'center', color: 'white' }}>
+              <div style={{ fontSize: '12px', opacity: 0.8 }}>PRODUCTS</div>
+              <div style={{ fontSize: '16px', fontWeight: 'bold' }}>{stats.products}</div>
             </div>
-            <div style={{ color: 'white', fontSize: '18px', fontWeight: 'bold' }}>
-              {stats.warehouses}
+            <div style={{ textAlign: 'center', color: 'white' }}>
+              <div style={{ fontSize: '12px', opacity: 0.8 }}>ORDERS</div>
+              <div style={{ fontSize: '16px', fontWeight: 'bold' }}>{stats.orders}</div>
             </div>
-          </div>
-
-          <div style={{ marginBottom: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-              <AppstoreOutlined style={{ color: 'rgba(255,255,255,0.7)', marginRight: '8px' }} />
-              {!collapsed && <span style={{ color: 'white', fontSize: '12px' }}>PRODUCTS</span>}
-            </div>
-            <div style={{ color: 'white', fontSize: '18px', fontWeight: 'bold' }}>
-              {stats.products}
-            </div>
-          </div>
-
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-              <ShoppingCartOutlined style={{ color: 'rgba(255,255,255,0.7)', marginRight: '8px' }} />
-              {!collapsed && <span style={{ color: 'white', fontSize: '12px' }}>ORDERS</span>}
-            </div>
-            <div style={{ color: 'white', fontSize: '18px', fontWeight: 'bold' }}>
-              {stats.orders}
-            </div>
-          </div>
+          </Space>
         </div>
-      </Sider>
+      </Header>
 
-      <Layout>
-        <Content style={{ margin: '16px', padding: '16px', background: '#fff' }}>
-          <Routes>
-            <Route path="/" element={<Dashboard setStats={setStats} />} />
-            <Route path="/dashboard" element={<Dashboard setStats={setStats} />} />
-            <Route path="/new-orders" element={<NewOrders onOrderCreated={refreshOrders} />} />
-            <Route path="/placed-orders" element={<PlacedOrders refreshTrigger={refreshTrigger} />} />
-                <Route path="/dealer-management" element={<DealerManagement />} />
-                <Route path="/product-management" element={<ProductManagement />} />
-          </Routes>
-        </Content>
-      </Layout>
+      <Content style={{ 
+        padding: '24px', 
+        background: '#f0f2f5',
+        minHeight: 'calc(100vh - 64px)',
+      }}>
+        <Routes>
+          <Route path="/" element={<Dashboard setStats={setStats} />} />
+          <Route path="/dashboard" element={<Dashboard setStats={setStats} />} />
+          <Route path="/new-orders" element={<NewOrders onOrderCreated={refreshOrders} />} />
+          <Route path="/placed-orders" element={<PlacedOrders refreshTrigger={refreshTrigger} />} />
+          <Route path="/dealer-management" element={<DealerManagement />} />
+          <Route path="/product-management" element={<ProductManagement />} />
+        </Routes>
+      </Content>
     </Layout>
   );
 }
