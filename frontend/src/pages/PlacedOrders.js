@@ -7,21 +7,17 @@ import {
   Input,
   Select,
   Button,
-  Space,
   Tag,
   Tooltip,
   Spin,
   message,
   Row,
   Col,
-  Modal,
-  List,
 } from 'antd';
 import {
   ReloadOutlined,
   SearchOutlined,
   FilterOutlined,
-  EyeOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
   CarOutlined,
@@ -38,10 +34,6 @@ function PlacedOrders({ refreshTrigger }) {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  const [orderDetailsModal, setOrderDetailsModal] = useState(false);
-  const [orderDetailsLoading, setOrderDetailsLoading] = useState(false);
-  const [expandedRowKeys, setExpandedRowKeys] = useState([]);
   const [orderProducts, setOrderProducts] = useState({});
   const [pagination, setPagination] = useState({
     current: 1,
@@ -70,6 +62,32 @@ function PlacedOrders({ refreshTrigger }) {
       setLoading(true);
       const response = await axios.get('/api/orders');
       setOrders(response.data);
+
+      // Load products for all orders automatically
+      const productPromises = response.data.map(async (order) => {
+        try {
+          const productResponse = await axios.get(`/api/orders/${order.order_id}`);
+          console.log(`Loaded products for order ${order.order_id}:`, productResponse.data.items);
+          return {
+            orderId: order.order_id,
+            products: productResponse.data.items || []
+          };
+        } catch (error) {
+          console.error(`Error loading products for order ${order.order_id}:`, error);
+          return {
+            orderId: order.order_id,
+            products: []
+          };
+        }
+      });
+
+      const productResults = await Promise.all(productPromises);
+      const productsMap = {};
+      productResults.forEach(result => {
+        productsMap[result.orderId] = result.products;
+      });
+      console.log('Final products map:', productsMap);
+      setOrderProducts(productsMap);
     } catch (error) {
       message.error('Failed to load orders');
     } finally {
@@ -113,7 +131,7 @@ function PlacedOrders({ refreshTrigger }) {
       case 'shipped':
         return <Tag color="blue" icon={<CarOutlined />}>Shipped</Tag>;
       default:
-        return <Tag color="default" icon={<EyeOutlined />}>New</Tag>;
+        return <Tag color="default">New</Tag>;
     }
   };
 
@@ -135,37 +153,7 @@ function PlacedOrders({ refreshTrigger }) {
     }
   };
 
-  const handleExpand = async (expanded, record) => {
-    if (expanded && !orderProducts[record.order_id]) {
-      // Load products for this order if not already loaded
-      try {
-        const response = await axios.get(`/api/orders/${record.order_id}`);
-        setOrderProducts(prev => ({
-          ...prev,
-          [record.order_id]: response.data.items || []
-        }));
-      } catch (error) {
-        console.error('Failed to load products for order:', error);
-        setOrderProducts(prev => ({
-          ...prev,
-          [record.order_id]: []
-        }));
-      }
-    }
-  };
 
-  const handleViewProducts = async (orderId) => {
-    setOrderDetailsLoading(true);
-    try {
-      const response = await axios.get(`/api/orders/${orderId}`);
-      setSelectedOrder(response.data);
-      setOrderDetailsModal(true);
-    } catch (error) {
-      message.error('Failed to load order details');
-    } finally {
-      setOrderDetailsLoading(false);
-    }
-  };
 
   const columns = [
     {
@@ -184,12 +172,14 @@ function PlacedOrders({ refreshTrigger }) {
       dataIndex: 'dealer_name',
       key: 'dealer_name',
       ellipsis: true,
+      width: 200,
     },
     {
       title: 'Territory',
       dataIndex: 'dealer_territory',
       key: 'dealer_territory',
       ellipsis: true,
+      width: 120,
       render: (territory) => territory || 'N/A',
     },
     {
@@ -204,14 +194,52 @@ function PlacedOrders({ refreshTrigger }) {
           </div>
         );
       },
-      width: 120,
+      width: 80,
+    },
+    {
+      title: 'Product Details',
+      key: 'product_details',
+      render: (_, record) => {
+        const products = orderProducts[record.order_id] || [];
+        console.log(`Rendering products for order ${record.order_id}:`, products);
+        
+        if (products.length === 0) {
+          return (
+            <div style={{ fontSize: '12px', color: '#999', fontStyle: 'italic' }}>
+              No products found
+            </div>
+          );
+        }
+        
+        return (
+          <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
+            {products.map((product, index) => (
+              <div key={product.id} style={{ marginBottom: '2px' }}>
+                <span style={{ fontWeight: 'bold', color: '#1890ff' }}>
+                  #{index + 1}
+                </span>{' '}
+                <span style={{ fontWeight: 'bold' }}>
+                  {product.product_code}
+                </span>{' '}
+                <span style={{ color: '#666' }}>
+                  {product.product_name}
+                </span>
+                <span style={{ color: '#52c41a', marginLeft: '8px' }}>
+                  (Qty: {product.quantity})
+                </span>
+              </div>
+            ))}
+          </div>
+        );
+      },
+      width: 350,
     },
     {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
       render: (status) => getStatusTag(status || 'new'),
-      width: 120,
+      width: 80,
     },
     {
       title: 'Created',
@@ -224,22 +252,17 @@ function PlacedOrders({ refreshTrigger }) {
       title: 'Actions',
       key: 'actions',
       render: (_, record) => (
-        <Space>
-          <Tooltip title="View Details">
-            <Button type="text" size="small" icon={<EyeOutlined />} />
-          </Tooltip>
-          <Tooltip title="Delete Order">
-            <Button
-              type="text"
-              size="small"
-              danger
-              icon={<DeleteOutlined />}
-              onClick={() => handleDeleteOrder(record.id)}
-            />
-          </Tooltip>
-        </Space>
+        <Tooltip title="Delete Order">
+          <Button
+            type="text"
+            size="small"
+            danger
+            icon={<DeleteOutlined />}
+            onClick={() => handleDeleteOrder(record.id)}
+          />
+        </Tooltip>
       ),
-      width: 100,
+      width: 60,
     },
   ];
 
@@ -301,7 +324,7 @@ function PlacedOrders({ refreshTrigger }) {
 
         {filteredOrders.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px 0' }}>
-            <EyeOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />
+            <div style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }}>📋</div>
             <Title level={5} type="secondary">
               No orders found
             </Title>
@@ -318,121 +341,10 @@ function PlacedOrders({ refreshTrigger }) {
             onChange={handleTableChange}
             scroll={{ x: 800 }}
             size="small"
-            expandable={{
-              expandedRowKeys,
-              onExpandedRowsChange: setExpandedRowKeys,
-              onExpand: handleExpand,
-              expandedRowRender: (record) => {
-                const products = orderProducts[record.order_id] || [];
-                return (
-                  <div style={{ padding: '16px', backgroundColor: '#fafafa', margin: '8px 0', borderRadius: '6px' }}>
-                    <Title level={5} style={{ marginBottom: '12px' }}>
-                      Products ({products.length} items)
-                    </Title>
-                    {products.length > 0 ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {products.map((product, index) => (
-                          <div key={product.id} style={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            alignItems: 'center',
-                            padding: '8px 12px',
-                            backgroundColor: 'white',
-                            borderRadius: '4px',
-                            border: '1px solid #e8e8e8'
-                          }}>
-                            <div>
-                              <Text strong>#{index + 1}</Text>
-                              <br />
-                              <Text strong style={{ color: '#1890ff' }}>{product.product_code}</Text> - {product.product_name}
-                            </div>
-                            <Tag color="blue" style={{ fontSize: '12px', padding: '2px 8px' }}>
-                              Qty: {product.quantity}
-                            </Tag>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <Text type="secondary">Loading products...</Text>
-                    )}
-                  </div>
-                );
-              }
-            }}
           />
         )}
       </Card>
 
-      {/* Order Details Modal */}
-      <Modal
-        title={`Order Details - ${selectedOrder?.order_id || ''}`}
-        open={orderDetailsModal}
-        onCancel={() => setOrderDetailsModal(false)}
-        footer={[
-          <Button key="close" onClick={() => setOrderDetailsModal(false)}>
-            Close
-          </Button>
-        ]}
-        width={800}
-      >
-        {orderDetailsLoading ? (
-          <div style={{ textAlign: 'center', padding: '40px' }}>
-            <Spin size="large" />
-          </div>
-        ) : selectedOrder ? (
-          <div>
-            {/* Order Summary */}
-            <Card size="small" style={{ marginBottom: '16px' }}>
-              <Row gutter={[16, 8]}>
-                <Col span={12}>
-                  <Text strong>Order ID:</Text> {selectedOrder.order_id}
-                </Col>
-                <Col span={12}>
-                  <Text strong>Dealer:</Text> {selectedOrder.dealer_name}
-                </Col>
-                <Col span={12}>
-                  <Text strong>Territory:</Text> {selectedOrder.dealer_territory || 'N/A'}
-                </Col>
-                <Col span={12}>
-                  <Text strong>Warehouse:</Text> {selectedOrder.warehouse_name}
-                </Col>
-                <Col span={12}>
-                  <Text strong>Order Type:</Text> {selectedOrder.order_type}
-                </Col>
-                <Col span={12}>
-                  <Text strong>Created:</Text> {new Date(selectedOrder.created_at).toLocaleString()}
-                </Col>
-              </Row>
-            </Card>
-
-            {/* Products List */}
-            <Title level={5}>Products ({selectedOrder.items?.length || 0} items)</Title>
-            {selectedOrder.items && selectedOrder.items.length > 0 ? (
-              <List
-                dataSource={selectedOrder.items}
-                renderItem={(item, index) => (
-                  <List.Item>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                      <div>
-                        <Text strong>#{index + 1}</Text>
-                        <br />
-                        <Text strong>{item.product_code}</Text> - {item.product_name}
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <Tag color="blue" style={{ fontSize: '14px', padding: '4px 8px' }}>
-                          Qty: {item.quantity}
-                        </Tag>
-                      </div>
-                    </div>
-                  </List.Item>
-                )}
-              />
-            ) : (
-              <Text type="secondary">No products found</Text>
-            )}
-          </div>
-        ) : null}
-      </Modal>
     </div>
   );
 }
