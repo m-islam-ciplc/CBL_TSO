@@ -14,6 +14,7 @@ import {
   Statistic,
   InputNumber,
   Divider,
+  Collapse,
 } from 'antd';
 import {
   PlusOutlined,
@@ -22,6 +23,8 @@ import {
   SearchOutlined,
   CheckOutlined,
   ArrowLeftOutlined,
+  DownOutlined,
+  UpOutlined,
 } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
@@ -42,6 +45,7 @@ function NewOrdersTablet({ onOrderCreated }) {
   const [orderItems, setOrderItems] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredProducts, setFilteredProducts] = useState([]);
+  const [isDropdownCollapsed, setIsDropdownCollapsed] = useState(true);
   const [productQuantities, setProductQuantities] = useState({}); // Track quantities for each product
   const [showReview, setShowReview] = useState(false); // Control review modal/page
   const [lastSelectedProductId, setLastSelectedProductId] = useState(null); // Track last selected product
@@ -171,6 +175,10 @@ function NewOrdersTablet({ onOrderCreated }) {
         filterDealersByTerritory(null, null);
       }
     }
+    // Auto-expand dropdown section when user makes a selection
+    if (isDropdownCollapsed) {
+      setIsDropdownCollapsed(false);
+    }
   };
 
   const handleDealerChange = (dealerId) => {
@@ -181,6 +189,10 @@ function NewOrdersTablet({ onOrderCreated }) {
         territoryName: dealer.territory_name
       });
       filterDealersByTerritory(dealer.territory_code, dealer.territory_name);
+    }
+    // Auto-expand dropdown section when user makes a selection
+    if (isDropdownCollapsed) {
+      setIsDropdownCollapsed(false);
     }
   };
 
@@ -362,128 +374,159 @@ function NewOrdersTablet({ onOrderCreated }) {
         </div>
       </div>
 
-      {/* Compact Dealer Selection */}
-      <Card style={{ marginBottom: '12px', borderRadius: '8px' }}>
-        <Form
-          form={form}
-          layout="horizontal"
-          size="small"
+      {/* Collapsible Order Details */}
+      <Card style={{ marginBottom: '8px', borderRadius: '8px' }}>
+        <div 
+          style={{ 
+            cursor: 'pointer', 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            padding: '8px 0'
+          }}
+          onClick={() => setIsDropdownCollapsed(!isDropdownCollapsed)}
         >
-          <Row gutter={[8, 12]} align="middle">
-            <Col xs={12} sm={12} md={3} lg={3}>
-              <Form.Item
-                name="orderType"
-                label={<Text strong style={{ fontSize: '12px' }}>Order Type</Text>}
-                rules={[{ required: true, message: 'Required' }]}
-                style={{ marginBottom: '8px' }}
-              >
-                <Select 
-                  placeholder="Type" 
-                  size="small"
-                  style={{ fontSize: '12px' }}
+          <div>
+            <Text strong style={{ fontSize: '14px', color: '#1890ff' }}>
+              📋 Order Details
+            </Text>
+            <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
+              {form.getFieldValue('orderType') && dropdownData.orderTypes.find(t => t.id === form.getFieldValue('orderType'))?.name && (
+                <Text style={{ fontSize: '11px' }}>
+                  {dropdownData.orderTypes.find(t => t.id === form.getFieldValue('orderType'))?.name} • {' '}
+                  {form.getFieldValue('warehouse') && dropdownData.warehouses.find(w => w.id === form.getFieldValue('warehouse'))?.name} • {' '}
+                  {form.getFieldValue('territoryCode') && dropdownData.territories.find(t => t.code === form.getFieldValue('territoryCode'))?.name} • {' '}
+                  {form.getFieldValue('dealer') && filteredDealers.find(d => d.id === form.getFieldValue('dealer'))?.name}
+                </Text>
+              )}
+            </div>
+          </div>
+          {isDropdownCollapsed ? <DownOutlined /> : <UpOutlined />}
+        </div>
+        
+        {!isDropdownCollapsed && (
+          <Form
+            form={form}
+            layout="horizontal"
+            size="small"
+            style={{ marginTop: '12px' }}
+          >
+            <Row gutter={[4, 6]} align="middle">
+              <Col xs={12} sm={12} md={3} lg={3}>
+                <Form.Item
+                  name="orderType"
+                  label={<Text strong style={{ fontSize: '12px' }}>Order Type</Text>}
+                  rules={[{ required: true, message: 'Required' }]}
+                  style={{ marginBottom: '8px' }}
                 >
-                  {dropdownData.orderTypes.map(type => (
-                    <Option key={type.id} value={type.id}>{type.name}</Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
+                  <Select 
+                    placeholder="Type" 
+                    size="small"
+                    style={{ fontSize: '12px' }}
+                  >
+                    {dropdownData.orderTypes.map(type => (
+                      <Option key={type.id} value={type.id}>{type.name}</Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </Col>
 
-            <Col xs={12} sm={12} md={4} lg={4}>
-              <Form.Item
-                name="warehouse"
-                label={<Text strong style={{ fontSize: '12px' }}>Warehouse</Text>}
-                rules={[{ required: true, message: 'Required' }]}
-                style={{ marginBottom: '8px' }}
-              >
-                <Select 
-                  placeholder="Warehouse" 
-                  size="small"
-                  style={{ fontSize: '12px' }}
+              <Col xs={12} sm={12} md={4} lg={4}>
+                <Form.Item
+                  name="warehouse"
+                  label={<Text strong style={{ fontSize: '12px' }}>Warehouse</Text>}
+                  rules={[{ required: true, message: 'Required' }]}
+                  style={{ marginBottom: '8px' }}
                 >
-                  {dropdownData.warehouses.map(warehouse => (
-                    <Option key={warehouse.id} value={warehouse.id}>{warehouse.name}</Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
+                  <Select 
+                    placeholder="Warehouse" 
+                    size="small"
+                    style={{ fontSize: '12px' }}
+                  >
+                    {dropdownData.warehouses.map(warehouse => (
+                      <Option key={warehouse.id} value={warehouse.id}>{warehouse.name}</Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </Col>
 
-            <Col xs={24} sm={24} md={4} lg={4}>
-              <Form.Item
-                name="territoryCode"
-                label={<Text strong style={{ fontSize: '12px' }}>Territory</Text>}
-                style={{ marginBottom: '8px' }}
-              >
-                <Select 
-                  placeholder="Territory" 
-                  size="small"
-                  style={{ fontSize: '12px' }}
-                  allowClear
-                  showSearch
-                  filterOption={(input, option) => {
-                    const optionText = option?.children?.toString() || '';
-                    return optionText.toLowerCase().includes(input.toLowerCase());
-                  }}
-                  onChange={(value) => handleTerritoryChange('territoryCode', value)}
+              <Col xs={24} sm={24} md={4} lg={4}>
+                <Form.Item
+                  name="territoryCode"
+                  label={<Text strong style={{ fontSize: '12px' }}>Territory</Text>}
+                  style={{ marginBottom: '8px' }}
                 >
-                  {dropdownData.territories.map(territory => (
-                    <Option key={territory.code} value={territory.code}>{territory.name}</Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
+                  <Select
+                    placeholder="Territory"
+                    size="small"
+                    style={{ fontSize: '12px' }}
+                    allowClear
+                    showSearch
+                    filterOption={(input, option) => {
+                      const optionText = option?.children?.toString() || '';
+                      return optionText.toLowerCase().includes(input.toLowerCase());
+                    }}
+                    onChange={(value) => handleTerritoryChange('territoryCode', value)}
+                  >
+                    {dropdownData.territories.map(territory => (
+                      <Option key={territory.code} value={territory.code}>{territory.name}</Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </Col>
 
-            <Col xs={24} sm={24} md={7} lg={7}>
-              <Form.Item
-                name="dealer"
-                label={<Text strong style={{ fontSize: '12px' }}>Dealer</Text>}
-                rules={[{ required: true, message: 'Required' }]}
-                style={{ marginBottom: '8px' }}
-              >
-                <Select 
-                  placeholder={filteredDealers.length === 0 ? "Select territory first" : "Dealer"} 
-                  size="small"
-                  style={{ fontSize: '12px' }}
-                  showSearch 
-                  filterOption={(input, option) => {
-                    const optionText = option?.children?.toString() || '';
-                    return optionText.toLowerCase().includes(input.toLowerCase());
-                  }} 
-                  disabled={filteredDealers.length === 0} 
-                  onChange={handleDealerChange}
+              <Col xs={24} sm={24} md={7} lg={7}>
+                <Form.Item
+                  name="dealer"
+                  label={<Text strong style={{ fontSize: '12px' }}>Dealer</Text>}
+                  rules={[{ required: true, message: 'Required' }]}
+                  style={{ marginBottom: '8px' }}
                 >
-                  {filteredDealers.map(dealer => (
-                    <Option key={dealer.id} value={dealer.id}>{dealer.name}</Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
+                  <Select 
+                    placeholder={filteredDealers.length === 0 ? "Select territory first" : "Dealer"} 
+                    size="small"
+                    style={{ fontSize: '12px' }}
+                    showSearch 
+                    filterOption={(input, option) => {
+                      const optionText = option?.children?.toString() || '';
+                      return optionText.toLowerCase().includes(input.toLowerCase());
+                    }} 
+                    disabled={filteredDealers.length === 0} 
+                    onChange={handleDealerChange}
+                  >
+                    {filteredDealers.map(dealer => (
+                      <Option key={dealer.id} value={dealer.id}>{dealer.name}</Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </Col>
 
-            <Col xs={24} sm={24} md={6} lg={6}>
-              <Form.Item
-                name="transport"
-                label={<Text strong style={{ fontSize: '12px' }}>Transport</Text>}
-                rules={[{ required: true, message: 'Required' }]}
-                style={{ marginBottom: '8px' }}
-              >
-                <Select 
-                  placeholder="Transport" 
-                  size="small"
-                  style={{ fontSize: '12px' }}
-                  showSearch 
-                  filterOption={(input, option) => {
-                    const optionText = option?.children?.toString() || '';
-                    return optionText.toLowerCase().includes(input.toLowerCase());
-                  }}
+              <Col xs={24} sm={24} md={6} lg={6}>
+                <Form.Item
+                  name="transport"
+                  label={<Text strong style={{ fontSize: '12px' }}>Transport</Text>}
+                  rules={[{ required: true, message: 'Required' }]}
+                  style={{ marginBottom: '8px' }}
                 >
-                  {dropdownData.transports.map(transport => (
-                    <Option key={transport.id} value={transport.id}>{transport.truck_details}</Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
-        </Form>
+                  <Select 
+                    placeholder="Transport" 
+                    size="small"
+                    style={{ fontSize: '12px' }}
+                    showSearch 
+                    filterOption={(input, option) => {
+                      const optionText = option?.children?.toString() || '';
+                      return optionText.toLowerCase().includes(input.toLowerCase());
+                    }}
+                  >
+                    {dropdownData.transports.map(transport => (
+                      <Option key={transport.id} value={transport.id}>{transport.truck_details}</Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </Col>
+            </Row>
+          </Form>
+        )}
       </Card>
 
       {/* Compact Product Search */}
