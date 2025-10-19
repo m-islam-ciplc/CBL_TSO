@@ -7,19 +7,20 @@ import {
   PlusOutlined,
   OrderedListOutlined,
   UserOutlined,
-  ShopOutlined,
-  AppstoreOutlined,
   ShoppingCartOutlined,
-  TabletOutlined,
   CheckOutlined,
+  FileExcelOutlined,
+  TruckOutlined,
+  TabletOutlined,
 } from '@ant-design/icons';
 import Dashboard from './pages/Dashboard';
-import NewOrders from './pages/NewOrders';
 import NewOrdersTablet from './pages/NewOrdersTablet';
 import ReviewOrdersTablet from './pages/ReviewOrdersTablet';
 import PlacedOrders from './pages/PlacedOrders';
 import DealerManagement from './pages/DealerManagement';
 import ProductManagement from './pages/ProductManagement';
+import TransportManagement from './pages/TransportManagement';
+import DailyReport from './pages/DailyReport';
 import TSODashboard from './pages/TSODashboard';
 
 const { Header, Content } = Layout;
@@ -73,11 +74,6 @@ function AppContent() {
       label: 'Dashboard',
     },
     {
-      key: 'new-orders',
-      icon: <PlusOutlined />,
-      label: 'New Orders',
-    },
-    {
       key: 'placed-orders',
       icon: <OrderedListOutlined />,
       label: 'Placed Orders',
@@ -91,6 +87,16 @@ function AppContent() {
       key: 'product-management',
       icon: <ShoppingCartOutlined />,
       label: 'Product Management',
+    },
+    {
+      key: 'transport-management',
+      icon: <TruckOutlined />,
+      label: 'Transport Management',
+    },
+    {
+      key: 'daily-report',
+      icon: <FileExcelOutlined />,
+      label: 'Daily Report',
     },
   ];
 
@@ -127,53 +133,31 @@ function AppContent() {
           }}
         />
 
-        {/* Statistics and Tablet Mode Toggle */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <Space size="small">
-            <div style={{ textAlign: 'center', color: 'white' }}>
-              <div style={{ fontSize: '12px', opacity: 0.8 }}>DEALERS</div>
-              <div style={{ fontSize: '16px', fontWeight: 'bold' }}>{stats.dealers}</div>
-            </div>
-            <div style={{ textAlign: 'center', color: 'white' }}>
-              <div style={{ fontSize: '12px', opacity: 0.8 }}>WAREHOUSES</div>
-              <div style={{ fontSize: '16px', fontWeight: 'bold' }}>{stats.warehouses}</div>
-            </div>
-            <div style={{ textAlign: 'center', color: 'white' }}>
-              <div style={{ fontSize: '12px', opacity: 0.8 }}>PRODUCTS</div>
-              <div style={{ fontSize: '16px', fontWeight: 'bold' }}>{stats.products}</div>
-            </div>
-            <div style={{ textAlign: 'center', color: 'white' }}>
-              <div style={{ fontSize: '12px', opacity: 0.8 }}>ORDERS</div>
-              <div style={{ fontSize: '16px', fontWeight: 'bold' }}>{stats.orders}</div>
-            </div>
-          </Space>
-          
-          {/* User Role and Mode Toggle */}
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '8px', 
-            padding: '8px 12px',
-            backgroundColor: 'rgba(255,255,255,0.1)',
-            borderRadius: '8px',
-            marginLeft: '16px'
-          }}>
-            <TabletOutlined style={{ color: 'white', fontSize: '16px' }} />
-            <span style={{ color: 'white', fontSize: '12px' }}>{userRole.toUpperCase()} Mode</span>
-            <Switch
-              size="small"
-              checked={isTabletMode}
-              onChange={(checked) => {
-                setIsTabletMode(checked);
-                if (checked) {
-                  switchToTSO();
-                } else {
-                  switchToAdmin();
-                }
-              }}
-              style={{ backgroundColor: isTabletMode ? '#52c41a' : '#d9d9d9' }}
-            />
-          </div>
+        {/* User Role and Mode Toggle */}
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '8px', 
+          padding: '8px 12px',
+          backgroundColor: 'rgba(255,255,255,0.1)',
+          borderRadius: '8px',
+          marginLeft: '16px'
+        }}>
+          <TabletOutlined style={{ color: 'white', fontSize: '16px' }} />
+          <span style={{ color: 'white', fontSize: '12px' }}>{userRole.toUpperCase()} Mode</span>
+          <Switch
+            size="small"
+            checked={isTabletMode}
+            onChange={(checked) => {
+              setIsTabletMode(checked);
+              if (checked) {
+                switchToTSO();
+              } else {
+                switchToAdmin();
+              }
+            }}
+            style={{ backgroundColor: isTabletMode ? '#52c41a' : '#d9d9d9' }}
+          />
         </div>
       </Header>
 
@@ -193,11 +177,6 @@ function AppContent() {
             <NewOrdersTablet onOrderCreated={refreshOrders} /> : 
             <Dashboard setStats={setStats} />
           } />
-          <Route path="/new-orders" element={
-            isTabletMode ? 
-            <NewOrdersTablet onOrderCreated={refreshOrders} /> : 
-            <NewOrders onOrderCreated={refreshOrders} />
-          } />
           <Route path="/new-orders-tablet" element={<NewOrdersTablet onOrderCreated={refreshOrders} />} />
           <Route path="/review-orders" element={<ReviewOrdersTablet onOrderCreated={refreshOrders} />} />
           <Route path="/placed-orders" element={
@@ -214,6 +193,16 @@ function AppContent() {
             isTSO ? 
             <NewOrdersTablet onOrderCreated={refreshOrders} /> : 
             <ProductManagement />
+          } />
+          <Route path="/transport-management" element={
+            isTSO ? 
+            <NewOrdersTablet onOrderCreated={refreshOrders} /> : 
+            <TransportManagement />
+          } />
+          <Route path="/daily-report" element={
+            isTSO ? 
+            <NewOrdersTablet onOrderCreated={refreshOrders} /> : 
+            <DailyReport />
           } />
         </Routes>
       </Content>

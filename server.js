@@ -7,6 +7,188 @@ const multer = require('multer');
 const XLSX = require('xlsx');
 const fs = require('fs');
 
+// Excel report generation function
+function generateExcelReport(orders, date) {
+    // Product segmentation mapping based on Book1.xlsx analysis
+    const productSegments = {
+        'PC': ['NS 40Z', 'NS 40ZL', 'NS 60', 'NS 60L', 'NS 60S', 'N50Z', 'N50ZL', 'NS 70', 'NS70L', 'N70', 'N70Z', 'N70ZL', 'NX 120-7', 'NX 120-7L', 'CCV 15', 'CCV 17', 'CCV 21', 'CCV 27', 'CCV 29', 'N 100', 'N 100Z', 'N 120', 'N 150', 'N 200'],
+        'CV': ['SPB 50', 'SPB 70', 'SPB 100', 'SPB 130', 'SPB 165', 'SPB 200', 'SPB 100T', 'SPB 130T', 'SPB 165T', 'SPB 220T', 'SPB165T Gaston Premium', 'SPB200T Gaston Premium', 'TTB 165', 'TTB 200', 'TTB 230 Gasto Premium', '3CBL-165 Dimitris (18Months)', '3CBL-200 Dimitris (18Months)', '3CBL-165 Dimitris (30M)', '3CBL-200 Dimitris (30M)'],
+        'SPB': ['400VA', '650VA', '600VA', '1050VA', '1450VA'],
+        'ET': ['GSB 20', 'GSB 30', 'GSB 40', 'GSB 55', 'GSB 60', 'GSB 80 (1)', 'GSB 100 (1)', 'GSB 130'],
+        'RB': ['R 45', 'R 50', 'GR 70', 'GR 80', 'GR 90', 'Dimitris 90', 'TRB 120', 'TRB 130', 'TRB 140', 'TRB-160 Gaston Plus', 'TRB 170', 'TRB210-CBL2020', 'TRB-200 Pongkhiraj', 'TRB210T-Volt Master', 'TRB190 Z Power', 'MISHUK-215 Kingshuk Power', 'MISHUK-215 Zynga Power', 'MISHUK-220 Kingshuk Power', 'Mishuk Z Power- 220 ', 'MISHUK-220-A+\r\n Zodiac Power', 'TRB-215T Banskhali King', 'TRB-400 Mishuk King', 'CTC-440 SURJO', '6TSN-1650 Tuffan', 'TRB400 Alpha Plus', 'MISHUK-400T Power Run', 'TRB480 Target Plus', 'TRB160 Alpha Plus', 'R 50T', 'R 60T', 'R 70T', 'AR 45', 'AR 50', 'AR 65', 'AR 70'],
+        'GSB': ['30 AH', '75 AH', '90 AH', '95 AH', 'ET 120T-L', 'TYPHOON-180', 'TYPHOON-200 (H)'],
+        'IPS': ['IPS Battery', 'IPS Control Unit', 'Solar Battery']
+    };
+    
+    // Get all unique products from orders
+    const allProducts = [];
+    const productPriceMap = {};
+    
+    orders.forEach(order => {
+        order.items.forEach(item => {
+            if (!allProducts.find(p => p.product_code === item.product_code)) {
+                allProducts.push({
+                    product_code: item.product_code,
+                    product_name: item.product_name,
+                    unit_tp: item.unit_tp,
+                    mrp: item.mrp
+                });
+                productPriceMap[item.product_code] = {
+                    unit_tp: item.unit_tp,
+                    mrp: item.mrp
+                };
+            }
+        });
+    });
+    
+    // Sort products by code
+    allProducts.sort((a, b) => a.product_code.localeCompare(b.product_code));
+    
+    // Calculate segment totals
+    const segmentTotals = {};
+    Object.keys(productSegments).forEach(segment => {
+        segmentTotals[segment] = { qty: 0, value: 0 };
+    });
+    
+    // Process orders and calculate totals
+    const dealerData = [];
+    let serialNo = 1;
+    
+    orders.forEach(order => {
+        const dealerRow = {
+            serialNo: serialNo++,
+            territory: order.dealer_territory || '',
+            dealerName: order.dealer_name || '',
+            address: order.dealer_address || '',
+            contact: order.dealer_contact || '',
+            products: {},
+            invoiceValue: 0,
+            grossValue: 0,
+            transport: 'Direct Rent Truck',
+            totalInvoice: 0,
+            totalGross: 0
+        };
+        
+        // Initialize all products with 0 quantity
+        allProducts.forEach(product => {
+            dealerRow.products[product.product_code] = 0;
+        });
+        
+        // Fill in actual quantities
+        order.items.forEach(item => {
+            dealerRow.products[item.product_code] = (dealerRow.products[item.product_code] || 0) + item.quantity;
+            
+            // Calculate values
+            const itemValue = item.quantity * (item.unit_tp || 0);
+            dealerRow.invoiceValue += itemValue;
+            
+            // Determine segment for this product
+            Object.keys(productSegments).forEach(segment => {
+                if (productSegments[segment].includes(item.product_code)) {
+                    segmentTotals[segment].qty += item.quantity;
+                    segmentTotals[segment].value += itemValue;
+                }
+            });
+        });
+        
+        dealerRow.grossValue = dealerRow.invoiceValue * 1.11; // Assuming 11% markup
+        dealerRow.totalInvoice = dealerRow.invoiceValue;
+        dealerRow.totalGross = dealerRow.grossValue;
+        
+        dealerData.push(dealerRow);
+    });
+    
+    // Create Excel workbook
+    const workbook = XLSX.utils.book_new();
+    
+    // Prepare data array matching Book1.xlsx structure
+    const excelData = [];
+    
+    // Summary section (rows 1-9)
+    excelData.push(['Seg', 'Qty', 'Invoice Value']);
+    excelData.push(['PC', segmentTotals.PC?.qty || 0, segmentTotals.PC?.value || 0]);
+    excelData.push(['CV', segmentTotals.CV?.qty || 0, 'Gross Value']);
+    excelData.push(['SPB', segmentTotals.SPB?.qty || 0, segmentTotals.SPB?.value || 0]);
+    excelData.push(['ET', segmentTotals.ET?.qty || 0]);
+    excelData.push(['RB', segmentTotals.RB?.qty || 0, 'Status']);
+    excelData.push(['GSB', segmentTotals.GSB?.qty || 0, 'Open']);
+    excelData.push(['IPS', segmentTotals.IPS?.qty || 0]);
+    
+    // Total row
+    const totalQty = Object.values(segmentTotals).reduce((sum, seg) => sum + (seg.qty || 0), 0);
+    const totalValue = Object.values(segmentTotals).reduce((sum, seg) => sum + (seg.value || 0), 0);
+    excelData.push(['Total', totalQty, totalValue]);
+    
+    // Empty row
+    excelData.push([]);
+    
+    // Header row
+    const headerRow = [
+        'Sl. No.', 'Territory', 'Name of Dealer', 'Address', 'Contact Person & Number'
+    ];
+    
+    // Add product columns
+    allProducts.forEach(product => {
+        headerRow.push(product.product_code);
+    });
+    
+    headerRow.push('Invoice Value', 'Gross Value', 'Transport', 'Total Invoice Value', 'Total Gross Value');
+    excelData.push(headerRow);
+    
+    // Product codes row (same as products)
+    const productCodesRow = ['', '', '', '', ''];
+    allProducts.forEach(product => {
+        productCodesRow.push(product.product_code);
+    });
+    productCodesRow.push('', '', '', '', '');
+    excelData.push(productCodesRow);
+    
+    // Prices row
+    const pricesRow = ['', '', '', '', ''];
+    allProducts.forEach(product => {
+        pricesRow.push(product.unit_tp || 0);
+    });
+    pricesRow.push('', '', '', '', '');
+    excelData.push(pricesRow);
+    
+    // Dealer data rows
+    dealerData.forEach(dealer => {
+        const row = [
+            dealer.serialNo,
+            dealer.territory,
+            dealer.dealerName,
+            dealer.address,
+            dealer.contact
+        ];
+        
+        // Add product quantities
+        allProducts.forEach(product => {
+            row.push(dealer.products[product.product_code] || 0);
+        });
+        
+        row.push(
+            dealer.invoiceValue,
+            dealer.grossValue,
+            dealer.transport,
+            dealer.totalInvoice,
+            dealer.totalGross
+        );
+        
+        excelData.push(row);
+    });
+    
+    // Create worksheet
+    const worksheet = XLSX.utils.aoa_to_sheet(excelData);
+    
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(workbook, worksheet, `Invoice ${date.replace(/-/g, '.')}`);
+    
+    // Generate Excel buffer
+    const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    
+    return excelBuffer;
+}
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -55,6 +237,44 @@ const db = mysql.createConnection({
     database: 'cbl_ordres'
 });
 
+// Create transport table if it doesn't exist
+const createTransportTable = () => {
+    const createTransportTableQuery = `
+        CREATE TABLE IF NOT EXISTS transports (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            truck_slno INT,
+            truck_no VARCHAR(50),
+            engine_no VARCHAR(100),
+            truck_details VARCHAR(255),
+            driver_name VARCHAR(100),
+            route_no VARCHAR(50),
+            load_size VARCHAR(50),
+            load_weight VARCHAR(50),
+            remarks TEXT,
+            truck_type VARCHAR(50),
+            entered_by VARCHAR(100),
+            entered_date DATE,
+            entered_terminal VARCHAR(100),
+            updated_by VARCHAR(100),
+            updated_date DATE,
+            updated_terminal VARCHAR(100),
+            license_no VARCHAR(100),
+            transport_status VARCHAR(10) DEFAULT 'A',
+            vehicle_no VARCHAR(50),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )
+    `;
+    
+    db.query(createTransportTableQuery, (err, result) => {
+        if (err) {
+            console.error('Error creating transport table:', err);
+        } else {
+            console.log('Transport table created successfully');
+        }
+    });
+};
+
 // Connect to database first, then start server
 db.connect((err) => {
     if (err) {
@@ -62,6 +282,9 @@ db.connect((err) => {
         process.exit(1); // Exit if database connection fails
     } else {
         console.log('Connected to MySQL database');
+
+        // Create transport table
+        createTransportTable();
 
         // Start server only after database connection is established
         app.listen(PORT, () => {
@@ -650,6 +873,340 @@ app.get('/api/orders/:orderId', (req, res) => {
             res.json(order);
         });
     });
+});
+
+// Get orders for a specific date
+app.get('/api/orders/date/:date', async (req, res) => {
+    try {
+        const { date } = req.params;
+        
+        // Validate date format (YYYY-MM-DD)
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(date)) {
+            return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+        }
+        
+        // Get orders for the specific date
+        const ordersQuery = `
+            SELECT 
+                o.*, 
+                ot.name as order_type, 
+                d.name as dealer_name, 
+                d.territory_name as dealer_territory,
+                d.address as dealer_address,
+                d.contact as dealer_contact,
+                w.name as warehouse_name,
+                DATE(o.created_at) as order_date
+            FROM orders o
+            LEFT JOIN order_types ot ON o.order_type_id = ot.id
+            LEFT JOIN dealers d ON o.dealer_id = d.id
+            LEFT JOIN warehouses w ON o.warehouse_id = w.id
+            WHERE DATE(o.created_at) = ?
+            ORDER BY o.created_at ASC
+        `;
+        
+        const orders = await db.promise().query(ordersQuery, [date]);
+        
+        if (orders[0].length === 0) {
+            return res.json({ 
+                orders: [], 
+                message: `No orders found for date: ${date}` 
+            });
+        }
+        
+        // Get order items for each order
+        const ordersWithItems = [];
+        for (const order of orders[0]) {
+            const itemsQuery = `
+                SELECT oi.*, p.name as product_name, p.product_code, p.unit_tp, p.mrp, p.unit_trade_price
+                FROM order_items oi
+                LEFT JOIN products p ON oi.product_id = p.id
+                WHERE oi.order_id = ?
+                ORDER BY oi.id
+            `;
+            
+            const items = await db.promise().query(itemsQuery, [order.order_id]);
+            order.items = items[0];
+            ordersWithItems.push(order);
+        }
+        
+        res.json({ 
+            orders: ordersWithItems,
+            date: date,
+            total_orders: ordersWithItems.length,
+            total_items: ordersWithItems.reduce((sum, order) => sum + order.items.length, 0)
+        });
+        
+    } catch (error) {
+        console.error('Error fetching orders by date:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Generate Excel report for orders on a specific date
+app.get('/api/orders/report/:date', async (req, res) => {
+    try {
+        const { date } = req.params;
+        
+        // Validate date format (YYYY-MM-DD)
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(date)) {
+            return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+        }
+        
+        // Get orders for the specific date (same query as above)
+        const ordersQuery = `
+            SELECT 
+                o.*, 
+                ot.name as order_type, 
+                d.name as dealer_name, 
+                d.territory_name as dealer_territory,
+                d.address as dealer_address,
+                d.contact as dealer_contact,
+                w.name as warehouse_name,
+                DATE(o.created_at) as order_date
+            FROM orders o
+            LEFT JOIN order_types ot ON o.order_type_id = ot.id
+            LEFT JOIN dealers d ON o.dealer_id = d.id
+            LEFT JOIN warehouses w ON o.warehouse_id = w.id
+            WHERE DATE(o.created_at) = ?
+            ORDER BY o.created_at ASC
+        `;
+        
+        const orders = await db.promise().query(ordersQuery, [date]);
+        
+        if (orders[0].length === 0) {
+            return res.status(404).json({ 
+                error: `No orders found for date: ${date}` 
+            });
+        }
+        
+        // Get order items for each order
+        const ordersWithItems = [];
+        for (const order of orders[0]) {
+            const itemsQuery = `
+                SELECT oi.*, p.name as product_name, p.product_code, p.unit_tp, p.mrp, p.unit_trade_price
+                FROM order_items oi
+                LEFT JOIN products p ON oi.product_id = p.id
+                WHERE oi.order_id = ?
+                ORDER BY oi.id
+            `;
+            
+            const items = await db.promise().query(itemsQuery, [order.order_id]);
+            order.items = items[0];
+            ordersWithItems.push(order);
+        }
+        
+        // Generate Excel report
+        const reportData = generateExcelReport(ordersWithItems, date);
+        
+        // Set headers for file download
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="Daily_Order_Report_${date}.xlsx"`);
+        
+        res.send(reportData);
+        
+    } catch (error) {
+        console.error('Error generating Excel report:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ===== TRANSPORT MANAGEMENT API ENDPOINTS =====
+
+// Get all transports
+app.get('/api/transports', (req, res) => {
+    const query = 'SELECT * FROM transports ORDER BY truck_details ASC';
+    
+    db.query(query, (err, results) => {
+        if (err) {
+            res.status(500).json({ error: err.message });
+        } else {
+            res.json(results);
+        }
+    });
+});
+
+// Get transport by ID
+app.get('/api/transports/:id', (req, res) => {
+    const transportId = req.params.id;
+    const query = 'SELECT * FROM transports WHERE id = ?';
+    
+    db.query(query, [transportId], (err, results) => {
+        if (err) {
+            res.status(500).json({ error: err.message });
+        } else if (results.length === 0) {
+            res.status(404).json({ error: 'Transport not found' });
+        } else {
+            res.json(results[0]);
+        }
+    });
+});
+
+// Create new transport
+app.post('/api/transports', (req, res) => {
+    const {
+        truck_slno, truck_no, engine_no, truck_details, driver_name, route_no,
+        load_size, load_weight, remarks, truck_type, entered_by, entered_date,
+        entered_terminal, updated_by, updated_date, updated_terminal,
+        license_no, transport_status, vehicle_no
+    } = req.body;
+
+    const query = `
+        INSERT INTO transports (
+            truck_slno, truck_no, engine_no, truck_details, driver_name, route_no,
+            load_size, load_weight, remarks, truck_type, entered_by, entered_date,
+            entered_terminal, updated_by, updated_date, updated_terminal,
+            license_no, transport_status, vehicle_no
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    const values = [
+        truck_slno, truck_no, engine_no, truck_details, driver_name, route_no,
+        load_size, load_weight, remarks, truck_type, entered_by, entered_date,
+        entered_terminal, updated_by, updated_date, updated_terminal,
+        license_no, transport_status, vehicle_no
+    ];
+
+    db.query(query, values, (err, result) => {
+        if (err) {
+            res.status(500).json({ error: err.message });
+        } else {
+            res.json({ 
+                success: true, 
+                id: result.insertId,
+                message: 'Transport created successfully' 
+            });
+        }
+    });
+});
+
+// Update transport
+app.put('/api/transports/:id', (req, res) => {
+    const transportId = req.params.id;
+    const {
+        truck_slno, truck_no, engine_no, truck_details, driver_name, route_no,
+        load_size, load_weight, remarks, truck_type, entered_by, entered_date,
+        entered_terminal, updated_by, updated_date, updated_terminal,
+        license_no, transport_status, vehicle_no
+    } = req.body;
+
+    const query = `
+        UPDATE transports SET 
+            truck_slno = ?, truck_no = ?, engine_no = ?, truck_details = ?, 
+            driver_name = ?, route_no = ?, load_size = ?, load_weight = ?, 
+            remarks = ?, truck_type = ?, entered_by = ?, entered_date = ?, 
+            entered_terminal = ?, updated_by = ?, updated_date = ?, 
+            updated_terminal = ?, license_no = ?, transport_status = ?, 
+            vehicle_no = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    `;
+
+    const values = [
+        truck_slno, truck_no, engine_no, truck_details, driver_name, route_no,
+        load_size, load_weight, remarks, truck_type, entered_by, entered_date,
+        entered_terminal, updated_by, updated_date, updated_terminal,
+        license_no, transport_status, vehicle_no, transportId
+    ];
+
+    db.query(query, values, (err, result) => {
+        if (err) {
+            res.status(500).json({ error: err.message });
+        } else {
+            res.json({ 
+                success: true, 
+                message: 'Transport updated successfully' 
+            });
+        }
+    });
+});
+
+// Delete transport
+app.delete('/api/transports/:id', (req, res) => {
+    const transportId = req.params.id;
+    const query = 'DELETE FROM transports WHERE id = ?';
+
+    db.query(query, [transportId], (err, result) => {
+        if (err) {
+            res.status(500).json({ error: err.message });
+        } else {
+            res.json({ message: 'Transport deleted successfully' });
+        }
+    });
+});
+
+// Import transports from Excel file
+app.post('/api/transports/import', upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+
+        const workbook = XLSX.readFile(req.file.path);
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+        // Skip header row
+        const rows = data.slice(1);
+
+        let importedCount = 0;
+        let errorCount = 0;
+
+        for (const row of rows) {
+            if (row.length < 17) continue; // Skip incomplete rows
+
+            const [
+                truck_slno, truck_no, engine_no, truck_details, driver_name, route_no,
+                load_size, load_weight, remarks, truck_type, entered_by, entered_date,
+                entered_terminal, updated_by, updated_date, updated_terminal,
+                license_no, transport_status, vehicle_no
+            ] = row;
+
+            // Skip if truck_details is empty (required field)
+            if (!truck_details) continue;
+
+            const insertQuery = `
+                INSERT INTO transports (
+                    truck_slno, truck_no, engine_no, truck_details, driver_name, route_no,
+                    load_size, load_weight, remarks, truck_type, entered_by, entered_date,
+                    entered_terminal, updated_by, updated_date, updated_terminal,
+                    license_no, transport_status, vehicle_no
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `;
+
+            const values = [
+                truck_slno || null, truck_no || null, engine_no || null, truck_details || null,
+                driver_name || null, route_no || null, load_size || null, load_weight || null,
+                remarks || null, truck_type || null, entered_by || null, entered_date || null,
+                entered_terminal || null, updated_by || null, updated_date || null,
+                updated_terminal || null, license_no || null, transport_status || 'A',
+                vehicle_no || null
+            ];
+
+            try {
+                await db.promise().query(insertQuery, values);
+                importedCount++;
+            } catch (error) {
+                console.error('Error importing transport:', error);
+                errorCount++;
+            }
+        }
+
+        // Delete the uploaded file
+        fs.unlinkSync(req.file.path);
+
+        res.json({
+            success: true,
+            message: `Transport import completed. ${importedCount} transports imported, ${errorCount} errors.`,
+            imported: importedCount,
+            errors: errorCount
+        });
+
+    } catch (error) {
+        console.error('Transport import error:', error);
+        res.status(500).json({ error: error.message });
+    }
 });
 
 // Delete an order by ID
