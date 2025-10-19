@@ -631,7 +631,7 @@ app.get('/api/orders/:orderId', (req, res) => {
         
         // Get order items
         const itemsQuery = `
-            SELECT oi.*, p.name as product_name, p.product_code
+            SELECT oi.*, p.name as product_name, p.product_code, p.unit_tp, p.mrp, p.unit_trade_price
             FROM order_items oi
             LEFT JOIN products p ON oi.product_id = p.id
             WHERE oi.order_id = ?

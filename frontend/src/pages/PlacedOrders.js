@@ -227,12 +227,17 @@ function PlacedOrders({ refreshTrigger }) {
                 <span style={{ color: '#52c41a', marginLeft: '8px' }}>
                   (Qty: {product.quantity})
                 </span>
+                {product.unit_tp && (
+                  <span style={{ color: '#1890ff', marginLeft: '8px' }}>
+                    @৳{product.unit_tp.toLocaleString()}
+                  </span>
+                )}
               </div>
             ))}
           </div>
         );
       },
-      width: 500,
+      width: 600,
     },
     {
       title: 'Status',
