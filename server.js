@@ -671,7 +671,7 @@ app.post('/api/dealers/import', upload.single('file'), async (req, res) => {
 
 // Get all order types
 app.get('/api/order-types', (req, res) => {
-    db.query('SELECT * FROM order_types', (err, results) => {
+    db.query('SELECT id, name FROM order_types', (err, results) => {
         if (err) {
             res.status(500).json({ error: err.message });
         } else {
@@ -682,7 +682,7 @@ app.get('/api/order-types', (req, res) => {
 
 // Get all warehouses
 app.get('/api/warehouses', (req, res) => {
-    db.query('SELECT * FROM warehouses', (err, results) => {
+    db.query('SELECT id, name FROM warehouses', (err, results) => {
         if (err) {
             res.status(500).json({ error: err.message });
         } else {
@@ -693,7 +693,7 @@ app.get('/api/warehouses', (req, res) => {
 
 // Get all dealers
 app.get('/api/dealers', (req, res) => {
-    db.query('SELECT * FROM dealers ORDER BY name', (err, results) => {
+    db.query('SELECT id, name, territory_code, territory_name FROM dealers ORDER BY name', (err, results) => {
         if (err) {
             res.status(500).json({ error: err.message });
         } else {
@@ -736,7 +736,7 @@ app.get('/api/dealers/filter', (req, res) => {
 
 // Get all products
 app.get('/api/products', (req, res) => {
-    db.query('SELECT * FROM products', (err, results) => {
+    db.query('SELECT id, name, product_code, unit_tp, mrp FROM products', (err, results) => {
         if (err) {
             res.status(500).json({ error: err.message });
         } else {
@@ -1025,7 +1025,7 @@ app.get('/api/orders/report/:date', async (req, res) => {
 
 // Get all transports
 app.get('/api/transports', (req, res) => {
-    const query = 'SELECT * FROM transports ORDER BY truck_details ASC';
+    const query = 'SELECT id, truck_details FROM transports ORDER BY truck_details ASC';
     
     db.query(query, (err, results) => {
         if (err) {
