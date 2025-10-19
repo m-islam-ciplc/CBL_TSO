@@ -19,6 +19,7 @@ import {
   DeleteOutlined,
   EditOutlined,
   ArrowLeftOutlined,
+  PlusOutlined,
 } from '@ant-design/icons';
 import { useUser } from '../contexts/UserContext';
 
@@ -401,7 +402,7 @@ function ReviewOrdersTablet({ onOrderCreated }) {
       {/* Order Summary */}
       <Card style={{ marginBottom: '80px', borderRadius: '8px' }}>
         <Row gutter={[16, 8]} align="middle">
-          <Col xs={16}>
+          <Col xs={12}>
             <div>
               <Text strong style={{ fontSize: '16px', color: '#1890ff' }}>
                 Order Summary
@@ -412,7 +413,28 @@ function ReviewOrdersTablet({ onOrderCreated }) {
               </div>
             </div>
           </Col>
-          <Col xs={8}>
+          <Col xs={6}>
+            <Button
+              type="default"
+              size="large"
+              icon={<PlusOutlined />}
+              onClick={() => {
+                // Save current form data before navigating
+                const formValues = form.getFieldsValue();
+                localStorage.setItem('tsoFormData', JSON.stringify(formValues));
+                window.location.href = '/new-orders';
+              }}
+              style={{ 
+                width: '100%',
+                height: '48px',
+                fontSize: '14px',
+                borderRadius: '8px'
+              }}
+            >
+              Add More Products
+            </Button>
+          </Col>
+          <Col xs={6}>
             <Button
               type="primary"
               size="large"

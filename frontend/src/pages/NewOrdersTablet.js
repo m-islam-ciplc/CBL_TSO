@@ -47,6 +47,17 @@ function NewOrdersTablet({ onOrderCreated }) {
 
   useEffect(() => {
     loadDropdownData();
+    // Load existing order items from localStorage
+    const savedOrderItems = localStorage.getItem('tsoOrderItems');
+    if (savedOrderItems) {
+      try {
+        const parsedItems = JSON.parse(savedOrderItems);
+        setOrderItems(parsedItems);
+        console.log('Loaded existing order items:', parsedItems);
+      } catch (error) {
+        console.error('Error parsing saved order items:', error);
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -488,19 +499,26 @@ function NewOrdersTablet({ onOrderCreated }) {
                     }}
                   />
                   
-                  <div style={{
-                    minWidth: '50px',
-                    textAlign: 'center',
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    color: quantity > 0 ? '#52c41a' : '#999',
-                    padding: '4px 8px',
-                    backgroundColor: 'white',
-                    borderRadius: '6px',
-                    border: '1px solid #f0f0f0'
-                  }}>
-                    {quantity}
-                  </div>
+                  <InputNumber
+                    min={0}
+                    max={9999}
+                    value={quantity}
+                    onChange={(value) => {
+                      const newQty = value || 0;
+                      setProductQuantities(prev => ({
+                        ...prev,
+                        [product.id]: newQty
+                      }));
+                      // Auto-add previous product if switching to different product
+                      autoAddPreviousProduct(product.id);
+                    }}
+                    style={{
+                      width: '60px',
+                      textAlign: 'center'
+                    }}
+                    controls={false}
+                    placeholder="0"
+                  />
                   
                   <Button
                     type="primary"
@@ -522,6 +540,37 @@ function NewOrdersTablet({ onOrderCreated }) {
                   />
                 </div>
                 
+                {/* Quick Quantity Buttons - Only Common Quantities */}
+                <div style={{ 
+                  display: 'flex', 
+                  gap: '4px', 
+                  marginBottom: '8px',
+                  justifyContent: 'center'
+                }}>
+                  {[50, 100, 150, 200].map(quickQty => (
+                    <Button
+                      key={quickQty}
+                      size="small"
+                      type={quantity === quickQty ? 'primary' : 'default'}
+                      onClick={() => {
+                        setProductQuantities(prev => ({
+                          ...prev,
+                          [product.id]: quickQty
+                        }));
+                        autoAddPreviousProduct(product.id);
+                      }}
+                      style={{
+                        fontSize: '11px',
+                        height: '26px',
+                        minWidth: '45px',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      {quickQty}
+                    </Button>
+                  ))}
+                </div>
+
                 {/* Compact Add Button */}
                 <Button
                   type="primary"
