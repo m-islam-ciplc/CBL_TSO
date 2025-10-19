@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useUser } from '../contexts/UserContext';
 import {
   Card,
   Typography,
@@ -29,6 +30,7 @@ const { Title, Text } = Typography;
 const { Option } = Select;
 
 function PlacedOrders({ refreshTrigger }) {
+  const { isTSO } = useUser();
   const [orders, setOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -227,7 +229,7 @@ function PlacedOrders({ refreshTrigger }) {
                 <span style={{ color: '#52c41a', marginLeft: '8px' }}>
                   (Qty: {product.quantity})
                 </span>
-                {product.unit_tp && (
+                {!isTSO && product.unit_tp && (
                   <span style={{ color: '#1890ff', marginLeft: '8px' }}>
                     @৳{product.unit_tp.toLocaleString()}
                   </span>

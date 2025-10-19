@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useUser } from '../contexts/UserContext';
 import {
   Card,
   Typography,
@@ -23,6 +24,7 @@ const { Title, Text } = Typography;
 const { Option } = Select;
 
 function NewOrders({ onOrderCreated }) {
+  const { isTSO } = useUser();
   const [form] = Form.useForm();
   const [dropdownData, setDropdownData] = useState({
     orderTypes: [],

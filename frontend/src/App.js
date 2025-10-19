@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { Layout, Menu, Typography, Badge, Row, Col, Card, Statistic, Space } from 'antd';
+import { UserProvider, useUser } from './contexts/UserContext';
+import { Layout, Menu, Typography, Badge, Row, Col, Card, Statistic, Space, Button, Switch } from 'antd';
 import {
   DashboardOutlined,
   PlusOutlined,
@@ -9,17 +10,21 @@ import {
   ShopOutlined,
   AppstoreOutlined,
   ShoppingCartOutlined,
+  TabletOutlined,
 } from '@ant-design/icons';
 import Dashboard from './pages/Dashboard';
 import NewOrders from './pages/NewOrders';
+import NewOrdersTablet from './pages/NewOrdersTablet';
 import PlacedOrders from './pages/PlacedOrders';
 import DealerManagement from './pages/DealerManagement';
 import ProductManagement from './pages/ProductManagement';
+import TSODashboard from './pages/TSODashboard';
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
 
 function AppContent() {
+  const { userRole, userName, isTabletMode, setIsTabletMode, switchToAdmin, switchToTSO, isAdmin, isTSO } = useUser();
   const [stats, setStats] = useState({
     dealers: 0,
     warehouses: 0,
@@ -109,7 +114,7 @@ function AppContent() {
           }}
         />
 
-        {/* Statistics */}
+        {/* Statistics and Tablet Mode Toggle */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <Space size="small">
             <div style={{ textAlign: 'center', color: 'white' }}>
@@ -129,6 +134,33 @@ function AppContent() {
               <div style={{ fontSize: '16px', fontWeight: 'bold' }}>{stats.orders}</div>
             </div>
           </Space>
+          
+          {/* User Role and Mode Toggle */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '8px', 
+            padding: '8px 12px',
+            backgroundColor: 'rgba(255,255,255,0.1)',
+            borderRadius: '8px',
+            marginLeft: '16px'
+          }}>
+            <TabletOutlined style={{ color: 'white', fontSize: '16px' }} />
+            <span style={{ color: 'white', fontSize: '12px' }}>{userRole.toUpperCase()} Mode</span>
+            <Switch
+              size="small"
+              checked={isTabletMode}
+              onChange={(checked) => {
+                setIsTabletMode(checked);
+                if (checked) {
+                  switchToTSO();
+                } else {
+                  switchToAdmin();
+                }
+              }}
+              style={{ backgroundColor: isTabletMode ? '#52c41a' : '#d9d9d9' }}
+            />
+          </div>
         </div>
       </Header>
 
@@ -138,9 +170,22 @@ function AppContent() {
         minHeight: 'calc(100vh - 64px)',
       }}>
         <Routes>
-          <Route path="/" element={<Dashboard setStats={setStats} />} />
-          <Route path="/dashboard" element={<Dashboard setStats={setStats} />} />
-          <Route path="/new-orders" element={<NewOrders onOrderCreated={refreshOrders} />} />
+          <Route path="/" element={
+            isTSO ? 
+            <TSODashboard setStats={setStats} /> : 
+            <Dashboard setStats={setStats} />
+          } />
+          <Route path="/dashboard" element={
+            isTSO ? 
+            <TSODashboard setStats={setStats} /> : 
+            <Dashboard setStats={setStats} />
+          } />
+          <Route path="/new-orders" element={
+            isTabletMode ? 
+            <NewOrdersTablet onOrderCreated={refreshOrders} /> : 
+            <NewOrders onOrderCreated={refreshOrders} />
+          } />
+          <Route path="/new-orders-tablet" element={<NewOrdersTablet onOrderCreated={refreshOrders} />} />
           <Route path="/placed-orders" element={<PlacedOrders refreshTrigger={refreshTrigger} />} />
           <Route path="/dealer-management" element={<DealerManagement />} />
           <Route path="/product-management" element={<ProductManagement />} />
@@ -152,9 +197,11 @@ function AppContent() {
 
 function App() {
   return (
-    <Router>
-      <AppContent />
-    </Router>
+    <UserProvider>
+      <Router>
+        <AppContent />
+      </Router>
+    </UserProvider>
   );
 }
 

@@ -1,0 +1,184 @@
+/* Tablet-specific styles for TSO interface */
+
+/* Touch-friendly button sizes */
+.tablet-button {
+  min-height: 48px !important;
+  min-width: 48px !important;
+  font-size: 16px !important;
+  border-radius: 12px !important;
+}
+
+/* Larger touch targets for form elements */
+.tablet-input {
+  height: 48px !important;
+  font-size: 16px !important;
+  border-radius: 8px !important;
+}
+
+.tablet-select {
+  height: 48px !important;
+  font-size: 16px !important;
+}
+
+/* Tablet-optimized spacing */
+.tablet-spacing {
+  padding: 16px !important;
+  margin: 16px !important;
+}
+
+/* Larger cards for better touch interaction */
+.tablet-card {
+  border-radius: 16px !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+  transition: all 0.3s ease !important;
+}
+
+.tablet-card:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.15) !important;
+}
+
+/* Touch-friendly product grid */
+.tablet-product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  padding: 16px;
+}
+
+.tablet-product-card {
+  min-height: 120px;
+  border-radius: 12px;
+  border: 2px solid #f0f0f0;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  padding: 16px;
+  text-align: center;
+}
+
+.tablet-product-card:hover {
+  border-color: #1890ff;
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.2);
+}
+
+.tablet-product-card:active {
+  transform: scale(0.98);
+}
+
+/* Tablet-optimized navigation */
+.tablet-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  border-top: 2px solid #1890ff;
+  padding: 12px 16px;
+  box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
+  z-index: 1000;
+}
+
+/* Responsive text sizes for tablets */
+@media (max-width: 768px) {
+  .tablet-text-lg {
+    font-size: 18px !important;
+  }
+  
+  .tablet-text-md {
+    font-size: 16px !important;
+  }
+  
+  .tablet-text-sm {
+    font-size: 14px !important;
+  }
+}
+
+/* Portrait orientation optimizations */
+@media (orientation: portrait) {
+  .tablet-portrait {
+    padding: 12px !important;
+  }
+  
+  .tablet-portrait .tablet-product-grid {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  }
+}
+
+/* Landscape orientation optimizations */
+@media (orientation: landscape) {
+  .tablet-landscape {
+    padding: 16px !important;
+  }
+  
+  .tablet-landscape .tablet-product-grid {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  }
+}
+
+/* Touch feedback animations */
+.tablet-touch-feedback {
+  transition: all 0.1s ease !important;
+}
+
+.tablet-touch-feedback:active {
+  transform: scale(0.95) !important;
+  opacity: 0.8 !important;
+}
+
+/* Improved focus states for touch devices */
+.tablet-focus:focus {
+  outline: 3px solid #1890ff !important;
+  outline-offset: 2px !important;
+}
+
+/* Tablet-optimized modal sizes */
+.tablet-modal .ant-modal {
+  max-width: 90vw !important;
+  margin: 16px auto !important;
+}
+
+.tablet-modal .ant-modal-content {
+  border-radius: 16px !important;
+}
+
+/* Better spacing for touch interfaces */
+.tablet-touch-spacing > * + * {
+  margin-top: 16px !important;
+}
+
+/* Tablet-optimized form layouts */
+.tablet-form .ant-form-item {
+  margin-bottom: 24px !important;
+}
+
+.tablet-form .ant-form-item-label > label {
+  font-size: 16px !important;
+  font-weight: 600 !important;
+}
+
+/* Swipe gesture hints */
+.tablet-swipe-hint {
+  position: relative;
+  overflow: hidden;
+}
+
+.tablet-swipe-hint::after {
+  content: "← Swipe →";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0,0,0,0.7);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.tablet-swipe-hint:hover::after {
+  opacity: 1;
+}

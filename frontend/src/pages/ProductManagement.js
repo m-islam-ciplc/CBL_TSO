@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useUser } from '../contexts/UserContext';
 import * as XLSX from 'xlsx';
 import {
   Card,
@@ -30,6 +31,7 @@ const { Title, Text } = Typography;
 const { Option } = Select;
 
 function ProductManagement() {
+  const { isTSO } = useUser();
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -249,7 +251,7 @@ function ProductManagement() {
     }
   };
 
-  const columns = [
+  const baseColumns = [
     {
       title: 'Product Code',
       dataIndex: 'product_code',
@@ -278,6 +280,9 @@ function ProductManagement() {
       width: 100,
       render: (text) => text || '-',
     },
+  ];
+
+  const priceColumns = [
     {
       title: 'Unit TP',
       dataIndex: 'unit_tp',
@@ -294,6 +299,9 @@ function ProductManagement() {
       render: (value) => value ? `৳${value.toLocaleString()}` : '-',
       sorter: (a, b) => (a.mrp || 0) - (b.mrp || 0),
     },
+  ];
+
+  const otherColumns = [
     {
       title: 'Status',
       dataIndex: 'status',
@@ -313,6 +321,8 @@ function ProductManagement() {
       render: (date) => date ? new Date(date).toLocaleDateString() : '-',
     },
   ];
+
+  const columns = isTSO ? [...baseColumns, ...otherColumns] : [...baseColumns, ...priceColumns, ...otherColumns];
 
   const stats = [
     {
