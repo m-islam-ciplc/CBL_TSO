@@ -44,6 +44,20 @@ function ReviewOrdersTablet({ onOrderCreated }) {
     if (savedOrderItems) {
       setOrderItems(JSON.parse(savedOrderItems));
     }
+    
+    // Load form data from localStorage
+    const savedFormData = localStorage.getItem('tsoFormData');
+    if (savedFormData) {
+      try {
+        const formData = JSON.parse(savedFormData);
+        // Set form values after a short delay to ensure form is initialized
+        setTimeout(() => {
+          form.setFieldsValue(formData);
+        }, 100);
+      } catch (error) {
+        console.error('Error parsing saved form data:', error);
+      }
+    }
   }, []);
 
   const loadDropdownData = async () => {
@@ -62,8 +76,9 @@ function ReviewOrdersTablet({ onOrderCreated }) {
         products: productsRes.data
       });
 
-      // Initialize form with default values
-      if (orderTypesRes.data.length > 0 && warehousesRes.data.length > 0) {
+      // Initialize form with default values only if no saved form data exists
+      const savedFormData = localStorage.getItem('tsoFormData');
+      if (!savedFormData && orderTypesRes.data.length > 0 && warehousesRes.data.length > 0) {
         const initialValues = {
           orderType: orderTypesRes.data[0].id,
           warehouse: warehousesRes.data[0].id,
@@ -95,7 +110,9 @@ function ReviewOrdersTablet({ onOrderCreated }) {
   const clearAllItems = () => {
     setOrderItems([]);
     localStorage.removeItem('tsoOrderItems');
-    message.success('All items cleared');
+    localStorage.removeItem('tsoFormData');
+    form.resetFields();
+    message.success('All items and form data cleared');
   };
 
   const handleSubmit = async () => {
@@ -128,9 +145,10 @@ function ReviewOrdersTablet({ onOrderCreated }) {
       if (response.data.success) {
         message.success(`Order created successfully! Order ID: ${response.data.order_id} with ${response.data.item_count} product(s)`);
         
-        // Clear the order
+        // Clear the order and form data
         setOrderItems([]);
         localStorage.removeItem('tsoOrderItems');
+        localStorage.removeItem('tsoFormData');
         form.resetFields();
         
         onOrderCreated();

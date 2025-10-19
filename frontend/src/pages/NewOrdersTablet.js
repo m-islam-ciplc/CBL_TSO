@@ -685,7 +685,12 @@ function NewOrdersTablet({ onOrderCreated }) {
                 type="primary"
                 size="large"
                 icon={<CheckOutlined />}
-                onClick={() => window.location.href = '/review-orders'}
+                onClick={() => {
+                  // Save form data to localStorage before navigating
+                  const formValues = form.getFieldsValue();
+                  localStorage.setItem('tsoFormData', JSON.stringify(formValues));
+                  window.location.href = '/review-orders';
+                }}
                 style={{ 
                   width: '100%',
                   height: '40px',

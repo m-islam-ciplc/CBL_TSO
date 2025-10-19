@@ -302,7 +302,7 @@ app.post('/api/products/import', upload.single('file'), async (req, res) => {
             return res.status(400).json({ error: 'No file uploaded' });
         }
 
-        console.log('📁 Processing uploaded product file:', req.file.filename);
+        console.log('📁 Processing uploaded product file (CBL products only):', req.file.filename);
 
         // Read the uploaded Excel file
         const workbook = XLSX.readFile(req.file.path);
@@ -380,10 +380,18 @@ app.post('/api/products/import', upload.single('file'), async (req, res) => {
 
             const productCode = row[columnMap.productCode]?.toString().trim();
             const productName = row[columnMap.productName]?.toString().trim();
+            const productCategory = row[columnMap.productCategory]?.toString().trim();
             
             // Skip if required fields are missing
             if (!productCode || !productName) {
                 console.log(`⚠️ Skipping row ${i}: Missing required fields (product_code: ${productCode}, product_name: ${productName})`);
+                errorCount++;
+                continue;
+            }
+
+            // Skip if product category is not CBL
+            if (productCategory !== 'CBL') {
+                console.log(`⚠️ Skipping row ${i}: Product category is not CBL (${productCategory})`);
                 errorCount++;
                 continue;
             }
@@ -432,7 +440,7 @@ app.post('/api/products/import', upload.single('file'), async (req, res) => {
 
                 importedCount++;
                 console.log(`✅ Imported product: ${productData[1]} (${productData[0]})`);
-
+PRODUCT_CATEGORY
             } catch (error) {
                 if (error.code === 'ER_DUP_ENTRY') {
                     console.log(`🔄 Duplicate product: ${productData[1]} (${productData[0]})`);
@@ -458,10 +466,11 @@ app.post('/api/products/import', upload.single('file'), async (req, res) => {
 
         res.json({
             success: true,
-            message: 'Products imported successfully',
+            message: 'CBL products imported successfully',
             imported: importedCount,
             duplicates: duplicateCount,
-            errors: errorCount
+            errors: errorCount,
+            note: 'Only products with PRODUCT_CATEGORY = CBL were imported'
         });
 
     } catch (error) {

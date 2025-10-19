@@ -177,7 +177,7 @@ function AppContent() {
             <NewOrdersTablet onOrderCreated={refreshOrders} /> : 
             <Dashboard setStats={setStats} />
           } />
-          <Route path="/new-orders-tablet" element={<NewOrdersTablet onOrderCreated={refreshOrders} />} />
+          <Route path="/new-orders" element={<NewOrdersTablet onOrderCreated={refreshOrders} />} />
           <Route path="/review-orders" element={<ReviewOrdersTablet onOrderCreated={refreshOrders} />} />
           <Route path="/placed-orders" element={
             isTSO ? 
