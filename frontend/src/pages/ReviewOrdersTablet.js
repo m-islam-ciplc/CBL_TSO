@@ -313,54 +313,55 @@ function ReviewOrdersTablet({ onOrderCreated }) {
                 border: '2px solid #f0f0f0'
               }}
             >
-              <Row gutter={[12, 8]} align="middle">
-                <Col xs={3}>
+              <Row gutter={[8, 8]} align="middle">
+                <Col xs={2} sm={3}>
                   <div style={{ 
                     textAlign: 'center',
-                    fontSize: '14px',
+                    fontSize: '12px',
                     fontWeight: 'bold',
                     color: '#1890ff',
                     backgroundColor: '#f0f8ff',
-                    padding: '6px',
-                    borderRadius: '6px'
+                    padding: '4px',
+                    borderRadius: '4px'
                   }}>
                     #{index + 1}
                   </div>
                 </Col>
-                <Col xs={9}>
+                <Col xs={7} sm={9}>
                   <div>
-                    <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#1890ff' }}>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1890ff' }}>
                       {item.product_code}
                     </div>
-                    <div style={{ fontSize: '14px', color: '#666', lineHeight: '1.3' }}>
+                    <div style={{ fontSize: '12px', color: '#666', lineHeight: '1.3' }}>
                       {item.product_name}
                     </div>
                   </div>
                 </Col>
-                <Col xs={8}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Col xs={9} sm={6}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'center' }}>
                     <Button
                       type="primary"
                       shape="circle"
                       size="small"
-                      icon={<span style={{ fontSize: '14px' }}>-</span>}
+                      icon={<span style={{ fontSize: '12px' }}>-</span>}
                       onClick={() => updateOrderItem(item.id, 'quantity', Math.max(1, item.quantity - 1))}
                       style={{ 
-                        width: '32px', 
-                        height: '32px',
-                        fontSize: '12px'
+                        width: '28px', 
+                        height: '28px',
+                        minWidth: '28px',
+                        padding: '0'
                       }}
                     />
                     <div style={{
-                      minWidth: '60px',
+                      minWidth: '45px',
                       textAlign: 'center',
-                      fontSize: '16px',
+                      fontSize: '14px',
                       fontWeight: 'bold',
                       color: '#52c41a',
-                      padding: '6px 12px',
+                      padding: '4px 6px',
                       backgroundColor: 'white',
-                      borderRadius: '6px',
-                      border: '2px solid #f0f0f0'
+                      borderRadius: '4px',
+                      border: '1px solid #f0f0f0'
                     }}>
                       {item.quantity}
                     </div>
@@ -368,17 +369,18 @@ function ReviewOrdersTablet({ onOrderCreated }) {
                       type="primary"
                       shape="circle"
                       size="small"
-                      icon={<span style={{ fontSize: '14px' }}>+</span>}
+                      icon={<span style={{ fontSize: '12px' }}>+</span>}
                       onClick={() => updateOrderItem(item.id, 'quantity', item.quantity + 1)}
                       style={{ 
-                        width: '32px', 
-                        height: '32px',
-                        fontSize: '12px'
+                        width: '28px', 
+                        height: '28px',
+                        minWidth: '28px',
+                        padding: '0'
                       }}
                     />
                   </div>
                 </Col>
-                <Col xs={4}>
+                <Col xs={6} sm={6}>
                   <Button
                     type="primary"
                     danger
@@ -386,8 +388,9 @@ function ReviewOrdersTablet({ onOrderCreated }) {
                     icon={<DeleteOutlined />}
                     onClick={() => removeOrderItem(item.id)}
                     style={{ 
-                      fontSize: '12px',
-                      width: '100%'
+                      fontSize: '11px',
+                      width: '100%',
+                      height: '28px'
                     }}
                   >
                     Remove
@@ -400,9 +403,9 @@ function ReviewOrdersTablet({ onOrderCreated }) {
       </Card>
 
       {/* Order Summary */}
-      <Card style={{ marginBottom: '80px', borderRadius: '8px' }}>
-        <Row gutter={[16, 8]} align="middle">
-          <Col xs={12}>
+      <Card style={{ marginBottom: '20px', borderRadius: '8px' }}>
+        <Row gutter={[8, 12]} align="middle">
+          <Col xs={24} sm={12}>
             <div>
               <Text strong style={{ fontSize: '16px', color: '#1890ff' }}>
                 Order Summary
@@ -413,7 +416,7 @@ function ReviewOrdersTablet({ onOrderCreated }) {
               </div>
             </div>
           </Col>
-          <Col xs={6}>
+          <Col xs={12} sm={6}>
             <Button
               type="default"
               size="large"
@@ -426,15 +429,15 @@ function ReviewOrdersTablet({ onOrderCreated }) {
               }}
               style={{ 
                 width: '100%',
-                height: '48px',
-                fontSize: '14px',
+                height: '44px',
+                fontSize: '13px',
                 borderRadius: '8px'
               }}
             >
-              Add More Products
+              Add More
             </Button>
           </Col>
-          <Col xs={6}>
+          <Col xs={12} sm={6}>
             <Button
               type="primary"
               size="large"
@@ -443,12 +446,12 @@ function ReviewOrdersTablet({ onOrderCreated }) {
               onClick={handleSubmit}
               style={{ 
                 width: '100%',
-                height: '48px',
-                fontSize: '16px',
+                height: '44px',
+                fontSize: '14px',
                 borderRadius: '8px'
               }}
             >
-              {loading ? 'Submitting...' : 'Submit Order'}
+              {loading ? 'Submitting...' : 'Submit'}
             </Button>
           </Col>
         </Row>

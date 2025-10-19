@@ -94,9 +94,11 @@ function NewOrdersTablet({ onOrderCreated }) {
       const territoriesMap = new Map();
       dealersRes.data.forEach(dealer => {
         if (dealer.territory_code && dealer.territory_name) {
+          // Clean territory name by removing " Territory" suffix if it exists
+          const cleanTerritoryName = dealer.territory_name.replace(/\s+Territory$/i, '');
           territoriesMap.set(dealer.territory_code, {
             code: dealer.territory_code,
-            name: dealer.territory_name
+            name: cleanTerritoryName
           });
         }
       });
@@ -130,7 +132,11 @@ function NewOrdersTablet({ onOrderCreated }) {
     if (territoryCode) {
       filtered = filtered.filter(dealer => dealer.territory_code === territoryCode);
     } else if (territoryName) {
-      filtered = filtered.filter(dealer => dealer.territory_name === territoryName);
+      // Compare with cleaned territory name
+      filtered = filtered.filter(dealer => {
+        const cleanDealerTerritory = dealer.territory_name.replace(/\s+Territory$/i, '');
+        return cleanDealerTerritory === territoryName;
+      });
     }
     
     setFilteredDealers(filtered);
@@ -344,8 +350,8 @@ function NewOrdersTablet({ onOrderCreated }) {
           layout="horizontal"
           size="small"
         >
-          <Row gutter={[8, 8]} align="middle">
-            <Col xs={24} sm={6}>
+          <Row gutter={[6, 8]} align="middle">
+            <Col xs={12} sm={5}>
               <Form.Item
                 name="orderType"
                 label={<Text strong style={{ fontSize: '12px' }}>Order Type</Text>}
@@ -364,7 +370,7 @@ function NewOrdersTablet({ onOrderCreated }) {
               </Form.Item>
             </Col>
 
-            <Col xs={24} sm={6}>
+            <Col xs={12} sm={5}>
               <Form.Item
                 name="warehouse"
                 label={<Text strong style={{ fontSize: '12px' }}>Warehouse</Text>}
@@ -383,7 +389,27 @@ function NewOrdersTablet({ onOrderCreated }) {
               </Form.Item>
             </Col>
 
-            <Col xs={24} sm={6}>
+            <Col xs={12} sm={4}>
+              <Form.Item
+                name="territoryCode"
+                label={<Text strong style={{ fontSize: '12px' }}>Territory</Text>}
+                style={{ marginBottom: '8px' }}
+              >
+                <Select 
+                  placeholder="Territory" 
+                  size="small"
+                  style={{ fontSize: '12px' }}
+                  allowClear
+                  onChange={(value) => handleTerritoryChange('territoryCode', value)}
+                >
+                  {dropdownData.territories.map(territory => (
+                    <Option key={territory.code} value={territory.code}>{territory.name}</Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+
+            <Col xs={12} sm={6}>
               <Form.Item
                 name="dealer"
                 label={<Text strong style={{ fontSize: '12px' }}>Dealer</Text>}
@@ -409,7 +435,7 @@ function NewOrdersTablet({ onOrderCreated }) {
               </Form.Item>
             </Col>
 
-            <Col xs={24} sm={6}>
+            <Col xs={24} sm={4}>
               <div style={{ textAlign: 'right', paddingTop: '20px' }}>
                 <Text strong style={{ fontSize: '12px', color: '#1890ff' }}>
                   Items: {orderItems.length} | Qty: {orderItems.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)}
@@ -438,9 +464,9 @@ function NewOrdersTablet({ onOrderCreated }) {
       {/* Compact Product Grid */}
       <div style={{ 
         display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
+        gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', 
         gap: '12px',
-        marginBottom: '80px'
+        marginBottom: '100px'
       }}>
         {filteredProducts.map(product => {
           const quantity = productQuantities[product.id] || 0;
@@ -543,9 +569,10 @@ function NewOrdersTablet({ onOrderCreated }) {
                 {/* Quick Quantity Buttons - Only Common Quantities */}
                 <div style={{ 
                   display: 'flex', 
-                  gap: '4px', 
+                  gap: '3px', 
                   marginBottom: '8px',
-                  justifyContent: 'center'
+                  justifyContent: 'center',
+                  flexWrap: 'wrap'
                 }}>
                   {[50, 100, 150, 200].map(quickQty => (
                     <Button
@@ -560,10 +587,11 @@ function NewOrdersTablet({ onOrderCreated }) {
                         autoAddPreviousProduct(product.id);
                       }}
                       style={{
-                        fontSize: '11px',
-                        height: '26px',
-                        minWidth: '45px',
-                        fontWeight: 'bold'
+                        fontSize: '10px',
+                        height: '24px',
+                        minWidth: '40px',
+                        fontWeight: 'bold',
+                        padding: '0 6px'
                       }}
                     >
                       {quickQty}
@@ -714,22 +742,22 @@ function NewOrdersTablet({ onOrderCreated }) {
           right: '0', 
           backgroundColor: 'white', 
           borderTop: '2px solid #1890ff',
-          padding: '12px 16px',
+          padding: '16px 12px',
           boxShadow: '0 -4px 12px rgba(0,0,0,0.1)',
           zIndex: 1000
         }}>
-          <Row gutter={[16, 8]} align="middle">
-            <Col xs={16}>
-              <div>
-                <Text strong style={{ fontSize: '14px' }}>
-                  Ready to Submit: {orderItems.length} item{orderItems.length !== 1 ? 's' : ''}
+          <Row gutter={[8, 8]} align="middle">
+            <Col xs={14} sm={16}>
+              <div style={{ paddingRight: '8px' }}>
+                <Text strong style={{ fontSize: '13px', lineHeight: '1.2' }}>
+                  Ready: {orderItems.length} item{orderItems.length !== 1 ? 's' : ''}
                 </Text>
-                <div style={{ fontSize: '12px', color: '#666' }}>
-                  Total Quantity: {orderItems.reduce((sum, item) => sum + item.quantity, 0)}
+                <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
+                  Qty: {orderItems.reduce((sum, item) => sum + item.quantity, 0)}
                 </div>
               </div>
             </Col>
-            <Col xs={8}>
+            <Col xs={10} sm={8}>
               <Button
                 type="primary"
                 size="large"
@@ -742,8 +770,8 @@ function NewOrdersTablet({ onOrderCreated }) {
                 }}
                 style={{ 
                   width: '100%',
-                  height: '40px',
-                  fontSize: '14px',
+                  height: '44px',
+                  fontSize: '13px',
                   borderRadius: '8px'
                 }}
               >
