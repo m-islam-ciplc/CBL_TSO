@@ -202,7 +202,7 @@ function ReviewOrdersTablet({ onOrderCreated }) {
   }
 
   return (
-    <div style={{ padding: '8px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+    <div style={{ padding: '4px 8px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: '16px' }}>
         <Title level={4} style={{ marginBottom: '4px', color: '#1890ff' }}>

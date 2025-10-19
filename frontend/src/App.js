@@ -162,7 +162,7 @@ function AppContent() {
       </Header>
 
       <Content style={{ 
-        padding: '24px', 
+        padding: '12px', 
         background: '#f0f2f5',
         minHeight: 'calc(100vh - 64px)',
       }}>

@@ -129,16 +129,22 @@ function NewOrdersTablet({ onOrderCreated }) {
   const filterDealersByTerritory = (territoryCode, territoryName) => {
     let filtered = dropdownData.dealers;
     
+    console.log('🔍 Filtering dealers by territory:', { territoryCode, territoryName });
+    console.log('📊 Total dealers before filtering:', filtered.length);
+    
     if (territoryCode) {
       filtered = filtered.filter(dealer => dealer.territory_code === territoryCode);
+      console.log('✅ Filtered by territory code:', territoryCode, 'Result:', filtered.length, 'dealers');
     } else if (territoryName) {
       // Compare with cleaned territory name
       filtered = filtered.filter(dealer => {
         const cleanDealerTerritory = dealer.territory_name.replace(/\s+Territory$/i, '');
         return cleanDealerTerritory === territoryName;
       });
+      console.log('✅ Filtered by territory name:', territoryName, 'Result:', filtered.length, 'dealers');
     }
     
+    console.log('📋 Filtered dealers:', filtered.map(d => ({ name: d.name, territory_code: d.territory_code })));
     setFilteredDealers(filtered);
   };
 
@@ -335,12 +341,21 @@ function NewOrdersTablet({ onOrderCreated }) {
 
 
   return (
-    <div style={{ padding: '8px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+    <div style={{ 
+      padding: '4px 8px', 
+      backgroundColor: '#f5f5f5', 
+      minHeight: '100vh' 
+    }}>
       {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-        <Title level={4} style={{ marginBottom: '4px', color: '#1890ff' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <Title level={4} style={{ margin: 0, color: '#1890ff' }}>
           📱 TSO Order Entry
         </Title>
+        <div>
+          <Text strong style={{ fontSize: '12px', color: '#1890ff' }}>
+            Items: {orderItems.length} | Qty: {orderItems.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)}
+          </Text>
+        </div>
       </div>
 
       {/* Compact Dealer Selection */}
@@ -351,7 +366,7 @@ function NewOrdersTablet({ onOrderCreated }) {
           size="small"
         >
           <Row gutter={[6, 8]} align="middle">
-            <Col xs={12} sm={5}>
+            <Col xs={12} sm={3}>
               <Form.Item
                 name="orderType"
                 label={<Text strong style={{ fontSize: '12px' }}>Order Type</Text>}
@@ -370,7 +385,7 @@ function NewOrdersTablet({ onOrderCreated }) {
               </Form.Item>
             </Col>
 
-            <Col xs={12} sm={5}>
+            <Col xs={12} sm={3}>
               <Form.Item
                 name="warehouse"
                 label={<Text strong style={{ fontSize: '12px' }}>Warehouse</Text>}
@@ -389,7 +404,7 @@ function NewOrdersTablet({ onOrderCreated }) {
               </Form.Item>
             </Col>
 
-            <Col xs={12} sm={4}>
+            <Col xs={12} sm={3}>
               <Form.Item
                 name="territoryCode"
                 label={<Text strong style={{ fontSize: '12px' }}>Territory</Text>}
@@ -400,6 +415,11 @@ function NewOrdersTablet({ onOrderCreated }) {
                   size="small"
                   style={{ fontSize: '12px' }}
                   allowClear
+                  showSearch
+                  filterOption={(input, option) => {
+                    const optionText = option?.children?.toString() || '';
+                    return optionText.toLowerCase().includes(input.toLowerCase());
+                  }}
                   onChange={(value) => handleTerritoryChange('territoryCode', value)}
                 >
                   {dropdownData.territories.map(territory => (
@@ -409,7 +429,7 @@ function NewOrdersTablet({ onOrderCreated }) {
               </Form.Item>
             </Col>
 
-            <Col xs={12} sm={6}>
+            <Col xs={12} sm={15}>
               <Form.Item
                 name="dealer"
                 label={<Text strong style={{ fontSize: '12px' }}>Dealer</Text>}
@@ -433,14 +453,6 @@ function NewOrdersTablet({ onOrderCreated }) {
                   ))}
                 </Select>
               </Form.Item>
-            </Col>
-
-            <Col xs={24} sm={4}>
-              <div style={{ textAlign: 'right', paddingTop: '20px' }}>
-                <Text strong style={{ fontSize: '12px', color: '#1890ff' }}>
-                  Items: {orderItems.length} | Qty: {orderItems.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)}
-                </Text>
-              </div>
             </Col>
           </Row>
         </Form>
