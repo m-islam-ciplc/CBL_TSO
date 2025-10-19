@@ -34,7 +34,8 @@ function NewOrdersTablet({ onOrderCreated }) {
     dealers: [],
     warehouses: [],
     products: [],
-    territories: []
+    territories: [],
+    transports: []
   });
   const [loading, setLoading] = useState(false);
   const [filteredDealers, setFilteredDealers] = useState([]);
@@ -75,11 +76,12 @@ function NewOrdersTablet({ onOrderCreated }) {
 
   const loadDropdownData = async () => {
     try {
-      const [orderTypesRes, dealersRes, warehousesRes, productsRes] = await Promise.all([
+      const [orderTypesRes, dealersRes, warehousesRes, productsRes, transportsRes] = await Promise.all([
         axios.get('/api/order-types'),
         axios.get('/api/dealers'),
         axios.get('/api/warehouses'),
-        axios.get('/api/products')
+        axios.get('/api/products'),
+        axios.get('/api/transports')
       ]);
 
       setDropdownData({
@@ -87,7 +89,8 @@ function NewOrdersTablet({ onOrderCreated }) {
         dealers: dealersRes.data,
         warehouses: warehousesRes.data,
         products: productsRes.data,
-        territories: []
+        territories: [],
+        transports: transportsRes.data
       });
 
       // Extract unique territories from dealers
@@ -315,6 +318,7 @@ function NewOrdersTablet({ onOrderCreated }) {
         order_type_id: values.orderType,
         dealer_id: values.dealer,
         warehouse_id: values.warehouse,
+        transport_id: values.transport,
         order_items: orderItems.map(item => ({
           product_id: Number(item.product_id),
           quantity: Number(item.quantity)
@@ -429,7 +433,7 @@ function NewOrdersTablet({ onOrderCreated }) {
               </Form.Item>
             </Col>
 
-            <Col xs={24} sm={24} md={13} lg={13}>
+            <Col xs={24} sm={24} md={7} lg={7}>
               <Form.Item
                 name="dealer"
                 label={<Text strong style={{ fontSize: '12px' }}>Dealer</Text>}
@@ -450,6 +454,30 @@ function NewOrdersTablet({ onOrderCreated }) {
                 >
                   {filteredDealers.map(dealer => (
                     <Option key={dealer.id} value={dealer.id}>{dealer.name}</Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} sm={24} md={6} lg={6}>
+              <Form.Item
+                name="transport"
+                label={<Text strong style={{ fontSize: '12px' }}>Transport</Text>}
+                rules={[{ required: true, message: 'Required' }]}
+                style={{ marginBottom: '8px' }}
+              >
+                <Select 
+                  placeholder="Transport" 
+                  size="small"
+                  style={{ fontSize: '12px' }}
+                  showSearch 
+                  filterOption={(input, option) => {
+                    const optionText = option?.children?.toString() || '';
+                    return optionText.toLowerCase().includes(input.toLowerCase());
+                  }}
+                >
+                  {dropdownData.transports.map(transport => (
+                    <Option key={transport.id} value={transport.id}>{transport.truck_details}</Option>
                   ))}
                 </Select>
               </Form.Item>

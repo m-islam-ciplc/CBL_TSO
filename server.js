@@ -748,12 +748,12 @@ app.get('/api/products', (req, res) => {
 // Create new order with multiple products
 app.post('/api/orders', async (req, res) => {
     try {
-        const { order_type_id, dealer_id, warehouse_id, order_items } = req.body;
+        const { order_type_id, dealer_id, warehouse_id, transport_id, order_items } = req.body;
         
         // Validate required fields
-        if (!order_type_id || !dealer_id || !warehouse_id || !order_items || !Array.isArray(order_items) || order_items.length === 0) {
+        if (!order_type_id || !dealer_id || !warehouse_id || !transport_id || !order_items || !Array.isArray(order_items) || order_items.length === 0) {
             return res.status(400).json({ 
-                error: 'Missing required fields: order_type_id, dealer_id, warehouse_id, and order_items array' 
+                error: 'Missing required fields: order_type_id, dealer_id, warehouse_id, transport_id, and order_items array' 
             });
         }
 
@@ -774,8 +774,8 @@ app.post('/api/orders', async (req, res) => {
         try {
             // Create the main order
             await db.promise().query(`
-                INSERT INTO orders (order_id, order_type_id, dealer_id, warehouse_id) 
-                VALUES (?, ?, ?, ?)
+                INSERT INTO orders (order_id, order_type_id, dealer_id, warehouse_id, transport_id) 
+                VALUES (?, ?, ?, ?, ?)
             `, [order_id, order_type_id, dealer_id, warehouse_id]);
 
             // Add order items
