@@ -42,6 +42,7 @@ function NewOrdersTablet({ onOrderCreated }) {
   const [currentStep, setCurrentStep] = useState('dealer'); // 'dealer', 'products', 'review'
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredProducts, setFilteredProducts] = useState([]);
+  const [productQuantities, setProductQuantities] = useState({}); // Track quantities for each product
 
   useEffect(() => {
     loadDropdownData();
@@ -156,23 +157,47 @@ function NewOrdersTablet({ onOrderCreated }) {
     }
   };
 
+  const updateProductQuantity = (productId, change) => {
+    setProductQuantities(prev => {
+      const currentQty = prev[productId] || 0;
+      const newQty = Math.max(0, currentQty + change);
+      return {
+        ...prev,
+        [productId]: newQty
+      };
+    });
+  };
+
   const addProductToOrder = (product) => {
+    const quantity = productQuantities[product.id] || 1;
+    if (quantity === 0) {
+      message.warning('Please select a quantity first');
+      return;
+    }
+
     const existingItem = orderItems.find(item => item.product_id === product.id);
     if (existingItem) {
-      updateOrderItem(existingItem.id, 'quantity', existingItem.quantity + 1);
+      updateOrderItem(existingItem.id, 'quantity', existingItem.quantity + quantity);
     } else {
       const newItem = {
         id: Date.now(),
         product_id: product.id,
         product_name: product.name,
         product_code: product.product_code,
-        quantity: 1,
+        quantity: quantity,
         unit_tp: product.unit_tp,
         mrp: product.mrp
       };
       setOrderItems([...orderItems, newItem]);
     }
-    message.success(`${product.product_code} added to order!`);
+    
+    // Reset quantity for this product
+    setProductQuantities(prev => ({
+      ...prev,
+      [product.id]: 0
+    }));
+    
+    message.success(`${product.product_code} (Qty: ${quantity}) added to order!`);
   };
 
   const updateOrderItem = (itemId, field, value) => {
@@ -435,49 +460,114 @@ function NewOrdersTablet({ onOrderCreated }) {
         maxWidth: '1200px',
         margin: '0 auto'
       }}>
-        {filteredProducts.map(product => (
-          <Card
-            key={product.id}
-            hoverable
-            onClick={() => addProductToOrder(product)}
-            style={{ 
-              borderRadius: '12px',
-              border: '2px solid #f0f0f0',
-              transition: 'all 0.3s',
-              cursor: 'pointer'
-            }}
-            bodyStyle={{ padding: '20px' }}
-          >
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ 
-                fontSize: '18px', 
-                fontWeight: 'bold', 
-                color: '#1890ff',
-                marginBottom: '8px'
-              }}>
-                {product.product_code}
+        {filteredProducts.map(product => {
+          const quantity = productQuantities[product.id] || 0;
+          return (
+            <Card
+              key={product.id}
+              style={{ 
+                borderRadius: '12px',
+                border: quantity > 0 ? '2px solid #52c41a' : '2px solid #f0f0f0',
+                transition: 'all 0.3s',
+                backgroundColor: quantity > 0 ? '#f6ffed' : 'white'
+              }}
+              bodyStyle={{ padding: '20px' }}
+            >
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ 
+                  fontSize: '18px', 
+                  fontWeight: 'bold', 
+                  color: '#1890ff',
+                  marginBottom: '8px'
+                }}>
+                  {product.product_code}
+                </div>
+                <div style={{ 
+                  fontSize: '16px', 
+                  color: '#333',
+                  marginBottom: '16px',
+                  lineHeight: '1.4'
+                }}>
+                  {product.name}
+                </div>
+                
+                {/* Quantity Controls */}
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  gap: '12px',
+                  marginBottom: '16px'
+                }}>
+                  <Button
+                    type="primary"
+                    shape="circle"
+                    icon={<span style={{ fontSize: '18px', fontWeight: 'bold' }}>-</span>}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      updateProductQuantity(product.id, -1);
+                    }}
+                    disabled={quantity === 0}
+                    style={{ 
+                      width: '40px', 
+                      height: '40px',
+                      backgroundColor: quantity > 0 ? '#ff4d4f' : '#d9d9d9',
+                      borderColor: quantity > 0 ? '#ff4d4f' : '#d9d9d9'
+                    }}
+                  />
+                  
+                  <div style={{
+                    minWidth: '60px',
+                    textAlign: 'center',
+                    fontSize: '20px',
+                    fontWeight: 'bold',
+                    color: quantity > 0 ? '#52c41a' : '#999',
+                    padding: '8px 12px',
+                    backgroundColor: 'white',
+                    borderRadius: '8px',
+                    border: '2px solid #f0f0f0'
+                  }}>
+                    {quantity}
+                  </div>
+                  
+                  <Button
+                    type="primary"
+                    shape="circle"
+                    icon={<span style={{ fontSize: '18px', fontWeight: 'bold' }}>+</span>}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      updateProductQuantity(product.id, 1);
+                    }}
+                    style={{ 
+                      width: '40px', 
+                      height: '40px',
+                      backgroundColor: '#52c41a',
+                      borderColor: '#52c41a'
+                    }}
+                  />
+                </div>
+                
+                {/* Add Button */}
+                <Button
+                  type="primary"
+                  onClick={() => addProductToOrder(product)}
+                  disabled={quantity === 0}
+                  style={{
+                    width: '100%',
+                    height: '44px',
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                    borderRadius: '8px',
+                    backgroundColor: quantity > 0 ? '#52c41a' : '#d9d9d9',
+                    borderColor: quantity > 0 ? '#52c41a' : '#d9d9d9'
+                  }}
+                >
+                  {quantity > 0 ? `Add ${quantity} to Order` : 'Select Quantity'}
+                </Button>
               </div>
-              <div style={{ 
-                fontSize: '16px', 
-                color: '#333',
-                marginBottom: '12px',
-                lineHeight: '1.4'
-              }}>
-                {product.name}
-              </div>
-              <div style={{ 
-                marginTop: '12px',
-                padding: '8px',
-                backgroundColor: '#f6ffed',
-                borderRadius: '8px',
-                fontSize: '14px',
-                color: '#52c41a'
-              }}>
-                Tap to Add
-              </div>
-            </div>
-          </Card>
-        ))}
+            </Card>
+          );
+        })}
       </div>
 
       {/* Current Order Summary */}
