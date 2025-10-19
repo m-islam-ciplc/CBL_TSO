@@ -370,7 +370,7 @@ function NewOrdersTablet({ onOrderCreated }) {
           size="small"
         >
           <Row gutter={[8, 12]} align="middle">
-            <Col xs={24} sm={24} md={3} lg={3}>
+            <Col xs={12} sm={12} md={3} lg={3}>
               <Form.Item
                 name="orderType"
                 label={<Text strong style={{ fontSize: '12px' }}>Order Type</Text>}
@@ -389,7 +389,7 @@ function NewOrdersTablet({ onOrderCreated }) {
               </Form.Item>
             </Col>
 
-            <Col xs={24} sm={24} md={4} lg={4}>
+            <Col xs={12} sm={12} md={4} lg={4}>
               <Form.Item
                 name="warehouse"
                 label={<Text strong style={{ fontSize: '12px' }}>Warehouse</Text>}
