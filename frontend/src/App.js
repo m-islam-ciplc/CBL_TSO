@@ -53,7 +53,13 @@ function AppContent() {
     return 'dashboard';
   };
 
-  const menuItems = [
+  const menuItems = isTSO ? [
+    {
+      key: 'new-orders',
+      icon: <PlusOutlined />,
+      label: 'New Orders',
+    },
+  ] : [
     {
       key: 'dashboard',
       icon: <DashboardOutlined />,
@@ -172,12 +178,12 @@ function AppContent() {
         <Routes>
           <Route path="/" element={
             isTSO ? 
-            <TSODashboard setStats={setStats} /> : 
+            <NewOrdersTablet onOrderCreated={refreshOrders} /> : 
             <Dashboard setStats={setStats} />
           } />
           <Route path="/dashboard" element={
             isTSO ? 
-            <TSODashboard setStats={setStats} /> : 
+            <NewOrdersTablet onOrderCreated={refreshOrders} /> : 
             <Dashboard setStats={setStats} />
           } />
           <Route path="/new-orders" element={
@@ -186,9 +192,21 @@ function AppContent() {
             <NewOrders onOrderCreated={refreshOrders} />
           } />
           <Route path="/new-orders-tablet" element={<NewOrdersTablet onOrderCreated={refreshOrders} />} />
-          <Route path="/placed-orders" element={<PlacedOrders refreshTrigger={refreshTrigger} />} />
-          <Route path="/dealer-management" element={<DealerManagement />} />
-          <Route path="/product-management" element={<ProductManagement />} />
+          <Route path="/placed-orders" element={
+            isTSO ? 
+            <NewOrdersTablet onOrderCreated={refreshOrders} /> : 
+            <PlacedOrders refreshTrigger={refreshTrigger} />
+          } />
+          <Route path="/dealer-management" element={
+            isTSO ? 
+            <NewOrdersTablet onOrderCreated={refreshOrders} /> : 
+            <DealerManagement />
+          } />
+          <Route path="/product-management" element={
+            isTSO ? 
+            <NewOrdersTablet onOrderCreated={refreshOrders} /> : 
+            <ProductManagement />
+          } />
         </Routes>
       </Content>
     </Layout>

@@ -64,39 +64,12 @@ function TSODashboard({ setStats }) {
   const quickActions = [
     {
       key: 'new-order',
-      title: 'New Order',
-      description: 'Create a new sales order',
+      title: 'Create New Order',
+      description: 'Start creating a sales order',
       icon: <PlusOutlined style={{ fontSize: '32px' }} />,
       color: '#52c41a',
       action: () => navigate('/new-orders-tablet'),
       badge: null,
-    },
-    {
-      key: 'view-orders',
-      title: 'View Orders',
-      description: 'Check placed orders',
-      icon: <OrderedListOutlined style={{ fontSize: '32px' }} />,
-      color: '#1890ff',
-      action: () => navigate('/placed-orders'),
-      badge: quickStats.orders > 0 ? quickStats.orders : null,
-    },
-    {
-      key: 'dealers',
-      title: 'Dealers',
-      description: 'Browse dealer information',
-      icon: <UserOutlined style={{ fontSize: '32px' }} />,
-      color: '#722ed1',
-      action: () => navigate('/dealer-management'),
-      badge: quickStats.dealers > 0 ? quickStats.dealers : null,
-    },
-    {
-      key: 'products',
-      title: 'Products',
-      description: 'View product catalog',
-      icon: <ShoppingCartOutlined style={{ fontSize: '32px' }} />,
-      color: '#fa8c16',
-      action: () => navigate('/product-management'),
-      badge: quickStats.products > 0 ? quickStats.products : null,
     },
   ];
 
@@ -168,60 +141,61 @@ function TSODashboard({ setStats }) {
       </Row>
 
       {/* Quick Actions */}
-      <div style={{ marginBottom: '24px' }}>
-        <Title level={3} style={{ textAlign: 'center', marginBottom: '24px' }}>
-          🚀 Quick Actions
-        </Title>
-        <Row gutter={[24, 24]}>
+      <div style={{ marginBottom: '32px', display: 'flex', justifyContent: 'center' }}>
+        <div style={{ maxWidth: '400px', width: '100%' }}>
+          <Title level={3} style={{ textAlign: 'center', marginBottom: '24px' }}>
+            🚀 Ready to Create Orders
+          </Title>
           {quickActions.map((action) => (
-            <Col xs={24} sm={12} md={6} key={action.key}>
-              <Card
-                hoverable
-                onClick={action.action}
-                style={{
-                  borderRadius: '16px',
-                  border: '2px solid #f0f0f0',
-                  transition: 'all 0.3s',
-                  cursor: 'pointer',
-                  height: '200px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  textAlign: 'center',
-                  position: 'relative',
-                }}
-                bodyStyle={{ padding: '24px' }}
-              >
-                {action.badge && (
-                  <Badge 
-                    count={action.badge} 
-                    style={{ 
-                      position: 'absolute', 
-                      top: '12px', 
-                      right: '12px' 
-                    }} 
-                  />
-                )}
-                <div style={{ 
-                  color: action.color, 
-                  marginBottom: '16px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  {action.icon}
-                </div>
-                <Title level={4} style={{ margin: '0 0 8px 0', color: '#333' }}>
-                  {action.title}
-                </Title>
-                <Text type="secondary" style={{ fontSize: '14px' }}>
-                  {action.description}
-                </Text>
-              </Card>
-            </Col>
+            <Card
+              key={action.key}
+              hoverable
+              onClick={action.action}
+              style={{
+                borderRadius: '20px',
+                border: '3px solid #52c41a',
+                transition: 'all 0.3s',
+                cursor: 'pointer',
+                height: '250px',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                textAlign: 'center',
+                position: 'relative',
+                backgroundColor: '#f6ffed',
+              }}
+              bodyStyle={{ padding: '32px' }}
+            >
+              <div style={{ 
+                color: action.color, 
+                marginBottom: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                {action.icon}
+              </div>
+              <Title level={3} style={{ margin: '0 0 12px 0', color: '#333' }}>
+                {action.title}
+              </Title>
+              <Text type="secondary" style={{ fontSize: '16px', marginBottom: '20px' }}>
+                {action.description}
+              </Text>
+              <div style={{ 
+                fontSize: '14px', 
+                color: '#52c41a', 
+                fontWeight: 'bold',
+                backgroundColor: 'white',
+                padding: '8px 16px',
+                borderRadius: '20px',
+                border: '2px solid #52c41a'
+              }}>
+                Tap to Start
+              </div>
+            </Card>
           ))}
-        </Row>
+        </div>
       </div>
 
       {/* TSO Tips */}
