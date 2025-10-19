@@ -11,10 +11,12 @@ import {
   AppstoreOutlined,
   ShoppingCartOutlined,
   TabletOutlined,
+  CheckOutlined,
 } from '@ant-design/icons';
 import Dashboard from './pages/Dashboard';
 import NewOrders from './pages/NewOrders';
 import NewOrdersTablet from './pages/NewOrdersTablet';
+import ReviewOrdersTablet from './pages/ReviewOrdersTablet';
 import PlacedOrders from './pages/PlacedOrders';
 import DealerManagement from './pages/DealerManagement';
 import ProductManagement from './pages/ProductManagement';
@@ -58,6 +60,11 @@ function AppContent() {
       key: 'new-orders',
       icon: <PlusOutlined />,
       label: 'New Orders',
+    },
+    {
+      key: 'review-orders',
+      icon: <CheckOutlined />,
+      label: 'Review Orders',
     },
   ] : [
     {
@@ -192,6 +199,7 @@ function AppContent() {
             <NewOrders onOrderCreated={refreshOrders} />
           } />
           <Route path="/new-orders-tablet" element={<NewOrdersTablet onOrderCreated={refreshOrders} />} />
+          <Route path="/review-orders" element={<ReviewOrdersTablet onOrderCreated={refreshOrders} />} />
           <Route path="/placed-orders" element={
             isTSO ? 
             <NewOrdersTablet onOrderCreated={refreshOrders} /> : 

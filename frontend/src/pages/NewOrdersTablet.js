@@ -39,10 +39,11 @@ function NewOrdersTablet({ onOrderCreated }) {
   const [loading, setLoading] = useState(false);
   const [filteredDealers, setFilteredDealers] = useState([]);
   const [orderItems, setOrderItems] = useState([]);
-  const [currentStep, setCurrentStep] = useState('dealer'); // 'dealer', 'products', 'review'
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [productQuantities, setProductQuantities] = useState({}); // Track quantities for each product
+  const [showReview, setShowReview] = useState(false); // Control review modal/page
+  const [lastSelectedProductId, setLastSelectedProductId] = useState(null); // Track last selected product
 
   useEffect(() => {
     loadDropdownData();
@@ -157,6 +158,50 @@ function NewOrdersTablet({ onOrderCreated }) {
     }
   };
 
+  const autoAddPreviousProduct = (newProductId) => {
+    if (lastSelectedProductId && lastSelectedProductId !== newProductId) {
+      const previousQuantity = productQuantities[lastSelectedProductId] || 0;
+      if (previousQuantity > 0) {
+        // Find the product details
+        const product = dropdownData.products.find(p => p.id === lastSelectedProductId);
+        if (product) {
+          // Auto-add the previous product
+          const existingItem = orderItems.find(item => item.product_id === lastSelectedProductId);
+          let updatedItems;
+          
+          if (existingItem) {
+            updatedItems = orderItems.map(item => 
+              item.id === existingItem.id ? { ...item, quantity: item.quantity + previousQuantity } : item
+            );
+          } else {
+            const newItem = {
+              id: Date.now(),
+              product_id: lastSelectedProductId,
+              product_name: product.name,
+              product_code: product.product_code,
+              quantity: previousQuantity,
+              unit_tp: product.unit_tp,
+              mrp: product.mrp
+            };
+            updatedItems = [...orderItems, newItem];
+          }
+          
+          setOrderItems(updatedItems);
+          localStorage.setItem('tsoOrderItems', JSON.stringify(updatedItems));
+          
+          // Reset the quantity for the previous product
+          setProductQuantities(prev => ({
+            ...prev,
+            [lastSelectedProductId]: 0
+          }));
+          
+          message.success(`${product.product_code} (Qty: ${previousQuantity}) auto-added to order!`);
+        }
+      }
+    }
+    setLastSelectedProductId(newProductId);
+  };
+
   const updateProductQuantity = (productId, change) => {
     setProductQuantities(prev => {
       const currentQty = prev[productId] || 0;
@@ -176,8 +221,12 @@ function NewOrdersTablet({ onOrderCreated }) {
     }
 
     const existingItem = orderItems.find(item => item.product_id === product.id);
+    let updatedItems;
+    
     if (existingItem) {
-      updateOrderItem(existingItem.id, 'quantity', existingItem.quantity + quantity);
+      updatedItems = orderItems.map(item => 
+        item.id === existingItem.id ? { ...item, quantity: item.quantity + quantity } : item
+      );
     } else {
       const newItem = {
         id: Date.now(),
@@ -188,8 +237,13 @@ function NewOrdersTablet({ onOrderCreated }) {
         unit_tp: product.unit_tp,
         mrp: product.mrp
       };
-      setOrderItems([...orderItems, newItem]);
+      updatedItems = [...orderItems, newItem];
     }
+    
+    setOrderItems(updatedItems);
+    
+    // Save to localStorage
+    localStorage.setItem('tsoOrderItems', JSON.stringify(updatedItems));
     
     // Reset quantity for this product
     setProductQuantities(prev => ({
@@ -197,17 +251,24 @@ function NewOrdersTablet({ onOrderCreated }) {
       [product.id]: 0
     }));
     
+    // Clear the last selected product since it's been manually added
+    setLastSelectedProductId(null);
+    
     message.success(`${product.product_code} (Qty: ${quantity}) added to order!`);
   };
 
   const updateOrderItem = (itemId, field, value) => {
-    setOrderItems(orderItems.map(item => 
+    const updatedItems = orderItems.map(item => 
       item.id === itemId ? { ...item, [field]: value } : item
-    ));
+    );
+    setOrderItems(updatedItems);
+    localStorage.setItem('tsoOrderItems', JSON.stringify(updatedItems));
   };
 
   const removeOrderItem = (itemId) => {
-    setOrderItems(orderItems.filter(item => item.id !== itemId));
+    const updatedItems = orderItems.filter(item => item.id !== itemId);
+    setOrderItems(updatedItems);
+    localStorage.setItem('tsoOrderItems', JSON.stringify(updatedItems));
   };
 
   const handleSubmit = async () => {
@@ -244,7 +305,6 @@ function NewOrdersTablet({ onOrderCreated }) {
         form.resetFields();
         setOrderItems([]);
         setFilteredDealers(dropdownData.dealers);
-        setCurrentStep('dealer');
         setSearchTerm('');
         onOrderCreated();
       }
@@ -255,210 +315,121 @@ function NewOrdersTablet({ onOrderCreated }) {
     }
   };
 
-  const nextStep = () => {
-    const values = form.getFieldsValue();
-    if (!values.dealer) {
-      message.error('Please select a dealer first');
-      return;
-    }
-    setCurrentStep('products');
-  };
 
-  const prevStep = () => {
-    if (currentStep === 'products') {
-      setCurrentStep('dealer');
-    } else if (currentStep === 'review') {
-      setCurrentStep('products');
-    }
-  };
 
-  const goToReview = () => {
-    if (orderItems.length === 0) {
-      message.error('Please add at least one product to the order');
-      return;
-    }
-    setCurrentStep('review');
-  };
-
-  const renderDealerSelection = () => (
-    <Card style={{ minHeight: '70vh' }}>
-      <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-        <Title level={2} style={{ color: '#1890ff', marginBottom: '8px' }}>
-          📋 Select Dealer
+  return (
+    <div style={{ padding: '8px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+      {/* Header */}
+      <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+        <Title level={4} style={{ marginBottom: '4px', color: '#1890ff' }}>
+          📱 TSO Order Entry
         </Title>
-        <Text type="secondary" style={{ fontSize: '16px' }}>
-          Choose the dealer for this order
-        </Text>
       </div>
 
-      <Form
-        form={form}
-        layout="vertical"
-        style={{ maxWidth: '800px', margin: '0 auto' }}
-      >
-        <Row gutter={[24, 24]}>
-          <Col xs={24} sm={12} md={8}>
-            <Form.Item
-              name="orderType"
-              label={<Text strong style={{ fontSize: '16px' }}>Order Type</Text>}
-              rules={[{ required: true, message: 'Please select order type' }]}
-            >
-              <Select 
-                placeholder="Select order type" 
-                size="large"
-                style={{ fontSize: '16px', height: '48px' }}
-              >
-                {dropdownData.orderTypes.map(type => (
-                  <Option key={type.id} value={type.id}>{type.name}</Option>
-                ))}
-              </Select>
-            </Form.Item>
-          </Col>
-
-          <Col xs={24} sm={12} md={8}>
-            <Form.Item
-              name="warehouse"
-              label={<Text strong style={{ fontSize: '16px' }}>Warehouse</Text>}
-              rules={[{ required: true, message: 'Please select warehouse' }]}
-            >
-              <Select 
-                placeholder="Select warehouse" 
-                size="large"
-                style={{ fontSize: '16px', height: '48px' }}
-              >
-                {dropdownData.warehouses.map(warehouse => (
-                  <Option key={warehouse.id} value={warehouse.id}>{warehouse.name}</Option>
-                ))}
-              </Select>
-            </Form.Item>
-          </Col>
-
-          <Col xs={24} sm={12} md={8}>
-            <Form.Item
-              name="territoryCode"
-              label={<Text strong style={{ fontSize: '16px' }}>Territory Code</Text>}
-            >
-              <Select 
-                placeholder="Select territory code" 
-                size="large"
-                style={{ fontSize: '16px', height: '48px' }}
-                onChange={(value) => handleTerritoryChange('territoryCode', value)} 
-                allowClear
-              >
-                {dropdownData.territories.map(territory => (
-                  <Option key={territory.code} value={territory.code}>{territory.code}</Option>
-                ))}
-              </Select>
-            </Form.Item>
-          </Col>
-
-          <Col xs={24} sm={12} md={8}>
-            <Form.Item
-              name="territoryName"
-              label={<Text strong style={{ fontSize: '16px' }}>Territory Name</Text>}
-            >
-              <Select 
-                placeholder="Select territory name" 
-                size="large"
-                style={{ fontSize: '16px', height: '48px' }}
-                onChange={(value) => handleTerritoryChange('territoryName', value)} 
-                allowClear
-              >
-                {dropdownData.territories.map(territory => (
-                  <Option key={territory.name} value={territory.name}>{territory.name}</Option>
-                ))}
-              </Select>
-            </Form.Item>
-          </Col>
-
-          <Col xs={24} sm={12} md={8}>
-            <Form.Item
-              name="dealer"
-              label={<Text strong style={{ fontSize: '16px' }}>Dealer</Text>}
-              rules={[{ required: true, message: 'Please select dealer' }]}
-            >
-              <Select 
-                placeholder={filteredDealers.length === 0 ? "Select territory first" : "Search dealer"} 
-                size="large"
-                style={{ fontSize: '16px', height: '48px' }}
-                showSearch 
-                filterOption={(input, option) => {
-                  const optionText = option?.children?.toString() || '';
-                  return optionText.toLowerCase().includes(input.toLowerCase());
-                }} 
-                disabled={filteredDealers.length === 0} 
-                onChange={handleDealerChange}
-              >
-                {filteredDealers.map(dealer => (
-                  <Option key={dealer.id} value={dealer.id}>{dealer.name}</Option>
-                ))}
-              </Select>
-            </Form.Item>
-          </Col>
-        </Row>
-
-        <div style={{ textAlign: 'center', marginTop: '40px' }}>
-          <Button
-            type="primary"
-            size="large"
-            icon={<ArrowLeftOutlined style={{ transform: 'rotate(180deg)' }} />}
-            onClick={nextStep}
-            style={{ 
-              height: '60px', 
-              fontSize: '18px', 
-              padding: '0 40px',
-              borderRadius: '12px'
-            }}
-          >
-            Next: Select Products
-          </Button>
-        </div>
-      </Form>
-    </Card>
-  );
-
-  const renderProductSelection = () => (
-    <Card style={{ minHeight: '70vh' }}>
-      <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-        <Button
-          type="text"
-          icon={<ArrowLeftOutlined />}
-          onClick={prevStep}
-          style={{ position: 'absolute', left: '24px', top: '24px' }}
+      {/* Compact Dealer Selection */}
+      <Card style={{ marginBottom: '12px', borderRadius: '8px' }}>
+        <Form
+          form={form}
+          layout="horizontal"
+          size="small"
         >
-          Back
-        </Button>
-        <Title level={2} style={{ color: '#52c41a', marginBottom: '8px' }}>
-          🛒 Select Products
-        </Title>
-        <Text type="secondary" style={{ fontSize: '16px' }}>
-          Tap products to add them to your order
-        </Text>
-      </div>
+          <Row gutter={[8, 8]} align="middle">
+            <Col xs={24} sm={6}>
+              <Form.Item
+                name="orderType"
+                label={<Text strong style={{ fontSize: '12px' }}>Order Type</Text>}
+                rules={[{ required: true, message: 'Required' }]}
+                style={{ marginBottom: '8px' }}
+              >
+                <Select 
+                  placeholder="Type" 
+                  size="small"
+                  style={{ fontSize: '12px' }}
+                >
+                  {dropdownData.orderTypes.map(type => (
+                    <Option key={type.id} value={type.id}>{type.name}</Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
 
-      {/* Search Bar */}
-      <div style={{ marginBottom: '24px', maxWidth: '600px', margin: '0 auto 24px' }}>
+            <Col xs={24} sm={6}>
+              <Form.Item
+                name="warehouse"
+                label={<Text strong style={{ fontSize: '12px' }}>Warehouse</Text>}
+                rules={[{ required: true, message: 'Required' }]}
+                style={{ marginBottom: '8px' }}
+              >
+                <Select 
+                  placeholder="Warehouse" 
+                  size="small"
+                  style={{ fontSize: '12px' }}
+                >
+                  {dropdownData.warehouses.map(warehouse => (
+                    <Option key={warehouse.id} value={warehouse.id}>{warehouse.name}</Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} sm={6}>
+              <Form.Item
+                name="dealer"
+                label={<Text strong style={{ fontSize: '12px' }}>Dealer</Text>}
+                rules={[{ required: true, message: 'Required' }]}
+                style={{ marginBottom: '8px' }}
+              >
+                <Select 
+                  placeholder={filteredDealers.length === 0 ? "Select territory first" : "Dealer"} 
+                  size="small"
+                  style={{ fontSize: '12px' }}
+                  showSearch 
+                  filterOption={(input, option) => {
+                    const optionText = option?.children?.toString() || '';
+                    return optionText.toLowerCase().includes(input.toLowerCase());
+                  }} 
+                  disabled={filteredDealers.length === 0} 
+                  onChange={handleDealerChange}
+                >
+                  {filteredDealers.map(dealer => (
+                    <Option key={dealer.id} value={dealer.id}>{dealer.name}</Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} sm={6}>
+              <div style={{ textAlign: 'right', paddingTop: '20px' }}>
+                <Text strong style={{ fontSize: '12px', color: '#1890ff' }}>
+                  Items: {orderItems.length} | Qty: {orderItems.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)}
+                </Text>
+              </div>
+            </Col>
+          </Row>
+        </Form>
+      </Card>
+
+      {/* Compact Product Search */}
+      <Card style={{ marginBottom: '12px', borderRadius: '8px' }}>
         <Input
-          size="large"
+          size="small"
           placeholder="Search products by name or code..."
           prefix={<SearchOutlined />}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{ 
-            height: '48px', 
-            fontSize: '16px',
-            borderRadius: '12px'
+            fontSize: '14px',
+            borderRadius: '6px'
           }}
         />
-      </div>
+      </Card>
 
-      {/* Product Grid */}
+      {/* Compact Product Grid */}
       <div style={{ 
         display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
-        gap: '16px',
-        maxWidth: '1200px',
-        margin: '0 auto'
+        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
+        gap: '12px',
+        marginBottom: '80px'
       }}>
         {filteredProducts.map(product => {
           const quantity = productQuantities[product.id] || 0;
@@ -466,66 +437,67 @@ function NewOrdersTablet({ onOrderCreated }) {
             <Card
               key={product.id}
               style={{ 
-                borderRadius: '12px',
-                border: quantity > 0 ? '2px solid #52c41a' : '2px solid #f0f0f0',
+                borderRadius: '8px',
+                border: quantity > 0 ? '2px solid #52c41a' : '1px solid #f0f0f0',
                 transition: 'all 0.3s',
                 backgroundColor: quantity > 0 ? '#f6ffed' : 'white'
               }}
-              bodyStyle={{ padding: '20px' }}
+              bodyStyle={{ padding: '12px' }}
             >
               <div style={{ textAlign: 'center' }}>
                 <div style={{ 
-                  fontSize: '18px', 
+                  fontSize: '16px', 
                   fontWeight: 'bold', 
                   color: '#1890ff',
-                  marginBottom: '8px'
+                  marginBottom: '6px'
                 }}>
                   {product.product_code}
                 </div>
                 <div style={{ 
-                  fontSize: '16px', 
+                  fontSize: '14px', 
                   color: '#333',
-                  marginBottom: '16px',
-                  lineHeight: '1.4'
+                  marginBottom: '12px',
+                  lineHeight: '1.3'
                 }}>
                   {product.name}
                 </div>
                 
-                {/* Quantity Controls */}
+                {/* Compact Quantity Controls */}
                 <div style={{ 
                   display: 'flex', 
                   alignItems: 'center', 
                   justifyContent: 'center',
-                  gap: '12px',
-                  marginBottom: '16px'
+                  gap: '8px',
+                  marginBottom: '12px'
                 }}>
                   <Button
                     type="primary"
                     shape="circle"
-                    icon={<span style={{ fontSize: '18px', fontWeight: 'bold' }}>-</span>}
+                    size="small"
+                    icon={<span style={{ fontSize: '14px', fontWeight: 'bold' }}>-</span>}
                     onClick={(e) => {
                       e.stopPropagation();
                       updateProductQuantity(product.id, -1);
                     }}
                     disabled={quantity === 0}
                     style={{ 
-                      width: '40px', 
-                      height: '40px',
+                      width: '32px', 
+                      height: '32px',
                       backgroundColor: quantity > 0 ? '#ff4d4f' : '#d9d9d9',
                       borderColor: quantity > 0 ? '#ff4d4f' : '#d9d9d9'
                     }}
                   />
                   
                   <div style={{
-                    minWidth: '60px',
+                    minWidth: '50px',
                     textAlign: 'center',
-                    fontSize: '20px',
+                    fontSize: '16px',
                     fontWeight: 'bold',
                     color: quantity > 0 ? '#52c41a' : '#999',
-                    padding: '8px 12px',
+                    padding: '4px 8px',
                     backgroundColor: 'white',
-                    borderRadius: '8px',
-                    border: '2px solid #f0f0f0'
+                    borderRadius: '6px',
+                    border: '1px solid #f0f0f0'
                   }}>
                     {quantity}
                   </div>
@@ -533,36 +505,40 @@ function NewOrdersTablet({ onOrderCreated }) {
                   <Button
                     type="primary"
                     shape="circle"
-                    icon={<span style={{ fontSize: '18px', fontWeight: 'bold' }}>+</span>}
+                    size="small"
+                    icon={<span style={{ fontSize: '14px', fontWeight: 'bold' }}>+</span>}
                     onClick={(e) => {
                       e.stopPropagation();
+                      // Auto-add previous product if switching to different product
+                      autoAddPreviousProduct(product.id);
                       updateProductQuantity(product.id, 1);
                     }}
                     style={{ 
-                      width: '40px', 
-                      height: '40px',
+                      width: '32px', 
+                      height: '32px',
                       backgroundColor: '#52c41a',
                       borderColor: '#52c41a'
                     }}
                   />
                 </div>
                 
-                {/* Add Button */}
+                {/* Compact Add Button */}
                 <Button
                   type="primary"
+                  size="small"
                   onClick={() => addProductToOrder(product)}
                   disabled={quantity === 0}
                   style={{
                     width: '100%',
-                    height: '44px',
-                    fontSize: '16px',
+                    height: '32px',
+                    fontSize: '12px',
                     fontWeight: 'bold',
-                    borderRadius: '8px',
+                    borderRadius: '6px',
                     backgroundColor: quantity > 0 ? '#52c41a' : '#d9d9d9',
                     borderColor: quantity > 0 ? '#52c41a' : '#d9d9d9'
                   }}
                 >
-                  {quantity > 0 ? `Add ${quantity} to Order` : 'Select Quantity'}
+                  {quantity > 0 ? `Add ${quantity}` : 'Select Qty'}
                 </Button>
               </div>
             </Card>
@@ -570,7 +546,117 @@ function NewOrdersTablet({ onOrderCreated }) {
         })}
       </div>
 
-      {/* Current Order Summary */}
+      {/* Order Review Section */}
+      {orderItems.length > 0 && (
+        <Card style={{ marginBottom: '12px', borderRadius: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <Title level={5} style={{ margin: 0, color: '#1890ff' }}>
+              📋 Order Review ({orderItems.length} item{orderItems.length !== 1 ? 's' : ''})
+            </Title>
+            <Button
+              type="link"
+              size="small"
+              onClick={() => setOrderItems([])}
+              style={{ color: '#ff4d4f', fontSize: '12px' }}
+            >
+              Clear All
+            </Button>
+          </div>
+          
+          <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+            {orderItems.map((item, index) => (
+              <Card
+                key={item.id}
+                size="small"
+                style={{ 
+                  marginBottom: '8px',
+                  borderRadius: '6px',
+                  border: '1px solid #f0f0f0'
+                }}
+              >
+                <Row gutter={[8, 8]} align="middle">
+                  <Col xs={4}>
+                    <div style={{ 
+                      textAlign: 'center',
+                      fontSize: '12px',
+                      fontWeight: 'bold',
+                      color: '#1890ff',
+                      backgroundColor: '#f0f8ff',
+                      padding: '4px',
+                      borderRadius: '4px'
+                    }}>
+                      #{index + 1}
+                    </div>
+                  </Col>
+                  <Col xs={8}>
+                    <div>
+                      <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1890ff' }}>
+                        {item.product_code}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#666', lineHeight: '1.2' }}>
+                        {item.product_name}
+                      </div>
+                    </div>
+                  </Col>
+                  <Col xs={6}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Button
+                        type="primary"
+                        shape="circle"
+                        size="small"
+                        icon={<span style={{ fontSize: '12px' }}>-</span>}
+                        onClick={() => updateOrderItem(item.id, 'quantity', Math.max(1, item.quantity - 1))}
+                        style={{ 
+                          width: '24px', 
+                          height: '24px',
+                          fontSize: '10px'
+                        }}
+                      />
+                      <div style={{
+                        minWidth: '40px',
+                        textAlign: 'center',
+                        fontSize: '14px',
+                        fontWeight: 'bold',
+                        color: '#52c41a',
+                        padding: '2px 6px',
+                        backgroundColor: 'white',
+                        borderRadius: '4px',
+                        border: '1px solid #f0f0f0'
+                      }}>
+                        {item.quantity}
+                      </div>
+                      <Button
+                        type="primary"
+                        shape="circle"
+                        size="small"
+                        icon={<span style={{ fontSize: '12px' }}>+</span>}
+                        onClick={() => updateOrderItem(item.id, 'quantity', item.quantity + 1)}
+                        style={{ 
+                          width: '24px', 
+                          height: '24px',
+                          fontSize: '10px'
+                        }}
+                      />
+                    </div>
+                  </Col>
+                  <Col xs={6}>
+                    <Button
+                      type="text"
+                      danger
+                      size="small"
+                      icon={<DeleteOutlined />}
+                      onClick={() => removeOrderItem(item.id)}
+                      style={{ fontSize: '12px' }}
+                    />
+                  </Col>
+                </Row>
+              </Card>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Fixed Bottom Order Summary & Submit */}
       {orderItems.length > 0 && (
         <div style={{ 
           position: 'fixed', 
@@ -579,191 +665,40 @@ function NewOrdersTablet({ onOrderCreated }) {
           right: '0', 
           backgroundColor: 'white', 
           borderTop: '2px solid #1890ff',
-          padding: '16px 24px',
-          boxShadow: '0 -4px 12px rgba(0,0,0,0.1)'
+          padding: '12px 16px',
+          boxShadow: '0 -4px 12px rgba(0,0,0,0.1)',
+          zIndex: 1000
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <Text strong style={{ fontSize: '16px' }}>
-                {orderItems.length} item{orderItems.length !== 1 ? 's' : ''} selected
-              </Text>
-              <div style={{ color: '#666' }}>
-                Total Qty: {orderItems.reduce((sum, item) => sum + item.quantity, 0)}
+          <Row gutter={[16, 8]} align="middle">
+            <Col xs={16}>
+              <div>
+                <Text strong style={{ fontSize: '14px' }}>
+                  Ready to Submit: {orderItems.length} item{orderItems.length !== 1 ? 's' : ''}
+                </Text>
+                <div style={{ fontSize: '12px', color: '#666' }}>
+                  Total Quantity: {orderItems.reduce((sum, item) => sum + item.quantity, 0)}
+                </div>
               </div>
-            </div>
-            <Button
-              type="primary"
-              size="large"
-              icon={<CheckOutlined />}
-              onClick={goToReview}
-              style={{ 
-                height: '48px', 
-                fontSize: '16px',
-                borderRadius: '12px'
-              }}
-            >
-              Review Order
-            </Button>
-          </div>
+            </Col>
+            <Col xs={8}>
+              <Button
+                type="primary"
+                size="large"
+                icon={<CheckOutlined />}
+                onClick={() => window.location.href = '/review-orders'}
+                style={{ 
+                  width: '100%',
+                  height: '40px',
+                  fontSize: '14px',
+                  borderRadius: '8px'
+                }}
+              >
+                Review Order
+              </Button>
+            </Col>
+          </Row>
         </div>
       )}
-    </Card>
-  );
-
-  const renderOrderReview = () => (
-    <Card style={{ minHeight: '70vh' }}>
-      <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-        <Button
-          type="text"
-          icon={<ArrowLeftOutlined />}
-          onClick={prevStep}
-          style={{ position: 'absolute', left: '24px', top: '24px' }}
-        >
-          Back
-        </Button>
-        <Title level={2} style={{ color: '#722ed1', marginBottom: '8px' }}>
-          ✅ Review Order
-        </Title>
-        <Text type="secondary" style={{ fontSize: '16px' }}>
-          Review and confirm your order details
-        </Text>
-      </div>
-
-      {/* Order Items */}
-      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        {orderItems.map((item, index) => (
-          <Card
-            key={item.id}
-            style={{ 
-              marginBottom: '16px',
-              borderRadius: '12px',
-              border: '2px solid #f0f0f0'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{ 
-                minWidth: '40px', 
-                height: '40px',
-                backgroundColor: '#1890ff',
-                color: 'white',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '16px',
-                fontWeight: 'bold'
-              }}>
-                {index + 1}
-              </div>
-              
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#1890ff' }}>
-                  {item.product_code}
-                </div>
-                <div style={{ fontSize: '16px', color: '#666', marginBottom: '8px' }}>
-                  {item.product_name}
-                </div>
-              </div>
-              
-              <div style={{ minWidth: '120px' }}>
-                <InputNumber
-                  value={item.quantity}
-                  onChange={(value) => updateOrderItem(item.id, 'quantity', value || 1)}
-                  min={1}
-                  max={999}
-                  size="large"
-                  style={{ 
-                    width: '100%',
-                    fontSize: '16px'
-                  }}
-                />
-              </div>
-              
-              <Button
-                type="text"
-                danger
-                icon={<DeleteOutlined />}
-                onClick={() => removeOrderItem(item.id)}
-                size="large"
-                style={{ minWidth: '48px' }}
-              />
-            </div>
-          </Card>
-        ))}
-
-        <div style={{ textAlign: 'center', marginTop: '40px' }}>
-          <Button
-            type="primary"
-            size="large"
-            loading={loading}
-            icon={<CheckOutlined />}
-            onClick={handleSubmit}
-            style={{ 
-              height: '60px', 
-              fontSize: '18px', 
-              padding: '0 40px',
-              borderRadius: '12px'
-            }}
-          >
-            {loading ? 'Creating Order...' : `Create Order (${orderItems.length} items)`}
-          </Button>
-        </div>
-      </div>
-    </Card>
-  );
-
-  return (
-    <div style={{ padding: '16px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
-      <Title level={3} style={{ marginBottom: '8px', textAlign: 'center' }}>
-        📱 TSO Order Entry
-      </Title>
-      <Text type="secondary" style={{ marginBottom: '24px', display: 'block', textAlign: 'center' }}>
-        Touch-optimized order creation for tablets
-      </Text>
-
-      {currentStep === 'dealer' && renderDealerSelection()}
-      {currentStep === 'products' && renderProductSelection()}
-      {currentStep === 'review' && renderOrderReview()}
-
-      {/* Quick Stats */}
-      <Row gutter={[16, 16]} style={{ marginTop: '24px' }}>
-        <Col xs={12} sm={6}>
-          <Card>
-            <Statistic
-              title="Total Dealers"
-              value={dropdownData.dealers.length}
-              prefix={<span style={{ color: '#1890ff' }}>👥</span>}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card>
-            <Statistic
-              title="Total Products"
-              value={dropdownData.products.length}
-              prefix={<span style={{ color: '#52c41a' }}>📦</span>}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card>
-            <Statistic
-              title="Order Items"
-              value={orderItems.length}
-              prefix={<span style={{ color: '#fa8c16' }}>🛒</span>}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card>
-            <Statistic
-              title="Total Quantity"
-              value={orderItems.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)}
-              prefix={<span style={{ color: '#722ed1' }}>🔢</span>}
-            />
-          </Card>
-        </Col>
-      </Row>
     </div>
   );
 }
