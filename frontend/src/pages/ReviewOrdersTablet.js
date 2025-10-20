@@ -178,6 +178,18 @@ function ReviewOrdersTablet({ onOrderCreated }) {
     }
 
     const values = form.getFieldsValue();
+    if (!values.orderType) {
+      message.error('Please select an Order Type');
+      return;
+    }
+    if (!values.warehouse) {
+      message.error('Please select a Warehouse');
+      return;
+    }
+    if (!values.territoryCode) {
+      message.error('Please select a Territory');
+      return;
+    }
     if (!values.dealer) {
       message.error('Please select a dealer');
       return;
@@ -328,7 +340,8 @@ function ReviewOrdersTablet({ onOrderCreated }) {
             <Col xs={24} sm={24} md={4} lg={4}>
               <Form.Item
                 name="territoryCode"
-                label={<Text strong style={{ fontSize: '12px' }}>Territory</Text>}
+                label={<Text strong style={{ fontSize: '12px' }}>* Territory</Text>}
+                rules={[{ required: true, message: 'Required' }]}
                 style={{ marginBottom: '8px' }}
               >
                 <Select
