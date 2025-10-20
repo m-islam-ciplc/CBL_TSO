@@ -227,7 +227,7 @@ function NewOrders({ onOrderCreated }) {
                 label="Order Type"
                 rules={[{ required: true, message: 'Please select order type' }]}
               >
-                 <Select placeholder="Search order type" showSearch filterOption={(input, option) => {
+                 <Select placeholder="Search order type" allowClear showSearch filterOption={(input, option) => {
                    const optionText = option?.children?.toString() || '';
                    return optionText.toLowerCase().includes(input.toLowerCase());
                  }} style={{ width: '100px' }}>
@@ -244,7 +244,7 @@ function NewOrders({ onOrderCreated }) {
                 label="Warehouse"
                 rules={[{ required: true, message: 'Please select warehouse' }]}
               >
-                 <Select placeholder="Search warehouse" showSearch filterOption={(input, option) => {
+                 <Select placeholder="Search warehouse" allowClear showSearch filterOption={(input, option) => {
                    const optionText = option?.children?.toString() || '';
                    return optionText.toLowerCase().includes(input.toLowerCase());
                  }} style={{ width: '140px' }}>
@@ -297,6 +297,7 @@ function NewOrders({ onOrderCreated }) {
               >
                 <Select 
                   placeholder={filteredDealers.length === 0 ? "Select territory first" : "Search dealer"} 
+                  allowClear
                    showSearch 
                    filterOption={(input, option) => {
                      const optionText = option?.children?.toString() || '';
@@ -353,6 +354,7 @@ function NewOrders({ onOrderCreated }) {
                          placeholder="Select Product"
                          value={item.product_id}
                          onChange={(value) => updateOrderItem(item.id, 'product_id', value)}
+                         allowClear
                          showSearch
                          filterOption={(input, option) => {
                            const optionText = option?.children?.toString() || '';

@@ -418,6 +418,11 @@ function ProductManagement() {
               value={categoryFilter}
               onChange={setCategoryFilter}
               allowClear
+              showSearch
+              filterOption={(input, option) => {
+                const optionText = option?.children?.toString() || '';
+                return optionText.toLowerCase().includes(input.toLowerCase());
+              }}
               style={{ width: '100%' }}
             >
               {categories.map(category => (
@@ -431,6 +436,11 @@ function ProductManagement() {
               value={brandFilter}
               onChange={setBrandFilter}
               allowClear
+              showSearch
+              filterOption={(input, option) => {
+                const optionText = option?.children?.toString() || '';
+                return optionText.toLowerCase().includes(input.toLowerCase());
+              }}
               style={{ width: '100%' }}
             >
               {brands.map(brand => (
@@ -444,6 +454,11 @@ function ProductManagement() {
               value={statusFilter}
               onChange={setStatusFilter}
               allowClear
+              showSearch
+              filterOption={(input, option) => {
+                const optionText = option?.children?.toString() || '';
+                return optionText.toLowerCase().includes(input.toLowerCase());
+              }}
               style={{ width: '100%' }}
             >
               <Option value="A">Active</Option>

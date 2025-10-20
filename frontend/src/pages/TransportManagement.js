@@ -411,7 +411,14 @@ function TransportManagement() {
                   label="Status"
                   initialValue="A"
                 >
-                  <Select>
+                  <Select
+                    allowClear
+                    showSearch
+                    filterOption={(input, option) => {
+                      const optionText = option?.children?.toString() || '';
+                      return optionText.toLowerCase().includes(input.toLowerCase());
+                    }}
+                  >
                     <Option value="A">Active</Option>
                     <Option value="I">Inactive</Option>
                   </Select>

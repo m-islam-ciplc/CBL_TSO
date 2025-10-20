@@ -463,6 +463,11 @@ function DealerManagement() {
               onChange={setTerritoryFilter}
               style={{ width: '100%' }}
               allowClear
+              showSearch
+              filterOption={(input, option) => {
+                const optionText = option?.children?.toString() || '';
+                return optionText.toLowerCase().includes(input.toLowerCase());
+              }}
             >
               {territories.map(territory => (
                 <Option key={territory.code} value={territory.code}>
@@ -478,6 +483,11 @@ function DealerManagement() {
               onChange={setStatusFilter}
               style={{ width: '100%' }}
               allowClear
+              showSearch
+              filterOption={(input, option) => {
+                const optionText = option?.children?.toString() || '';
+                return optionText.toLowerCase().includes(input.toLowerCase());
+              }}
             >
               <Option value="O">Active</Option>
               <Option value="N">Inactive</Option>

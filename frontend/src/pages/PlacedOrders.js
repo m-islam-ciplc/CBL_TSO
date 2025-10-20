@@ -301,6 +301,12 @@ function PlacedOrders({ refreshTrigger }) {
               onChange={setStatusFilter}
               style={{ width: '100%' }}
               size="middle"
+              allowClear
+              showSearch
+              filterOption={(input, option) => {
+                const optionText = option?.children?.toString() || '';
+                return optionText.toLowerCase().includes(input.toLowerCase());
+              }}
             >
               <Option value="all">All Orders</Option>
               <Option value="new">New</Option>
