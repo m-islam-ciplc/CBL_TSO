@@ -196,7 +196,7 @@ function PlacedOrders({ refreshTrigger }) {
           </div>
         );
       },
-      width: 80,
+      width: 60,
     },
     {
       title: 'Product Details',
@@ -239,7 +239,7 @@ function PlacedOrders({ refreshTrigger }) {
           </div>
         );
       },
-      width: 600,
+      width: 400,
     },
     {
       title: 'Status',

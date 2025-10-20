@@ -30,12 +30,15 @@ function ReviewOrdersTablet({ onOrderCreated }) {
   const { isTSO } = useUser();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(true);
   const [orderItems, setOrderItems] = useState([]);
   const [dropdownData, setDropdownData] = useState({
     orderTypes: [],
     dealers: [],
     warehouses: [],
-    products: []
+    products: [],
+    territories: [],
+    transports: []
   });
 
   useEffect(() => {
@@ -62,19 +65,45 @@ function ReviewOrdersTablet({ onOrderCreated }) {
   }, []);
 
   const loadDropdownData = async () => {
+    setDataLoading(true);
     try {
-      const [orderTypesRes, dealersRes, warehousesRes, productsRes] = await Promise.all([
+      const [orderTypesRes, dealersRes, warehousesRes, productsRes, transportsRes] = await Promise.all([
         axios.get('/api/order-types'),
         axios.get('/api/dealers'),
         axios.get('/api/warehouses'),
-        axios.get('/api/products')
+        axios.get('/api/products'),
+        axios.get('/api/transports')
       ]);
+
+      // Extract unique territories from dealers
+      const territoriesMap = new Map();
+      dealersRes.data.forEach(dealer => {
+        if (dealer.territory_code && dealer.territory_name) {
+          territoriesMap.set(dealer.territory_code, {
+            code: dealer.territory_code,
+            name: dealer.territory_name.replace(' Territory', '') // Clean territory names
+          });
+        }
+      });
+      const territories = Array.from(territoriesMap.values());
+
+      console.log('🔍 Debug - API Data Loaded:');
+      console.log('Order Types:', orderTypesRes.data.length);
+      console.log('Dealers:', dealersRes.data.length);
+      console.log('Warehouses:', warehousesRes.data.length);
+      console.log('Products:', productsRes.data.length);
+      console.log('Territories:', territories.length);
+      console.log('Transports:', transportsRes.data.length);
+      console.log('Sample Territory:', territories[0]);
+      console.log('Sample Transport:', transportsRes.data[0]);
 
       setDropdownData({
         orderTypes: orderTypesRes.data,
         dealers: dealersRes.data,
         warehouses: warehousesRes.data,
-        products: productsRes.data
+        products: productsRes.data,
+        territories: territories,
+        transports: transportsRes.data
       });
 
       // Initialize form with default values only if no saved form data exists
@@ -90,7 +119,33 @@ function ReviewOrdersTablet({ onOrderCreated }) {
 
     } catch (error) {
       console.error('Error loading dropdown data:', error);
-      message.error('Failed to load form data');
+      console.error('Error details:', error.response?.data || error.message);
+      message.error(`Failed to load form data: ${error.response?.data?.error || error.message}`);
+    } finally {
+      setDataLoading(false);
+    }
+  };
+
+  const handleTerritoryChange = (field, value) => {
+    if (field === 'territoryCode') {
+      const territory = dropdownData.territories.find(t => t.code === value);
+      if (territory) {
+        form.setFieldsValue({ territoryName: territory.name });
+        // Filter dealers by territory
+        const filtered = dropdownData.dealers.filter(dealer => 
+          dealer.territory_code === territory.code
+        );
+        setDropdownData(prev => ({
+          ...prev,
+          filteredDealers: filtered
+        }));
+      } else {
+        form.setFieldsValue({ territoryName: '' });
+        setDropdownData(prev => ({
+          ...prev,
+          filteredDealers: dropdownData.dealers
+        }));
+      }
     }
   };
 
@@ -127,6 +182,10 @@ function ReviewOrdersTablet({ onOrderCreated }) {
       message.error('Please select a dealer');
       return;
     }
+    if (!values.transport) {
+      message.error('Please select a transport');
+      return;
+    }
 
     setLoading(true);
 
@@ -135,6 +194,7 @@ function ReviewOrdersTablet({ onOrderCreated }) {
         order_type_id: values.orderType,
         dealer_id: values.dealer,
         warehouse_id: values.warehouse,
+        transport_id: values.transport,
         order_items: orderItems.map(item => ({
           product_id: Number(item.product_id),
           quantity: Number(item.quantity)
@@ -215,13 +275,19 @@ function ReviewOrdersTablet({ onOrderCreated }) {
 
       {/* Order Form */}
       <Card style={{ marginBottom: '12px', borderRadius: '8px' }}>
+        {dataLoading ? (
+          <div style={{ textAlign: 'center', padding: '20px' }}>
+            <Spin size="large" />
+            <div style={{ marginTop: '10px', color: '#666' }}>Loading form data...</div>
+          </div>
+        ) : (
         <Form
           form={form}
           layout="horizontal"
           size="small"
         >
-          <Row gutter={[8, 8]} align="middle">
-            <Col xs={24} sm={8}>
+          <Row gutter={[4, 6]} align="middle">
+            <Col xs={12} sm={12} md={3} lg={3}>
               <Form.Item
                 name="orderType"
                 label={<Text strong style={{ fontSize: '12px' }}>Order Type</Text>}
@@ -240,7 +306,7 @@ function ReviewOrdersTablet({ onOrderCreated }) {
               </Form.Item>
             </Col>
 
-            <Col xs={24} sm={8}>
+            <Col xs={12} sm={12} md={4} lg={4}>
               <Form.Item
                 name="warehouse"
                 label={<Text strong style={{ fontSize: '12px' }}>Warehouse</Text>}
@@ -259,7 +325,34 @@ function ReviewOrdersTablet({ onOrderCreated }) {
               </Form.Item>
             </Col>
 
-            <Col xs={24} sm={8}>
+            <Col xs={24} sm={24} md={4} lg={4}>
+              <Form.Item
+                name="territoryCode"
+                label={<Text strong style={{ fontSize: '12px' }}>Territory</Text>}
+                style={{ marginBottom: '8px' }}
+              >
+                <Select
+                  placeholder="Territory"
+                  size="small"
+                  style={{ fontSize: '12px' }}
+                  allowClear
+                  showSearch
+                  filterOption={(input, option) => {
+                    const optionText = option?.children?.toString() || '';
+                    return optionText.toLowerCase().includes(input.toLowerCase());
+                  }}
+                  onChange={(value) => handleTerritoryChange('territoryCode', value)}
+                >
+                  {dropdownData.territories && dropdownData.territories.length > 0 ? dropdownData.territories.map(territory => (
+                    <Option key={territory.code} value={territory.code}>{territory.name}</Option>
+                  )) : (
+                    <Option disabled>No territories loaded</Option>
+                  )}
+                </Select>
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} sm={24} md={7} lg={7}>
               <Form.Item
                 name="dealer"
                 label={<Text strong style={{ fontSize: '12px' }}>Dealer</Text>}
@@ -267,7 +360,7 @@ function ReviewOrdersTablet({ onOrderCreated }) {
                 style={{ marginBottom: '8px' }}
               >
                 <Select 
-                  placeholder="Select dealer" 
+                  placeholder="Dealer" 
                   size="small"
                   style={{ fontSize: '12px' }}
                   showSearch 
@@ -276,14 +369,43 @@ function ReviewOrdersTablet({ onOrderCreated }) {
                     return optionText.toLowerCase().includes(input.toLowerCase());
                   }}
                 >
-                  {dropdownData.dealers.map(dealer => (
+                  {(dropdownData.filteredDealers || dropdownData.dealers) && (dropdownData.filteredDealers || dropdownData.dealers).length > 0 ? (dropdownData.filteredDealers || dropdownData.dealers).map(dealer => (
                     <Option key={dealer.id} value={dealer.id}>{dealer.name}</Option>
-                  ))}
+                  )) : (
+                    <Option disabled>No dealers loaded</Option>
+                  )}
+                </Select>
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} sm={24} md={6} lg={6}>
+              <Form.Item
+                name="transport"
+                label={<Text strong style={{ fontSize: '12px' }}>Transport</Text>}
+                rules={[{ required: true, message: 'Required' }]}
+                style={{ marginBottom: '8px' }}
+              >
+                <Select 
+                  placeholder="Transport" 
+                  size="small"
+                  style={{ fontSize: '12px' }}
+                  showSearch 
+                  filterOption={(input, option) => {
+                    const optionText = option?.children?.toString() || '';
+                    return optionText.toLowerCase().includes(input.toLowerCase());
+                  }}
+                >
+                  {dropdownData.transports && dropdownData.transports.length > 0 ? dropdownData.transports.map(transport => (
+                    <Option key={transport.id} value={transport.id}>{transport.truck_details}</Option>
+                  )) : (
+                    <Option disabled>No transports loaded</Option>
+                  )}
                 </Select>
               </Form.Item>
             </Col>
           </Row>
         </Form>
+        )}
       </Card>
 
       {/* Order Items Review */}

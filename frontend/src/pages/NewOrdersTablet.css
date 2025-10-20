@@ -1,0 +1,91 @@
+/* Responsive Product Grid Styles */
+.responsive-product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+  margin-bottom: 100px;
+}
+
+/* Mobile and Tablet Text Styles */
+@media (max-width: 1023px) {
+  /* Product code text */
+  .responsive-product-grid .ant-typography {
+    font-size: 12px !important;
+  }
+  
+  /* Product name text */
+  .responsive-product-grid .product-name {
+    font-size: 10px !important;
+  }
+  
+  /* Button text */
+  .responsive-product-grid .ant-btn {
+    font-size: 10px !important;
+    height: 24px !important;
+    padding: 0 6px !important;
+  }
+  
+  /* Input number text */
+  .responsive-product-grid .ant-input-number {
+    font-size: 10px !important;
+  }
+  
+  /* Form labels */
+  .ant-form-item-label label {
+    font-size: 10px !important;
+  }
+  
+  /* Select dropdown text */
+  .ant-select {
+    font-size: 10px !important;
+  }
+  
+  /* Card padding */
+  .responsive-product-grid .ant-card-body {
+    padding: 6px !important;
+  }
+  
+  /* Quick quantity buttons */
+  .responsive-product-grid .quick-qty-btn {
+    font-size: 8px !important;
+    height: 20px !important;
+    min-width: 30px !important;
+    padding: 0 3px !important;
+  }
+  
+  /* Plus/Minus buttons */
+  .responsive-product-grid .qty-btn {
+    width: 24px !important;
+    height: 24px !important;
+  }
+  
+  /* Add button */
+  .responsive-product-grid .add-btn {
+    height: 24px !important;
+    font-size: 9px !important;
+  }
+}
+
+/* Tablet styles */
+@media (min-width: 768px) {
+  .responsive-product-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 10px;
+  }
+}
+
+/* Desktop styles */
+@media (min-width: 1024px) {
+  .responsive-product-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+  }
+}
+
+/* Large desktop styles */
+@media (min-width: 1200px) {
+  .responsive-product-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 14px;
+  }
+}

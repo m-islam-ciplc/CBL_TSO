@@ -748,6 +748,7 @@ app.get('/api/products', (req, res) => {
 // Create new order with multiple products
 app.post('/api/orders', async (req, res) => {
     try {
+        console.log('📦 Creating order with data:', req.body);
         const { order_type_id, dealer_id, warehouse_id, transport_id, order_items } = req.body;
         
         // Validate required fields
@@ -776,7 +777,7 @@ app.post('/api/orders', async (req, res) => {
             await db.promise().query(`
                 INSERT INTO orders (order_id, order_type_id, dealer_id, warehouse_id, transport_id) 
                 VALUES (?, ?, ?, ?, ?)
-            `, [order_id, order_type_id, dealer_id, warehouse_id]);
+            `, [order_id, order_type_id, dealer_id, warehouse_id, transport_id]);
 
             // Add order items
             for (const item of order_items) {
@@ -799,11 +800,14 @@ app.post('/api/orders', async (req, res) => {
         } catch (error) {
             // Rollback transaction on error
             await db.promise().rollback();
+            console.error('❌ Transaction error:', error);
             throw error;
         }
 
     } catch (error) {
-        console.error('Order creation error:', error);
+        console.error('❌ Order creation error:', error);
+        console.error('❌ Error details:', error.message);
+        console.error('❌ Stack trace:', error.stack);
         res.status(500).json({ error: error.message });
     }
 });

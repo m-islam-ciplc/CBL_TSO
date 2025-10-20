@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import './NewOrdersTablet.css';
 import {
   Card,
   Typography,
@@ -45,7 +46,7 @@ function NewOrdersTablet({ onOrderCreated }) {
   const [orderItems, setOrderItems] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredProducts, setFilteredProducts] = useState([]);
-  const [isDropdownCollapsed, setIsDropdownCollapsed] = useState(true);
+  const [isDropdownCollapsed, setIsDropdownCollapsed] = useState(false);
   const [productQuantities, setProductQuantities] = useState({}); // Track quantities for each product
   const [showReview, setShowReview] = useState(false); // Control review modal/page
   const [lastSelectedProductId, setLastSelectedProductId] = useState(null); // Track last selected product
@@ -544,13 +545,8 @@ function NewOrdersTablet({ onOrderCreated }) {
         />
       </Card>
 
-      {/* Compact Product Grid */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', 
-        gap: '12px',
-        marginBottom: '100px'
-      }}>
+      {/* Responsive Product Grid */}
+      <div className="responsive-product-grid">
         {filteredProducts.map(product => {
           const quantity = productQuantities[product.id] || 0;
           return (
@@ -562,23 +558,26 @@ function NewOrdersTablet({ onOrderCreated }) {
                 transition: 'all 0.3s',
                 backgroundColor: quantity > 0 ? '#f6ffed' : 'white'
               }}
-              bodyStyle={{ padding: '12px' }}
+              bodyStyle={{ padding: '8px' }}
             >
               <div style={{ textAlign: 'center' }}>
                 <div style={{ 
-                  fontSize: '16px', 
+                  fontSize: '14px', 
                   fontWeight: 'bold', 
                   color: '#1890ff',
-                  marginBottom: '6px'
+                  marginBottom: '4px'
                 }}>
                   {product.product_code}
                 </div>
-                <div style={{ 
-                  fontSize: '14px', 
-                  color: '#333',
-                  marginBottom: '12px',
-                  lineHeight: '1.3'
-                }}>
+                <div 
+                  className="product-name"
+                  style={{ 
+                    fontSize: '12px', 
+                    color: '#333',
+                    marginBottom: '8px',
+                    lineHeight: '1.2'
+                  }}
+                >
                   {product.name}
                 </div>
                 
@@ -587,13 +586,14 @@ function NewOrdersTablet({ onOrderCreated }) {
                   display: 'flex', 
                   alignItems: 'center', 
                   justifyContent: 'center',
-                  gap: '8px',
-                  marginBottom: '12px'
+                  gap: '6px',
+                  marginBottom: '8px'
                 }}>
                   <Button
                     type="primary"
                     shape="circle"
                     size="small"
+                    className="qty-btn"
                     icon={<span style={{ fontSize: '14px', fontWeight: 'bold' }}>-</span>}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -601,8 +601,8 @@ function NewOrdersTablet({ onOrderCreated }) {
                     }}
                     disabled={quantity === 0}
                     style={{ 
-                      width: '32px', 
-                      height: '32px',
+                      width: '28px', 
+                      height: '28px',
                       backgroundColor: quantity > 0 ? '#ff4d4f' : '#d9d9d9',
                       borderColor: quantity > 0 ? '#ff4d4f' : '#d9d9d9'
                     }}
@@ -633,6 +633,7 @@ function NewOrdersTablet({ onOrderCreated }) {
                     type="primary"
                     shape="circle"
                     size="small"
+                    className="qty-btn"
                     icon={<span style={{ fontSize: '14px', fontWeight: 'bold' }}>+</span>}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -641,8 +642,8 @@ function NewOrdersTablet({ onOrderCreated }) {
                       updateProductQuantity(product.id, 1);
                     }}
                     style={{ 
-                      width: '32px', 
-                      height: '32px',
+                      width: '28px', 
+                      height: '28px',
                       backgroundColor: '#52c41a',
                       borderColor: '#52c41a'
                     }}
@@ -652,8 +653,8 @@ function NewOrdersTablet({ onOrderCreated }) {
                 {/* Quick Quantity Buttons - Only Common Quantities */}
                 <div style={{ 
                   display: 'flex', 
-                  gap: '3px', 
-                  marginBottom: '8px',
+                  gap: '2px', 
+                  marginBottom: '6px',
                   justifyContent: 'center',
                   flexWrap: 'wrap'
                 }}>
@@ -661,6 +662,7 @@ function NewOrdersTablet({ onOrderCreated }) {
                     <Button
                       key={quickQty}
                       size="small"
+                      className="quick-qty-btn"
                       type={quantity === quickQty ? 'primary' : 'default'}
                       onClick={() => {
                         setProductQuantities(prev => ({
@@ -670,11 +672,11 @@ function NewOrdersTablet({ onOrderCreated }) {
                         autoAddPreviousProduct(product.id);
                       }}
                       style={{
-                        fontSize: '10px',
-                        height: '24px',
-                        minWidth: '40px',
+                        fontSize: '9px',
+                        height: '22px',
+                        minWidth: '35px',
                         fontWeight: 'bold',
-                        padding: '0 6px'
+                        padding: '0 4px'
                       }}
                     >
                       {quickQty}
@@ -686,12 +688,13 @@ function NewOrdersTablet({ onOrderCreated }) {
                 <Button
                   type="primary"
                   size="small"
+                  className="add-btn"
                   onClick={() => addProductToOrder(product)}
                   disabled={quantity === 0}
                   style={{
                     width: '100%',
-                    height: '32px',
-                    fontSize: '12px',
+                    height: '28px',
+                    fontSize: '11px',
                     fontWeight: 'bold',
                     borderRadius: '6px',
                     backgroundColor: quantity > 0 ? '#52c41a' : '#d9d9d9',
