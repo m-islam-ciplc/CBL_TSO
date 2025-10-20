@@ -26,6 +26,7 @@ import {
   ArrowLeftOutlined,
   DownOutlined,
   UpOutlined,
+  CloseOutlined,
 } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
@@ -447,6 +448,12 @@ function NewOrdersTablet({ onOrderCreated }) {
                     placeholder="Type" 
                     size="small"
                     style={{ fontSize: '12px' }}
+                    allowClear
+                    showSearch
+                    filterOption={(input, option) => {
+                      const optionText = option?.children?.toString() || '';
+                      return optionText.toLowerCase().includes(input.toLowerCase());
+                    }}
                   >
                     {dropdownData.orderTypes.map(type => (
                       <Option key={type.id} value={type.id}>{type.name}</Option>
@@ -466,6 +473,12 @@ function NewOrdersTablet({ onOrderCreated }) {
                     placeholder="Warehouse" 
                     size="small"
                     style={{ fontSize: '12px' }}
+                    allowClear
+                    showSearch
+                    filterOption={(input, option) => {
+                      const optionText = option?.children?.toString() || '';
+                      return optionText.toLowerCase().includes(input.toLowerCase());
+                    }}
                   >
                     {dropdownData.warehouses.map(warehouse => (
                       <Option key={warehouse.id} value={warehouse.id}>{warehouse.name}</Option>
@@ -477,7 +490,7 @@ function NewOrdersTablet({ onOrderCreated }) {
               <Col xs={24} sm={24} md={4} lg={4}>
               <Form.Item
                 name="territoryCode"
-                label={<Text strong style={{ fontSize: '12px' }}>* Territory</Text>}
+                label={<Text strong style={{ fontSize: '12px' }}>Territory</Text>}
                 rules={[{ required: true, message: 'Required' }]}
                 style={{ marginBottom: '8px' }}
               >
@@ -511,6 +524,7 @@ function NewOrdersTablet({ onOrderCreated }) {
                     placeholder={filteredDealers.length === 0 ? "Select territory first" : "Dealer"} 
                     size="small"
                     style={{ fontSize: '12px' }}
+                    allowClear
                     showSearch 
                     filterOption={(input, option) => {
                       const optionText = option?.children?.toString() || '';
@@ -537,6 +551,7 @@ function NewOrdersTablet({ onOrderCreated }) {
                     placeholder="Transport" 
                     size="small"
                     style={{ fontSize: '12px' }}
+                    allowClear
                     showSearch 
                     filterOption={(input, option) => {
                       const optionText = option?.children?.toString() || '';
@@ -560,6 +575,18 @@ function NewOrdersTablet({ onOrderCreated }) {
           size="small"
           placeholder="Search products by name or code..."
           prefix={<SearchOutlined />}
+          suffix={
+            searchTerm && (
+              <CloseOutlined 
+                onClick={() => setSearchTerm('')}
+                style={{ 
+                  cursor: 'pointer', 
+                  color: '#999',
+                  fontSize: '12px'
+                }}
+              />
+            )
+          }
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{ 

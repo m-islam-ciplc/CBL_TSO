@@ -310,6 +310,12 @@ function ReviewOrdersTablet({ onOrderCreated }) {
                   placeholder="Type" 
                   size="small"
                   style={{ fontSize: '12px' }}
+                  allowClear
+                  showSearch
+                  filterOption={(input, option) => {
+                    const optionText = option?.children?.toString() || '';
+                    return optionText.toLowerCase().includes(input.toLowerCase());
+                  }}
                 >
                   {dropdownData.orderTypes.map(type => (
                     <Option key={type.id} value={type.id}>{type.name}</Option>
@@ -329,6 +335,12 @@ function ReviewOrdersTablet({ onOrderCreated }) {
                   placeholder="Warehouse" 
                   size="small"
                   style={{ fontSize: '12px' }}
+                  allowClear
+                  showSearch
+                  filterOption={(input, option) => {
+                    const optionText = option?.children?.toString() || '';
+                    return optionText.toLowerCase().includes(input.toLowerCase());
+                  }}
                 >
                   {dropdownData.warehouses.map(warehouse => (
                     <Option key={warehouse.id} value={warehouse.id}>{warehouse.name}</Option>
@@ -340,7 +352,7 @@ function ReviewOrdersTablet({ onOrderCreated }) {
             <Col xs={24} sm={24} md={4} lg={4}>
               <Form.Item
                 name="territoryCode"
-                label={<Text strong style={{ fontSize: '12px' }}>* Territory</Text>}
+                label={<Text strong style={{ fontSize: '12px' }}>Territory</Text>}
                 rules={[{ required: true, message: 'Required' }]}
                 style={{ marginBottom: '8px' }}
               >
@@ -376,6 +388,7 @@ function ReviewOrdersTablet({ onOrderCreated }) {
                   placeholder="Dealer" 
                   size="small"
                   style={{ fontSize: '12px' }}
+                  allowClear
                   showSearch 
                   filterOption={(input, option) => {
                     const optionText = option?.children?.toString() || '';
@@ -402,6 +415,7 @@ function ReviewOrdersTablet({ onOrderCreated }) {
                   placeholder="Transport" 
                   size="small"
                   style={{ fontSize: '12px' }}
+                  allowClear
                   showSearch 
                   filterOption={(input, option) => {
                     const optionText = option?.children?.toString() || '';
