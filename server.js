@@ -5,68 +5,387 @@ const bodyParser = require('body-parser');
 const { v4: uuidv4 } = require('uuid');
 const multer = require('multer');
 const XLSX = require('xlsx');
+const ExcelJS = require('exceljs');
 const fs = require('fs');
 
-// Excel report generation function
-function generateExcelReport(orders, date) {
-    // Product segmentation mapping based on Book1.xlsx analysis
-    const productSegments = {
-        'PC': ['NS 40Z', 'NS 40ZL', 'NS 60', 'NS 60L', 'NS 60S', 'N50Z', 'N50ZL', 'NS 70', 'NS70L', 'N70', 'N70Z', 'N70ZL', 'NX 120-7', 'NX 120-7L', 'CCV 15', 'CCV 17', 'CCV 21', 'CCV 27', 'CCV 29', 'N 100', 'N 100Z', 'N 120', 'N 150', 'N 200'],
-        'CV': ['SPB 50', 'SPB 70', 'SPB 100', 'SPB 130', 'SPB 165', 'SPB 200', 'SPB 100T', 'SPB 130T', 'SPB 165T', 'SPB 220T', 'SPB165T Gaston Premium', 'SPB200T Gaston Premium', 'TTB 165', 'TTB 200', 'TTB 230 Gasto Premium', '3CBL-165 Dimitris (18Months)', '3CBL-200 Dimitris (18Months)', '3CBL-165 Dimitris (30M)', '3CBL-200 Dimitris (30M)'],
-        'SPB': ['400VA', '650VA', '600VA', '1050VA', '1450VA'],
-        'ET': ['GSB 20', 'GSB 30', 'GSB 40', 'GSB 55', 'GSB 60', 'GSB 80 (1)', 'GSB 100 (1)', 'GSB 130'],
-        'RB': ['R 45', 'R 50', 'GR 70', 'GR 80', 'GR 90', 'Dimitris 90', 'TRB 120', 'TRB 130', 'TRB 140', 'TRB-160 Gaston Plus', 'TRB 170', 'TRB210-CBL2020', 'TRB-200 Pongkhiraj', 'TRB210T-Volt Master', 'TRB190 Z Power', 'MISHUK-215 Kingshuk Power', 'MISHUK-215 Zynga Power', 'MISHUK-220 Kingshuk Power', 'Mishuk Z Power- 220 ', 'MISHUK-220-A+\r\n Zodiac Power', 'TRB-215T Banskhali King', 'TRB-400 Mishuk King', 'CTC-440 SURJO', '6TSN-1650 Tuffan', 'TRB400 Alpha Plus', 'MISHUK-400T Power Run', 'TRB480 Target Plus', 'TRB160 Alpha Plus', 'R 50T', 'R 60T', 'R 70T', 'AR 45', 'AR 50', 'AR 65', 'AR 70'],
-        'GSB': ['30 AH', '75 AH', '90 AH', '95 AH', 'ET 120T-L', 'TYPHOON-180', 'TYPHOON-200 (H)'],
-        'IPS': ['IPS Battery', 'IPS Control Unit', 'Solar Battery']
-    };
+// Excel report generation function using ExcelJS to replicate Book1.xlsx exactly
+async function generateExcelReport(orders, date) {
+    try {
+        // Load the Book1.xlsx template
+        const templateWorkbook = new ExcelJS.Workbook();
+        await templateWorkbook.xlsx.readFile('Book1.xlsx');
+        const templateWorksheet = templateWorkbook.getWorksheet('Invoice 15.08.24');
+        
+        // Create new workbook based on template
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet(`Invoice ${date.replace(/-/g, '.')}`);
+        
+        // Copy the template structure exactly
+        await copyWorksheetStructure(templateWorksheet, worksheet, orders, date);
+        
+        // Generate Excel buffer
+        const buffer = await workbook.xlsx.writeBuffer();
+        return buffer;
+        
+    } catch (error) {
+        console.error('Error generating Excel report:', error);
+        throw error;
+    }
+}
+
+// Function to copy worksheet structure from template
+async function copyWorksheetStructure(templateWorksheet, newWorksheet, orders, date) {
+    // Get ALL products from database (not just from orders) - exclude dummy products
+    const allProductsQuery = `
+        SELECT product_code, name as product_name, application_name, unit_tp, mrp 
+        FROM products 
+        WHERE status = 'A' AND application_name != 'Dummy'
+        ORDER BY application_name, product_name
+    `;
     
-    // Get all unique products from orders
-    const allProducts = [];
-    const productPriceMap = {};
+    const [allProductsResult] = await db.promise().query(allProductsQuery);
+    const allProducts = allProductsResult;
     
-    orders.forEach(order => {
-        order.items.forEach(item => {
-            if (!allProducts.find(p => p.product_code === item.product_code)) {
-                allProducts.push({
-                    product_code: item.product_code,
-                    product_name: item.product_name,
-                    unit_tp: item.unit_tp,
-                    mrp: item.mrp
-                });
-                productPriceMap[item.product_code] = {
-                    unit_tp: item.unit_tp,
-                    mrp: item.mrp
+    // Group products by application
+    const productsByApplication = {};
+    allProducts.forEach(product => {
+        const appName = product.application_name || 'Other';
+        if (!productsByApplication[appName]) {
+            productsByApplication[appName] = [];
+        }
+        productsByApplication[appName].push(product);
+    });
+    
+    // Create summary section with database application units as segments
+    const newRow1 = newWorksheet.getRow(1);
+    newRow1.getCell(1).value = 'Seg';
+    newRow1.getCell(2).value = 'Qty';
+    newRow1.getCell(3).value = 'Invoice Value';
+    
+    // Apply formatting from template header row
+    const templateRow1 = templateWorksheet.getRow(1);
+    for (let col = 1; col <= 3; col++) {
+        const templateCell = templateRow1.getCell(col);
+        const newCell = newRow1.getCell(col);
+        
+        if (templateCell.font) {
+            newCell.font = {
+                ...templateCell.font,
+                bold: templateCell.font.bold,
+                italic: templateCell.font.italic,
+                color: templateCell.font.color,
+                size: 8,
+                name: 'Calibri'
+            };
+        }
+        
+        if (templateCell.alignment) {
+            newCell.alignment = { ...templateCell.alignment };
+        }
+        
+        if (templateCell.border) {
+            newCell.border = { ...templateCell.border };
+        }
+        
+        if (templateCell.fill) {
+            newCell.fill = { ...templateCell.fill };
+        }
+        
+        if (templateCell.numFmt) {
+            newCell.numFmt = templateCell.numFmt;
+        }
+    }
+    
+    // Add application names as segments from database
+    let summaryRow = 2;
+    const applicationNames = Object.keys(productsByApplication);
+    applicationNames.forEach(appName => {
+        const summaryRowObj = newWorksheet.getRow(summaryRow);
+        summaryRowObj.getCell(1).value = appName; // Use database application name as segment
+        
+        // Apply formatting from template data rows
+        const templateRow = templateWorksheet.getRow(2);
+        for (let col = 1; col <= 3; col++) {
+            const templateCell = templateRow.getCell(col);
+            const newCell = summaryRowObj.getCell(col);
+            
+            if (templateCell.font) {
+                newCell.font = {
+                    ...templateCell.font,
+                    bold: templateCell.font.bold,
+                    italic: templateCell.font.italic,
+                    color: templateCell.font.color,
+                size: 8,
+                name: 'Calibri'
                 };
             }
+            
+            if (templateCell.alignment) {
+                newCell.alignment = { ...templateCell.alignment };
+            }
+            
+            if (templateCell.border) {
+                newCell.border = { ...templateCell.border };
+            }
+            
+            if (templateCell.fill) {
+                newCell.fill = { ...templateCell.fill };
+            }
+            
+            if (templateCell.numFmt) {
+                newCell.numFmt = templateCell.numFmt;
+            }
+        }
+        
+        summaryRow++;
+    });
+    
+    // Add total row
+    const totalRow = newWorksheet.getRow(summaryRow);
+    totalRow.getCell(1).value = 'Total';
+    totalRow.getCell(2).value = 0; // Will be calculated
+    totalRow.getCell(3).value = 0; // Will be calculated
+    
+    // Apply formatting to total row
+    const templateTotalRow = templateWorksheet.getRow(9);
+    for (let col = 1; col <= 3; col++) {
+        const templateCell = templateTotalRow.getCell(col);
+        const newCell = totalRow.getCell(col);
+        
+        if (templateCell.font) {
+            newCell.font = {
+                ...templateCell.font,
+                bold: templateCell.font.bold,
+                italic: templateCell.font.italic,
+                color: templateCell.font.color,
+                size: 8,
+                name: 'Calibri'
+            };
+        }
+        
+        if (templateCell.alignment) {
+            newCell.alignment = { ...templateCell.alignment };
+        }
+        
+        if (templateCell.border) {
+            newCell.border = { ...templateCell.border };
+        }
+        
+        if (templateCell.fill) {
+            newCell.fill = { ...templateCell.fill };
+        }
+        
+        if (templateCell.numFmt) {
+            newCell.numFmt = templateCell.numFmt;
+        }
+    }
+    
+    // Copy header row from template with formatting
+    const templateHeaderRow = templateWorksheet.getRow(10);
+    const headerRowNum = summaryRow + 1; // Start after summary section
+    const newHeaderRow = newWorksheet.getRow(headerRowNum);
+    
+    // Copy first 5 columns exactly (Sl. No., Territory, Name of Dealer, Address, Contact Person & Number) with formatting
+    for (let col = 1; col <= 5; col++) {
+        const templateCell = templateHeaderRow.getCell(col);
+        const newCell = newHeaderRow.getCell(col);
+        
+        newCell.value = templateCell.value;
+        
+        // Copy ALL formatting from template
+        if (templateCell.font) {
+            newCell.font = {
+                ...templateCell.font,
+                bold: templateCell.font.bold,
+                italic: templateCell.font.italic,
+                color: templateCell.font.color,
+                size: 8,
+                name: 'Calibri'
+            };
+        }
+        
+        if (templateCell.alignment) {
+            newCell.alignment = { ...templateCell.alignment };
+        }
+        
+        if (templateCell.border) {
+            newCell.border = { ...templateCell.border };
+        }
+        
+        if (templateCell.fill) {
+            newCell.fill = { ...templateCell.fill };
+        }
+        
+        if (templateCell.numFmt) {
+            newCell.numFmt = templateCell.numFmt;
+        }
+    }
+    
+    // Add product columns with merged application headers and proper formatting
+    let currentCol = 6;
+    // const applicationNames = Object.keys(productsByApplication); // Already defined above
+    applicationNames.forEach(appName => {
+        const products = productsByApplication[appName];
+        const appStartCol = currentCol;
+        const appEndCol = currentCol + products.length - 1;
+        
+        // Merge cells for application header
+        newWorksheet.mergeCells(headerRowNum, appStartCol, headerRowNum, appEndCol);
+        const mergedCell = newHeaderRow.getCell(appStartCol);
+        mergedCell.value = appName;
+        
+        // Apply formatting from template PC column
+        const templateCell = templateHeaderRow.getCell(6);
+        if (templateCell.font) {
+            mergedCell.font = {
+                ...templateCell.font,
+                bold: templateCell.font.bold,
+                italic: templateCell.font.italic,
+                color: templateCell.font.color,
+                size: 8,
+                name: 'Calibri'
+            };
+        }
+        
+        if (templateCell.alignment) {
+            mergedCell.alignment = { ...templateCell.alignment };
+        }
+        
+        if (templateCell.border) {
+            mergedCell.border = { ...templateCell.border };
+        }
+        
+        if (templateCell.fill) {
+            mergedCell.fill = { ...templateCell.fill };
+        }
+        
+        if (templateCell.numFmt) {
+            mergedCell.numFmt = templateCell.numFmt;
+        }
+        
+        // Add individual product columns with product names and prices
+        products.forEach(product => {
+            // Product name row
+            const productNameRow = headerRowNum + 1;
+            const productNameCell = newWorksheet.getRow(productNameRow).getCell(currentCol);
+            productNameCell.value = product.product_name; // Use full product name
+            
+            // Apply formatting from template
+            if (templateCell.font) {
+                productNameCell.font = {
+                    ...templateCell.font,
+                    bold: templateCell.font.bold,
+                    italic: templateCell.font.italic,
+                    color: templateCell.font.color,
+                size: 8,
+                name: 'Calibri'
+                };
+            }
+            
+            if (templateCell.alignment) {
+                productNameCell.alignment = { ...templateCell.alignment };
+            }
+            
+            if (templateCell.border) {
+                productNameCell.border = { ...templateCell.border };
+            }
+            
+            if (templateCell.fill) {
+                productNameCell.fill = { ...templateCell.fill };
+            }
+            
+            if (templateCell.numFmt) {
+                productNameCell.numFmt = templateCell.numFmt;
+            }
+            
+            // Price row (unit_tp)
+            const priceRow = headerRowNum + 2;
+            const priceCell = newWorksheet.getRow(priceRow).getCell(currentCol);
+            priceCell.value = product.unit_tp || 0; // Show unit trade price
+            
+            // Apply formatting from template
+            if (templateCell.font) {
+                priceCell.font = {
+                    ...templateCell.font,
+                    bold: templateCell.font.bold,
+                    italic: templateCell.font.italic,
+                    color: templateCell.font.color,
+                size: 8,
+                name: 'Calibri'
+                };
+            }
+            
+            if (templateCell.alignment) {
+                priceCell.alignment = { ...templateCell.alignment };
+            }
+            
+            if (templateCell.border) {
+                priceCell.border = { ...templateCell.border };
+            }
+            
+            if (templateCell.fill) {
+                priceCell.fill = { ...templateCell.fill };
+            }
+            
+            if (templateCell.numFmt) {
+                priceCell.numFmt = templateCell.numFmt;
+            }
+            
+            currentCol++;
         });
     });
     
-    // Sort products by code
-    allProducts.sort((a, b) => a.product_code.localeCompare(b.product_code));
+    // Copy merged cells from template (for summary section only)
+    if (templateWorksheet.model.merges) {
+        templateWorksheet.model.merges.forEach(merge => {
+            // Only copy merges that are in the summary section (rows 1-9)
+            if (merge.top <= 9) {
+                newWorksheet.mergeCells(merge);
+            }
+        });
+    }
     
-    // Calculate segment totals
-    const segmentTotals = {};
-    Object.keys(productSegments).forEach(segment => {
-        segmentTotals[segment] = { qty: 0, value: 0 };
-    });
-    
-    // Process orders and calculate totals
-    const dealerData = [];
+    // Add dealer data rows starting after headers and price rows
+    let currentRow = headerRowNum + 3; // Start after header, product code, and price rows
     let serialNo = 1;
     
+        // If no orders, add a sample row to show the structure
+        if (orders.length === 0) {
+            const sampleRow = newWorksheet.getRow(currentRow);
+            sampleRow.getCell(1).value = 1; // Sl. No.
+            sampleRow.getCell(2).value = 'No Orders'; // Territory
+            sampleRow.getCell(3).value = 'No Orders Found'; // Name of Dealer
+            sampleRow.getCell(4).value = ''; // Address
+            sampleRow.getCell(5).value = ''; // Contact
+            
+            // Apply font formatting to sample row cells
+            for (let col = 1; col <= 5; col++) {
+                sampleRow.getCell(col).font = { name: 'Calibri', size: 8 };
+            }
+        
+        // Add zeros for all products
+        let productCol = 6;
+        allProducts.forEach(product => {
+            const newCell = sampleRow.getCell(productCol);
+            newCell.value = 0;
+            newCell.alignment = { horizontal: 'center', vertical: 'middle' };
+            newCell.font = { name: 'Calibri', size: 8 };
+            productCol++;
+        });
+        currentRow++;
+    }
+    
     orders.forEach(order => {
+        const newRow = newWorksheet.getRow(currentRow);
+        
+        // Create dealer row data
         const dealerRow = {
             serialNo: serialNo++,
-            territory: order.dealer_territory || '',
+            orderType: order.order_type || 'RO',
+            orderDate: date,
+            warehouseName: order.warehouse_name || 'Narayanganj Factory',
             dealerName: order.dealer_name || '',
-            address: order.dealer_address || '',
-            contact: order.dealer_contact || '',
-            products: {},
-            invoiceValue: 0,
-            grossValue: 0,
-            transport: 'Direct Rent Truck',
-            totalInvoice: 0,
-            totalGross: 0
+            products: {}
         };
         
         // Initialize all products with 0 quantity
@@ -74,119 +393,68 @@ function generateExcelReport(orders, date) {
             dealerRow.products[product.product_code] = 0;
         });
         
-        // Fill in actual quantities
+        // Fill in actual quantities from order items
         order.items.forEach(item => {
             dealerRow.products[item.product_code] = (dealerRow.products[item.product_code] || 0) + item.quantity;
-            
-            // Calculate values
-            const itemValue = item.quantity * (item.unit_tp || 0);
-            dealerRow.invoiceValue += itemValue;
-            
-            // Determine segment for this product
-            Object.keys(productSegments).forEach(segment => {
-                if (productSegments[segment].includes(item.product_code)) {
-                    segmentTotals[segment].qty += item.quantity;
-                    segmentTotals[segment].value += itemValue;
-                }
-            });
         });
         
-        dealerRow.grossValue = dealerRow.invoiceValue * 1.11; // Assuming 11% markup
-        dealerRow.totalInvoice = dealerRow.invoiceValue;
-        dealerRow.totalGross = dealerRow.grossValue;
+        // Fill row data according to Book1.xlsx structure
+        newRow.getCell(1).value = dealerRow.serialNo; // Sl. No.
+        newRow.getCell(2).value = order.dealer_territory || ''; // Territory name from database
+        newRow.getCell(3).value = dealerRow.dealerName; // Name of Dealer
+        newRow.getCell(4).value = order.dealer_address || ''; // Address from database
+        newRow.getCell(5).value = order.dealer_contact || ''; // Contact Person & Number from database
         
-        dealerData.push(dealerRow);
-    });
-    
-    // Create Excel workbook
-    const workbook = XLSX.utils.book_new();
-    
-    // Prepare data array matching Book1.xlsx structure
-    const excelData = [];
-    
-    // Summary section (rows 1-9)
-    excelData.push(['Seg', 'Qty', 'Invoice Value']);
-    excelData.push(['PC', segmentTotals.PC?.qty || 0, segmentTotals.PC?.value || 0]);
-    excelData.push(['CV', segmentTotals.CV?.qty || 0, 'Gross Value']);
-    excelData.push(['SPB', segmentTotals.SPB?.qty || 0, segmentTotals.SPB?.value || 0]);
-    excelData.push(['ET', segmentTotals.ET?.qty || 0]);
-    excelData.push(['RB', segmentTotals.RB?.qty || 0, 'Status']);
-    excelData.push(['GSB', segmentTotals.GSB?.qty || 0, 'Open']);
-    excelData.push(['IPS', segmentTotals.IPS?.qty || 0]);
-    
-    // Total row
-    const totalQty = Object.values(segmentTotals).reduce((sum, seg) => sum + (seg.qty || 0), 0);
-    const totalValue = Object.values(segmentTotals).reduce((sum, seg) => sum + (seg.value || 0), 0);
-    excelData.push(['Total', totalQty, totalValue]);
-    
-    // Empty row
-    excelData.push([]);
-    
-    // Header row
-    const headerRow = [
-        'Sl. No.', 'Territory', 'Name of Dealer', 'Address', 'Contact Person & Number'
-    ];
-    
-    // Add product columns
-    allProducts.forEach(product => {
-        headerRow.push(product.product_code);
-    });
-    
-    headerRow.push('Invoice Value', 'Gross Value', 'Transport', 'Total Invoice Value', 'Total Gross Value');
-    excelData.push(headerRow);
-    
-    // Product codes row (same as products)
-    const productCodesRow = ['', '', '', '', ''];
-    allProducts.forEach(product => {
-        productCodesRow.push(product.product_code);
-    });
-    productCodesRow.push('', '', '', '', '');
-    excelData.push(productCodesRow);
-    
-    // Prices row
-    const pricesRow = ['', '', '', '', ''];
-    allProducts.forEach(product => {
-        pricesRow.push(product.unit_tp || 0);
-    });
-    pricesRow.push('', '', '', '', '');
-    excelData.push(pricesRow);
-    
-    // Dealer data rows
-    dealerData.forEach(dealer => {
-        const row = [
-            dealer.serialNo,
-            dealer.territory,
-            dealer.dealerName,
-            dealer.address,
-            dealer.contact
-        ];
+        // Apply font formatting to dealer information cells
+        for (let col = 1; col <= 5; col++) {
+            newRow.getCell(col).font = { name: 'Calibri', size: 8 };
+        }
         
-        // Add product quantities
-        allProducts.forEach(product => {
-            row.push(dealer.products[product.product_code] || 0);
+            // Add product quantities - map to correct columns based on product order
+            let productCol = 6;
+            allProducts.forEach(product => {
+                const newCell = newRow.getCell(productCol);
+                // Get quantity for this specific product
+                const quantity = dealerRow.products[product.product_code] || 0;
+                newCell.value = quantity;
+                newCell.font = { name: 'Calibri', size: 8 };
+            
+            // Apply formatting from template data rows (row 13 in template)
+            const templateRow = templateWorksheet.getRow(13);
+            const templateCell = templateRow.getCell(productCol);
+            
+            if (templateCell.font) {
+                newCell.font = {
+                    ...templateCell.font,
+                    bold: templateCell.font.bold,
+                    italic: templateCell.font.italic,
+                    color: templateCell.font.color,
+                size: 8,
+                name: 'Calibri'
+                };
+            }
+            
+            if (templateCell.alignment) {
+                newCell.alignment = { ...templateCell.alignment };
+            }
+            
+            if (templateCell.border) {
+                newCell.border = { ...templateCell.border };
+            }
+            
+            if (templateCell.fill) {
+                newCell.fill = { ...templateCell.fill };
+            }
+            
+            if (templateCell.numFmt) {
+                newCell.numFmt = templateCell.numFmt;
+            }
+            
+            productCol++;
         });
         
-        row.push(
-            dealer.invoiceValue,
-            dealer.grossValue,
-            dealer.transport,
-            dealer.totalInvoice,
-            dealer.totalGross
-        );
-        
-        excelData.push(row);
+        currentRow++;
     });
-    
-    // Create worksheet
-    const worksheet = XLSX.utils.aoa_to_sheet(excelData);
-    
-    // Add worksheet to workbook
-    XLSX.utils.book_append_sheet(workbook, worksheet, `Invoice ${date.replace(/-/g, '.')}`);
-    
-    // Generate Excel buffer
-    const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
-    
-    return excelBuffer;
 }
 
 const app = express();
@@ -1011,7 +1279,7 @@ app.get('/api/orders/report/:date', async (req, res) => {
         }
         
         // Generate Excel report
-        const reportData = generateExcelReport(ordersWithItems, date);
+        const reportData = await generateExcelReport(ordersWithItems, date);
         
         // Set headers for file download
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
