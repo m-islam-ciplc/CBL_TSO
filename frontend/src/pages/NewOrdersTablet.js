@@ -52,7 +52,6 @@ function NewOrdersTablet({ onOrderCreated }) {
   const [isDropdownCollapsed, setIsDropdownCollapsed] = useState(false);
   const [productQuantities, setProductQuantities] = useState({}); // Track quantities for each product
   const [showReview, setShowReview] = useState(false); // Control review modal/page
-  const [lastSelectedProductId, setLastSelectedProductId] = useState(null); // Track last selected product
   const [expandedProductId, setExpandedProductId] = useState(null); // Track single expanded product card
   const [selectedProductForPopup, setSelectedProductForPopup] = useState(null); // Product for popup modal
   const [isPopupVisible, setIsPopupVisible] = useState(false); // Control popup visibility
@@ -259,49 +258,6 @@ function NewOrdersTablet({ onOrderCreated }) {
     return formValues.dealer;
   };
 
-  const autoAddPreviousProduct = (newProductId) => {
-    if (lastSelectedProductId && lastSelectedProductId !== newProductId) {
-      const previousQuantity = productQuantities[lastSelectedProductId] || 0;
-      if (previousQuantity > 0) {
-        // Find the product details
-        const product = dropdownData.products.find(p => p.id === lastSelectedProductId);
-        if (product) {
-          // Auto-add the previous product
-          const existingItem = orderItems.find(item => item.product_id === lastSelectedProductId);
-          let updatedItems;
-          
-          if (existingItem) {
-            updatedItems = orderItems.map(item => 
-              item.id === existingItem.id ? { ...item, quantity: item.quantity + previousQuantity } : item
-            );
-          } else {
-            const newItem = {
-              id: Date.now(),
-              product_id: lastSelectedProductId,
-              product_name: product.name,
-              product_code: product.product_code,
-              quantity: previousQuantity,
-              unit_tp: product.unit_tp,
-              mrp: product.mrp
-            };
-            updatedItems = [...orderItems, newItem];
-          }
-          
-          setOrderItems(updatedItems);
-          localStorage.setItem('tsoOrderItems', JSON.stringify(updatedItems));
-          
-          // Reset the quantity for the previous product
-          setProductQuantities(prev => ({
-            ...prev,
-            [lastSelectedProductId]: 0
-          }));
-          
-          message.success(`${product.product_code} (Qty: ${previousQuantity}) auto-added to order!`);
-        }
-      }
-    }
-    setLastSelectedProductId(newProductId);
-  };
 
   const updateProductQuantity = (productId, change) => {
     setProductQuantities(prev => {
@@ -352,8 +308,6 @@ function NewOrdersTablet({ onOrderCreated }) {
       [product.id]: 0
     }));
     
-    // Clear the last selected product since it's been manually added
-    setLastSelectedProductId(null);
     
     message.success(`${product.product_code} (Qty: ${quantity}) added to order!`);
   };
@@ -988,7 +942,6 @@ function NewOrdersTablet({ onOrderCreated }) {
                     ...prev,
                     [selectedProductForPopup.id]: newQty
                   }));
-                  autoAddPreviousProduct(selectedProductForPopup.id);
                 }}
                 style={{
                   width: '100px',
@@ -1006,7 +959,6 @@ function NewOrdersTablet({ onOrderCreated }) {
                 size="large"
                 icon={<span style={{ fontSize: '18px', fontWeight: 'bold' }}>+</span>}
                 onClick={() => {
-                  autoAddPreviousProduct(selectedProductForPopup.id);
                   updateProductQuantity(selectedProductForPopup.id, 1);
                 }}
                 style={{ 
@@ -1036,7 +988,6 @@ function NewOrdersTablet({ onOrderCreated }) {
                       ...prev,
                       [selectedProductForPopup.id]: quickQty
                     }));
-                    autoAddPreviousProduct(selectedProductForPopup.id);
                   }}
                   style={{
                     fontSize: '14px',
