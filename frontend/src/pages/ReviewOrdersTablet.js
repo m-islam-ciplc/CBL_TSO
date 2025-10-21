@@ -20,6 +20,7 @@ import {
   EditOutlined,
   ArrowLeftOutlined,
   PlusOutlined,
+  CloseCircleOutlined,
 } from '@ant-design/icons';
 import { useUser } from '../contexts/UserContext';
 
@@ -40,6 +41,37 @@ function ReviewOrdersTablet({ onOrderCreated }) {
     territories: [],
     transports: []
   });
+  const [formInitialValues, setFormInitialValues] = useState({});
+
+  // Set form values when initial values change
+  useEffect(() => {
+    if (Object.keys(formInitialValues).length > 0) {
+      console.log('🔍 Setting form values from initial values:', formInitialValues);
+      form.setFieldsValue(formInitialValues);
+      // Verify the values were set
+      setTimeout(() => {
+        const currentValues = form.getFieldsValue();
+        console.log('✅ Form values after setting from initial values:', currentValues);
+      }, 100);
+    }
+  }, [formInitialValues, form]);
+
+  // Also try to load form data on component mount
+  useEffect(() => {
+    const savedFormData = localStorage.getItem('tsoFormData');
+    if (savedFormData && !dataLoading) {
+      try {
+        const formData = JSON.parse(savedFormData);
+        console.log('🔍 Auto-loading form data on mount:', formData);
+        if (Object.keys(formData).length > 0) {
+          form.setFieldsValue(formData);
+          console.log('✅ Form values auto-set on mount');
+        }
+      } catch (error) {
+        console.error('Error auto-loading form data:', error);
+      }
+    }
+  }, [dataLoading, form]);
 
   useEffect(() => {
     loadDropdownData();
@@ -49,19 +81,6 @@ function ReviewOrdersTablet({ onOrderCreated }) {
       setOrderItems(JSON.parse(savedOrderItems));
     }
     
-    // Load form data from localStorage
-    const savedFormData = localStorage.getItem('tsoFormData');
-    if (savedFormData) {
-      try {
-        const formData = JSON.parse(savedFormData);
-        // Set form values after a short delay to ensure form is initialized
-        setTimeout(() => {
-          form.setFieldsValue(formData);
-        }, 100);
-      } catch (error) {
-        console.error('Error parsing saved form data:', error);
-      }
-    }
   }, []);
 
   const loadDropdownData = async () => {
@@ -100,21 +119,55 @@ function ReviewOrdersTablet({ onOrderCreated }) {
       setDropdownData({
         orderTypes: orderTypesRes.data,
         dealers: dealersRes.data,
+        filteredDealers: dealersRes.data, // Initialize filteredDealers with all dealers
         warehouses: warehousesRes.data,
         products: productsRes.data,
         territories: territories,
         transports: transportsRes.data
       });
 
-      // Initialize form with default values only if no saved form data exists
+      // Load saved form data if it exists - only after dropdown data is ready
       const savedFormData = localStorage.getItem('tsoFormData');
-      if (!savedFormData && orderTypesRes.data.length > 0 && warehousesRes.data.length > 0) {
+      console.log('🔍 Raw saved form data from localStorage:', savedFormData);
+      if (savedFormData) {
+        try {
+          const formData = JSON.parse(savedFormData);
+          console.log('✅ Parsed form data:', formData);
+          
+          // Wait a bit more to ensure form is fully initialized
+          setTimeout(() => {
+            setFormInitialValues(formData);
+            
+            // If territory is selected, filter dealers accordingly
+            if (formData.territoryCode) {
+              console.log('🔍 Territory code found:', formData.territoryCode);
+              const territory = territories.find(t => t.code === formData.territoryCode);
+              if (territory) {
+                console.log('✅ Territory found:', territory);
+                const filtered = dealersRes.data.filter(dealer => 
+                  dealer.territory_code === territory.code
+                );
+                console.log('✅ Filtered dealers:', filtered.length);
+                setDropdownData(prev => ({
+                  ...prev,
+                  filteredDealers: filtered
+                }));
+              }
+            }
+          }, 200);
+        } catch (error) {
+          console.error('Error parsing saved form data:', error);
+        }
+      } else if (orderTypesRes.data.length > 0 && warehousesRes.data.length > 0) {
+        // Initialize form with default values only if no saved form data exists
         const initialValues = {
           orderType: orderTypesRes.data[0].id,
           warehouse: warehousesRes.data[0].id,
           dealer: ''
         };
-        form.setFieldsValue(initialValues);
+        setTimeout(() => {
+          setFormInitialValues(initialValues);
+        }, 200);
       }
 
     } catch (error) {
@@ -130,7 +183,10 @@ function ReviewOrdersTablet({ onOrderCreated }) {
     if (field === 'territoryCode') {
       const territory = dropdownData.territories.find(t => t.code === value);
       if (territory) {
-        form.setFieldsValue({ territoryName: territory.name });
+        form.setFieldsValue({ 
+          territoryName: territory.name,
+          dealer: '' // Clear dealer when territory changes
+        });
         // Filter dealers by territory
         const filtered = dropdownData.dealers.filter(dealer => 
           dealer.territory_code === territory.code
@@ -140,7 +196,10 @@ function ReviewOrdersTablet({ onOrderCreated }) {
           filteredDealers: filtered
         }));
       } else {
-        form.setFieldsValue({ territoryName: '' });
+        form.setFieldsValue({ 
+          territoryName: '',
+          dealer: '' // Clear dealer when territory is cleared
+        });
         setDropdownData(prev => ({
           ...prev,
           filteredDealers: dropdownData.dealers
@@ -293,6 +352,8 @@ function ReviewOrdersTablet({ onOrderCreated }) {
             <div style={{ marginTop: '10px', color: '#666' }}>Loading form data...</div>
           </div>
         ) : (
+        <div>
+          
         <Form
           form={form}
           layout="horizontal"
@@ -306,7 +367,7 @@ function ReviewOrdersTablet({ onOrderCreated }) {
                 rules={[{ required: true, message: 'Required' }]}
                 style={{ marginBottom: '8px' }}
               >
-                <Select 
+                  <Select
                   placeholder="Type" 
                   size="small"
                   style={{ fontSize: '12px' }}
@@ -331,7 +392,7 @@ function ReviewOrdersTablet({ onOrderCreated }) {
                 rules={[{ required: true, message: 'Required' }]}
                 style={{ marginBottom: '8px' }}
               >
-                <Select 
+                  <Select
                   placeholder="Warehouse" 
                   size="small"
                   style={{ fontSize: '12px' }}
@@ -356,7 +417,7 @@ function ReviewOrdersTablet({ onOrderCreated }) {
                 rules={[{ required: true, message: 'Required' }]}
                 style={{ marginBottom: '8px' }}
               >
-                <Select
+                  <Select
                   placeholder="Territory"
                   size="small"
                   style={{ fontSize: '12px' }}
@@ -384,12 +445,12 @@ function ReviewOrdersTablet({ onOrderCreated }) {
                 rules={[{ required: true, message: 'Required' }]}
                 style={{ marginBottom: '8px' }}
               >
-                <Select 
+                  <Select
                   placeholder="Dealer" 
                   size="small"
                   style={{ fontSize: '12px' }}
                   allowClear
-                  showSearch 
+                  showSearch
                   filterOption={(input, option) => {
                     const optionText = option?.children?.toString() || '';
                     return optionText.toLowerCase().includes(input.toLowerCase());
@@ -411,12 +472,12 @@ function ReviewOrdersTablet({ onOrderCreated }) {
                 rules={[{ required: true, message: 'Required' }]}
                 style={{ marginBottom: '8px' }}
               >
-                <Select 
+                  <Select
                   placeholder="Transport" 
                   size="small"
                   style={{ fontSize: '12px' }}
                   allowClear
-                  showSearch 
+                  showSearch
                   filterOption={(input, option) => {
                     const optionText = option?.children?.toString() || '';
                     return optionText.toLowerCase().includes(input.toLowerCase());
@@ -432,6 +493,7 @@ function ReviewOrdersTablet({ onOrderCreated }) {
             </Col>
           </Row>
         </Form>
+        </div>
         )}
       </Card>
 
@@ -610,3 +672,4 @@ function ReviewOrdersTablet({ onOrderCreated }) {
 }
 
 export default ReviewOrdersTablet;
+

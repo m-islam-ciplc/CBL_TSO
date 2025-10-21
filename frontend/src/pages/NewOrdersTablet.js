@@ -16,6 +16,7 @@ import {
   InputNumber,
   Divider,
   Collapse,
+  Modal,
 } from 'antd';
 import {
   PlusOutlined,
@@ -27,6 +28,7 @@ import {
   DownOutlined,
   UpOutlined,
   CloseOutlined,
+  CloseCircleOutlined,
 } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
@@ -51,6 +53,9 @@ function NewOrdersTablet({ onOrderCreated }) {
   const [productQuantities, setProductQuantities] = useState({}); // Track quantities for each product
   const [showReview, setShowReview] = useState(false); // Control review modal/page
   const [lastSelectedProductId, setLastSelectedProductId] = useState(null); // Track last selected product
+  const [expandedProductId, setExpandedProductId] = useState(null); // Track single expanded product card
+  const [selectedProductForPopup, setSelectedProductForPopup] = useState(null); // Product for popup modal
+  const [isPopupVisible, setIsPopupVisible] = useState(false); // Control popup visibility
 
   useEffect(() => {
     loadDropdownData();
@@ -113,8 +118,8 @@ function NewOrdersTablet({ onOrderCreated }) {
       });
       const territories = Array.from(territoriesMap.values());
       setDropdownData(prev => ({ ...prev, territories }));
-      setFilteredDealers(dealersRes.data);
-      setFilteredProducts(productsRes.data);
+      setFilteredDealers([]); // Start with empty dealers - only show when territory is selected
+      setFilteredProducts(productsRes.data); // Initialize filtered products
 
       // Initialize form with default values when data is loaded
       if (orderTypesRes.data.length > 0 && warehousesRes.data.length > 0) {
@@ -132,6 +137,21 @@ function NewOrdersTablet({ onOrderCreated }) {
     } catch (error) {
       console.error('Error loading dropdown data:', error);
       message.error('Failed to load form data');
+    }
+  };
+
+  // Load products separately when needed
+  const loadProducts = async () => {
+    try {
+      const productsRes = await axios.get('/api/products');
+      setDropdownData(prev => ({
+        ...prev,
+        products: productsRes.data
+      }));
+      setFilteredProducts(productsRes.data);
+    } catch (error) {
+      console.error('Error loading products:', error);
+      message.error('Failed to load products');
     }
   };
 
@@ -158,28 +178,46 @@ function NewOrdersTablet({ onOrderCreated }) {
   };
 
   const handleTerritoryChange = (field, value) => {
+    console.log('🔄 Territory change:', { field, value });
     if (field === 'territoryCode') {
       const territory = dropdownData.territories.find(t => t.code === value);
+      console.log('🔍 Found territory:', territory);
       if (territory) {
         form.setFieldsValue({ territoryName: territory.name });
         filterDealersByTerritory(territory.code, territory.name);
       } else {
-        form.setFieldsValue({ territoryName: '' });
+        // Clear both territory and dealer when territory is cleared
+        form.setFieldsValue({ 
+          territoryName: '',
+          dealer: '' // Clear dealer when territory is cleared
+        });
         filterDealersByTerritory(null, null);
       }
     } else if (field === 'territoryName') {
       const territory = dropdownData.territories.find(t => t.name === value);
+      console.log('🔍 Found territory:', territory);
       if (territory) {
         form.setFieldsValue({ territoryCode: territory.code });
         filterDealersByTerritory(territory.code, territory.name);
       } else {
-        form.setFieldsValue({ territoryCode: '' });
+        // Clear both territory and dealer when territory is cleared
+        form.setFieldsValue({ 
+          territoryCode: '',
+          dealer: '' // Clear dealer when territory is cleared
+        });
         filterDealersByTerritory(null, null);
       }
     }
     // Auto-expand dropdown section when user makes a selection
     if (isDropdownCollapsed) {
       setIsDropdownCollapsed(false);
+    }
+  };
+
+  const handleTransportChange = (value) => {
+    // Auto-collapse the Order Details card when transport is selected
+    if (value) {
+      setIsDropdownCollapsed(true);
     }
   };
 
@@ -196,6 +234,29 @@ function NewOrdersTablet({ onOrderCreated }) {
     if (isDropdownCollapsed) {
       setIsDropdownCollapsed(false);
     }
+  };
+
+  // Show product popup modal
+  const showProductPopup = (product) => {
+    setSelectedProductForPopup(product);
+    setIsPopupVisible(true);
+  };
+
+  // Hide product popup modal
+  const hideProductPopup = () => {
+    setIsPopupVisible(false);
+    setSelectedProductForPopup(null);
+  };
+
+  // Collapse any expanded card
+  const collapseExpandedCard = () => {
+    setExpandedProductId(null);
+  };
+
+  // Check if dealer is selected (simpler condition)
+  const isDealerSelected = () => {
+    const formValues = form.getFieldsValue();
+    return formValues.dealer;
   };
 
   const autoAddPreviousProduct = (newProductId) => {
@@ -421,7 +482,8 @@ function NewOrdersTablet({ onOrderCreated }) {
                   {dropdownData.orderTypes.find(t => t.id === form.getFieldValue('orderType'))?.name} • {' '}
                   {form.getFieldValue('warehouse') && dropdownData.warehouses.find(w => w.id === form.getFieldValue('warehouse'))?.name} • {' '}
                   {form.getFieldValue('territoryCode') && dropdownData.territories.find(t => t.code === form.getFieldValue('territoryCode'))?.name} • {' '}
-                  {form.getFieldValue('dealer') && filteredDealers.find(d => d.id === form.getFieldValue('dealer'))?.name}
+                  {form.getFieldValue('dealer') && filteredDealers.find(d => d.id === form.getFieldValue('dealer'))?.name} • {' '}
+                  {form.getFieldValue('transport') && dropdownData.transports.find(t => t.id === form.getFieldValue('transport'))?.truck_details}
                 </Text>
               )}
             </div>
@@ -444,17 +506,17 @@ function NewOrdersTablet({ onOrderCreated }) {
                   rules={[{ required: true, message: 'Required' }]}
                   style={{ marginBottom: '8px' }}
                 >
-                  <Select 
-                    placeholder="Type" 
-                    size="small"
-                    style={{ fontSize: '12px' }}
-                    allowClear
-                    showSearch
-                    filterOption={(input, option) => {
-                      const optionText = option?.children?.toString() || '';
-                      return optionText.toLowerCase().includes(input.toLowerCase());
-                    }}
-                  >
+                    <Select
+                     placeholder="Type" 
+                     size="small"
+                     style={{ fontSize: '12px' }}
+                     allowClear
+                     showSearch
+                     filterOption={(input, option) => {
+                       const optionText = option?.children?.toString() || '';
+                       return optionText.toLowerCase().includes(input.toLowerCase());
+                     }}
+                   >
                     {dropdownData.orderTypes.map(type => (
                       <Option key={type.id} value={type.id}>{type.name}</Option>
                     ))}
@@ -469,17 +531,17 @@ function NewOrdersTablet({ onOrderCreated }) {
                   rules={[{ required: true, message: 'Required' }]}
                   style={{ marginBottom: '8px' }}
                 >
-                  <Select 
-                    placeholder="Warehouse" 
-                    size="small"
-                    style={{ fontSize: '12px' }}
-                    allowClear
-                    showSearch
-                    filterOption={(input, option) => {
-                      const optionText = option?.children?.toString() || '';
-                      return optionText.toLowerCase().includes(input.toLowerCase());
-                    }}
-                  >
+                    <Select
+                     placeholder="Warehouse" 
+                     size="small"
+                     style={{ fontSize: '12px' }}
+                     allowClear
+                     showSearch
+                     filterOption={(input, option) => {
+                       const optionText = option?.children?.toString() || '';
+                       return optionText.toLowerCase().includes(input.toLowerCase());
+                     }}
+                   >
                     {dropdownData.warehouses.map(warehouse => (
                       <Option key={warehouse.id} value={warehouse.id}>{warehouse.name}</Option>
                     ))}
@@ -494,18 +556,18 @@ function NewOrdersTablet({ onOrderCreated }) {
                 rules={[{ required: true, message: 'Required' }]}
                 style={{ marginBottom: '8px' }}
               >
-                  <Select
-                    placeholder="Territory"
-                    size="small"
-                    style={{ fontSize: '12px' }}
-                    allowClear
-                    showSearch
-                    filterOption={(input, option) => {
-                      const optionText = option?.children?.toString() || '';
-                      return optionText.toLowerCase().includes(input.toLowerCase());
-                    }}
-                    onChange={(value) => handleTerritoryChange('territoryCode', value)}
-                  >
+                    <Select
+                     placeholder="Territory"
+                     size="small"
+                     style={{ fontSize: '12px' }}
+                     allowClear
+                     showSearch
+                     filterOption={(input, option) => {
+                       const optionText = option?.children?.toString() || '';
+                       return optionText.toLowerCase().includes(input.toLowerCase());
+                     }}
+                     onChange={(value) => handleTerritoryChange('territoryCode', value || '')}
+                   >
                     {dropdownData.territories.map(territory => (
                       <Option key={territory.code} value={territory.code}>{territory.name}</Option>
                     ))}
@@ -520,12 +582,12 @@ function NewOrdersTablet({ onOrderCreated }) {
                   rules={[{ required: true, message: 'Required' }]}
                   style={{ marginBottom: '8px' }}
                 >
-                  <Select 
+                    <Select
                     placeholder={filteredDealers.length === 0 ? "Select territory first" : "Dealer"} 
                     size="small"
                     style={{ fontSize: '12px' }}
                     allowClear
-                    showSearch 
+                    showSearch
                     filterOption={(input, option) => {
                       const optionText = option?.children?.toString() || '';
                       return optionText.toLowerCase().includes(input.toLowerCase());
@@ -547,17 +609,18 @@ function NewOrdersTablet({ onOrderCreated }) {
                   rules={[{ required: true, message: 'Required' }]}
                   style={{ marginBottom: '8px' }}
                 >
-                  <Select 
-                    placeholder="Transport" 
-                    size="small"
-                    style={{ fontSize: '12px' }}
-                    allowClear
-                    showSearch 
-                    filterOption={(input, option) => {
-                      const optionText = option?.children?.toString() || '';
-                      return optionText.toLowerCase().includes(input.toLowerCase());
-                    }}
-                  >
+                    <Select
+                     placeholder="Transport" 
+                     size="small"
+                     style={{ fontSize: '12px' }}
+                     allowClear
+                     showSearch
+                     onChange={handleTransportChange}
+                     filterOption={(input, option) => {
+                       const optionText = option?.children?.toString() || '';
+                       return optionText.toLowerCase().includes(input.toLowerCase());
+                     }}
+                   >
                     {dropdownData.transports.map(transport => (
                       <Option key={transport.id} value={transport.id}>{transport.truck_details}</Option>
                     ))}
@@ -581,8 +644,16 @@ function NewOrdersTablet({ onOrderCreated }) {
                 onClick={() => setSearchTerm('')}
                 style={{ 
                   cursor: 'pointer', 
-                  color: '#999',
-                  fontSize: '12px'
+                  color: '#666',
+                  fontSize: '14px',
+                  padding: '4px',
+                  borderRadius: '4px',
+                  backgroundColor: '#f0f0f0',
+                  minWidth: '20px',
+                  minHeight: '20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
                 }}
               />
             )
@@ -596,21 +667,24 @@ function NewOrdersTablet({ onOrderCreated }) {
         />
       </Card>
 
-      {/* Responsive Product Grid */}
-      <div className="responsive-product-grid">
-        {filteredProducts.map(product => {
-          const quantity = productQuantities[product.id] || 0;
-          return (
-            <Card
-              key={product.id}
-              style={{ 
-                borderRadius: '8px',
-                border: quantity > 0 ? '2px solid #52c41a' : '1px solid #f0f0f0',
-                transition: 'all 0.3s',
-                backgroundColor: quantity > 0 ? '#f6ffed' : 'white'
-              }}
-              bodyStyle={{ padding: '8px' }}
-            >
+       {/* Responsive Product Grid */}
+       <div className="responsive-product-grid">
+         {filteredProducts.map(product => {
+            const quantity = productQuantities[product.id] || 0;
+            
+            return (
+              <Card
+                key={product.id}
+                style={{ 
+                  borderRadius: '8px',
+                  border: quantity > 0 ? '2px solid #52c41a' : '1px solid #f0f0f0',
+                  transition: 'all 0.3s',
+                  backgroundColor: quantity > 0 ? '#f6ffed' : 'white',
+                  cursor: 'pointer'
+                }}
+                bodyStyle={{ padding: '6px' }}
+                onClick={() => showProductPopup(product)}
+              >
               <div style={{ textAlign: 'center' }}>
                 <div style={{ 
                   fontSize: '14px', 
@@ -632,133 +706,34 @@ function NewOrdersTablet({ onOrderCreated }) {
                   {product.name}
                 </div>
                 
-                {/* Compact Quantity Controls */}
+                {/* Show quantity if added */}
+                {quantity > 0 && (
+                  <div style={{ 
+                    fontSize: '11px', 
+                    color: '#52c41a',
+                    fontWeight: 'bold',
+                    backgroundColor: '#f6ffed',
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    marginBottom: '4px'
+                  }}>
+                    Qty: {quantity}
+                  </div>
+                )}
+                
+                {/* Tap hint */}
                 <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  gap: '6px',
-                  marginBottom: '8px'
+                  fontSize: '10px', 
+                  color: '#999'
                 }}>
-                  <Button
-                    type="primary"
-                    shape="circle"
-                    size="small"
-                    className="qty-btn"
-                    icon={<span style={{ fontSize: '14px', fontWeight: 'bold' }}>-</span>}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      updateProductQuantity(product.id, -1);
-                    }}
-                    disabled={quantity === 0}
-                    style={{ 
-                      width: '28px', 
-                      height: '28px',
-                      backgroundColor: quantity > 0 ? '#ff4d4f' : '#d9d9d9',
-                      borderColor: quantity > 0 ? '#ff4d4f' : '#d9d9d9'
-                    }}
-                  />
-                  
-                  <InputNumber
-                    min={0}
-                    max={9999}
-                    value={quantity}
-                    onChange={(value) => {
-                      const newQty = value || 0;
-                      setProductQuantities(prev => ({
-                        ...prev,
-                        [product.id]: newQty
-                      }));
-                      // Auto-add previous product if switching to different product
-                      autoAddPreviousProduct(product.id);
-                    }}
-                    style={{
-                      width: '60px',
-                      textAlign: 'center'
-                    }}
-                    controls={false}
-                    placeholder="0"
-                  />
-                  
-                  <Button
-                    type="primary"
-                    shape="circle"
-                    size="small"
-                    className="qty-btn"
-                    icon={<span style={{ fontSize: '14px', fontWeight: 'bold' }}>+</span>}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // Auto-add previous product if switching to different product
-                      autoAddPreviousProduct(product.id);
-                      updateProductQuantity(product.id, 1);
-                    }}
-                    style={{ 
-                      width: '28px', 
-                      height: '28px',
-                      backgroundColor: '#52c41a',
-                      borderColor: '#52c41a'
-                    }}
-                  />
+                  Tap to configure
                 </div>
                 
-                {/* Quick Quantity Buttons - Only Common Quantities */}
-                <div style={{ 
-                  display: 'flex', 
-                  gap: '2px', 
-                  marginBottom: '6px',
-                  justifyContent: 'center',
-                  flexWrap: 'wrap'
-                }}>
-                  {[50, 100, 150, 200].map(quickQty => (
-                    <Button
-                      key={quickQty}
-                      size="small"
-                      className="quick-qty-btn"
-                      type={quantity === quickQty ? 'primary' : 'default'}
-                      onClick={() => {
-                        setProductQuantities(prev => ({
-                          ...prev,
-                          [product.id]: quickQty
-                        }));
-                        autoAddPreviousProduct(product.id);
-                      }}
-                      style={{
-                        fontSize: '9px',
-                        height: '22px',
-                        minWidth: '35px',
-                        fontWeight: 'bold',
-                        padding: '0 4px'
-                      }}
-                    >
-                      {quickQty}
-                    </Button>
-                  ))}
-                </div>
-
-                {/* Compact Add Button */}
-                <Button
-                  type="primary"
-                  size="small"
-                  className="add-btn"
-                  onClick={() => addProductToOrder(product)}
-                  disabled={quantity === 0}
-                  style={{
-                    width: '100%',
-                    height: '28px',
-                    fontSize: '11px',
-                    fontWeight: 'bold',
-                    borderRadius: '6px',
-                    backgroundColor: quantity > 0 ? '#52c41a' : '#d9d9d9',
-                    borderColor: quantity > 0 ? '#52c41a' : '#d9d9d9'
-                  }}
-                >
-                  {quantity > 0 ? `Add ${quantity}` : 'Select Qty'}
-                </Button>
               </div>
             </Card>
           );
         })}
-      </div>
+        </div>
 
       {/* Order Review Section */}
       {orderItems.length > 0 && (
@@ -902,7 +877,33 @@ function NewOrdersTablet({ onOrderCreated }) {
                 onClick={() => {
                   // Save form data to localStorage before navigating
                   const formValues = form.getFieldsValue();
-                  localStorage.setItem('tsoFormData', JSON.stringify(formValues));
+                  console.log('🔍 Raw form.getFieldsValue():', formValues);
+                  
+                  // Also try to get values individually
+                  const individualValues = {
+                    orderType: form.getFieldValue('orderType'),
+                    warehouse: form.getFieldValue('warehouse'),
+                    territoryCode: form.getFieldValue('territoryCode'),
+                    dealer: form.getFieldValue('dealer'),
+                    transport: form.getFieldValue('transport')
+                  };
+                  console.log('🔍 Individual field values:', individualValues);
+                  
+                  // Check if we have any values to save
+                  const hasValues = Object.values(individualValues).some(value => value !== undefined && value !== null && value !== '');
+                  console.log('🔍 Has form values to save:', hasValues);
+                  
+                  if (hasValues) {
+                    localStorage.setItem('tsoFormData', JSON.stringify(individualValues));
+                    console.log('✅ Form data saved to localStorage:', individualValues);
+                  } else {
+                    console.log('❌ No form values to save - form might be empty');
+                  }
+                  
+                  // Verify it was saved
+                  const saved = localStorage.getItem('tsoFormData');
+                  console.log('🔍 Verification - saved data:', saved);
+                  
                   window.location.href = '/review-orders';
                 }}
                 style={{ 
@@ -918,6 +919,164 @@ function NewOrdersTablet({ onOrderCreated }) {
           </Row>
         </div>
       )}
+
+      {/* Product Configuration Popup Modal */}
+      <Modal
+        title={
+          <div style={{ textAlign: 'center', fontSize: '16px', fontWeight: 'bold' }}>
+            {selectedProductForPopup?.product_code} - {selectedProductForPopup?.name}
+          </div>
+        }
+        open={isPopupVisible}
+        onCancel={hideProductPopup}
+        footer={null}
+        width={400}
+        centered
+        style={{ top: 20 }}
+      >
+        {selectedProductForPopup && (
+          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            {/* Product Info */}
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ 
+                fontSize: '18px', 
+                fontWeight: 'bold', 
+                color: '#1890ff',
+                marginBottom: '8px'
+              }}>
+                {selectedProductForPopup.product_code}
+              </div>
+              <div style={{ 
+                fontSize: '14px', 
+                color: '#333',
+                marginBottom: '16px'
+              }}>
+                {selectedProductForPopup.name}
+              </div>
+            </div>
+
+            {/* Quantity Controls */}
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              gap: '12px',
+              marginBottom: '20px'
+            }}>
+              <Button
+                type="primary"
+                shape="circle"
+                size="large"
+                icon={<span style={{ fontSize: '18px', fontWeight: 'bold' }}>-</span>}
+                onClick={() => updateProductQuantity(selectedProductForPopup.id, -1)}
+                disabled={productQuantities[selectedProductForPopup.id] === 0}
+                style={{ 
+                  width: '40px', 
+                  height: '40px',
+                  backgroundColor: productQuantities[selectedProductForPopup.id] > 0 ? '#ff4d4f' : '#d9d9d9',
+                  borderColor: productQuantities[selectedProductForPopup.id] > 0 ? '#ff4d4f' : '#d9d9d9'
+                }}
+              />
+              
+              <InputNumber
+                min={0}
+                max={9999}
+                value={productQuantities[selectedProductForPopup.id] || 0}
+                onChange={(value) => {
+                  const newQty = value || 0;
+                  setProductQuantities(prev => ({
+                    ...prev,
+                    [selectedProductForPopup.id]: newQty
+                  }));
+                  autoAddPreviousProduct(selectedProductForPopup.id);
+                }}
+                style={{
+                  width: '100px',
+                  textAlign: 'center',
+                  fontSize: '18px',
+                  height: '40px'
+                }}
+                controls={false}
+                placeholder="0"
+              />
+              
+              <Button
+                type="primary"
+                shape="circle"
+                size="large"
+                icon={<span style={{ fontSize: '18px', fontWeight: 'bold' }}>+</span>}
+                onClick={() => {
+                  autoAddPreviousProduct(selectedProductForPopup.id);
+                  updateProductQuantity(selectedProductForPopup.id, 1);
+                }}
+                style={{ 
+                  width: '40px', 
+                  height: '40px',
+                  backgroundColor: '#52c41a',
+                  borderColor: '#52c41a'
+                }}
+              />
+            </div>
+            
+            {/* Quick Quantity Buttons */}
+            <div style={{ 
+              display: 'flex', 
+              gap: '8px', 
+              marginBottom: '20px',
+              justifyContent: 'center',
+              flexWrap: 'wrap'
+            }}>
+              {[50, 100, 150, 200].map(quickQty => (
+                <Button
+                  key={quickQty}
+                  size="large"
+                  type={productQuantities[selectedProductForPopup.id] === quickQty ? 'primary' : 'default'}
+                  onClick={() => {
+                    setProductQuantities(prev => ({
+                      ...prev,
+                      [selectedProductForPopup.id]: quickQty
+                    }));
+                    autoAddPreviousProduct(selectedProductForPopup.id);
+                  }}
+                  style={{
+                    fontSize: '14px',
+                    height: '40px',
+                    minWidth: '60px',
+                    fontWeight: 'bold',
+                    padding: '0 16px'
+                  }}
+                >
+                  {quickQty}
+                </Button>
+              ))}
+            </div>
+
+            {/* Add Button */}
+            <Button
+              type="primary"
+              size="large"
+              onClick={() => {
+                addProductToOrder(selectedProductForPopup);
+                hideProductPopup();
+              }}
+              disabled={productQuantities[selectedProductForPopup.id] === 0}
+              style={{
+                width: '100%',
+                height: '50px',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                borderRadius: '8px',
+                backgroundColor: productQuantities[selectedProductForPopup.id] > 0 ? '#52c41a' : '#d9d9d9',
+                borderColor: productQuantities[selectedProductForPopup.id] > 0 ? '#52c41a' : '#d9d9d9'
+              }}
+            >
+              {productQuantities[selectedProductForPopup.id] > 0 
+                ? `Add ${productQuantities[selectedProductForPopup.id]} to Order` 
+                : 'Select Quantity First'}
+            </Button>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
