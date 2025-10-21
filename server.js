@@ -433,6 +433,7 @@ async function copyWorksheetStructure(templateWorksheet, newWorksheet, orders, d
             newCell.value = 0;
             newCell.alignment = { horizontal: 'center', vertical: 'middle' };
             newCell.font = { name: 'Calibri', size: 8 };
+            // No highlighting for 0 quantities (sample row)
             productCol++;
         });
         currentRow++;
@@ -492,8 +493,8 @@ async function copyWorksheetStructure(templateWorksheet, newWorksheet, orders, d
                     bold: templateCell.font.bold,
                     italic: templateCell.font.italic,
                     color: templateCell.font.color,
-                size: 8,
-                name: 'Calibri'
+                    size: 8,
+                    name: 'Calibri'
                 };
             }
             
@@ -505,12 +506,17 @@ async function copyWorksheetStructure(templateWorksheet, newWorksheet, orders, d
                 newCell.border = { ...templateCell.border };
             }
             
-            if (templateCell.fill) {
-                newCell.fill = { ...templateCell.fill };
-            }
-            
             if (templateCell.numFmt) {
                 newCell.numFmt = templateCell.numFmt;
+            }
+            
+            // Apply olive green background if quantity > 0 (after template formatting)
+            if (quantity > 0) {
+                newCell.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: 'FFD8E4BC' } // Excel background color #EBF1DE
+                };
             }
             
             productCol++;
