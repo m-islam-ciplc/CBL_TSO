@@ -121,12 +121,33 @@ async function copyWorksheetStructure(templateWorksheet, newWorksheet, orders, d
         }
     }
     
-    // Add application names as segments from database
+    // Add application names as segments from database with total quantities
     let summaryRow = 2;
     const applicationNames = Object.keys(productsByApplication);
     applicationNames.forEach(appName => {
         const summaryRowObj = newWorksheet.getRow(summaryRow);
         summaryRowObj.getCell(1).value = appName; // Use database application name as segment
+        
+        // Calculate total quantity for this application segment
+        let segmentTotalQty = 0;
+        let segmentTotalValue = 0;
+        const appProducts = productsByApplication[appName];
+        
+        // Sum up quantities and values for all products in this application across all orders
+        appProducts.forEach(product => {
+            orders.forEach(order => {
+                if (order.items) {
+                    const item = order.items.find(item => item.product_code === product.product_code);
+                    if (item) {
+                        segmentTotalQty += item.quantity;
+                        segmentTotalValue += item.quantity * (product.unit_tp || 0);
+                    }
+                }
+            });
+        });
+        
+        summaryRowObj.getCell(2).value = segmentTotalQty; // Total quantity for this segment
+        summaryRowObj.getCell(3).value = segmentTotalValue; // Total invoice value for this segment
         
         // Apply formatting from template data rows
         const templateRow = templateWorksheet.getRow(2);
@@ -140,8 +161,8 @@ async function copyWorksheetStructure(templateWorksheet, newWorksheet, orders, d
                     bold: templateCell.font.bold,
                     italic: templateCell.font.italic,
                     color: templateCell.font.color,
-                size: 8,
-                name: 'Calibri'
+                    size: 8,
+                    name: 'Calibri'
                 };
             }
             
@@ -168,8 +189,25 @@ async function copyWorksheetStructure(templateWorksheet, newWorksheet, orders, d
     // Add total row
     const totalRow = newWorksheet.getRow(summaryRow);
     totalRow.getCell(1).value = 'Total';
-    totalRow.getCell(2).value = 0; // Will be calculated
-    totalRow.getCell(3).value = 0; // Will be calculated
+    
+    // Calculate grand total of all quantities and values
+    let grandTotalQty = 0;
+    let grandTotalValue = 0;
+    orders.forEach(order => {
+        if (order.items) {
+            order.items.forEach(item => {
+                grandTotalQty += item.quantity;
+                // Find the product to get unit_tp
+                const product = allProducts.find(p => p.product_code === item.product_code);
+                if (product) {
+                    grandTotalValue += item.quantity * (product.unit_tp || 0);
+                }
+            });
+        }
+    });
+    
+    totalRow.getCell(2).value = grandTotalQty; // Grand total quantity
+    totalRow.getCell(3).value = grandTotalValue; // Grand total invoice value
     
     // Apply formatting to total row
     const templateTotalRow = templateWorksheet.getRow(9);
