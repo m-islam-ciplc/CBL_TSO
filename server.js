@@ -23,6 +23,31 @@ async function generateExcelReport(orders, date) {
         // Copy the template structure exactly
         await copyWorksheetStructure(templateWorksheet, worksheet, orders, date);
         
+        // Set specific column widths for columns A to E
+        const columnWidths = [10, 10, 25, 50, 25]; // A, B, C, D, E in characters
+        
+        for (let col = 1; col <= 5; col++) {
+            const column = worksheet.getColumn(col);
+            column.width = columnWidths[col - 1]; // Set specific character width
+            column.hidden = false; // Ensure column is visible
+        }
+        
+        // Set columns F to last column: width 10 characters and wrap text
+        for (let col = 6; col <= worksheet.columnCount; col++) {
+            const column = worksheet.getColumn(col);
+            column.width = 10; // Set width to 10 characters
+            column.hidden = false; // Ensure column is visible
+            
+            // Apply wrap text to all cells in this column
+            worksheet.getColumn(col).eachCell({ includeEmpty: false }, (cell) => {
+                if (cell.alignment) {
+                    cell.alignment.wrapText = true;
+                } else {
+                    cell.alignment = { wrapText: true };
+                }
+            });
+        }
+        
         // Generate Excel buffer
         const buffer = await workbook.xlsx.writeBuffer();
         return buffer;
