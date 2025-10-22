@@ -1187,6 +1187,38 @@ app.get('/api/orders', (req, res) => {
     });
 });
 
+// Get available dates with orders
+app.get('/api/orders/available-dates', (req, res) => {
+    const query = `
+        SELECT DISTINCT created_at
+        FROM orders 
+        WHERE created_at IS NOT NULL
+        ORDER BY created_at DESC
+    `;
+    
+    db.query(query, (err, rows) => {
+        if (err) {
+            console.error('Error fetching available dates:', err);
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        
+        console.log('Raw database results:', rows);
+        
+        // Extract unique dates from the full timestamps
+        const uniqueDates = new Set();
+        rows.forEach(row => {
+            const date = new Date(row.created_at);
+            const dateString = date.toISOString().split('T')[0];
+            uniqueDates.add(dateString);
+        });
+        
+        const dates = Array.from(uniqueDates).sort().reverse();
+        console.log('Processed dates:', dates);
+        res.json({ dates });
+    });
+});
+
 // Get order details with items
 app.get('/api/orders/:orderId', (req, res) => {
     const { orderId } = req.params;

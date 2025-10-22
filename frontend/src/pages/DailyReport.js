@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, DatePicker, Button, message, Typography, Row, Col, Space, Spin } from 'antd';
 import { DownloadOutlined, FileExcelOutlined } from '@ant-design/icons';
 import axios from 'axios';
@@ -9,6 +9,58 @@ const { Title, Text } = Typography;
 function DailyReport() {
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [loading, setLoading] = useState(false);
+  const [availableDates, setAvailableDates] = useState([]);
+
+  // Load available dates on component mount
+  useEffect(() => {
+    getAvailableDates();
+  }, []);
+
+  const getAvailableDates = async () => {
+    try {
+      console.log('Fetching available dates...');
+      const response = await axios.get('/api/orders/available-dates');
+      console.log('Available dates response:', response.data);
+      
+      // Convert ISO dates to YYYY-MM-DD format
+      const formattedDates = response.data.dates.map(date => {
+        return new Date(date).toISOString().split('T')[0];
+      });
+      
+      console.log('Formatted dates:', formattedDates);
+      setAvailableDates(formattedDates);
+    } catch (error) {
+      console.error('Error fetching available dates:', error);
+      console.error('Error details:', error.response?.data);
+    }
+  };
+
+  // Disable dates without orders
+  const disabledDate = (current) => {
+    const dateString = current.format('YYYY-MM-DD');
+    console.log('Checking date:', dateString, 'Available dates:', availableDates);
+    const isDisabled = !availableDates.includes(dateString);
+    console.log('Date disabled:', isDisabled);
+    return isDisabled;
+  };
+
+  // Custom date cell renderer
+  const dateCellRender = (current) => {
+    const dateString = current.format('YYYY-MM-DD');
+    const hasOrders = availableDates.includes(dateString);
+    
+    return (
+      <div style={{
+        color: hasOrders ? '#000' : '#d9d9d9',
+        backgroundColor: hasOrders ? 'transparent' : '#f5f5f5',
+        cursor: hasOrders ? 'pointer' : 'not-allowed',
+        borderRadius: '4px',
+        padding: '2px'
+      }}>
+        {current.date()}
+      </div>
+    );
+  };
 
   const handleGenerateReport = async () => {
     if (!selectedDate) {
@@ -107,6 +159,8 @@ function DailyReport() {
                   style={{ width: '100%' }}
                   placeholder="Select date for report"
                   size="large"
+                  disabledDate={disabledDate}
+                  dateRender={dateCellRender}
                 />
               </Space>
             </Card>
