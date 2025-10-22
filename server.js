@@ -533,6 +533,15 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(bodyParser.json());
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.status(200).json({ 
+        status: 'OK', 
+        timestamp: new Date().toISOString(),
+        service: 'CBL Sales Order API'
+    });
+});
+
 // Configure multer for file uploads
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -568,10 +577,11 @@ if (!fs.existsSync('uploads')) {
 
 // MySQL connection
 const db = mysql.createConnection({
-    host: 'localhost',
-    user: 'root',
-    password: '#lme11@@',
-    database: 'cbl_ordres'
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '#lme11@@',
+    database: process.env.DB_NAME || 'cbl_ordres',
+    port: process.env.DB_PORT || 3306
 });
 
 // Create transport table if it doesn't exist
