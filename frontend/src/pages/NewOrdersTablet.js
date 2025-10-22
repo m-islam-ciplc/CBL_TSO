@@ -646,7 +646,7 @@ function NewOrdersTablet({ onOrderCreated }) {
                   color: '#1890ff',
                   marginBottom: '4px'
                 }}>
-                  {product.product_code}
+                  {product.name}
                 </div>
                 <div 
                   className="product-name"
@@ -657,7 +657,7 @@ function NewOrdersTablet({ onOrderCreated }) {
                     lineHeight: '1.2'
                   }}
                 >
-                  {product.name}
+                  {product.product_code}
                 </div>
                 
                 {/* Show quantity if added */}
@@ -734,10 +734,10 @@ function NewOrdersTablet({ onOrderCreated }) {
                   <Col xs={8}>
                     <div>
                       <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1890ff' }}>
-                        {item.product_code}
+                        {item.product_name}
                       </div>
                       <div style={{ fontSize: '12px', color: '#666', lineHeight: '1.2' }}>
-                        {item.product_name}
+                        {item.product_code}
                       </div>
                     </div>
                   </Col>
