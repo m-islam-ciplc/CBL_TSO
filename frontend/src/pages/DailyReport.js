@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Card, DatePicker, Button, message, Typography, Row, Col, Space, Spin, Table, Tag, Tooltip } from 'antd';
-import { DownloadOutlined, FileExcelOutlined, EyeOutlined } from '@ant-design/icons';
+import { Card, DatePicker, Button, message, Typography, Row, Col, Space, Spin, Table, Tag, Tooltip, Input, Select } from 'antd';
+import { DownloadOutlined, FileExcelOutlined, EyeOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import dayjs from 'dayjs';
 
@@ -11,13 +11,21 @@ function DailyReport() {
   const [loading, setLoading] = useState(false);
   const [availableDates, setAvailableDates] = useState([]);
   const [previewData, setPreviewData] = useState([]);
+  const [filteredPreviewData, setFilteredPreviewData] = useState([]);
   const [showPreview, setShowPreview] = useState(false);
   const [orderProducts, setOrderProducts] = useState({});
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   // Load available dates on component mount
   useEffect(() => {
     getAvailableDates();
   }, []);
+
+  // Filter preview data when search term or status filter changes
+  useEffect(() => {
+    filterPreviewData();
+  }, [previewData, searchTerm, statusFilter]);
 
   const getAvailableDates = async () => {
     try {
@@ -172,6 +180,27 @@ function DailyReport() {
     }
   };
 
+  // Filter preview data
+  const filterPreviewData = () => {
+    let filtered = previewData;
+
+    // Search filter
+    if (searchTerm) {
+      filtered = filtered.filter(order =>
+        order.order_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.dealer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.dealer_territory.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(order => (order.status || 'new') === statusFilter);
+    }
+
+    setFilteredPreviewData(filtered);
+  };
+
   // Table columns for preview (same as Placed Orders)
   const columns = [
     {
@@ -184,6 +213,7 @@ function DailyReport() {
         </Tag>
       ),
       width: 120,
+      sorter: (a, b) => a.order_id.localeCompare(b.order_id),
     },
     {
       title: 'Dealer',
@@ -191,6 +221,7 @@ function DailyReport() {
       key: 'dealer_name',
       ellipsis: true,
       width: 300,
+      sorter: (a, b) => a.dealer_name.localeCompare(b.dealer_name),
     },
     {
       title: 'Territory',
@@ -199,6 +230,11 @@ function DailyReport() {
       ellipsis: true,
       width: 120,
       render: (territory) => territory || 'N/A',
+      sorter: (a, b) => {
+        const territoryA = a.dealer_territory || 'N/A';
+        const territoryB = b.dealer_territory || 'N/A';
+        return territoryA.localeCompare(territoryB);
+      },
     },
     {
       title: 'Products',
@@ -213,6 +249,7 @@ function DailyReport() {
         );
       },
       width: 60,
+      sorter: (a, b) => (a.item_count || 0) - (b.item_count || 0),
     },
     {
       title: 'Product Details',
@@ -262,6 +299,11 @@ function DailyReport() {
       key: 'status',
       render: (status) => <Tag color="default">New</Tag>,
       width: 80,
+      sorter: (a, b) => {
+        const statusA = a.status || 'new';
+        const statusB = b.status || 'new';
+        return statusA.localeCompare(statusB);
+      },
     },
     {
       title: 'Created',
@@ -269,6 +311,7 @@ function DailyReport() {
       key: 'created_at',
       render: (date) => new Date(date).toLocaleString(),
       width: 150,
+      sorter: (a, b) => new Date(a.created_at) - new Date(b.created_at),
     },
   ];
 
@@ -339,7 +382,7 @@ function DailyReport() {
                   Download Excel Report
                 </Button>
                 <Text type="secondary" style={{ fontSize: '12px' }}>
-                  Generate and download Excel file in Book1.xlsx format
+                  Generate Daily_Order_Report Excel File
                 </Text>
               </Space>
             </Card>
@@ -352,17 +395,53 @@ function DailyReport() {
             <Title level={3} style={{ marginBottom: '16px' }}>
               Orders for {selectedDate ? selectedDate.format('YYYY-MM-DD') : 'Selected Date'}
             </Title>
+            
+            {/* Filters */}
+            <Card size="small" style={{ marginBottom: '16px' }}>
+              <Row gutter={[16, 16]} align="middle" style={{ padding: '16px 0' }}>
+                <Col xs={24} sm={12} md={8}>
+                  <Input
+                    placeholder="Search orders..."
+                    prefix={<SearchOutlined />}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    size="middle"
+                  />
+                </Col>
+                <Col xs={24} sm={12} md={8}>
+                  <Select
+                    placeholder="Filter by status"
+                    value={statusFilter}
+                    onChange={setStatusFilter}
+                    style={{ width: '100%' }}
+                    size="middle"
+                  >
+                    <Select.Option value="all">All Status</Select.Option>
+                    <Select.Option value="new">New</Select.Option>
+                    <Select.Option value="processing">Processing</Select.Option>
+                    <Select.Option value="completed">Completed</Select.Option>
+                    <Select.Option value="shipped">Shipped</Select.Option>
+                  </Select>
+                </Col>
+                <Col xs={24} sm={12} md={8}>
+                  <Text type="secondary">
+                    Showing {filteredPreviewData.length} of {previewData.length} orders
+                  </Text>
+                </Col>
+              </Row>
+            </Card>
+
             <Table
               columns={columns}
-              dataSource={previewData}
+              dataSource={filteredPreviewData}
               rowKey="id"
               pagination={{
-                pageSize: 10,
+                pageSize: 20,
                 showSizeChanger: true,
                 showQuickJumper: true,
                 showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} orders`,
-                pageSizeOptions: ['5', '10', '20', '50'],
-                defaultPageSize: 10,
+                pageSizeOptions: ['10', '20', '50', '100'],
+                defaultPageSize: 20,
               }}
               scroll={{ x: 1200 }}
               size="small"

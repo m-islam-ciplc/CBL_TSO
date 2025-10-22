@@ -27,7 +27,8 @@ import {
   DeleteOutlined,
   UploadOutlined,
   DownloadOutlined,
-  TruckOutlined
+  TruckOutlined,
+  SearchOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
@@ -36,14 +37,22 @@ const { Option } = Select;
 
 function TransportManagement() {
   const [transports, setTransports] = useState([]);
+  const [filteredTransports, setFilteredTransports] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingTransport, setEditingTransport] = useState(null);
   const [form] = Form.useForm();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => {
     fetchTransports();
   }, []);
+
+  // Filter transports when search term or status filter changes
+  useEffect(() => {
+    filterTransports();
+  }, [transports, searchTerm, statusFilter]);
 
   const fetchTransports = async () => {
     setLoading(true);
@@ -56,6 +65,28 @@ function TransportManagement() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Filter transports
+  const filterTransports = () => {
+    let filtered = transports;
+
+    // Search filter
+    if (searchTerm) {
+      filtered = filtered.filter(transport =>
+        transport.truck_details.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        transport.driver_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        transport.driver_phone.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        transport.license_number.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(transport => (transport.status || 'active') === statusFilter);
+    }
+
+    setFilteredTransports(filtered);
   };
 
   const handleAdd = () => {
@@ -146,12 +177,14 @@ function TransportManagement() {
       dataIndex: 'id',
       key: 'id',
       width: 60,
+      sorter: (a, b) => a.id - b.id,
     },
     {
       title: 'Truck No',
       dataIndex: 'truck_no',
       key: 'truck_no',
       width: 100,
+      sorter: (a, b) => a.truck_no.localeCompare(b.truck_no),
     },
     {
       title: 'Truck Details',
@@ -159,30 +192,35 @@ function TransportManagement() {
       key: 'truck_details',
       width: 200,
       ellipsis: true,
+      sorter: (a, b) => a.truck_details.localeCompare(b.truck_details),
     },
     {
       title: 'Driver Name',
       dataIndex: 'driver_name',
       key: 'driver_name',
       width: 120,
+      sorter: (a, b) => a.driver_name.localeCompare(b.driver_name),
     },
     {
       title: 'Route No',
       dataIndex: 'route_no',
       key: 'route_no',
       width: 80,
+      sorter: (a, b) => a.route_no.localeCompare(b.route_no),
     },
     {
       title: 'Load Size',
       dataIndex: 'load_size',
       key: 'load_size',
       width: 100,
+      sorter: (a, b) => a.load_size.localeCompare(b.load_size),
     },
     {
       title: 'Load Weight',
       dataIndex: 'load_weight',
       key: 'load_weight',
       width: 100,
+      sorter: (a, b) => a.load_weight.localeCompare(b.load_weight),
     },
     {
       title: 'Status',
@@ -194,6 +232,11 @@ function TransportManagement() {
           {status === 'A' ? 'Active' : 'Inactive'}
         </Tag>
       ),
+      sorter: (a, b) => {
+        const statusA = a.transport_status || '';
+        const statusB = b.transport_status || '';
+        return statusA.localeCompare(statusB);
+      },
     },
     {
       title: 'Actions',
@@ -273,18 +316,54 @@ function TransportManagement() {
 
         <Divider />
 
+        {/* Filters */}
+        <Card size="small" style={{ marginBottom: '16px' }}>
+          <Row gutter={[16, 16]} align="middle" style={{ padding: '16px 0' }}>
+            <Col xs={24} sm={12} md={8}>
+              <Input
+                placeholder="Search transports..."
+                prefix={<SearchOutlined />}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                size="middle"
+              />
+            </Col>
+            <Col xs={24} sm={12} md={8}>
+              <Select
+                placeholder="Filter by status"
+                value={statusFilter}
+                onChange={setStatusFilter}
+                style={{ width: '100%' }}
+                size="middle"
+              >
+                <Select.Option value="all">All Status</Select.Option>
+                <Select.Option value="active">Active</Select.Option>
+                <Select.Option value="inactive">Inactive</Select.Option>
+              </Select>
+            </Col>
+            <Col xs={24} sm={12} md={8}>
+              <Text type="secondary">
+                Showing {filteredTransports.length} of {transports.length} transports
+              </Text>
+            </Col>
+          </Row>
+        </Card>
+
         {/* Transports Table */}
         <Table
           columns={columns}
-          dataSource={transports}
+          dataSource={filteredTransports}
           rowKey="id"
           loading={loading}
           scroll={{ x: 1000 }}
+          size="small"
           pagination={{
             pageSize: 20,
             showSizeChanger: true,
             showQuickJumper: true,
-            showTotal: (total) => `Total ${total} transports`
+            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} transports`,
+            pageSizeOptions: ['10', '20', '50', '100'],
+            defaultPageSize: 20,
           }}
         />
 

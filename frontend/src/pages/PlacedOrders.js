@@ -39,12 +39,12 @@ function PlacedOrders({ refreshTrigger }) {
   const [orderProducts, setOrderProducts] = useState({});
   const [pagination, setPagination] = useState({
     current: 1,
-    pageSize: 10,
+    pageSize: 20,
     showSizeChanger: true,
     showQuickJumper: true,
     showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} orders`,
-    pageSizeOptions: ['5', '10', '20', '50', '100'],
-    defaultPageSize: 10,
+    pageSizeOptions: ['10', '20', '50', '100'],
+    defaultPageSize: 20,
   });
 
   useEffect(() => {
@@ -168,6 +168,7 @@ function PlacedOrders({ refreshTrigger }) {
         </Tag>
       ),
       width: 120,
+      sorter: (a, b) => a.order_id.localeCompare(b.order_id),
     },
     {
       title: 'Dealer',
@@ -175,6 +176,7 @@ function PlacedOrders({ refreshTrigger }) {
       key: 'dealer_name',
       ellipsis: true,
       width: 300,
+      sorter: (a, b) => a.dealer_name.localeCompare(b.dealer_name),
     },
     {
       title: 'Territory',
@@ -183,6 +185,11 @@ function PlacedOrders({ refreshTrigger }) {
       ellipsis: true,
       width: 120,
       render: (territory) => territory || 'N/A',
+      sorter: (a, b) => {
+        const territoryA = a.dealer_territory || 'N/A';
+        const territoryB = b.dealer_territory || 'N/A';
+        return territoryA.localeCompare(territoryB);
+      },
     },
     {
       title: 'Products',
@@ -196,7 +203,8 @@ function PlacedOrders({ refreshTrigger }) {
           </div>
         );
       },
-      width: 60,
+      width: 70,
+      sorter: (a, b) => (a.item_count || 0) - (b.item_count || 0),
     },
     {
       title: 'Product Details',
@@ -247,6 +255,11 @@ function PlacedOrders({ refreshTrigger }) {
       key: 'status',
       render: (status) => getStatusTag(status || 'new'),
       width: 80,
+      sorter: (a, b) => {
+        const statusA = a.status || 'new';
+        const statusB = b.status || 'new';
+        return statusA.localeCompare(statusB);
+      },
     },
     {
       title: 'Created',
@@ -254,6 +267,7 @@ function PlacedOrders({ refreshTrigger }) {
       key: 'created_at',
       render: (date) => new Date(date).toLocaleString(),
       width: 150,
+      sorter: (a, b) => new Date(a.created_at) - new Date(b.created_at),
     },
     {
       title: 'Actions',
@@ -352,7 +366,7 @@ function PlacedOrders({ refreshTrigger }) {
             rowKey="id"
             pagination={pagination}
             onChange={handleTableChange}
-            scroll={{ x: 'max-content' }}
+            scroll={{ x: 1200 }}
             size="small"
           />
         )}

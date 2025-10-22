@@ -1,6 +1,21 @@
 # CBL Sales Order - Docker Deployment Guide
 
-This guide explains how to deploy the CBL Sales Order system using Docker containers.
+This comprehensive guide explains how to deploy and manage the CBL Sales Order system using Docker containers.
+
+## 📋 **Table of Contents**
+
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [Services Overview](#services)
+- [Configuration](#configuration)
+- [🚀 Quick Commands Reference](#-quick-commands-reference)
+- [Health Checks](#health-checks)
+- [File Uploads](#file-uploads)
+- [Production Deployment](#production-deployment)
+- [Troubleshooting](#troubleshooting)
+- [Monitoring](#monitoring)
+- [Updates and Maintenance](#updates-and-maintenance)
+- [Support](#support)
 
 ## Prerequisites
 
@@ -82,47 +97,147 @@ REACT_APP_API_URL=http://localhost:3002
 
 The database is automatically initialized with the schema from `database.sql` when the MySQL container starts for the first time.
 
-## Deployment Commands
+## 🚀 **Quick Commands Reference**
 
-### Start Services
+### **Initial Setup (First Time)**
+```bash
+# Navigate to project folder
+cd /path/to/CBL_TSO
+
+# Ensure Docker Desktop is running
+# Then build and start all containers
+docker-compose up -d --build
+
+# Check if everything is running
+docker-compose ps
+```
+
+### **Start Services**
 ```bash
 # Start all services in background
 docker-compose up -d
 
-# Start with rebuild
+# ⚠️ IMPORTANT: Stop running containers first before rebuilding
+docker-compose down
 docker-compose up -d --build
 ```
 
-### Stop Services
+### **Stop Services**
 ```bash
-# Stop all services
+# Stop all services (keeps data)
 docker-compose down
 
-# Stop and remove volumes (WARNING: This will delete all data)
+# Stop and remove everything (KEEPS DATA)
+docker-compose down
+
+# Stop and remove everything INCLUDING DATA
 docker-compose down -v
 ```
 
-### View Logs
+### **Status & Monitoring**
 ```bash
-# All services
+# Check container status
+docker-compose ps
+
+# View all logs
 docker-compose logs -f
 
-# Specific service
+# View specific service logs
 docker-compose logs -f backend
 docker-compose logs -f frontend
 docker-compose logs -f mysql
+
+# Check resource usage
+docker stats
 ```
 
-### Database Access
+### **Updates & Rebuilds**
+```bash
+# Pull latest code from Git
+git pull origin main
+
+# ⚠️ IMPORTANT: Always stop running containers first!
+docker-compose down
+
+# Rebuild and restart (after code changes)
+docker-compose up -d --build
+
+# Restart without rebuild (env changes only)
+docker-compose up -d
+
+# Restart specific service
+docker-compose restart backend
+docker-compose restart frontend
+docker-compose restart mysql
+```
+
+### **Database Management**
 ```bash
 # Connect to MySQL container
 docker-compose exec mysql mysql -u cbl_user -p cbl_ordres
 
-# Backup database
+# Access MySQL shell as root
+docker-compose exec mysql mysql -u root -p
+
+# Create database backup
 docker-compose exec mysql mysqldump -u cbl_user -p cbl_ordres > backup.sql
 
 # Restore database
 docker-compose exec -T mysql mysql -u cbl_user -p cbl_ordres < backup.sql
+
+# Reset database (WARNING: Deletes all data)
+docker-compose down
+docker volume rm cbl_tso_mysql_data
+docker-compose up -d --build
+```
+
+### **Cleanup Commands**
+```bash
+# Remove unused containers
+docker container prune
+
+# Remove unused images
+docker image prune
+
+# Remove unused volumes (CAREFUL: May delete data)
+docker volume prune
+
+# Full cleanup (CAREFUL: Removes everything)
+docker system prune -a
+```
+
+### **Quick Health Check**
+```bash
+# 1. Check containers are running
+docker-compose ps
+
+# 2. Test backend health
+curl http://localhost:3002/health
+
+# 3. Test frontend
+curl http://localhost
+
+# 4. Test API through proxy
+curl http://localhost/api/dealers
+
+# 5. Check logs for errors
+docker-compose logs --tail=50
+```
+
+### **Emergency Commands**
+```bash
+# Force restart everything
+docker-compose down
+docker-compose up -d --build
+
+# Reset everything (WARNING: Deletes data)
+docker-compose down -v
+docker-compose up -d --build
+
+# View detailed container info
+docker inspect cbl_tso_backend_1
+docker inspect cbl_tso_frontend_1
+docker inspect cbl_tso_mysql_1
 ```
 
 ## Health Checks
