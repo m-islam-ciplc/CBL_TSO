@@ -88,7 +88,7 @@ function DailyReport() {
       }
       
       // Generate Excel report
-      const response = await axios.get(`/api/orders/report/${dateString}`, {
+      const response = await axios.get(`/api/orders/tso-report/${dateString}`, {
         responseType: 'blob', // Important for file download
         headers: {
           'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -99,7 +99,7 @@ function DailyReport() {
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `Daily_Order_Report_${dateString}.xlsx`);
+      link.setAttribute('download', `TSO_Order_Report_${dateString}.xlsx`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -112,6 +112,51 @@ function DailyReport() {
         message.error(`No orders found for ${selectedDate ? selectedDate.format('YYYY-MM-DD') : 'selected date'}`);
       } else {
         message.error('Failed to generate report. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGenerateMRReport = async () => {
+    if (!selectedDate) {
+      message.error('Please select a date');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const dateString = selectedDate ? selectedDate.format('YYYY-MM-DD') : '';
+      if (!dateString) {
+        message.error('Please select a valid date');
+        return;
+      }
+      
+      // Generate MR CSV report
+      const response = await axios.get(`/api/orders/mr-report/${dateString}`, {
+        responseType: 'blob', // Important for file download
+        headers: {
+          'Accept': 'text/csv'
+        }
+      });
+
+      // Create blob link to download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `MR_Order_Report_${dateString}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      message.success(`MR CSV report generated successfully for ${dateString}`);
+    } catch (error) {
+      console.error('Error generating MR report:', error);
+      if (error.response?.status === 404) {
+        message.error(`No orders found for ${selectedDate ? selectedDate.format('YYYY-MM-DD') : 'selected date'}`);
+      } else {
+        message.error('Failed to generate MR report. Please try again.');
       }
     } finally {
       setLoading(false);
@@ -370,7 +415,7 @@ function DailyReport() {
           <Col xs={24} sm={12} md={8}>
             <Card size="small" style={{ height: '100%' }}>
               <Space direction="vertical" style={{ width: '100%' }}>
-                <Title level={4}>Generate Report</Title>
+                <Title level={4}>Generate Reports</Title>
                 <Button
                   type="primary"
                   icon={<DownloadOutlined />}
@@ -379,10 +424,20 @@ function DailyReport() {
                   style={{ width: '100%' }}
                   size="large"
                 >
-                  Download Excel Report
+                  Download TSO Excel Report
+                </Button>
+                <Button
+                  type="default"
+                  icon={<DownloadOutlined />}
+                  onClick={handleGenerateMRReport}
+                  loading={loading}
+                  style={{ width: '100%' }}
+                  size="large"
+                >
+                  Download MR CSV Report
                 </Button>
                 <Text type="secondary" style={{ fontSize: '12px' }}>
-                  Generate Daily_Order_Report Excel File
+                  TSO: Excel format • MR: CSV format with warehouse aliases
                 </Text>
               </Space>
             </Card>

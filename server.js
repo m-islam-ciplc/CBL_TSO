@@ -447,7 +447,7 @@ async function copyWorksheetStructure(templateWorksheet, newWorksheet, orders, d
             serialNo: serialNo++,
             orderType: order.order_type || 'RO',
             orderDate: date,
-            warehouseName: order.warehouse_name || 'Narayanganj Factory',
+            warehouseName: order.warehouse_name || 'Head Office',
             dealerName: order.dealer_name || '',
             products: {}
         };
@@ -1029,7 +1029,7 @@ app.get('/api/order-types', (req, res) => {
 
 // Get all warehouses
 app.get('/api/warehouses', (req, res) => {
-    db.query('SELECT id, name FROM warehouses', (err, results) => {
+    db.query('SELECT id, name, alias FROM warehouses', (err, results) => {
         if (err) {
             res.status(500).json({ error: err.message });
         } else {
@@ -1168,6 +1168,7 @@ app.get('/api/orders', (req, res) => {
             d.name as dealer_name, 
             d.territory_name as dealer_territory, 
             w.name as warehouse_name,
+            w.alias as warehouse_alias,
             COUNT(oi.id) as item_count
         FROM orders o
         LEFT JOIN order_types ot ON o.order_type_id = ot.id
@@ -1288,6 +1289,7 @@ app.get('/api/orders/date/:date', async (req, res) => {
                 d.address as dealer_address,
                 d.contact as dealer_contact,
                 w.name as warehouse_name,
+            w.alias as warehouse_alias,
                 DATE(o.created_at) as order_date
             FROM orders o
             LEFT JOIN order_types ot ON o.order_type_id = ot.id
@@ -1335,8 +1337,8 @@ app.get('/api/orders/date/:date', async (req, res) => {
     }
 });
 
-// Generate Excel report for orders on a specific date
-app.get('/api/orders/report/:date', async (req, res) => {
+// Generate TSO Excel report for orders on a specific date
+app.get('/api/orders/tso-report/:date', async (req, res) => {
     try {
         const { date } = req.params;
         
@@ -1356,6 +1358,7 @@ app.get('/api/orders/report/:date', async (req, res) => {
                 d.address as dealer_address,
                 d.contact as dealer_contact,
                 w.name as warehouse_name,
+            w.alias as warehouse_alias,
                 DATE(o.created_at) as order_date
             FROM orders o
             LEFT JOIN order_types ot ON o.order_type_id = ot.id
@@ -1394,12 +1397,114 @@ app.get('/api/orders/report/:date', async (req, res) => {
         
         // Set headers for file download
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.setHeader('Content-Disposition', `attachment; filename="Daily_Order_Report_${date}.xlsx"`);
+        res.setHeader('Content-Disposition', `attachment; filename="TSO_Order_Report_${date}.xlsx"`);
         
         res.send(reportData);
         
     } catch (error) {
         console.error('Error generating Excel report:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Generate MR Order Report CSV (using warehouse aliases)
+app.get('/api/orders/mr-report/:date', async (req, res) => {
+    const { date } = req.params;
+    
+    try {
+        console.log(`📊 Generating MR Order Report CSV for date: ${date}`);
+        
+        // Get orders for the specified date with order items
+        const ordersQuery = `
+            SELECT DISTINCT
+                o.order_id,
+                ot.name as order_type, 
+                d.name as dealer_name, 
+                d.territory_name as dealer_territory, 
+                w.name as warehouse_name,
+                w.alias as warehouse_alias,
+                DATE(o.created_at) as order_date,
+                o.created_at
+            FROM orders o
+            LEFT JOIN order_types ot ON o.order_type_id = ot.id
+            LEFT JOIN dealers d ON o.dealer_id = d.id
+            LEFT JOIN warehouses w ON o.warehouse_id = w.id
+            WHERE DATE(o.created_at) = ?
+            ORDER BY o.created_at ASC
+        `;
+        
+        const orders = await db.promise().query(ordersQuery, [date]);
+        
+        if (orders[0].length === 0) {
+            return res.status(404).json({ error: 'No orders found for the specified date' });
+        }
+        
+        // Get all products to create column headers
+        const productsQuery = `
+            SELECT product_code, name, unit_tp 
+            FROM products 
+            ORDER BY name ASC
+        `;
+        const products = await db.promise().query(productsQuery);
+        const allProducts = products[0];
+        
+        // Get order items for all orders
+        const orderItemsQuery = `
+            SELECT oi.order_id, p.name as product_name, oi.quantity
+            FROM order_items oi
+            LEFT JOIN products p ON oi.product_id = p.id
+            WHERE oi.order_id IN (${orders[0].map(() => '?').join(',')})
+        `;
+        const orderItems = await db.promise().query(orderItemsQuery, orders[0].map(order => order.order_id));
+        
+        // Group order items by order_id
+        const orderItemsMap = {};
+        orderItems[0].forEach(item => {
+            if (!orderItemsMap[item.order_id]) {
+                orderItemsMap[item.order_id] = {};
+            }
+            orderItemsMap[item.order_id][item.product_name] = item.quantity;
+        });
+        
+        // Create CSV headers
+        const headers = ['internalId', 'orderType', 'orderDate', 'warehouse', 'DealerName'];
+        allProducts.forEach(product => {
+            headers.push(product.name);
+        });
+        
+        // Create CSV rows
+        const csvRows = [headers.join(',')];
+        
+        orders[0].forEach(order => {
+            const warehouseName = order.warehouse_alias || order.warehouse_name;
+            const row = [
+                '', // internalId
+                order.order_type,
+                date,
+                warehouseName,
+                order.dealer_name
+            ];
+            
+            // Add quantities for each product
+            allProducts.forEach(product => {
+                const quantity = orderItemsMap[order.order_id]?.[product.name] || '';
+                row.push(quantity);
+            });
+            
+            csvRows.push(row.join(','));
+        });
+        
+        // Convert to CSV string
+        const csvContent = csvRows.join('\n');
+        
+        // Set headers for CSV download
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename="MR_Order_Report_${date}.csv"`);
+        
+        res.send(csvContent);
+        
+    } catch (error) {
+        console.error('Error generating MR Order Report CSV:', error);
         res.status(500).json({ error: error.message });
     }
 });
