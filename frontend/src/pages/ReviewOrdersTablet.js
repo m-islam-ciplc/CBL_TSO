@@ -315,12 +315,11 @@ function ReviewOrdersTablet({ onOrderCreated }) {
           >
             <Button
               type="primary"
-              size="large"
+              size="small"
               icon={<ArrowLeftOutlined />}
               onClick={() => window.location.href = '/new-orders'}
               style={{
-                height: '48px',
-                fontSize: '16px',
+                fontSize: '13px',
                 borderRadius: '8px'
               }}
             >
@@ -481,7 +480,7 @@ function ReviewOrdersTablet({ onOrderCreated }) {
             type="link"
             size="small"
             onClick={clearAllItems}
-            style={{ color: '#ff4d4f', fontSize: '12px' }}
+            style={{ color: '#ff4d4f', fontSize: '13px' }}
           >
             Clear All
           </Button>
@@ -573,7 +572,7 @@ function ReviewOrdersTablet({ onOrderCreated }) {
                     icon={<DeleteOutlined />}
                     onClick={() => removeOrderItem(item.id)}
                     style={{ 
-                      fontSize: '11px',
+                      fontSize: '13px',
                       width: '100%',
                       height: '28px'
                     }}
@@ -604,7 +603,7 @@ function ReviewOrdersTablet({ onOrderCreated }) {
            <Col xs={8} sm={4}>
              <Button
                danger
-               size="large"
+               size="small"
                onClick={() => {
                  // Clear all order data
                  setOrderItems([]);
@@ -616,18 +615,17 @@ function ReviewOrdersTablet({ onOrderCreated }) {
                }}
                style={{ 
                  width: '100%',
-                 height: '44px',
                  fontSize: '13px',
                  borderRadius: '8px'
                }}
              >
-               Cancel
+               Cancel This Order
              </Button>
            </Col>
            <Col xs={8} sm={4}>
              <Button
                type="default"
-               size="large"
+               size="small"
                icon={<PlusOutlined />}
                onClick={() => {
                  // Save current form data before navigating
@@ -637,7 +635,6 @@ function ReviewOrdersTablet({ onOrderCreated }) {
                }}
                style={{ 
                  width: '100%',
-                 height: '44px',
                  fontSize: '13px',
                  borderRadius: '8px'
                }}
@@ -648,14 +645,13 @@ function ReviewOrdersTablet({ onOrderCreated }) {
            <Col xs={8} sm={4}>
              <Button
                type="primary"
-               size="large"
+               size="small"
                loading={loading}
                icon={<CheckOutlined />}
                onClick={handleSubmit}
                style={{ 
                  width: '100%',
-                 height: '44px',
-                 fontSize: '14px',
+                 fontSize: '13px',
                  borderRadius: '8px'
                }}
              >

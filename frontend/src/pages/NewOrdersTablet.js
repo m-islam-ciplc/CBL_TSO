@@ -787,7 +787,7 @@ function NewOrdersTablet({ onOrderCreated }) {
               type="link"
               size="small"
               onClick={() => setOrderItems([])}
-              style={{ color: '#ff4d4f', fontSize: '12px' }}
+              style={{ color: '#ff4d4f', fontSize: '13px' }}
             >
               Clear All
             </Button>
@@ -837,8 +837,8 @@ function NewOrdersTablet({ onOrderCreated }) {
                         icon={<span style={{ fontSize: '12px' }}>-</span>}
                         onClick={() => updateOrderItem(item.id, 'quantity', Math.max(1, item.quantity - 1))}
                         style={{ 
-                          width: '24px', 
-                          height: '24px',
+                          width: '28px', 
+                          height: '28px',
                           fontSize: '10px'
                         }}
                       />
@@ -862,8 +862,8 @@ function NewOrdersTablet({ onOrderCreated }) {
                         icon={<span style={{ fontSize: '12px' }}>+</span>}
                         onClick={() => updateOrderItem(item.id, 'quantity', item.quantity + 1)}
                         style={{ 
-                          width: '24px', 
-                          height: '24px',
+                          width: '28px', 
+                          height: '28px',
                           fontSize: '10px'
                         }}
                       />
@@ -876,7 +876,7 @@ function NewOrdersTablet({ onOrderCreated }) {
                       size="small"
                       icon={<DeleteOutlined />}
                       onClick={() => removeOrderItem(item.id)}
-                      style={{ fontSize: '12px' }}
+                      style={{ fontSize: '13px' }}
                     />
                   </Col>
                 </Row>
@@ -913,7 +913,7 @@ function NewOrdersTablet({ onOrderCreated }) {
             <Col xs={10} sm={8}>
               <Button
                 type="primary"
-                size="large"
+                size="small"
                 icon={<CheckOutlined />}
                 onClick={() => {
                   // Save form data to localStorage before navigating
@@ -949,7 +949,6 @@ function NewOrdersTablet({ onOrderCreated }) {
                 }}
                 style={{ 
                   width: '100%',
-                  height: '44px',
                   fontSize: '13px',
                   borderRadius: '8px'
                 }}
