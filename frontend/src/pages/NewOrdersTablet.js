@@ -55,6 +55,7 @@ function NewOrdersTablet({ onOrderCreated }) {
   const [expandedProductId, setExpandedProductId] = useState(null); // Track single expanded product card
   const [selectedProductForPopup, setSelectedProductForPopup] = useState(null); // Product for popup modal
   const [isPopupVisible, setIsPopupVisible] = useState(false); // Control popup visibility
+  const [formValues, setFormValues] = useState({}); // Store form values in state for validation
 
   useEffect(() => {
     loadDropdownData();
@@ -164,6 +165,7 @@ function NewOrdersTablet({ onOrderCreated }) {
         dealer: ''
       };
       form.setFieldsValue(initialValues);
+      setFormValues(initialValues); // Store in state
     }
   };
 
@@ -302,7 +304,36 @@ function NewOrdersTablet({ onOrderCreated }) {
     const quantity = productQuantities[product.id] || 1;
     if (quantity === 0) {
       message.warning('Please select a quantity first');
-      return;
+      return false;
+    }
+
+    // Validate that all required order details are filled - use both form.getFieldsValue() and state
+    const formCurrentValues = form.getFieldsValue();
+    const values = { ...formValues, ...formCurrentValues }; // Merge state and current form values
+    
+    console.log('🔍 Form values when adding product (from state):', formValues);
+    console.log('🔍 Form values when adding product (from form):', formCurrentValues);
+    console.log('🔍 Merged values:', values);
+    
+    if (!values.orderType) {
+      message.error('Please select an Order Type first');
+      return false;
+    }
+    if (!values.warehouse) {
+      message.error('Please select a Warehouse first');
+      return false;
+    }
+    if (!values.territoryCode) {
+      message.error('Please select a Territory first');
+      return false;
+    }
+    if (!values.dealer) {
+      message.error('Please select a Dealer first');
+      return false;
+    }
+    if (!values.transport) {
+      message.error('Please select a Transport first');
+      return false;
     }
 
     const existingItem = orderItems.find(item => item.product_id === product.id);
@@ -338,6 +369,7 @@ function NewOrdersTablet({ onOrderCreated }) {
     
     
     message.success(`${product.product_code} (Qty: ${quantity}) added to order!`);
+    return true;
   };
 
   const updateOrderItem = (itemId, field, value) => {
@@ -479,6 +511,9 @@ function NewOrdersTablet({ onOrderCreated }) {
             layout="horizontal"
             size="small"
             style={{ marginTop: '12px' }}
+            onValuesChange={(changedValues, allValues) => {
+              setFormValues(allValues);
+            }}
           >
             <Row gutter={[4, 6]} align="middle">
               <Col xs={12} sm={12} md={3} lg={3}>
@@ -1035,8 +1070,10 @@ function NewOrdersTablet({ onOrderCreated }) {
               type="primary"
               size="large"
               onClick={() => {
-                addProductToOrder(selectedProductForPopup);
-                hideProductPopup();
+                const success = addProductToOrder(selectedProductForPopup);
+                if (success) {
+                  hideProductPopup();
+                }
               }}
               disabled={productQuantities[selectedProductForPopup.id] === 0}
               style={{
