@@ -621,7 +621,7 @@ function ReviewOrdersTablet({ onOrderCreated }) {
                  borderRadius: '8px'
                }}
              >
-               Cancel This Order
+               Cancel Order
              </Button>
            </Col>
            <Col xs={8} sm={4}>
