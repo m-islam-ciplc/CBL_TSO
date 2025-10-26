@@ -275,7 +275,7 @@ function ReviewOrdersTablet({ onOrderCreated }) {
       const response = await axios.post('/api/orders', orderData);
 
       if (response.data.success) {
-        message.success(`Order created successfully! Order ID: ${response.data.order_id} with ${response.data.item_count} product(s)`);
+        message.success(`Order created successfully! Order ID: ${response.data.order_id} with ${response.data.item_count} product(s)`, 2);
         
         // Clear the order and form data
         setOrderItems([]);
@@ -285,8 +285,10 @@ function ReviewOrdersTablet({ onOrderCreated }) {
         
         onOrderCreated();
         
-        // Redirect to new orders
-        window.location.href = '/new-orders';
+        // Redirect to new orders after showing the message
+        setTimeout(() => {
+          window.location.href = '/new-orders';
+        }, 1000);
       }
     } catch (error) {
       message.error(`Failed to create order: ${error.response?.data?.error || error.message}`);
