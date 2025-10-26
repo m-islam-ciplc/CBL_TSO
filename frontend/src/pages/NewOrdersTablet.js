@@ -221,7 +221,10 @@ function NewOrdersTablet({ onOrderCreated }) {
       const territory = dropdownData.territories.find(t => t.code === value);
       console.log('🔍 Found territory:', territory);
       if (territory) {
-        form.setFieldsValue({ territoryName: territory.name });
+        form.setFieldsValue({ 
+          territoryName: territory.name,
+          dealer: '' // Clear dealer when territory changes
+        });
         filterDealersByTerritory(territory.code, territory.name);
       } else {
         // Clear both territory and dealer when territory is cleared
@@ -235,7 +238,10 @@ function NewOrdersTablet({ onOrderCreated }) {
       const territory = dropdownData.territories.find(t => t.name === value);
       console.log('🔍 Found territory:', territory);
       if (territory) {
-        form.setFieldsValue({ territoryCode: territory.code });
+        form.setFieldsValue({ 
+          territoryCode: territory.code,
+          dealer: '' // Clear dealer when territory changes
+        });
         filterDealersByTerritory(territory.code, territory.name);
       } else {
         // Clear both territory and dealer when territory is cleared
