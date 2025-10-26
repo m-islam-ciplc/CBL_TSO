@@ -33,7 +33,7 @@ const { Header, Content } = Layout;
 const { Title } = Typography;
 
 function AppContent() {
-  const { userRole, userName, isTSO } = useUser();
+  const { userRole, userName, isTSO, setUserRole, setUserName } = useUser();
   const [stats, setStats] = useState({
     dealers: 0,
     warehouses: 0,
@@ -65,6 +65,10 @@ function AppContent() {
     // Clear form data
     localStorage.removeItem('tsoFormData');
     localStorage.removeItem('tsoOrderItems');
+    
+    // Clear user context
+    setUserRole(null);
+    setUserName(null);
     
     // Navigate to login
     navigate('/login');
