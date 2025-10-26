@@ -371,12 +371,7 @@ function ReviewOrdersTablet({ onOrderCreated }) {
                   placeholder="Type" 
                   size="small"
                   style={{ fontSize: '12px' }}
-                  allowClear
-                  showSearch
-                  filterOption={(input, option) => {
-                    const optionText = option?.children?.toString() || '';
-                    return optionText.toLowerCase().includes(input.toLowerCase());
-                  }}
+                  disabled
                 >
                   {dropdownData.orderTypes.map(type => (
                     <Option key={type.id} value={type.id}>{type.name}</Option>
@@ -396,12 +391,7 @@ function ReviewOrdersTablet({ onOrderCreated }) {
                   placeholder="Warehouse" 
                   size="small"
                   style={{ fontSize: '12px' }}
-                  allowClear
-                  showSearch
-                  filterOption={(input, option) => {
-                    const optionText = option?.children?.toString() || '';
-                    return optionText.toLowerCase().includes(input.toLowerCase());
-                  }}
+                  disabled
                 >
                   {dropdownData.warehouses.map(warehouse => (
                     <Option key={warehouse.id} value={warehouse.id}>{warehouse.name}</Option>
@@ -421,13 +411,7 @@ function ReviewOrdersTablet({ onOrderCreated }) {
                   placeholder="Territory"
                   size="small"
                   style={{ fontSize: '12px' }}
-                  allowClear
-                  showSearch
-                  filterOption={(input, option) => {
-                    const optionText = option?.children?.toString() || '';
-                    return optionText.toLowerCase().includes(input.toLowerCase());
-                  }}
-                  onChange={(value) => handleTerritoryChange('territoryCode', value)}
+                  disabled
                 >
                   {dropdownData.territories && dropdownData.territories.length > 0 ? dropdownData.territories.map(territory => (
                     <Option key={territory.code} value={territory.code}>{territory.name}</Option>
@@ -449,12 +433,7 @@ function ReviewOrdersTablet({ onOrderCreated }) {
                   placeholder="Dealer" 
                   size="small"
                   style={{ fontSize: '12px' }}
-                  allowClear
-                  showSearch
-                  filterOption={(input, option) => {
-                    const optionText = option?.children?.toString() || '';
-                    return optionText.toLowerCase().includes(input.toLowerCase());
-                  }}
+                  disabled
                 >
                   {(dropdownData.filteredDealers || dropdownData.dealers) && (dropdownData.filteredDealers || dropdownData.dealers).length > 0 ? (dropdownData.filteredDealers || dropdownData.dealers).map(dealer => (
                     <Option key={dealer.id} value={dealer.id}>{dealer.name}</Option>
@@ -476,12 +455,7 @@ function ReviewOrdersTablet({ onOrderCreated }) {
                   placeholder="Transport" 
                   size="small"
                   style={{ fontSize: '12px' }}
-                  allowClear
-                  showSearch
-                  filterOption={(input, option) => {
-                    const optionText = option?.children?.toString() || '';
-                    return optionText.toLowerCase().includes(input.toLowerCase());
-                  }}
+                  disabled
                 >
                   {dropdownData.transports && dropdownData.transports.length > 0 ? dropdownData.transports.map(transport => (
                     <Option key={transport.id} value={transport.id}>{transport.truck_details}</Option>
@@ -541,10 +515,10 @@ function ReviewOrdersTablet({ onOrderCreated }) {
                 <Col xs={7} sm={9}>
                   <div>
                     <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1890ff' }}>
-                      {item.product_code}
+                      {item.product_name}
                     </div>
                     <div style={{ fontSize: '12px', color: '#666', lineHeight: '1.3' }}>
-                      {item.product_name}
+                      {item.product_code}
                     </div>
                   </div>
                 </Col>
@@ -613,60 +587,83 @@ function ReviewOrdersTablet({ onOrderCreated }) {
         </div>
       </Card>
 
-      {/* Order Summary */}
-      <Card style={{ marginBottom: '20px', borderRadius: '8px' }}>
-        <Row gutter={[8, 12]} align="middle">
-          <Col xs={24} sm={12}>
-            <div>
-              <Text strong style={{ fontSize: '16px', color: '#1890ff' }}>
-                Order Summary
-              </Text>
-              <div style={{ fontSize: '14px', color: '#666', marginTop: '4px' }}>
-                {orderItems.length} item{orderItems.length !== 1 ? 's' : ''} • 
-                Total Quantity: {orderItems.reduce((sum, item) => sum + item.quantity, 0)}
-              </div>
-            </div>
-          </Col>
-          <Col xs={12} sm={6}>
-            <Button
-              type="default"
-              size="large"
-              icon={<PlusOutlined />}
-              onClick={() => {
-                // Save current form data before navigating
-                const formValues = form.getFieldsValue();
-                localStorage.setItem('tsoFormData', JSON.stringify(formValues));
-                window.location.href = '/new-orders';
-              }}
-              style={{ 
-                width: '100%',
-                height: '44px',
-                fontSize: '13px',
-                borderRadius: '8px'
-              }}
-            >
-              Add More
-            </Button>
-          </Col>
-          <Col xs={12} sm={6}>
-            <Button
-              type="primary"
-              size="large"
-              loading={loading}
-              icon={<CheckOutlined />}
-              onClick={handleSubmit}
-              style={{ 
-                width: '100%',
-                height: '44px',
-                fontSize: '14px',
-                borderRadius: '8px'
-              }}
-            >
-              {loading ? 'Submitting...' : 'Submit'}
-            </Button>
-          </Col>
-        </Row>
-      </Card>
+             {/* Order Summary */}
+       <Card style={{ marginBottom: '20px', borderRadius: '8px' }}>
+         <Row gutter={[8, 12]} align="middle">
+           <Col xs={24} sm={12}>
+             <div>
+               <Text strong style={{ fontSize: '16px', color: '#1890ff' }}>
+                 Order Summary
+               </Text>
+               <div style={{ fontSize: '14px', color: '#666', marginTop: '4px' }}>
+                 {orderItems.length} item{orderItems.length !== 1 ? 's' : ''} • 
+                 Total Quantity: {orderItems.reduce((sum, item) => sum + item.quantity, 0)}
+               </div>
+             </div>
+           </Col>
+           <Col xs={8} sm={4}>
+             <Button
+               danger
+               size="large"
+               onClick={() => {
+                 // Clear all order data
+                 setOrderItems([]);
+                 localStorage.removeItem('tsoOrderItems');
+                 localStorage.removeItem('tsoFormData');
+                 form.resetFields();
+                 message.info('Order cancelled');
+                 window.location.href = '/new-orders';
+               }}
+               style={{ 
+                 width: '100%',
+                 height: '44px',
+                 fontSize: '13px',
+                 borderRadius: '8px'
+               }}
+             >
+               Cancel
+             </Button>
+           </Col>
+           <Col xs={8} sm={4}>
+             <Button
+               type="default"
+               size="large"
+               icon={<PlusOutlined />}
+               onClick={() => {
+                 // Save current form data before navigating
+                 const formValues = form.getFieldsValue();
+                 localStorage.setItem('tsoFormData', JSON.stringify(formValues));
+                 window.location.href = '/new-orders';
+               }}
+               style={{ 
+                 width: '100%',
+                 height: '44px',
+                 fontSize: '13px',
+                 borderRadius: '8px'
+               }}
+             >
+               Add More
+             </Button>
+           </Col>
+           <Col xs={8} sm={4}>
+             <Button
+               type="primary"
+               size="large"
+               loading={loading}
+               icon={<CheckOutlined />}
+               onClick={handleSubmit}
+               style={{ 
+                 width: '100%',
+                 height: '44px',
+                 fontSize: '14px',
+                 borderRadius: '8px'
+               }}
+             >
+               {loading ? 'Submitting...' : 'Submit'}
+             </Button>
+           </Col>
+         </Row>
+       </Card>
     </div>
   );
 }

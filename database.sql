@@ -17,16 +17,6 @@ CREATE TABLE IF NOT EXISTS warehouses (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Warehouse aliases table for mapping internal names to external names (e.g., for Excel reports)
-CREATE TABLE IF NOT EXISTS warehouse_aliases (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    warehouse_id INT NOT NULL,
-    alias_name VARCHAR(100) NOT NULL,
-    is_default BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (warehouse_id) REFERENCES warehouses(id) ON DELETE CASCADE,
-    UNIQUE KEY unique_warehouse_alias (warehouse_id, alias_name)
-);
 
 -- Dealers table - Comprehensive schema with all columns from VW_ALL_CUSTOMER_INFO
 CREATE TABLE IF NOT EXISTS dealers (

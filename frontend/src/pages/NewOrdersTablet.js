@@ -120,22 +120,50 @@ function NewOrdersTablet({ onOrderCreated }) {
       setFilteredDealers([]); // Start with empty dealers - only show when territory is selected
       setFilteredProducts(productsRes.data); // Initialize filtered products
 
-      // Initialize form with default values when data is loaded
-      if (orderTypesRes.data.length > 0 && warehousesRes.data.length > 0) {
-        const initialValues = {
-          orderType: orderTypesRes.data[0].id,
-          warehouse: warehousesRes.data[0].id,
-          territoryCode: '',
-          territoryName: '',
-          dealer: ''
-        };
-
-        form.setFieldsValue(initialValues);
+      // Try to restore saved form data, otherwise use defaults
+      const savedFormData = localStorage.getItem('tsoFormData');
+      if (savedFormData) {
+        try {
+          const formData = JSON.parse(savedFormData);
+          console.log('Loading saved form data in loadDropdownData:', formData);
+          
+          // Set form values
+          setTimeout(() => {
+            form.setFieldsValue(formData);
+            // If territory is saved, filter dealers accordingly
+            if (formData.territoryCode) {
+              const territory = territories.find(t => t.code === formData.territoryCode);
+              if (territory) {
+                filterDealersByTerritory(territory.code, territory.name);
+              }
+            }
+          }, 100);
+        } catch (error) {
+          console.error('Error parsing saved form data:', error);
+          // Fall back to defaults
+          initializeFormDefaults(orderTypesRes.data, warehousesRes.data);
+        }
+      } else {
+        // Initialize form with default values when data is loaded
+        initializeFormDefaults(orderTypesRes.data, warehousesRes.data);
       }
 
     } catch (error) {
       console.error('Error loading dropdown data:', error);
       message.error('Failed to load form data');
+    }
+  };
+
+  const initializeFormDefaults = (orderTypes, warehouses) => {
+    if (orderTypes.length > 0 && warehouses.length > 0) {
+      const initialValues = {
+        orderType: orderTypes[0].id,
+        warehouse: warehouses[0].id,
+        territoryCode: '',
+        territoryName: '',
+        dealer: ''
+      };
+      form.setFieldsValue(initialValues);
     }
   };
 
