@@ -295,21 +295,24 @@ function DealerManagement() {
       title: 'Dealer Code',
       dataIndex: 'dealer_code',
       key: 'dealer_code',
-      width: 100,
+      width: 50,
+      render: (text) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{text}</div>,
       sorter: (a, b) => a.dealer_code.localeCompare(b.dealer_code),
     },
     {
       title: 'Name',
       dataIndex: 'name',
       key: 'name',
-      ellipsis: true,
+      width: 250,
+      render: (text) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{text}</div>,
       sorter: (a, b) => a.name.localeCompare(b.name),
     },
     {
       title: 'Territory',
       dataIndex: 'territory_name',
       key: 'territory_name',
-      render: (territory) => territory || 'N/A',
+      width: 100,
+      render: (territory) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{territory || 'N/A'}</div>,
       sorter: (a, b) => {
         const territoryA = a.territory_name || 'N/A';
         const territoryB = b.territory_name || 'N/A';
@@ -320,8 +323,12 @@ function DealerManagement() {
       title: 'Status',
       dataIndex: 'dealer_status',
       key: 'dealer_status',
-      render: getStatusTag,
-      width: 100,
+      width: 20,
+      render: (status) => (
+        <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>
+          {getStatusTag(status)}
+        </div>
+      ),
       sorter: (a, b) => {
         const statusA = a.dealer_status || '';
         const statusB = b.dealer_status || '';
@@ -332,7 +339,8 @@ function DealerManagement() {
       title: 'Type',
       dataIndex: 'dealer_type',
       key: 'dealer_type',
-      width: 80,
+      width: 20,
+      render: (text) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{text}</div>,
       sorter: (a, b) => {
         const typeA = a.dealer_type || '';
         const typeB = b.dealer_type || '';
@@ -343,8 +351,8 @@ function DealerManagement() {
       title: 'Contact',
       dataIndex: 'contact',
       key: 'contact',
-      width: 150,
-      render: (contact) => contact || 'N/A',
+      width: 120,
+      render: (contact) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{contact || 'N/A'}</div>,
       sorter: (a, b) => {
         const contactA = a.contact || 'N/A';
         const contactB = b.contact || 'N/A';
@@ -355,8 +363,8 @@ function DealerManagement() {
       title: 'Address',
       dataIndex: 'address',
       key: 'address',
-      ellipsis: true,
-      render: (address) => address ? address.substring(0, 50) + '...' : 'N/A',
+      width: 300,
+      render: (address) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{address || 'N/A'}</div>,
       sorter: (a, b) => {
         const addressA = a.address || 'N/A';
         const addressB = b.address || 'N/A';
@@ -368,7 +376,7 @@ function DealerManagement() {
   return (
     <div>
       <Title level={3} style={{ marginBottom: '8px' }}>
-        Dealer Management
+        Manage Dealers
       </Title>
       <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
         Import and manage dealer database

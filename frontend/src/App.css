@@ -1,0 +1,13 @@
+/* Reduce spacing between menu icon and text */
+.ant-menu-horizontal .ant-menu-item {
+  padding: 0 8px !important;
+}
+
+.ant-menu-horizontal .ant-menu-item > .anticon + span,
+.ant-menu-horizontal .ant-menu-item > span {
+  margin-left: 4px !important;
+}
+
+.ant-menu-horizontal .ant-menu-item > .anticon {
+  margin-right: 4px !important;
+}

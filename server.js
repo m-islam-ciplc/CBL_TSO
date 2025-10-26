@@ -1391,7 +1391,7 @@ app.get('/api/warehouses', (req, res) => {
 
 // Get all dealers
 app.get('/api/dealers', (req, res) => {
-    db.query('SELECT id, name, territory_code, territory_name FROM dealers ORDER BY name', (err, results) => {
+    db.query('SELECT * FROM dealers ORDER BY name', (err, results) => {
         if (err) {
             res.status(500).json({ error: err.message });
         } else {
@@ -1871,7 +1871,7 @@ app.get('/api/orders/mr-report/:date', async (req, res) => {
     }
 });
 
-// ===== TRANSPORT MANAGEMENT API ENDPOINTS =====
+// ===== Manage Transport API ENDPOINTS =====
 
 // Get all transports
 app.get('/api/transports', (req, res) => {

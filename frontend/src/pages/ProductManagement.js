@@ -257,13 +257,15 @@ function ProductManagement() {
       dataIndex: 'product_code',
       key: 'product_code',
       width: 120,
+      render: (text) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{text}</div>,
       sorter: (a, b) => a.product_code.localeCompare(b.product_code),
     },
     {
       title: 'Product Name',
       dataIndex: 'name',
       key: 'name',
-      width: 200,
+      width: 250,
+      render: (text) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{text}</div>,
       sorter: (a, b) => a.name.localeCompare(b.name),
     },
     {
@@ -271,14 +273,14 @@ function ProductManagement() {
       dataIndex: 'brand_name',
       key: 'brand_name',
       width: 120,
-      render: (text) => text || '-',
+      render: (text) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{text || '-'}</div>,
     },
     {
       title: 'Category',
       dataIndex: 'product_category',
       key: 'product_category',
       width: 100,
-      render: (text) => text || '-',
+      render: (text) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{text || '-'}</div>,
     },
   ];
 
@@ -288,7 +290,7 @@ function ProductManagement() {
       dataIndex: 'unit_tp',
       key: 'unit_tp',
       width: 100,
-      render: (value) => value ? `৳${value.toLocaleString()}` : '-',
+      render: (value) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{value ? `৳${value.toLocaleString()}` : '-'}</div>,
       sorter: (a, b) => (a.unit_tp || 0) - (b.unit_tp || 0),
     },
     {
@@ -296,7 +298,7 @@ function ProductManagement() {
       dataIndex: 'mrp',
       key: 'mrp',
       width: 100,
-      render: (value) => value ? `৳${value.toLocaleString()}` : '-',
+      render: (value) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{value ? `৳${value.toLocaleString()}` : '-'}</div>,
       sorter: (a, b) => (a.mrp || 0) - (b.mrp || 0),
     },
   ];
@@ -308,9 +310,11 @@ function ProductManagement() {
       key: 'status',
       width: 80,
       render: (status) => (
-        <Tag color={status === 'A' ? 'green' : 'red'}>
-          {status === 'A' ? 'Active' : 'Inactive'}
-        </Tag>
+        <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>
+          <Tag color={status === 'A' ? 'green' : 'red'}>
+            {status === 'A' ? 'Active' : 'Inactive'}
+          </Tag>
+        </div>
       ),
     },
     {
@@ -318,7 +322,7 @@ function ProductManagement() {
       dataIndex: 'updated_at',
       key: 'updated_at',
       width: 120,
-      render: (date) => date ? new Date(date).toLocaleDateString() : '-',
+      render: (date) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{date ? new Date(date).toLocaleDateString() : '-'}</div>,
     },
   ];
 
@@ -350,7 +354,7 @@ function ProductManagement() {
   return (
     <div>
       <Title level={3} style={{ marginBottom: '8px' }}>
-        Product Management
+        Manage Products
       </Title>
       <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
         Import and manage product database

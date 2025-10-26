@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { UserProvider, useUser } from './contexts/UserContext';
 import { Layout, Menu, Typography, Badge, Row, Col, Card, Statistic, Space, Button } from 'antd';
+import './App.css';
   import {
   DashboardOutlined,
   PlusOutlined,
@@ -119,17 +120,17 @@ function AppContent() {
     {
       key: 'dealer-management',
       icon: <UserOutlined />,
-      label: 'Dealer Management',
+      label: 'Manage Dealers',
     },
     {
       key: 'product-management',
       icon: <ShoppingCartOutlined />,
-      label: 'Product Management',
+      label: 'Manage Products',
     },
     {
       key: 'transport-management',
       icon: <TruckOutlined />,
-      label: 'Transport Management',
+      label: 'Manage Transports',
     },
     {
       key: 'daily-report',
@@ -180,6 +181,7 @@ function AppContent() {
               flex: 1,
               justifyContent: 'center',
             }}
+            overflowedIndicator={null}
           />
 
           {/* User Role Display and Logout */}

@@ -7,30 +7,21 @@ import {
   Button,
   Upload,
   Table,
-  Modal,
-  Form,
   Input,
-  InputNumber,
   Select,
   message,
   Row,
   Col,
-  Space,
-  Popconfirm,
   Tag,
-  Divider,
-  DatePicker
+  Statistic
 } from 'antd';
 import {
-  PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
   UploadOutlined,
   DownloadOutlined,
   TruckOutlined,
-  SearchOutlined
+  SearchOutlined,
+  CheckCircleOutlined
 } from '@ant-design/icons';
-import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -39,17 +30,23 @@ function TransportManagement() {
   const [transports, setTransports] = useState([]);
   const [filteredTransports, setFilteredTransports] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [editingTransport, setEditingTransport] = useState(null);
-  const [form] = Form.useForm();
+  const [importLoading, setImportLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 20,
+    showSizeChanger: true,
+    showQuickJumper: true,
+    showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} transports`,
+    pageSizeOptions: ['10', '20', '50', '100'],
+    defaultPageSize: 20,
+  });
 
   useEffect(() => {
     fetchTransports();
   }, []);
 
-  // Filter transports when search term or status filter changes
   useEffect(() => {
     filterTransports();
   }, [transports, searchTerm, statusFilter]);
@@ -67,78 +64,30 @@ function TransportManagement() {
     }
   };
 
-  // Filter transports
   const filterTransports = () => {
     let filtered = transports;
 
-    // Search filter
     if (searchTerm) {
       filtered = filtered.filter(transport =>
-        transport.truck_details.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        transport.driver_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        transport.driver_phone.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        transport.license_number.toLowerCase().includes(searchTerm.toLowerCase())
+        transport.truck_details?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        transport.driver_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        transport.truck_no?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
-    // Status filter
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(transport => (transport.status || 'active') === statusFilter);
+      filtered = filtered.filter(transport => {
+        const status = transport.transport_status || transport.status;
+        return status === statusFilter;
+      });
     }
 
     setFilteredTransports(filtered);
+    setPagination(prev => ({ ...prev, current: 1 }));
   };
 
-  const handleAdd = () => {
-    setEditingTransport(null);
-    form.resetFields();
-    setModalVisible(true);
-  };
-
-  const handleEdit = (transport) => {
-    setEditingTransport(transport);
-    form.setFieldsValue({
-      ...transport,
-      entered_date: transport.entered_date ? dayjs(transport.entered_date) : null,
-      updated_date: transport.updated_date ? dayjs(transport.updated_date) : null
-    });
-    setModalVisible(true);
-  };
-
-  const handleDelete = async (id) => {
-    try {
-      await axios.delete(`/api/transports/${id}`);
-      message.success('Transport deleted successfully');
-      fetchTransports();
-    } catch (error) {
-      message.error('Failed to delete transport');
-      console.error('Error deleting transport:', error);
-    }
-  };
-
-  const handleSubmit = async (values) => {
-    try {
-      const formattedValues = {
-        ...values,
-        entered_date: values.entered_date ? values.entered_date.format('YYYY-MM-DD') : null,
-        updated_date: values.updated_date ? values.updated_date.format('YYYY-MM-DD') : null
-      };
-
-      if (editingTransport) {
-        await axios.put(`/api/transports/${editingTransport.id}`, formattedValues);
-        message.success('Transport updated successfully');
-      } else {
-        await axios.post('/api/transports', formattedValues);
-        message.success('Transport created successfully');
-      }
-
-      setModalVisible(false);
-      form.resetFields();
-      fetchTransports();
-    } catch (error) {
-      message.error(`Failed to ${editingTransport ? 'update' : 'create'} transport`);
-      console.error('Error saving transport:', error);
-    }
+  const handleTableChange = (newPagination) => {
+    setPagination(newPagination);
   };
 
   const handleImport = async (file) => {
@@ -146,29 +95,54 @@ function TransportManagement() {
     formData.append('file', file);
 
     try {
-      setLoading(true);
+      setImportLoading(true);
       const response = await axios.post('/api/transports/import', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
-      message.success(response.data.message);
+      message.success(response.data.message || 'Imported transports successfully');
       fetchTransports();
     } catch (error) {
       message.error('Failed to import transports');
       console.error('Import error:', error);
     } finally {
-      setLoading(false);
+      setImportLoading(false);
     }
 
-    return false; // Prevent upload
+    return false;
   };
 
-  const handleExport = () => {
-    const ws = XLSX.utils.json_to_sheet(transports);
+  const downloadTemplate = () => {
+    // Create template structure
+    const templateData = [
+      ['TRUCK_SLNO', 'TRUCK_NO', 'ENGINE_NO', 'VEHICLE_NO', 'TRUCK_DETAILS', 'DRIVER_NAME', 'DRIVER_PHONE', 'LICENSE_NUMBER', 'ROUTE_NO', 'LOAD_SIZE', 'LOAD_WEIGHT', 'TRUCK_TYPE', 'TRANSPORT_STATUS'],
+      ['1', 'TR-001', 'ENG-001', 'V-001', 'Sample Truck Details', 'Driver Name', '01712345678', 'LIC-001', 'RT-001', 'Large', '5000', 'Heavy', 'A'],
+      ['2', 'TR-002', 'ENG-002', 'V-002', 'Another Truck Details', 'Another Driver', '01812345678', 'LIC-002', 'RT-002', 'Medium', '3000', 'Medium', 'A']
+    ];
+
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Transports');
-    XLSX.writeFile(wb, `Transports_${new Date().toISOString().split('T')[0]}.xlsx`);
-    message.success('Transports exported successfully');
+    const ws = XLSX.utils.aoa_to_sheet(templateData);
+
+    ws['!cols'] = [
+      { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 12 },
+      { wch: 30 }, { wch: 18 }, { wch: 15 }, { wch: 15 },
+      { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 15 }
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Transport_Template');
+    const fileName = `Transport_Import_Template_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+
+    message.success(`Template downloaded: ${fileName}`);
+  };
+
+  const getStatusTag = (status) => {
+    if (status === 'A') {
+      return <Tag color="green">Active</Tag>;
+    } else if (status === 'I' || status === 'inactive') {
+      return <Tag color="red">Inactive</Tag>;
+    }
+    return <Tag color="default">{status || 'Unknown'}</Tag>;
   };
 
   const columns = [
@@ -176,7 +150,8 @@ function TransportManagement() {
       title: 'ID',
       dataIndex: 'id',
       key: 'id',
-      width: 60,
+      width: 50,
+      render: (text) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{text}</div>,
       sorter: (a, b) => a.id - b.id,
     },
     {
@@ -184,111 +159,58 @@ function TransportManagement() {
       dataIndex: 'truck_no',
       key: 'truck_no',
       width: 100,
-      sorter: (a, b) => a.truck_no.localeCompare(b.truck_no),
+      render: (text) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{text}</div>,
+      sorter: (a, b) => (a.truck_no || '').localeCompare(b.truck_no || ''),
     },
     {
       title: 'Truck Details',
       dataIndex: 'truck_details',
       key: 'truck_details',
-      width: 200,
-      ellipsis: true,
-      sorter: (a, b) => a.truck_details.localeCompare(b.truck_details),
+      width: 250,
+      render: (text) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{text}</div>,
+      sorter: (a, b) => (a.truck_details || '').localeCompare(b.truck_details || ''),
     },
     {
       title: 'Driver Name',
       dataIndex: 'driver_name',
       key: 'driver_name',
       width: 120,
-      sorter: (a, b) => a.driver_name.localeCompare(b.driver_name),
+      render: (text) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{text}</div>,
+      sorter: (a, b) => (a.driver_name || '').localeCompare(b.driver_name || ''),
     },
     {
       title: 'Route No',
       dataIndex: 'route_no',
       key: 'route_no',
       width: 80,
-      sorter: (a, b) => a.route_no.localeCompare(b.route_no),
+      render: (text) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{text}</div>,
+      sorter: (a, b) => (a.route_no || '').localeCompare(b.route_no || ''),
     },
     {
       title: 'Load Size',
       dataIndex: 'load_size',
       key: 'load_size',
       width: 100,
-      sorter: (a, b) => a.load_size.localeCompare(b.load_size),
-    },
-    {
-      title: 'Load Weight',
-      dataIndex: 'load_weight',
-      key: 'load_weight',
-      width: 100,
-      sorter: (a, b) => a.load_weight.localeCompare(b.load_weight),
-    },
-    {
-      title: 'Status',
-      dataIndex: 'transport_status',
-      key: 'transport_status',
-      width: 80,
-      render: (status) => (
-        <Tag color={status === 'A' ? 'green' : 'red'}>
-          {status === 'A' ? 'Active' : 'Inactive'}
-        </Tag>
-      ),
-      sorter: (a, b) => {
-        const statusA = a.transport_status || '';
-        const statusB = b.transport_status || '';
-        return statusA.localeCompare(statusB);
-      },
-    },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: 120,
-      render: (_, record) => (
-        <Space>
-          <Button
-            type="link"
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-            size="small"
-          />
-          <Popconfirm
-            title="Are you sure you want to delete this transport?"
-            onConfirm={() => handleDelete(record.id)}
-            okText="Yes"
-            cancelText="No"
-          >
-            <Button
-              type="link"
-              danger
-              icon={<DeleteOutlined />}
-              size="small"
-            />
-          </Popconfirm>
-        </Space>
-      ),
+      render: (text) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{text}</div>,
+      sorter: (a, b) => (a.load_size || '').localeCompare(b.load_size || ''),
     },
   ];
 
-  return (
-    <div style={{ padding: '24px' }}>
-      <Card>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-          <Title level={2}>
-            <TruckOutlined style={{ marginRight: '8px', color: '#1890ff' }} />
-            Transport Management
-          </Title>
-        </div>
+  const activeCount = transports.filter(t => t.transport_status === 'A').length;
+  const inactiveCount = transports.filter(t => t.transport_status === 'I').length;
 
-        {/* Action Buttons */}
-        <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
-          <Col>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={handleAdd}
-            >
-              Add Transport
-            </Button>
-          </Col>
+  return (
+    <div>
+      <Title level={3} style={{ marginBottom: '8px' }}>
+        Manage Transports
+      </Title>
+      <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
+        Import and manage transport database
+      </Text>
+
+      {/* Import Section */}
+      <Card style={{ marginBottom: '16px' }}>
+        <Row gutter={[16, 16]} align="middle">
           <Col>
             <Upload
               accept=".xlsx,.xls"
@@ -296,291 +218,110 @@ function TransportManagement() {
               showUploadList={false}
             >
               <Button
+                type="primary"
                 icon={<UploadOutlined />}
-                loading={loading}
+                loading={importLoading}
               >
-                Import Excel
+                Import Transports (Excel)
               </Button>
             </Upload>
           </Col>
           <Col>
             <Button
               icon={<DownloadOutlined />}
-              onClick={handleExport}
-              disabled={transports.length === 0}
+              onClick={downloadTemplate}
             >
-              Export Excel
+              Download Template
             </Button>
           </Col>
         </Row>
+      </Card>
 
-        <Divider />
+      {/* Statistics */}
+      <Row gutter={[16, 16]} style={{ marginBottom: '16px' }}>
+        <Col xs={24} sm={12} md={6}>
+          <Card size="small">
+            <Statistic
+              title="Total Transports"
+              value={transports.length}
+              prefix={<TruckOutlined />}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card size="small">
+            <Statistic
+              title="Active Transports"
+              value={activeCount}
+              prefix={<CheckCircleOutlined />}
+              valueStyle={{ color: '#52c41a' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card size="small">
+            <Statistic
+              title="Inactive Transports"
+              value={inactiveCount}
+              prefix={<CheckCircleOutlined />}
+              valueStyle={{ color: '#ff4d4f' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card size="small">
+            <Statistic
+              title="Displayed"
+              value={filteredTransports.length}
+              prefix={<SearchOutlined />}
+            />
+          </Card>
+        </Col>
+      </Row>
 
-        {/* Filters */}
-        <Card size="small" style={{ marginBottom: '16px' }}>
-          <Row gutter={[16, 16]} align="middle" style={{ padding: '16px 0' }}>
-            <Col xs={24} sm={12} md={8}>
-              <Input
-                placeholder="Search transports..."
-                prefix={<SearchOutlined />}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                size="middle"
-              />
-            </Col>
-            <Col xs={24} sm={12} md={8}>
-              <Select
-                placeholder="Filter by status"
-                value={statusFilter}
-                onChange={setStatusFilter}
-                style={{ width: '100%' }}
-                size="middle"
-              >
-                <Select.Option value="all">All Status</Select.Option>
-                <Select.Option value="active">Active</Select.Option>
-                <Select.Option value="inactive">Inactive</Select.Option>
-              </Select>
-            </Col>
-            <Col xs={24} sm={12} md={8}>
-              <Text type="secondary">
-                Showing {filteredTransports.length} of {transports.length} transports
-              </Text>
-            </Col>
-          </Row>
-        </Card>
+      {/* Filters */}
+      <Card style={{ marginBottom: '16px' }}>
+        <Row gutter={[16, 16]}>
+          <Col xs={24} sm={12} md={8}>
+            <Input
+              placeholder="Search transports..."
+              prefix={<SearchOutlined />}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={8}>
+            <Select
+              placeholder="Filter by status"
+              value={statusFilter}
+              onChange={setStatusFilter}
+              style={{ width: '100%' }}
+              allowClear
+            >
+              <Option value="all">All Status</Option>
+              <Option value="A">Active</Option>
+              <Option value="I">Inactive</Option>
+            </Select>
+          </Col>
+        </Row>
+      </Card>
 
-        {/* Transports Table */}
+      {/* Transports Table */}
+      <Card>
+        <div style={{ marginBottom: '16px' }}>
+          <Text strong>Transports ({filteredTransports.length})</Text>
+        </div>
+
         <Table
           columns={columns}
           dataSource={filteredTransports}
-          rowKey="id"
           loading={loading}
+          rowKey="id"
+          pagination={pagination}
+          onChange={handleTableChange}
           scroll={{ x: 1000 }}
           size="small"
-          pagination={{
-            pageSize: 20,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} transports`,
-            pageSizeOptions: ['10', '20', '50', '100'],
-            defaultPageSize: 20,
-          }}
         />
-
-        {/* Add/Edit Modal */}
-        <Modal
-          title={editingTransport ? 'Edit Transport' : 'Add Transport'}
-          open={modalVisible}
-          onCancel={() => {
-            setModalVisible(false);
-            form.resetFields();
-          }}
-          footer={null}
-          width={800}
-        >
-          <Form
-            form={form}
-            layout="vertical"
-            onFinish={handleSubmit}
-          >
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item
-                  name="truck_slno"
-                  label="Truck Serial No"
-                >
-                  <InputNumber style={{ width: '100%' }} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  name="truck_no"
-                  label="Truck No"
-                >
-                  <Input />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item
-                  name="engine_no"
-                  label="Engine No"
-                >
-                  <Input />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  name="vehicle_no"
-                  label="Vehicle No"
-                >
-                  <Input />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Form.Item
-              name="truck_details"
-              label="Truck Details"
-              rules={[{ required: true, message: 'Please enter truck details' }]}
-            >
-              <Input />
-            </Form.Item>
-
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item
-                  name="driver_name"
-                  label="Driver Name"
-                >
-                  <Input />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  name="license_no"
-                  label="License No"
-                >
-                  <Input />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Row gutter={16}>
-              <Col span={8}>
-                <Form.Item
-                  name="route_no"
-                  label="Route No"
-                >
-                  <Input />
-                </Form.Item>
-              </Col>
-              <Col span={8}>
-                <Form.Item
-                  name="load_size"
-                  label="Load Size"
-                >
-                  <Input />
-                </Form.Item>
-              </Col>
-              <Col span={8}>
-                <Form.Item
-                  name="load_weight"
-                  label="Load Weight"
-                >
-                  <Input />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item
-                  name="truck_type"
-                  label="Truck Type"
-                >
-                  <Input />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  name="transport_status"
-                  label="Status"
-                  initialValue="A"
-                >
-                  <Select
-                    allowClear
-                    showSearch
-                    filterOption={(input, option) => {
-                      const optionText = option?.children?.toString() || '';
-                      return optionText.toLowerCase().includes(input.toLowerCase());
-                    }}
-                  >
-                    <Option value="A">Active</Option>
-                    <Option value="I">Inactive</Option>
-                  </Select>
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item
-                  name="entered_by"
-                  label="Entered By"
-                >
-                  <Input />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  name="entered_date"
-                  label="Entered Date"
-                >
-                  <DatePicker style={{ width: '100%' }} />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item
-                  name="entered_terminal"
-                  label="Entered Terminal"
-                >
-                  <Input />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  name="updated_by"
-                  label="Updated By"
-                >
-                  <Input />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item
-                  name="updated_date"
-                  label="Updated Date"
-                >
-                  <DatePicker style={{ width: '100%' }} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  name="updated_terminal"
-                  label="Updated Terminal"
-                >
-                  <Input />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Form.Item
-              name="remarks"
-              label="Remarks"
-            >
-              <Input.TextArea rows={3} />
-            </Form.Item>
-
-            <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
-              <Space>
-                <Button onClick={() => setModalVisible(false)}>
-                  Cancel
-                </Button>
-                <Button type="primary" htmlType="submit">
-                  {editingTransport ? 'Update' : 'Create'}
-                </Button>
-              </Space>
-            </Form.Item>
-          </Form>
-        </Modal>
       </Card>
     </div>
   );
