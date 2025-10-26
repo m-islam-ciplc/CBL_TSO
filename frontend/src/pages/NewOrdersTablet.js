@@ -169,9 +169,9 @@ function NewOrdersTablet({ onOrderCreated }) {
       const initialValues = {
         orderType: orderTypes[0].id,
         warehouse: warehouses[0].id,
-        territoryCode: '',
-        territoryName: '',
-        dealer: ''
+        territoryCode: undefined,
+        territoryName: undefined,
+        dealer: undefined
       };
       form.setFieldsValue(initialValues);
       setFormValues(initialValues); // Store in state
@@ -223,16 +223,16 @@ function NewOrdersTablet({ onOrderCreated }) {
       if (territory) {
         form.setFieldsValue({ 
           territoryName: territory.name,
-          dealer: '', // Clear dealer when territory changes
-          transport: '' // Clear transport when territory changes
+          dealer: undefined, // Clear dealer when territory changes
+          transport: undefined // Clear transport when territory changes
         });
         filterDealersByTerritory(territory.code, territory.name);
       } else {
         // Clear both territory, dealer and transport when territory is cleared
         form.setFieldsValue({ 
-          territoryName: '',
-          dealer: '', // Clear dealer when territory is cleared
-          transport: '' // Clear transport when territory is cleared
+          territoryName: undefined,
+          dealer: undefined, // Clear dealer when territory is cleared
+          transport: undefined // Clear transport when territory is cleared
         });
         filterDealersByTerritory(null, null);
       }
@@ -242,16 +242,16 @@ function NewOrdersTablet({ onOrderCreated }) {
       if (territory) {
         form.setFieldsValue({ 
           territoryCode: territory.code,
-          dealer: '', // Clear dealer when territory changes
-          transport: '' // Clear transport when territory changes
+          dealer: undefined, // Clear dealer when territory changes
+          transport: undefined // Clear transport when territory changes
         });
         filterDealersByTerritory(territory.code, territory.name);
       } else {
         // Clear both territory, dealer and transport when territory is cleared
         form.setFieldsValue({ 
-          territoryCode: '',
-          dealer: '', // Clear dealer when territory is cleared
-          transport: '' // Clear transport when territory is cleared
+          territoryCode: undefined,
+          dealer: undefined, // Clear dealer when territory is cleared
+          transport: undefined // Clear transport when territory is cleared
         });
         filterDealersByTerritory(null, null);
       }
@@ -275,12 +275,12 @@ function NewOrdersTablet({ onOrderCreated }) {
       form.setFieldsValue({
         territoryCode: dealer.territory_code,
         territoryName: dealer.territory_name,
-        transport: '' // Clear transport when dealer changes
+        transport: undefined // Clear transport when dealer changes
       });
       filterDealersByTerritory(dealer.territory_code, dealer.territory_name);
     } else {
       // Clear transport when dealer is cleared
-      form.setFieldsValue({ transport: '' });
+      form.setFieldsValue({ transport: undefined });
     }
     // Auto-expand dropdown section when user makes a selection
     if (isDropdownCollapsed) {
@@ -631,7 +631,7 @@ function NewOrdersTablet({ onOrderCreated }) {
                   style={{ marginBottom: '8px' }}
                 >
                     <Select
-                    placeholder={filteredDealers.length === 0 ? "Select territory first" : "Dealer"} 
+                    placeholder={form.getFieldValue('territoryCode') ? "Dealer" : "Select territory first"} 
                     size="small"
                     style={{ fontSize: '12px' }}
                     allowClear
