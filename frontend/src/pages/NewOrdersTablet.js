@@ -776,116 +776,6 @@ function NewOrdersTablet({ onOrderCreated }) {
         })}
         </div>
 
-      {/* Order Review Section */}
-      {orderItems.length > 0 && (
-        <Card style={{ marginBottom: '12px', borderRadius: '8px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <Title level={5} style={{ margin: 0, color: '#1890ff' }}>
-              📋 Order Review ({orderItems.length} item{orderItems.length !== 1 ? 's' : ''})
-            </Title>
-            <Button
-              type="link"
-              size="small"
-              onClick={() => setOrderItems([])}
-              style={{ color: '#ff4d4f', fontSize: '13px' }}
-            >
-              Clear All
-            </Button>
-          </div>
-          
-          <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
-            {orderItems.map((item, index) => (
-              <Card
-                key={item.id}
-                size="small"
-                style={{ 
-                  marginBottom: '8px',
-                  borderRadius: '6px',
-                  border: '1px solid #f0f0f0'
-                }}
-              >
-                <Row gutter={[8, 8]} align="middle">
-                  <Col xs={4}>
-                    <div style={{ 
-                      textAlign: 'center',
-                      fontSize: '12px',
-                      fontWeight: 'bold',
-                      color: '#1890ff',
-                      backgroundColor: '#f0f8ff',
-                      padding: '4px',
-                      borderRadius: '4px'
-                    }}>
-                      #{index + 1}
-                    </div>
-                  </Col>
-                  <Col xs={8}>
-                    <div>
-                      <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1890ff' }}>
-                        {item.product_name}
-                      </div>
-                      <div style={{ fontSize: '12px', color: '#666', lineHeight: '1.2' }}>
-                        {item.product_code}
-                      </div>
-                    </div>
-                  </Col>
-                  <Col xs={6}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Button
-                        type="primary"
-                        shape="circle"
-                        size="small"
-                        icon={<span style={{ fontSize: '12px' }}>-</span>}
-                        onClick={() => updateOrderItem(item.id, 'quantity', Math.max(1, item.quantity - 1))}
-                        style={{ 
-                          width: '28px', 
-                          height: '28px',
-                          fontSize: '10px'
-                        }}
-                      />
-                      <div style={{
-                        minWidth: '40px',
-                        textAlign: 'center',
-                        fontSize: '14px',
-                        fontWeight: 'bold',
-                        color: '#52c41a',
-                        padding: '2px 6px',
-                        backgroundColor: 'white',
-                        borderRadius: '4px',
-                        border: '1px solid #f0f0f0'
-                      }}>
-                        {item.quantity}
-                      </div>
-                      <Button
-                        type="primary"
-                        shape="circle"
-                        size="small"
-                        icon={<span style={{ fontSize: '12px' }}>+</span>}
-                        onClick={() => updateOrderItem(item.id, 'quantity', item.quantity + 1)}
-                        style={{ 
-                          width: '28px', 
-                          height: '28px',
-                          fontSize: '10px'
-                        }}
-                      />
-                    </div>
-                  </Col>
-                  <Col xs={6}>
-                    <Button
-                      type="text"
-                      danger
-                      size="small"
-                      icon={<DeleteOutlined />}
-                      onClick={() => removeOrderItem(item.id)}
-                      style={{ fontSize: '13px' }}
-                    />
-                  </Col>
-                </Row>
-              </Card>
-            ))}
-          </div>
-        </Card>
-      )}
-
       {/* Fixed Bottom Order Summary & Submit */}
       {orderItems.length > 0 && (
         <div style={{ 
@@ -903,11 +793,8 @@ function NewOrdersTablet({ onOrderCreated }) {
             <Col xs={14} sm={16}>
               <div style={{ paddingRight: '8px' }}>
                 <Text strong style={{ fontSize: '13px', lineHeight: '1.2' }}>
-                  Ready: {orderItems.length} item{orderItems.length !== 1 ? 's' : ''}
+                  Added: {orderItems.map(item => `${item.product_name} x ${item.quantity}`).join(' • ')}
                 </Text>
-                <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
-                  Qty: {orderItems.reduce((sum, item) => sum + item.quantity, 0)}
-                </div>
               </div>
             </Col>
             <Col xs={10} sm={8}>
