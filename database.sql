@@ -2,6 +2,36 @@
 CREATE DATABASE IF NOT EXISTS cbl_ordres;
 USE cbl_ordres;
 
+-- Users table for authentication
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    full_name VARCHAR(100) NOT NULL,
+    role ENUM('tso', 'sales_manager', 'admin') NOT NULL,
+    territory_name VARCHAR(100) DEFAULT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_username (username),
+    INDEX idx_territory_name (territory_name)
+);
+
+-- Daily Product Caps table
+CREATE TABLE IF NOT EXISTS daily_product_caps (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    date DATE NOT NULL,
+    product_id INT NOT NULL,
+    territory_name VARCHAR(100) NOT NULL,
+    max_quantity INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES products(id),
+    UNIQUE KEY unique_territory_product_date (date, product_id, territory_name),
+    INDEX idx_date_territory (date, territory_name),
+    INDEX idx_date_product (date, product_id)
+);
+
 -- Order Types table
 CREATE TABLE IF NOT EXISTS order_types (
     id INT AUTO_INCREMENT PRIMARY KEY,

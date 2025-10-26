@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { UserProvider, useUser } from './contexts/UserContext';
 import { Layout, Menu, Typography, Badge, Row, Col, Card, Statistic, Space, Button, Switch } from 'antd';
-import {
+  import {
   DashboardOutlined,
   PlusOutlined,
   OrderedListOutlined,
@@ -12,7 +12,9 @@ import {
   FileExcelOutlined,
   TruckOutlined,
   TabletOutlined,
+  TeamOutlined,
 } from '@ant-design/icons';
+import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import NewOrdersTablet from './pages/NewOrdersTablet';
 import ReviewOrdersTablet from './pages/ReviewOrdersTablet';
@@ -22,6 +24,7 @@ import ProductManagement from './pages/ProductManagement';
 import TransportManagement from './pages/TransportManagement';
 import DailyReport from './pages/DailyReport';
 import TSODashboard from './pages/TSODashboard';
+import UserManagement from './pages/UserManagement';
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
@@ -53,6 +56,7 @@ function AppContent() {
     if (path === '/new-orders') return 'new-orders';
     if (path === '/placed-orders') return 'placed-orders';
     if (path === '/dealer-management') return 'dealer-management';
+    if (path === '/user-management') return 'user-management';
     return 'dashboard';
   };
 
@@ -98,6 +102,11 @@ function AppContent() {
       icon: <FileExcelOutlined />,
       label: 'Daily Report',
     },
+    ...(userRole === 'admin' ? [{
+      key: 'user-management',
+      icon: <TeamOutlined />,
+      label: 'User Management',
+    }] : []),
   ];
 
   return (
@@ -167,6 +176,7 @@ function AppContent() {
         minHeight: 'calc(100vh - 64px)',
       }}>
         <Routes>
+          <Route path="/login" element={<Login />} />
           <Route path="/" element={
             isTSO ? 
             <NewOrdersTablet onOrderCreated={refreshOrders} /> : 
@@ -203,6 +213,11 @@ function AppContent() {
             isTSO ? 
             <NewOrdersTablet onOrderCreated={refreshOrders} /> : 
             <DailyReport />
+          } />
+          <Route path="/user-management" element={
+            userRole === 'admin' ? 
+            <UserManagement /> : 
+            <Dashboard setStats={setStats} />
           } />
         </Routes>
       </Content>

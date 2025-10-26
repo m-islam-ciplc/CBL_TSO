@@ -2,6 +2,7 @@ const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const multer = require('multer');
 const XLSX = require('xlsx');
@@ -642,6 +643,257 @@ db.connect((err) => {
 
 // Routes
 
+// Authentication routes
+app.post('/api/auth/login', (req, res) => {
+  const { username, password } = req.body;
+  
+  const query = 'SELECT * FROM users WHERE username = ? AND is_active = TRUE';
+  
+  db.query(query, [username], async (err, results) => {
+    if (err) {
+      console.error('Login error:', err);
+      return res.status(500).json({ success: false, message: 'Database error' });
+    }
+    
+    if (results.length === 0) {
+      return res.status(401).json({ success: false, message: 'Invalid username or password' });
+    }
+    
+    const user = results[0];
+    
+    // Check password with bcrypt (or plain text fallback for old passwords)
+    let isValid = false;
+    try {
+      // Try bcrypt comparison first (for new passwords)
+      if (user.password_hash.startsWith('$2')) {
+        isValid = await bcrypt.compare(password, user.password_hash);
+      } else {
+        // Fallback for old plain text passwords (migration period)
+        isValid = user.password_hash === password;
+      }
+    } catch (error) {
+      console.error('Password comparison error:', error);
+      isValid = false;
+    }
+    
+    if (!isValid) {
+      return res.status(401).json({ success: false, message: 'Invalid username or password' });
+    }
+    
+    // Return user data without password
+    const { password_hash, ...userData } = user;
+    
+    res.json({
+      success: true,
+      user: userData,
+      token: 'mock-jwt-token' // In production, use JWT
+    });
+  });
+});
+
+app.post('/api/auth/logout', (req, res) => {
+  res.json({ success: true, message: 'Logged out successfully' });
+});
+
+// User Management routes
+app.get('/api/users', (req, res) => {
+  const query = 'SELECT id, username, full_name, role, territory_name, is_active, created_at, updated_at FROM users ORDER BY id';
+  
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error('Error fetching users:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+    res.json(results);
+  });
+});
+
+app.post('/api/users', async (req, res) => {
+  const { username, password, password_hash, full_name, role, territory_name } = req.body;
+  
+  // Get password from either field
+  const plainPassword = password_hash || password;
+  
+  if (!plainPassword) {
+    return res.status(400).json({ error: 'Password is required' });
+  }
+  
+  try {
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(plainPassword, 10);
+    
+    console.log('Creating user with data:', { username, full_name, role, territory_name, hasPassword: !!plainPassword });
+    
+    const query = 'INSERT INTO users (username, password_hash, full_name, role, territory_name) VALUES (?, ?, ?, ?, ?)';
+    
+    db.query(query, [username, hashedPassword, full_name, role, territory_name || null], (err, result) => {
+      if (err) {
+        console.error('Error creating user:', err);
+        if (err.code === 'ER_DUP_ENTRY') {
+          return res.status(400).json({ error: 'Username already exists', message: err.sqlMessage });
+        }
+        return res.status(500).json({ error: 'Database error', message: err.sqlMessage });
+      }
+      res.json({ success: true, id: result.insertId });
+    });
+  } catch (error) {
+    console.error('Error hashing password:', error);
+    return res.status(500).json({ error: 'Failed to hash password' });
+  }
+});
+
+app.put('/api/users/:id', async (req, res) => {
+  const { id } = req.params;
+  const { username, password, password_hash, full_name, role, territory_name, is_active } = req.body;
+  
+  try {
+    let query = 'UPDATE users SET username = ?, full_name = ?, role = ?, territory_name = ?';
+    const params = [username, full_name, role, territory_name || null];
+    
+    // Update password if provided (from either password or password_hash field)
+    const newPassword = password_hash || password;
+    if (newPassword) {
+      // Hash the new password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      query += ', password_hash = ?';
+      params.push(hashedPassword);
+    }
+    
+    if (is_active !== undefined) {
+      query += ', is_active = ?';
+      params.push(is_active);
+    }
+    
+    query += ' WHERE id = ?';
+    params.push(id);
+    
+    db.query(query, params, (err) => {
+      if (err) {
+        console.error('Error updating user:', err);
+        if (err.code === 'ER_DUP_ENTRY') {
+          return res.status(400).json({ error: 'Username already exists' });
+        }
+        return res.status(500).json({ error: 'Database error' });
+      }
+      res.json({ success: true });
+    });
+  } catch (error) {
+    console.error('Error hashing password:', error);
+    return res.status(500).json({ error: 'Failed to hash password' });
+  }
+});
+
+app.delete('/api/users/:id', (req, res) => {
+  const { id } = req.params;
+  
+  const query = 'DELETE FROM users WHERE id = ?';
+  
+  db.query(query, [id], (err) => {
+    if (err) {
+      console.error('Error deleting user:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+    res.json({ success: true });
+  });
+});
+
+// Product Caps routes
+app.post('/api/product-caps/upload', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+    
+    const workbook = XLSX.readFile(req.file.path);
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+    
+    let imported = 0;
+    let errors = [];
+    
+    for (const row of jsonData) {
+      try {
+        const date = row.Date || row.date;
+        const productCode = row['Product Code'] || row.product_code || row.ProductCode;
+        const territoryName = row['Territory Name'] || row.territory_name || row.TerritoryName;
+        const maxQty = row['Max Quantity'] || row.max_quantity || row.MaxQuantity;
+        
+        // Get product ID
+        const productQuery = 'SELECT id FROM products WHERE product_code = ?';
+        db.query(productQuery, [productCode], (err, productResults) => {
+          if (err || productResults.length === 0) {
+            errors.push(`Product ${productCode} not found`);
+            return;
+          }
+          
+          const productId = productResults[0].id;
+          
+          // Insert or update cap
+          const insertQuery = `
+            INSERT INTO daily_product_caps (date, product_id, territory_name, max_quantity)
+            VALUES (?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE max_quantity = VALUES(max_quantity)
+          `;
+          
+          db.query(insertQuery, [date, productId, territoryName, maxQty], (err) => {
+            if (err) {
+              errors.push(`Error importing cap for ${productCode}`);
+            } else {
+              imported++;
+            }
+          });
+        });
+      } catch (error) {
+        errors.push(`Error processing row: ${error.message}`);
+      }
+    }
+    
+    res.json({
+      success: true,
+      imported,
+      errors: errors.slice(0, 10) // Limit errors to first 10
+    });
+  } catch (error) {
+    console.error('Product cap upload error:', error);
+    res.status(500).json({ error: 'Failed to process file' });
+  }
+});
+
+app.get('/api/product-caps', (req, res) => {
+  const { date, territory_name } = req.query;
+  
+  let query = `
+    SELECT pc.*, p.product_code, p.name as product_name
+    FROM daily_product_caps pc
+    JOIN products p ON pc.product_id = p.id
+    WHERE 1=1
+  `;
+  
+  const params = [];
+  
+  if (date) {
+    query += ' AND pc.date = ?';
+    params.push(date);
+  }
+  
+  if (territory_name) {
+    query += ' AND pc.territory_name = ?';
+    params.push(territory_name);
+  }
+  
+  query += ' ORDER BY pc.date DESC, p.product_code';
+  
+  db.query(query, params, (err, results) => {
+    if (err) {
+      console.error('Error fetching product caps:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+    
+    res.json(results);
+  });
+});
+
 // Import products from Excel file
 app.post('/api/products/import', upload.single('file'), async (req, res) => {
     try {
@@ -1045,6 +1297,17 @@ app.get('/api/dealers', (req, res) => {
             res.status(500).json({ error: err.message });
         } else {
             res.json(results);
+        }
+    });
+});
+
+// Get all territories for dropdown
+app.get('/api/dealers/territories', (req, res) => {
+    db.query('SELECT DISTINCT territory_name FROM dealers WHERE territory_name IS NOT NULL ORDER BY territory_name', (err, results) => {
+        if (err) {
+            res.status(500).json({ error: err.message });
+        } else {
+            res.json(results.map(row => row.territory_name));
         }
     });
 });
