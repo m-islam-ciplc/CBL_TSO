@@ -11,7 +11,7 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
   const navigate = useNavigate();
-  const { switchToTSO, switchToAdmin, setUserRole, setUserName, setIsTabletMode, setTerritoryName } = useUser();
+  const { setUserRole, setUserName, setTerritoryName } = useUser();
 
   const handleSubmit = async (values) => {
     setLoading(true);
@@ -22,10 +22,9 @@ function Login() {
         const { user } = response.data;
         
         // Set user context
-                      setUserName(user.full_name);
-              setTerritoryName(user.territory_name);
+        setUserName(user.full_name);
+        setTerritoryName(user.territory_name);
         setUserRole(user.role);
-        setIsTabletMode(user.role === 'tso');
         
         // Store in sessionStorage
         sessionStorage.setItem('user', JSON.stringify(user));
@@ -35,13 +34,8 @@ function Login() {
         
         // Navigate based on role
         if (user.role === 'tso') {
-          switchToTSO();
-          navigate('/new-orders');
-        } else if (user.role === 'sales_manager') {
-          switchToAdmin();
           navigate('/dashboard');
-        } else if (user.role === 'admin') {
-          switchToAdmin();
+        } else {
           navigate('/dashboard');
         }
       }
@@ -114,23 +108,6 @@ function Login() {
             </Button>
           </Form.Item>
         </Form>
-
-        <Divider orientation="center" plain style={{ margin: '24px 0' }}>
-          <Text type="secondary" style={{ fontSize: '12px' }}>System Access</Text>
-        </Divider>
-
-        <Space direction="vertical" style={{ width: '100%' }} size="small">
-          <Text strong style={{ fontSize: '12px' }}>Roles:</Text>
-          <Text style={{ fontSize: '11px', display: 'block' }}>
-            • <strong>TSO:</strong> Create and manage orders
-          </Text>
-          <Text style={{ fontSize: '11px', display: 'block' }}>
-            • <strong>Sales Manager:</strong> View orders and reports
-          </Text>
-          <Text style={{ fontSize: '11px', display: 'block' }}>
-            • <strong>Admin:</strong> Full system access
-          </Text>
-        </Space>
       </Card>
     </div>
   );

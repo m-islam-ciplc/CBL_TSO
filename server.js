@@ -894,6 +894,105 @@ app.get('/api/product-caps', (req, res) => {
   });
 });
 
+// Get today's product quotas for a TSO
+app.get('/api/product-caps/tso-today', (req, res) => {
+  const { territory_name } = req.query;
+  
+  if (!territory_name) {
+    return res.status(400).json({ error: 'Territory name is required' });
+  }
+  
+  const today = new Date().toISOString().split('T')[0];
+  
+  const query = `
+    SELECT pc.*, p.product_code, p.name as product_name
+    FROM daily_product_caps pc
+    JOIN products p ON pc.product_id = p.id
+    WHERE pc.date = ? AND pc.territory_name = ?
+    ORDER BY p.product_code
+  `;
+  
+  db.query(query, [today, territory_name], (err, results) => {
+    if (err) {
+      console.error('Error fetching TSO quotas:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+    
+    res.json(results);
+  });
+});
+
+// Bulk save product caps
+app.post('/api/product-caps/bulk', (req, res) => {
+  const { quotas } = req.body;
+  
+  console.log('📥 Received bulk save request:', quotas?.length, 'quotas');
+  
+  if (!quotas || !Array.isArray(quotas)) {
+    console.error('❌ Invalid quotas data:', quotas);
+    return res.status(400).json({ error: 'Invalid quotas data' });
+  }
+  
+  // Start a transaction
+  db.beginTransaction((err) => {
+    if (err) {
+      console.error('Error starting transaction:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+    
+    const insertPromises = quotas.map(quota => {
+      return new Promise((resolve, reject) => {
+        const query = `
+          INSERT INTO daily_product_caps (date, product_id, product_code, product_name, territory_name, max_quantity)
+          VALUES (?, ?, ?, ?, ?, ?)
+          ON DUPLICATE KEY UPDATE 
+            max_quantity = VALUES(max_quantity),
+            product_code = VALUES(product_code),
+            product_name = VALUES(product_name)
+        `;
+        
+        console.log('💾 Inserting quota:', { date: quota.date, product_id: quota.product_id, territory: quota.territory_name, qty: quota.max_quantity });
+        
+        db.query(query, [
+          quota.date, 
+          quota.product_id, 
+          quota.product_code, 
+          quota.product_name, 
+          quota.territory_name, 
+          quota.max_quantity
+        ], (err, result) => {
+          if (err) {
+            console.error('❌ Database error for quota:', err);
+            reject(err);
+          } else {
+            resolve(result);
+          }
+        });
+      });
+    });
+    
+    Promise.all(insertPromises)
+      .then(() => {
+        db.commit((err) => {
+          if (err) {
+            console.error('Error committing transaction:', err);
+            return db.rollback(() => {
+              res.status(500).json({ error: 'Failed to save quotas' });
+            });
+          }
+          console.log('✅ Quotas saved successfully');
+          res.json({ success: true, message: 'Quotas saved successfully' });
+        });
+      })
+      .catch((err) => {
+        console.error('❌ Error saving quotas:', err);
+        db.rollback(() => {
+          res.status(500).json({ error: err.message || 'Failed to save quotas' });
+        });
+      });
+  });
+});
+
 // Import products from Excel file
 app.post('/api/products/import', upload.single('file'), async (req, res) => {
     try {

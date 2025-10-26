@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useUser } from '../contexts/UserContext';
 import './NewOrdersTablet.css';
 import {
   Card,
@@ -35,6 +36,7 @@ const { Title, Text } = Typography;
 const { Option } = Select;
 
 function NewOrdersTablet({ onOrderCreated }) {
+  const { territoryName, isTSO } = useUser();
   const [form] = Form.useForm();
   const [dropdownData, setDropdownData] = useState({
     orderTypes: [],
@@ -57,6 +59,7 @@ function NewOrdersTablet({ onOrderCreated }) {
   const [isPopupVisible, setIsPopupVisible] = useState(false); // Control popup visibility
   const [formValues, setFormValues] = useState({}); // Store form values in state for validation
   const [isAddingMore, setIsAddingMore] = useState(false); // Track if user is adding more items
+  const [productQuotas, setProductQuotas] = useState({}); // Store product quotas for today: { product_id: max_quantity }
 
   useEffect(() => {
     loadDropdownData();
@@ -80,18 +83,88 @@ function NewOrdersTablet({ onOrderCreated }) {
     }
   }, []);
 
+  // Auto-select territory for TSO users
   useEffect(() => {
-    // Filter products based on search term
+    if (isTSO && territoryName && dropdownData.territories.length > 0) {
+      const savedFormData = localStorage.getItem('tsoFormData');
+      if (!savedFormData) {
+        // Clean territory name from context (remove " Territory" suffix)
+        const cleanTerritoryName = territoryName.replace(/\s+Territory$/i, '');
+        console.log('🔍 TSO territory lookup:', { territoryName, cleanTerritoryName, availableTerritories: dropdownData.territories });
+        
+        // Find matching territory
+        const matchingTerritory = dropdownData.territories.find(t => t.name === cleanTerritoryName);
+        if (matchingTerritory) {
+          console.log('✅ Auto-selecting territory for TSO:', matchingTerritory);
+          form.setFieldsValue({
+            territoryCode: matchingTerritory.code,
+            territoryName: matchingTerritory.name
+          });
+          setFormValues(prev => ({
+            ...prev,
+            territoryCode: matchingTerritory.code,
+            territoryName: matchingTerritory.name
+          }));
+          filterDealersByTerritory(matchingTerritory.code, matchingTerritory.name);
+        } else {
+          console.log('❌ No matching territory found for:', cleanTerritoryName);
+        }
+      }
+    }
+  }, [isTSO, territoryName, dropdownData.territories]);
+
+  // Load product quotas for TSO users
+  useEffect(() => {
+    const loadProductQuotas = async () => {
+      if (isTSO && territoryName) {
+        try {
+          // Add timestamp to prevent caching
+          const timestamp = Date.now();
+          const response = await axios.get('/api/product-caps/tso-today', {
+            params: { 
+              territory_name: territoryName,
+              _t: timestamp // Cache buster
+            }
+          });
+          
+          // Convert array to object: { product_id: max_quantity }
+          const quotasObj = {};
+          response.data.forEach(cap => {
+            quotasObj[cap.product_id] = cap.max_quantity;
+          });
+          
+          setProductQuotas(quotasObj);
+          console.log('📋 Loaded product quotas:', quotasObj);
+        } catch (error) {
+          console.error('Failed to load product quotas:', error);
+        }
+      }
+    };
+    
+    loadProductQuotas();
+  }, [isTSO, territoryName]);
+
+  useEffect(() => {
+    // Filter products based on search term AND quota (for TSO users)
+    let baseProducts = dropdownData.products;
+    
+    // For TSO users, only show products that have quotas allocated
+    if (isTSO && Object.keys(productQuotas).length > 0) {
+      baseProducts = dropdownData.products.filter(product => 
+        productQuotas.hasOwnProperty(product.id)
+      );
+    }
+    
     if (searchTerm) {
-      const filtered = dropdownData.products.filter(product =>
+      const filtered = baseProducts.filter(product =>
         product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.product_code.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredProducts(filtered);
     } else {
-      setFilteredProducts(dropdownData.products);
+      setFilteredProducts(baseProducts);
     }
-  }, [searchTerm, dropdownData.products]);
+  }, [searchTerm, dropdownData.products, isTSO, productQuotas]);
 
   const loadDropdownData = async () => {
     try {
@@ -328,6 +401,26 @@ function NewOrdersTablet({ onOrderCreated }) {
     if (quantity === 0) {
       message.warning('Please select a quantity first');
       return false;
+    }
+
+    // Check product quota for TSO users
+    if (isTSO && productQuotas) {
+      const quota = productQuotas[product.id];
+      
+      if (quota === undefined || quota === null) {
+        message.error(`This product (${product.product_code}) is not allocated to your territory for today.`);
+        return false;
+      }
+      
+      // Get total quantity for this product in order
+      const existingItem = orderItems.find(item => item.product_id === product.id);
+      const currentOrderQty = existingItem ? existingItem.quantity : 0;
+      const newTotalQty = currentOrderQty + quantity;
+      
+      if (newTotalQty > quota) {
+        message.error(`Quota exceeded! You have ${quota} units allocated. Current order: ${currentOrderQty}, trying to add: ${quantity}`);
+        return false;
+      }
     }
 
     // If adding more products (isAddingMore = true), skip form validation
@@ -608,7 +701,8 @@ function NewOrdersTablet({ onOrderCreated }) {
                      placeholder="Territory"
                      size="small"
                      style={{ fontSize: '12px' }}
-                     allowClear
+                     allowClear={!isTSO}
+                     disabled={isTSO}
                      showSearch
                      filterOption={(input, option) => {
                        const optionText = option?.children?.toString() || '';
@@ -960,7 +1054,7 @@ function NewOrdersTablet({ onOrderCreated }) {
               justifyContent: 'center',
               flexWrap: 'wrap'
             }}>
-              {[50, 100, 150, 200].map(quickQty => (
+              {[2, 3, 5, 10].map(quickQty => (
                 <Button
                   key={quickQty}
                   size="large"
