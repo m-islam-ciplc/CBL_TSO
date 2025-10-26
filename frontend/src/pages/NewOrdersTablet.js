@@ -56,6 +56,7 @@ function NewOrdersTablet({ onOrderCreated }) {
   const [selectedProductForPopup, setSelectedProductForPopup] = useState(null); // Product for popup modal
   const [isPopupVisible, setIsPopupVisible] = useState(false); // Control popup visibility
   const [formValues, setFormValues] = useState({}); // Store form values in state for validation
+  const [isAddingMore, setIsAddingMore] = useState(false); // Track if user is adding more items
 
   useEffect(() => {
     loadDropdownData();
@@ -69,6 +70,13 @@ function NewOrdersTablet({ onOrderCreated }) {
       } catch (error) {
         console.error('Error parsing saved order items:', error);
       }
+    }
+    
+    // Check if we have saved form data (means user clicked "Add More")
+    const savedFormData = localStorage.getItem('tsoFormData');
+    if (savedFormData && savedOrderItems) {
+      // User has both saved form data and existing order items - they're adding more
+      setIsAddingMore(true);
     }
   }, []);
 
@@ -131,6 +139,7 @@ function NewOrdersTablet({ onOrderCreated }) {
           // Set form values
           setTimeout(() => {
             form.setFieldsValue(formData);
+            setFormValues(formData); // Store in state for validation
             // If territory is saved, filter dealers accordingly
             if (formData.territoryCode) {
               const territory = territories.find(t => t.code === formData.territoryCode);
@@ -307,33 +316,37 @@ function NewOrdersTablet({ onOrderCreated }) {
       return false;
     }
 
-    // Validate that all required order details are filled - use both form.getFieldsValue() and state
-    const formCurrentValues = form.getFieldsValue();
-    const values = { ...formValues, ...formCurrentValues }; // Merge state and current form values
-    
-    console.log('🔍 Form values when adding product (from state):', formValues);
-    console.log('🔍 Form values when adding product (from form):', formCurrentValues);
-    console.log('🔍 Merged values:', values);
-    
-    if (!values.orderType) {
-      message.error('Please select an Order Type first');
-      return false;
-    }
-    if (!values.warehouse) {
-      message.error('Please select a Warehouse first');
-      return false;
-    }
-    if (!values.territoryCode) {
-      message.error('Please select a Territory first');
-      return false;
-    }
-    if (!values.dealer) {
-      message.error('Please select a Dealer first');
-      return false;
-    }
-    if (!values.transport) {
-      message.error('Please select a Transport first');
-      return false;
+    // If adding more products (isAddingMore = true), skip form validation
+    // because order details are already set and hidden
+    if (!isAddingMore) {
+      // Validate that all required order details are filled - use both form.getFieldsValue() and state
+      const formCurrentValues = form.getFieldsValue();
+      const values = { ...formValues, ...formCurrentValues }; // Merge state and current form values
+      
+      console.log('🔍 Form values when adding product (from state):', formValues);
+      console.log('🔍 Form values when adding product (from form):', formCurrentValues);
+      console.log('🔍 Merged values:', values);
+      
+      if (!values.orderType) {
+        message.error('Please select an Order Type first');
+        return false;
+      }
+      if (!values.warehouse) {
+        message.error('Please select a Warehouse first');
+        return false;
+      }
+      if (!values.territoryCode) {
+        message.error('Please select a Territory first');
+        return false;
+      }
+      if (!values.dealer) {
+        message.error('Please select a Dealer first');
+        return false;
+      }
+      if (!values.transport) {
+        message.error('Please select a Transport first');
+        return false;
+      }
     }
 
     const existingItem = orderItems.find(item => item.product_id === product.id);
@@ -445,6 +458,9 @@ function NewOrdersTablet({ onOrderCreated }) {
         setOrderItems([]);
         setFilteredDealers(dropdownData.dealers);
         setSearchTerm('');
+        setIsAddingMore(false);
+        localStorage.removeItem('tsoFormData'); // Clear saved form data
+        setFormValues({});
         onOrderCreated();
       }
     } catch (error) {
@@ -474,36 +490,37 @@ function NewOrdersTablet({ onOrderCreated }) {
         </div>
       </div>
 
-      {/* Collapsible Order Details */}
-      <Card style={{ marginBottom: '8px', borderRadius: '8px' }}>
-        <div 
-          style={{ 
-            cursor: 'pointer', 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center',
-            padding: '8px 0'
-          }}
-          onClick={() => setIsDropdownCollapsed(!isDropdownCollapsed)}
-        >
-          <div>
-            <Text strong style={{ fontSize: '14px', color: '#1890ff' }}>
-              📋 Order Details
-            </Text>
-            <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
-              {form.getFieldValue('orderType') && dropdownData.orderTypes.find(t => t.id === form.getFieldValue('orderType'))?.name && (
-                <Text style={{ fontSize: '11px' }}>
-                  {dropdownData.orderTypes.find(t => t.id === form.getFieldValue('orderType'))?.name} • {' '}
-                  {form.getFieldValue('warehouse') && dropdownData.warehouses.find(w => w.id === form.getFieldValue('warehouse'))?.name} • {' '}
-                  {form.getFieldValue('territoryCode') && dropdownData.territories.find(t => t.code === form.getFieldValue('territoryCode'))?.name} • {' '}
-                  {form.getFieldValue('dealer') && filteredDealers.find(d => d.id === form.getFieldValue('dealer'))?.name} • {' '}
-                  {form.getFieldValue('transport') && dropdownData.transports.find(t => t.id === form.getFieldValue('transport'))?.truck_details}
-                </Text>
-              )}
+      {/* Collapsible Order Details - Hide when adding more items to existing order */}
+      {!isAddingMore && (
+        <Card style={{ marginBottom: '8px', borderRadius: '8px' }}>
+          <div 
+            style={{ 
+              cursor: 'pointer', 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              padding: '8px 0'
+            }}
+            onClick={() => setIsDropdownCollapsed(!isDropdownCollapsed)}
+          >
+            <div>
+              <Text strong style={{ fontSize: '14px', color: '#1890ff' }}>
+                📋 Order Details
+              </Text>
+              <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
+                {form.getFieldValue('orderType') && dropdownData.orderTypes.find(t => t.id === form.getFieldValue('orderType'))?.name && (
+                  <Text style={{ fontSize: '11px' }}>
+                    {dropdownData.orderTypes.find(t => t.id === form.getFieldValue('orderType'))?.name} • {' '}
+                    {form.getFieldValue('warehouse') && dropdownData.warehouses.find(w => w.id === form.getFieldValue('warehouse'))?.name} • {' '}
+                    {form.getFieldValue('territoryCode') && dropdownData.territories.find(t => t.code === form.getFieldValue('territoryCode'))?.name} • {' '}
+                    {form.getFieldValue('dealer') && filteredDealers.find(d => d.id === form.getFieldValue('dealer'))?.name} • {' '}
+                    {form.getFieldValue('transport') && dropdownData.transports.find(t => t.id === form.getFieldValue('transport'))?.truck_details}
+                  </Text>
+                )}
+              </div>
             </div>
+            {isDropdownCollapsed ? <DownOutlined /> : <UpOutlined />}
           </div>
-          {isDropdownCollapsed ? <DownOutlined /> : <UpOutlined />}
-        </div>
         
         {!isDropdownCollapsed && (
           <Form
@@ -648,6 +665,7 @@ function NewOrdersTablet({ onOrderCreated }) {
           </Form>
         )}
       </Card>
+      )}
 
       {/* Compact Product Search */}
       <Card style={{ marginBottom: '12px', borderRadius: '8px' }}>
