@@ -11,17 +11,16 @@ import {
   Typography,
   Row,
   Col,
-  Alert,
   Input,
   AutoComplete,
   Tag,
-  Divider,
 } from 'antd';
 import {
   SaveOutlined,
   CalendarOutlined,
   PlusOutlined,
   DeleteOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
@@ -245,12 +244,23 @@ function ProductQuotaManagement() {
     setQuotaValue('');
   };
 
-  const handleDeleteAllocation = (productId, territoryName) => {
-    const key = `${productId}_${territoryName}`;
-    const newQuotas = { ...quotas };
-    delete newQuotas[key];
-    setQuotas(newQuotas);
-    message.success('Allocation removed');
+  const handleDeleteAllocation = async (productId, territoryName) => {
+    try {
+      const dateStr = selectedDate.format('YYYY-MM-DD');
+      const response = await axios.delete(`/api/product-caps/${dateStr}/${productId}/${encodeURIComponent(territoryName)}`);
+      
+      if (response.data.success) {
+        // Remove from local state
+        const key = `${productId}_${territoryName}`;
+        const newQuotas = { ...quotas };
+        delete newQuotas[key];
+        setQuotas(newQuotas);
+        message.success('Quota deleted from database');
+      }
+    } catch (error) {
+      console.error('Error deleting quota:', error);
+      message.error('Failed to delete quota from database');
+    }
   };
 
   // Get all current allocations for display
@@ -282,6 +292,15 @@ function ProductQuotaManagement() {
     });
   };
 
+  const handleUpdateQuota = (productId, territoryName, newQuantity) => {
+    const key = `${productId}_${territoryName}`;
+    setQuotas(prev => ({
+      ...prev,
+      [key]: parseInt(newQuantity) || 0
+    }));
+    message.success('Quota updated');
+  };
+
   const allocationColumns = [
     {
       title: 'Territory',
@@ -305,13 +324,22 @@ function ProductQuotaManagement() {
       title: 'Quota',
       dataIndex: 'quantity',
       key: 'quantity',
-      width: 100,
+      width: 150,
       align: 'right',
+      render: (quantity, record) => (
+        <InputNumber
+          min={0}
+          max={999999}
+          value={quantity}
+          onChange={(value) => handleUpdateQuota(record.productId, record.territoryName, value)}
+          style={{ width: '100px' }}
+        />
+      ),
     },
     {
       title: 'Action',
       key: 'action',
-      width: 100,
+      width: 180,
       render: (_, record) => (
         <Button
           type="link"
@@ -319,28 +347,24 @@ function ProductQuotaManagement() {
           icon={<DeleteOutlined />}
           onClick={() => handleDeleteAllocation(record.productId, record.territoryName)}
         >
-          Remove
+          Delete From Database
         </Button>
       ),
     },
   ];
 
   return (
-    <div style={{ padding: '24px' }}>
-      <Card>
-        <Space direction="vertical" style={{ width: '100%' }} size="large">
-          <div>
-            <Title level={2}>Product Quota Management</Title>
-          </div>
+    <div>
+      <Title level={3} style={{ marginBottom: '8px' }}>
+        Product Quota Management
+      </Title>
+      <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
+        Allocate product quotas per territory by date
+      </Text>
 
-          <Alert
-            message="Type product name (e.g., 'dimitris'), select territory (e.g., 'bari' for Barishal), enter quota, then add allocation."
-            type="info"
-            showIcon
-            style={{ marginBottom: '16px' }}
-          />
-
-          <Row gutter={16} align="bottom">
+      {/* Allocation Form */}
+      <Card style={{ marginBottom: '16px' }}>
+        <Row gutter={[16, 16]} align="bottom">
             <Col>
               <Space direction="vertical">
                 <Text strong>Date:</Text>
@@ -456,35 +480,46 @@ function ProductQuotaManagement() {
             </Col>
           </Row>
 
-          <Row gutter={16} align="middle">
-            <Col>
-              <Button
-                type="primary"
-                icon={<SaveOutlined />}
-                onClick={handleSave}
-                loading={saving}
-                size="large"
-              >
-                Save All Quotas
-              </Button>
-            </Col>
-            <Col>
-              <Text type="secondary">
-                {getAllocations().length} allocation(s) ready to save
-              </Text>
-            </Col>
-          </Row>
+        <Row gutter={[16, 16]} align="middle" style={{ marginTop: '16px' }}>
+          <Col>
+            <Button
+              type="primary"
+              icon={<SaveOutlined />}
+              onClick={handleSave}
+              loading={saving}
+            >
+              Save All Quotas
+            </Button>
+          </Col>
+          <Col>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={loadQuotas}
+            >
+              Refresh
+            </Button>
+          </Col>
+          <Col>
+            <Text type="secondary">
+              {getAllocations().length} allocation(s) ready to save
+            </Text>
+          </Col>
+        </Row>
+      </Card>
 
-          <Card title="Current Allocations" style={{ marginTop: '24px' }}>
-            <Table
-              dataSource={getAllocations()}
-              columns={allocationColumns}
-              rowKey="key"
-              pagination={{ pageSize: 20 }}
-              locale={{ emptyText: 'No allocations yet. Add allocations using the form above.' }}
-            />
-          </Card>
-        </Space>
+      {/* Current Allocations Table */}
+      <Card>
+        <div style={{ marginBottom: '16px' }}>
+          <Text strong>Quotas ({getAllocations().length})</Text>
+        </div>
+        <Table
+          dataSource={getAllocations()}
+          columns={allocationColumns}
+          rowKey="key"
+          pagination={{ pageSize: 20 }}
+          locale={{ emptyText: 'No allocations yet. Add allocations using the form above.' }}
+          size="small"
+        />
       </Card>
     </div>
   );

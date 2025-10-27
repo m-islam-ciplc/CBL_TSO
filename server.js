@@ -831,7 +831,7 @@ app.post('/api/product-caps/upload', upload.single('file'), async (req, res) => 
           
           // Insert or update cap
           const insertQuery = `
-            INSERT INTO daily_product_caps (date, product_id, territory_name, max_quantity)
+            INSERT INTO daily_quotas (date, product_id, territory_name, max_quantity)
             VALUES (?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE max_quantity = VALUES(max_quantity)
           `;
@@ -865,7 +865,7 @@ app.get('/api/product-caps', (req, res) => {
   
   let query = `
     SELECT pc.*, p.product_code, p.name as product_name
-    FROM daily_product_caps pc
+    FROM daily_quotas pc
     JOIN products p ON pc.product_id = p.id
     WHERE 1=1
   `;
@@ -902,17 +902,15 @@ app.get('/api/product-caps/tso-today', (req, res) => {
     return res.status(400).json({ error: 'Territory name is required' });
   }
   
-  const today = new Date().toISOString().split('T')[0];
-  
   const query = `
     SELECT pc.*, p.product_code, p.name as product_name
-    FROM daily_product_caps pc
+    FROM daily_quotas pc
     JOIN products p ON pc.product_id = p.id
-    WHERE pc.date = ? AND pc.territory_name = ?
+    WHERE DATE(pc.date) = CURDATE() AND pc.territory_name = ?
     ORDER BY p.product_code
   `;
   
-  db.query(query, [today, territory_name], (err, results) => {
+  db.query(query, [territory_name], (err, results) => {
     if (err) {
       console.error('Error fetching TSO quotas:', err);
       return res.status(500).json({ error: 'Database error' });
@@ -943,7 +941,7 @@ app.post('/api/product-caps/bulk', (req, res) => {
     const insertPromises = quotas.map(quota => {
       return new Promise((resolve, reject) => {
         const query = `
-          INSERT INTO daily_product_caps (date, product_id, product_code, product_name, territory_name, max_quantity)
+          INSERT INTO daily_quotas (date, product_id, product_code, product_name, territory_name, max_quantity)
           VALUES (?, ?, ?, ?, ?, ?)
           ON DUPLICATE KEY UPDATE 
             max_quantity = VALUES(max_quantity),
@@ -990,6 +988,29 @@ app.post('/api/product-caps/bulk', (req, res) => {
           res.status(500).json({ error: err.message || 'Failed to save quotas' });
         });
       });
+  });
+});
+
+// Delete a quota
+app.delete('/api/product-caps/:date/:productId/:territoryName', (req, res) => {
+  const { date, productId, territoryName } = req.params;
+  
+  const query = `
+    DELETE FROM daily_quotas 
+    WHERE date = ? AND product_id = ? AND territory_name = ?
+  `;
+  
+  db.query(query, [date, productId, territoryName], (err, result) => {
+    if (err) {
+      console.error('Error deleting quota:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Quota not found' });
+    }
+    
+    res.json({ success: true, message: 'Quota deleted successfully' });
   });
 });
 

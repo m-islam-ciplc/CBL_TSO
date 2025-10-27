@@ -13,6 +13,8 @@ import {
   Popconfirm,
   Space,
   Typography,
+  Row,
+  Col,
 } from 'antd';
 import {
   PlusOutlined,
@@ -21,7 +23,7 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 const { Option } = Select;
 
 function UserManagement() {
@@ -215,20 +217,33 @@ function UserManagement() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <Title level={3} style={{ margin: 0 }}>
-          <UserOutlined /> User Management
-        </Title>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={handleAdd}
-        >
-          Add User
-        </Button>
-      </div>
+      <Title level={3} style={{ marginBottom: '8px' }}>
+        User Management
+      </Title>
+      <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
+        Manage user accounts and permissions
+      </Text>
 
+      {/* Add User Button */}
+      <Card style={{ marginBottom: '16px' }}>
+        <Row gutter={[16, 16]} align="middle">
+          <Col>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={handleAdd}
+            >
+              Add User
+            </Button>
+          </Col>
+        </Row>
+      </Card>
+
+      {/* Users Table */}
       <Card>
+        <div style={{ marginBottom: '16px' }}>
+          <Text strong>Users ({users.length})</Text>
+        </div>
         <Table
           columns={columns}
           dataSource={users}
@@ -239,6 +254,7 @@ function UserManagement() {
             showSizeChanger: true,
             showTotal: (total) => `Total ${total} users`,
           }}
+          size="small"
         />
       </Card>
 

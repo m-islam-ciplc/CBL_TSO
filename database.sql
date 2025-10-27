@@ -17,8 +17,8 @@ CREATE TABLE IF NOT EXISTS users (
     INDEX idx_territory_name (territory_name)
 );
 
--- Daily Product Caps table
-CREATE TABLE IF NOT EXISTS daily_product_caps (
+-- Daily Quotas table
+CREATE TABLE IF NOT EXISTS daily_quotas (
     id INT AUTO_INCREMENT PRIMARY KEY,
     date DATE NOT NULL,
     product_id INT NOT NULL,

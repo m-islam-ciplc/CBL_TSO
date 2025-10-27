@@ -12,11 +12,13 @@ import {
   Space,
   Spin,
   Tag,
+  Button,
 } from 'antd';
 import {
   GiftOutlined,
   CheckCircleOutlined,
   InfoCircleOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
@@ -127,7 +129,17 @@ function TSODashboard() {
           </Col>
         </Row>
 
-        <Card title="Product Allocations" extra={<Text type="secondary">{dayjs().format('ddd, MMM D, YYYY')}</Text>}>
+        <div>
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={loadQuotas}
+            loading={loading}
+          >
+            Refresh
+          </Button>
+        </div>
+
+        <Card title="Product Allocations">
           {quotas.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 0' }}>
               <InfoCircleOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />

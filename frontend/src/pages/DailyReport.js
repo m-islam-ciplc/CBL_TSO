@@ -361,158 +361,128 @@ function DailyReport() {
   ];
 
   return (
-    <div style={{ padding: '24px' }}>
-      <Card>
-        <Title level={2}>
-          <FileExcelOutlined style={{ marginRight: '8px', color: '#1890ff' }} />
-          Daily Order Report Generator
-        </Title>
-        
-        <Text type="secondary" style={{ fontSize: '16px', marginBottom: '24px', display: 'block' }}>
-          Generate Excel reports for orders placed on a specific date in the format matching Book1.xlsx
-        </Text>
+    <div>
+      <Title level={3} style={{ marginBottom: '8px' }}>
+        Daily Order Report Generator
+      </Title>
+      <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
+        Generate Excel reports for orders placed on a specific date
+      </Text>
 
-        <Row gutter={[24, 24]}>
-          <Col xs={24} sm={12} md={8}>
-            <Card size="small" style={{ height: '100%' }}>
-              <Space direction="vertical" style={{ width: '100%' }}>
-                <Title level={4}>Select Date</Title>
-                <DatePicker
-                  value={selectedDate}
-                  onChange={setSelectedDate}
-                  format="YYYY-MM-DD"
-                  style={{ width: '100%' }}
-                  placeholder="Select date for report"
-                  size="large"
-                  disabledDate={disabledDate}
-                  dateRender={dateCellRender}
-                />
-              </Space>
-            </Card>
+      {/* Actions */}
+      <Card style={{ marginBottom: '16px' }}>
+        <Row gutter={[16, 16]} align="bottom">
+          <Col xs={24} sm={12} md={6}>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Text strong>Select Date</Text>
+              <DatePicker
+                value={selectedDate}
+                onChange={setSelectedDate}
+                format="YYYY-MM-DD"
+                style={{ width: '100%' }}
+                placeholder="Select date for report"
+                disabledDate={disabledDate}
+                dateRender={dateCellRender}
+              />
+            </Space>
           </Col>
-
-          <Col xs={24} sm={12} md={8}>
-            <Card size="small" style={{ height: '100%' }}>
-              <Space direction="vertical" style={{ width: '100%' }}>
-                <Title level={4}>Preview Data</Title>
-                <Button
-                  type="default"
-                  icon={<EyeOutlined />}
-                  onClick={handlePreviewData}
-                  loading={loading}
-                  style={{ width: '100%' }}
-                  size="large"
-                >
-                  Preview Orders
-                </Button>
-                <Text type="secondary" style={{ fontSize: '12px' }}>
-                  Check what orders exist for the selected date
-                </Text>
-              </Space>
-            </Card>
+          <Col xs={24} sm={12} md={6}>
+            <Button
+              type="default"
+              icon={<EyeOutlined />}
+              onClick={handlePreviewData}
+              loading={loading}
+              style={{ width: '100%' }}
+            >
+              Preview Orders
+            </Button>
           </Col>
-
-          <Col xs={24} sm={12} md={8}>
-            <Card size="small" style={{ height: '100%' }}>
-              <Space direction="vertical" style={{ width: '100%' }}>
-                <Title level={4}>Generate Reports</Title>
-                <Button
-                  type="primary"
-                  icon={<DownloadOutlined />}
-                  onClick={handleGenerateReport}
-                  loading={loading}
-                  style={{ width: '100%' }}
-                  size="large"
-                >
-                  Download TSO Excel Report
-                </Button>
-                <Button
-                  type="default"
-                  icon={<DownloadOutlined />}
-                  onClick={handleGenerateMRReport}
-                  loading={loading}
-                  style={{ width: '100%' }}
-                  size="large"
-                >
-                  Download MR CSV Report
-                </Button>
-                <Text type="secondary" style={{ fontSize: '12px' }}>
-                  TSO: Excel format • MR: CSV format with warehouse aliases
-                </Text>
-              </Space>
-            </Card>
+          <Col xs={24} sm={12} md={6}>
+            <Button
+              type="primary"
+              icon={<DownloadOutlined />}
+              onClick={handleGenerateReport}
+              loading={loading}
+              style={{ width: '100%' }}
+            >
+              Download TSO Excel
+            </Button>
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Button
+              icon={<DownloadOutlined />}
+              onClick={handleGenerateMRReport}
+              loading={loading}
+              style={{ width: '100%' }}
+            >
+              Download MR CSV
+            </Button>
           </Col>
         </Row>
-
-        {/* Preview Table */}
-        {showPreview && previewData.length > 0 && (
-          <Card style={{ marginTop: '24px' }}>
-            <Title level={3} style={{ marginBottom: '16px' }}>
-              Orders for {selectedDate ? selectedDate.format('YYYY-MM-DD') : 'Selected Date'}
-            </Title>
-            
-            {/* Filters */}
-            <Card size="small" style={{ marginBottom: '16px' }}>
-              <Row gutter={[16, 16]} align="middle" style={{ padding: '16px 0' }}>
-                <Col xs={24} sm={12} md={8}>
-                  <Input
-                    placeholder="Search orders..."
-                    prefix={<SearchOutlined />}
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    size="middle"
-                  />
-                </Col>
-                <Col xs={24} sm={12} md={8}>
-                  <Select
-                    placeholder="Filter by status"
-                    value={statusFilter}
-                    onChange={setStatusFilter}
-                    style={{ width: '100%' }}
-                    size="middle"
-                  >
-                    <Select.Option value="all">All Status</Select.Option>
-                    <Select.Option value="new">New</Select.Option>
-                    <Select.Option value="processing">Processing</Select.Option>
-                    <Select.Option value="completed">Completed</Select.Option>
-                    <Select.Option value="shipped">Shipped</Select.Option>
-                  </Select>
-                </Col>
-                <Col xs={24} sm={12} md={8}>
-                  <Text type="secondary">
-                    Showing {filteredPreviewData.length} of {previewData.length} orders
-                  </Text>
-                </Col>
-              </Row>
-            </Card>
-
-            <Table
-              columns={columns}
-              dataSource={filteredPreviewData}
-              rowKey="id"
-              pagination={{
-                pageSize: 20,
-                showSizeChanger: true,
-                showQuickJumper: true,
-                showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} orders`,
-                pageSizeOptions: ['10', '20', '50', '100'],
-                defaultPageSize: 20,
-              }}
-              scroll={{ x: 1200 }}
-              size="small"
-            />
-          </Card>
-        )}
-
-        {loading && (
-          <div style={{ textAlign: 'center', marginTop: '24px' }}>
-            <Spin size="large" />
-            <div style={{ marginTop: '16px' }}>
-              <Text>Processing your request...</Text>
-            </div>
-          </div>
-        )}
       </Card>
+
+      {/* Preview Table */}
+      {showPreview && previewData.length > 0 && (
+        <Card>
+          <div style={{ marginBottom: '16px' }}>
+            <Text strong>Orders ({filteredPreviewData.length})</Text>
+          </div>
+          
+          {/* Filters */}
+          <Card size="small" style={{ marginBottom: '16px' }}>
+            <Row gutter={[16, 16]} align="middle">
+              <Col xs={24} sm={12} md={8}>
+                <Input
+                  placeholder="Search orders..."
+                  prefix={<SearchOutlined />}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </Col>
+              <Col xs={24} sm={12} md={8}>
+                <Select
+                  placeholder="Filter by status"
+                  value={statusFilter}
+                  onChange={setStatusFilter}
+                  style={{ width: '100%' }}
+                  allowClear
+                >
+                  <Select.Option value="all">All Status</Select.Option>
+                  <Select.Option value="new">New</Select.Option>
+                  <Select.Option value="processing">Processing</Select.Option>
+                  <Select.Option value="completed">Completed</Select.Option>
+                  <Select.Option value="shipped">Shipped</Select.Option>
+                </Select>
+              </Col>
+            </Row>
+          </Card>
+
+          <Table
+            columns={columns}
+            dataSource={filteredPreviewData}
+            rowKey="id"
+            pagination={{
+              pageSize: 20,
+              showSizeChanger: true,
+              showQuickJumper: true,
+              showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} orders`,
+              pageSizeOptions: ['10', '20', '50', '100'],
+              defaultPageSize: 20,
+            }}
+            scroll={{ x: 1200 }}
+            size="small"
+          />
+        </Card>
+      )}
+
+      {loading && (
+        <div style={{ textAlign: 'center', marginTop: '24px' }}>
+          <Spin size="large" />
+          <div style={{ marginTop: '16px' }}>
+            <Text>Processing your request...</Text>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

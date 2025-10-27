@@ -390,15 +390,14 @@ function ProductManagement() {
       </Card>
 
       {/* Statistics */}
-      <Row gutter={16} style={{ marginBottom: '24px' }}>
+      <Row gutter={[16, 16]} style={{ marginBottom: '16px' }}>
         {stats.map((stat, index) => (
-          <Col xs={12} sm={6} key={index}>
-            <Card>
+          <Col xs={24} sm={12} md={6} key={index}>
+            <Card size="small">
               <Statistic
                 title={stat.title}
                 value={stat.value}
                 prefix={stat.icon}
-                valueStyle={{ fontSize: '20px' }}
               />
             </Card>
           </Col>
@@ -407,7 +406,7 @@ function ProductManagement() {
 
       {/* Filters */}
       <Card style={{ marginBottom: '16px' }}>
-        <Row gutter={16}>
+        <Row gutter={[16, 16]}>
           <Col xs={24} sm={8} md={6}>
             <Input
               placeholder="Search products..."

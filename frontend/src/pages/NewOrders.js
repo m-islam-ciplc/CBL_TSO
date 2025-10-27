@@ -400,7 +400,6 @@ function NewOrders({ onOrderCreated }) {
                 htmlType="submit"
                 loading={loading}
                 icon={<PlusOutlined />}
-                size="large"
                 disabled={orderItems.length === 0}
               >
                 {loading ? 'Creating...' : `Create Order (${orderItems.length} item${orderItems.length !== 1 ? 's' : ''})`}
