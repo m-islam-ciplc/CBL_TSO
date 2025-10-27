@@ -149,10 +149,16 @@ function NewOrdersTablet({ onOrderCreated }) {
     let baseProducts = dropdownData.products;
     
     // For TSO users, only show products that have quotas allocated
-    if (isTSO && Object.keys(productQuotas).length > 0) {
-      baseProducts = dropdownData.products.filter(product => 
-        productQuotas.hasOwnProperty(product.id)
-      );
+    // If there are no quotas allocated, show no products
+    if (isTSO) {
+      if (Object.keys(productQuotas).length > 0) {
+        baseProducts = dropdownData.products.filter(product => 
+          productQuotas.hasOwnProperty(product.id)
+        );
+      } else {
+        // No quotas allocated, show no products
+        baseProducts = [];
+      }
     }
     
     if (searchTerm) {
