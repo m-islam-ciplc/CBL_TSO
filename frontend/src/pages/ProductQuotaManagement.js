@@ -21,6 +21,7 @@ import {
   PlusOutlined,
   DeleteOutlined,
   ReloadOutlined,
+  CheckOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
@@ -33,6 +34,8 @@ function ProductQuotaManagement() {
   const [quotas, setQuotas] = useState({}); // { productId_territory: quantity }
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingQuota, setEditingQuota] = useState(null); // Track which quota is being edited
+  const [pendingQuotaValue, setPendingQuotaValue] = useState(null); // Track pending edit value
   
   // New allocation flow state
   const [productSearch, setProductSearch] = useState('');
@@ -111,11 +114,14 @@ function ProductQuotaManagement() {
       const dateStr = selectedDate.format('YYYY-MM-DD');
       const response = await axios.get(`/api/product-caps?date=${dateStr}`);
       
-      // Convert API response to quotas object
+      // Convert API response to quotas object with sold info
       const quotasObj = {};
       response.data.forEach(cap => {
         const key = `${cap.product_id}_${cap.territory_name}`;
-        quotasObj[key] = cap.max_quantity;
+        quotasObj[key] = {
+          max_quantity: cap.max_quantity,
+          remaining_quantity: cap.remaining_quantity || cap.max_quantity
+        };
       });
       
       setQuotas(quotasObj);
@@ -144,7 +150,8 @@ function ProductQuotaManagement() {
       const dateStr = selectedDate.format('YYYY-MM-DD');
       const quotasToSave = [];
 
-      Object.entries(quotas).forEach(([key, quantity]) => {
+      Object.entries(quotas).forEach(([key, quotaData]) => {
+        const quantity = typeof quotaData === 'number' ? quotaData : quotaData.max_quantity;
         if (quantity > 0) {
           const [productId, territoryName] = key.split('_');
           const product = products.find(p => p.id == productId);
@@ -229,7 +236,15 @@ function ProductQuotaManagement() {
     selectedProducts.forEach(product => {
       selectedTerritories.forEach(territory => {
         const key = `${product.id}_${territory}`;
-        newQuotas[key] = parseInt(quotaValue);
+        const existingQuota = newQuotas[key];
+        const currentMax = typeof existingQuota === 'number' ? existingQuota : (existingQuota?.max_quantity || 0);
+        const currentRemaining = typeof existingQuota === 'number' ? existingQuota : (existingQuota?.remaining_quantity || 0);
+        const newMax = currentMax + parseInt(quotaValue);
+        const newRemaining = currentRemaining + parseInt(quotaValue);
+        newQuotas[key] = {
+          max_quantity: newMax,
+          remaining_quantity: newRemaining
+        };
       });
     });
     setQuotas(newQuotas);
@@ -267,7 +282,11 @@ function ProductQuotaManagement() {
   const getAllocations = () => {
     const allocations = [];
     
-    Object.entries(quotas).forEach(([key, quantity]) => {
+    Object.entries(quotas).forEach(([key, quotaData]) => {
+      const quantity = typeof quotaData === 'number' ? quotaData : quotaData.max_quantity;
+      const remaining = typeof quotaData === 'number' ? quotaData : quotaData.remaining_quantity;
+      const sold = quantity - remaining;
+      
       if (quantity > 0) {
         const [productId, territoryName] = key.split('_');
         const product = products.find(p => p.id == productId);
@@ -278,7 +297,9 @@ function ProductQuotaManagement() {
             productCode: product.product_code,
             productName: product.name,
             territoryName,
-            quantity
+            quantity,
+            remaining,
+            sold
           });
         }
       }
@@ -292,13 +313,59 @@ function ProductQuotaManagement() {
     });
   };
 
-  const handleUpdateQuota = (productId, territoryName, newQuantity) => {
+  const handleQuotaInputChange = (productId, territoryName, value) => {
     const key = `${productId}_${territoryName}`;
+    setEditingQuota(key);
+    setPendingQuotaValue(value);
+  };
+
+  const handleConfirmQuotaUpdate = async () => {
+    if (!editingQuota || pendingQuotaValue === null) return;
+    
+    const key = editingQuota;
+    const [productId, territoryName] = key.split('_');
+    const newMaxQuantity = parseInt(pendingQuotaValue) || 0;
+    
+    // Get the current remaining_quantity to maintain the difference
+    const currentQuota = quotas[key];
+    const currentRemaining = typeof currentQuota === 'number' ? currentQuota : (currentQuota?.remaining_quantity || 0);
+    const currentMax = typeof currentQuota === 'number' ? currentQuota : (currentQuota?.max_quantity || 0);
+    
+    // Calculate the difference and adjust remaining_quantity accordingly
+    const difference = newMaxQuantity - currentMax;
+    const newRemainingQuantity = Math.max(0, currentRemaining + difference);
+    
+    // Update local state first for immediate UI feedback
     setQuotas(prev => ({
       ...prev,
-      [key]: parseInt(newQuantity) || 0
+      [key]: {
+        max_quantity: newMaxQuantity,
+        remaining_quantity: newRemainingQuantity
+      }
     }));
-    message.success('Quota updated');
+    
+    // Clear editing state
+    setEditingQuota(null);
+    setPendingQuotaValue(null);
+    
+    // Save to database using the PUT endpoint
+    try {
+      const dateStr = selectedDate.format('YYYY-MM-DD');
+      
+      await axios.put(`/api/product-caps/${dateStr}/${productId}/${encodeURIComponent(territoryName)}`, {
+        max_quantity: newMaxQuantity,
+        remaining_quantity: newRemainingQuantity
+      });
+      
+      message.success('Quota updated successfully');
+      // Reload to ensure consistency
+      await loadQuotas();
+    } catch (error) {
+      console.error('Error updating quota:', error);
+      message.error('Failed to update quota in database');
+      // Revert local state on error
+      loadQuotas();
+    }
   };
 
   const allocationColumns = [
@@ -324,16 +391,46 @@ function ProductQuotaManagement() {
       title: 'Quota',
       dataIndex: 'quantity',
       key: 'quantity',
-      width: 150,
+      width: 200,
       align: 'right',
-      render: (quantity, record) => (
-        <InputNumber
-          min={0}
-          max={999999}
-          value={quantity}
-          onChange={(value) => handleUpdateQuota(record.productId, record.territoryName, value)}
-          style={{ width: '100px' }}
-        />
+      render: (quantity, record) => {
+        const key = `${record.productId}_${record.territoryName}`;
+        const isEditing = editingQuota === key;
+        const displayValue = isEditing ? pendingQuotaValue : quantity;
+        
+        return (
+          <Space>
+            <InputNumber
+              min={0}
+              max={999999}
+              value={displayValue}
+              onChange={(value) => handleQuotaInputChange(record.productId, record.territoryName, value)}
+              style={{ width: '100px' }}
+            />
+            {isEditing && (
+              <Button
+                type="primary"
+                icon={<CheckOutlined />}
+                onClick={handleConfirmQuotaUpdate}
+                size="small"
+              >
+                Update
+              </Button>
+            )}
+          </Space>
+        );
+      },
+    },
+    {
+      title: 'Sold',
+      dataIndex: 'sold',
+      key: 'sold',
+      width: 100,
+      align: 'right',
+      render: (sold) => (
+        <Tag color="orange" style={{ fontSize: '12px', padding: '2px 8px' }}>
+          {sold || 0}
+        </Tag>
       ),
     },
     {

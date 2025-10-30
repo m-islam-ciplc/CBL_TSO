@@ -62,21 +62,38 @@ function TSODashboard() {
       key: 'product_name',
     },
     {
-      title: 'Allocated Quantity',
+      title: 'Allocated',
       dataIndex: 'max_quantity',
       key: 'max_quantity',
-      width: 150,
+      width: 100,
       align: 'right',
       render: (quantity) => (
-        <Tag color="blue" style={{ fontSize: '14px', padding: '4px 12px' }}>
+        <Tag color="default" style={{ fontSize: '12px', padding: '2px 8px' }}>
           {quantity}
         </Tag>
       ),
     },
+    {
+      title: 'Remaining',
+      dataIndex: 'remaining_quantity',
+      key: 'remaining_quantity',
+      width: 100,
+      align: 'right',
+      render: (quantity, record) => {
+        const remaining = quantity || record.max_quantity;
+        const isLow = remaining === 0;
+        return (
+          <Tag color={isLow ? 'red' : 'green'} style={{ fontSize: '12px', padding: '2px 8px' }}>
+            {remaining}
+          </Tag>
+        );
+      },
+    },
   ];
 
   const totalProducts = quotas.length;
-  const totalQuantity = quotas.reduce((sum, q) => sum + q.max_quantity, 0);
+  const totalAllocated = quotas.reduce((sum, q) => sum + q.max_quantity, 0);
+  const totalRemaining = quotas.reduce((sum, q) => sum + (q.remaining_quantity || q.max_quantity), 0);
 
   if (loading) {
     return (
@@ -119,11 +136,11 @@ function TSODashboard() {
           <Col xs={24} sm={12}>
             <Card>
               <Statistic
-                title="Total Quantity"
-                value={totalQuantity}
+                title="Remaining Quantity"
+                value={totalRemaining}
                 prefix={<CheckCircleOutlined />}
                 suffix="units"
-                valueStyle={{ color: '#52c41a' }}
+                valueStyle={{ color: totalRemaining > 0 ? '#52c41a' : '#ff4d4f' }}
               />
             </Card>
           </Col>

@@ -903,7 +903,8 @@ app.get('/api/product-caps/tso-today', (req, res) => {
   }
   
   const query = `
-    SELECT pc.*, p.product_code, p.name as product_name
+    SELECT pc.*, p.product_code, p.name as product_name,
+           COALESCE(pc.remaining_quantity, pc.max_quantity) as remaining_quantity
     FROM daily_quotas pc
     JOIN products p ON pc.product_id = p.id
     WHERE DATE(pc.date) = CURDATE() AND pc.territory_name = ?
@@ -941,12 +942,13 @@ app.post('/api/product-caps/bulk', (req, res) => {
     const insertPromises = quotas.map(quota => {
       return new Promise((resolve, reject) => {
         const query = `
-          INSERT INTO daily_quotas (date, product_id, product_code, product_name, territory_name, max_quantity)
-          VALUES (?, ?, ?, ?, ?, ?)
+          INSERT INTO daily_quotas (date, product_id, product_code, product_name, territory_name, max_quantity, remaining_quantity)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
           ON DUPLICATE KEY UPDATE 
-            max_quantity = VALUES(max_quantity),
+            max_quantity = max_quantity + VALUES(max_quantity),
             product_code = VALUES(product_code),
-            product_name = VALUES(product_name)
+            product_name = VALUES(product_name),
+            remaining_quantity = remaining_quantity + VALUES(max_quantity)
         `;
         
         console.log('💾 Inserting quota:', { date: quota.date, product_id: quota.product_id, territory: quota.territory_name, qty: quota.max_quantity });
@@ -957,7 +959,8 @@ app.post('/api/product-caps/bulk', (req, res) => {
           quota.product_code, 
           quota.product_name, 
           quota.territory_name, 
-          quota.max_quantity
+          quota.max_quantity,
+          quota.max_quantity // Initialize remaining_quantity with max_quantity
         ], (err, result) => {
           if (err) {
             console.error('❌ Database error for quota:', err);
@@ -988,6 +991,37 @@ app.post('/api/product-caps/bulk', (req, res) => {
           res.status(500).json({ error: err.message || 'Failed to save quotas' });
         });
       });
+  });
+});
+
+// Update a quota (set absolute value, not accumulate)
+app.put('/api/product-caps/:date/:productId/:territoryName', (req, res) => {
+  const { date, productId, territoryName } = req.params;
+  const { max_quantity, remaining_quantity } = req.body;
+  
+  if (max_quantity === undefined || remaining_quantity === undefined) {
+    return res.status(400).json({ error: 'max_quantity and remaining_quantity are required' });
+  }
+  
+  const query = `
+    UPDATE daily_quotas 
+    SET max_quantity = ?, 
+        remaining_quantity = ?,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE date = ? AND product_id = ? AND territory_name = ?
+  `;
+  
+  db.query(query, [max_quantity, remaining_quantity, date, productId, territoryName], (err, result) => {
+    if (err) {
+      console.error('Error updating quota:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Quota not found' });
+    }
+    
+    res.json({ success: true, message: 'Quota updated successfully' });
   });
 });
 
@@ -1509,12 +1543,33 @@ app.post('/api/orders', async (req, res) => {
                 VALUES (?, ?, ?, ?, ?)
             `, [order_id, order_type_id, dealer_id, warehouse_id, transport_id]);
 
-            // Add order items
+            // Get dealer's territory for quota tracking
+            const [dealerRows] = await db.promise().query(`
+                SELECT territory_name FROM dealers WHERE id = ?
+            `, [dealer_id]);
+            
+            const territory_name = dealerRows[0]?.territory_name;
+            
+            // Add order items and decrement quotas
             for (const item of order_items) {
                 await db.promise().query(`
                     INSERT INTO order_items (order_id, product_id, quantity) 
                     VALUES (?, ?, ?)
                 `, [order_id, item.product_id, item.quantity]);
+                
+                // Decrement remaining_quantity if territory is known
+                if (territory_name) {
+                    console.log('🔧 Decrementing quota:', { product_id: item.product_id, quantity: item.quantity, territory_name });
+                    const [result] = await db.promise().query(`
+                        UPDATE daily_quotas 
+                        SET remaining_quantity = GREATEST(0, remaining_quantity - ?)
+                        WHERE product_id = ? 
+                          AND territory_name = ? 
+                          AND DATE(date) = CURDATE()
+                          AND remaining_quantity > 0
+                    `, [item.quantity, item.product_id, territory_name]);
+                    console.log('✅ Quota update result:', { affectedRows: result.affectedRows });
+                }
             }
 
             // Commit transaction

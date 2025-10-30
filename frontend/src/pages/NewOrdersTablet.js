@@ -18,6 +18,7 @@ import {
   Divider,
   Collapse,
   Modal,
+  Tag,
 } from 'antd';
 import {
   PlusOutlined,
@@ -127,10 +128,13 @@ function NewOrdersTablet({ onOrderCreated }) {
             }
           });
           
-          // Convert array to object: { product_id: max_quantity }
+          // Convert array to object: { product_id: { max: max_quantity, remaining: remaining_quantity } }
           const quotasObj = {};
           response.data.forEach(cap => {
-            quotasObj[cap.product_id] = cap.max_quantity;
+            quotasObj[cap.product_id] = {
+              max: cap.max_quantity,
+              remaining: cap.remaining_quantity !== undefined ? cap.remaining_quantity : cap.max_quantity
+            };
           });
           
           setProductQuotas(quotasObj);
@@ -411,10 +415,18 @@ function NewOrdersTablet({ onOrderCreated }) {
 
     // Check product quota for TSO users
     if (isTSO && productQuotas) {
-      const quota = productQuotas[product.id];
+      const quotaInfo = productQuotas[product.id];
       
-      if (quota === undefined || quota === null) {
+      if (quotaInfo === undefined || quotaInfo === null) {
         message.error(`This product (${product.product_code}) is not allocated to your territory for today.`);
+        return false;
+      }
+      
+      const remaining = quotaInfo.remaining;
+      
+      // Check if quota is exhausted
+      if (remaining <= 0) {
+        message.error(`Quota exhausted! This product has no remaining units available.`);
         return false;
       }
       
@@ -423,8 +435,8 @@ function NewOrdersTablet({ onOrderCreated }) {
       const currentOrderQty = existingItem ? existingItem.quantity : 0;
       const newTotalQty = currentOrderQty + quantity;
       
-      if (newTotalQty > quota) {
-        message.error(`Quota exceeded! You have ${quota} units allocated. Current order: ${currentOrderQty}, trying to add: ${quantity}`);
+      if (newTotalQty > remaining) {
+        message.error(`Quota exceeded! You have ${remaining} units remaining. Current order: ${currentOrderQty}, trying to add: ${quantity}`);
         return false;
       }
     }
@@ -574,6 +586,28 @@ function NewOrdersTablet({ onOrderCreated }) {
         setIsAddingMore(false);
         localStorage.removeItem('tsoFormData'); // Clear saved form data
         setFormValues({});
+        
+        // Reload quotas to reflect new remaining quantities
+        if (isTSO && territoryName) {
+          const timestamp = Date.now();
+          axios.get('/api/product-caps/tso-today', {
+            params: { 
+              territory_name: territoryName,
+              _t: timestamp
+            }
+          }).then(response => {
+            const quotasObj = {};
+            response.data.forEach(cap => {
+              quotasObj[cap.product_id] = {
+                max: cap.max_quantity,
+                remaining: cap.remaining_quantity !== undefined ? cap.remaining_quantity : cap.max_quantity
+              };
+            });
+            setProductQuotas(quotasObj);
+            console.log('📋 Reloaded quotas after order:', quotasObj);
+          });
+        }
+        
         onOrderCreated();
       }
     } catch (error) {
@@ -821,6 +855,7 @@ function NewOrdersTablet({ onOrderCreated }) {
        <div className="responsive-product-grid">
          {filteredProducts.map(product => {
             const quantity = productQuantities[product.id] || 0;
+            const allocatedQuota = isTSO && productQuotas[product.id];
             
             return (
               <Card
@@ -855,6 +890,21 @@ function NewOrdersTablet({ onOrderCreated }) {
                 >
                   {product.product_code}
                 </div>
+                
+                {/* Show allocated quota for TSO users */}
+                {isTSO && allocatedQuota && (
+                  <div style={{ 
+                    fontSize: '10px', 
+                    color: allocatedQuota.remaining > 0 ? '#722ed1' : '#ff4d4f',
+                    fontWeight: 'bold',
+                    backgroundColor: allocatedQuota.remaining > 0 ? '#f9f0ff' : '#fff1f0',
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    marginBottom: '4px'
+                  }}>
+                    {allocatedQuota.remaining > 0 ? `Remaining: ${allocatedQuota.remaining}` : 'Out of stock'}
+                  </div>
+                )}
                 
                 {/* Show quantity if added */}
                 {quantity > 0 && (
@@ -989,6 +1039,20 @@ function NewOrdersTablet({ onOrderCreated }) {
               }}>
                 {selectedProductForPopup.name}
               </div>
+              
+              {/* Show remaining quota for TSO users */}
+              {isTSO && productQuotas[selectedProductForPopup.id] && (
+                <div style={{ 
+                  fontSize: '12px', 
+                  marginBottom: '16px'
+                }}>
+                  <Tag color={productQuotas[selectedProductForPopup.id].remaining > 0 ? 'green' : 'red'} style={{ fontSize: '12px', padding: '4px 12px' }}>
+                    {productQuotas[selectedProductForPopup.id].remaining > 0 
+                      ? `Remaining: ${productQuotas[selectedProductForPopup.id].remaining} units` 
+                      : 'Out of stock'}
+                  </Tag>
+                </div>
+              )}
             </div>
 
             {/* Quantity Controls */}
