@@ -80,7 +80,7 @@ function TSODashboard() {
       width: 100,
       align: 'right',
       render: (quantity, record) => {
-        const remaining = quantity || record.max_quantity;
+        const remaining = quantity !== undefined ? quantity : record.max_quantity;
         const isLow = remaining === 0;
         return (
           <Tag color={isLow ? 'red' : 'green'} style={{ fontSize: '12px', padding: '2px 8px' }}>
@@ -93,7 +93,7 @@ function TSODashboard() {
 
   const totalProducts = quotas.length;
   const totalAllocated = quotas.reduce((sum, q) => sum + q.max_quantity, 0);
-  const totalRemaining = quotas.reduce((sum, q) => sum + (q.remaining_quantity || q.max_quantity), 0);
+  const totalRemaining = quotas.reduce((sum, q) => sum + (q.remaining_quantity !== undefined ? q.remaining_quantity : q.max_quantity), 0);
 
   if (loading) {
     return (

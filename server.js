@@ -797,7 +797,17 @@ app.delete('/api/users/:id', (req, res) => {
   });
 });
 
-// Product Caps routes
+// ======================================================================================
+// PRODUCT QUOTA ROUTES - SINGLE SOURCE OF TRUTH: daily_quotas.remaining_quantity
+// ======================================================================================
+// Remaining quantity logic:
+// - Initial allocation: remaining_quantity = max_quantity
+// - Order placed: remaining_quantity = remaining_quantity - ordered_quantity (capped at 0)
+// - Admin re-allocation: remaining_quantity = remaining_quantity + new_quantity
+// - Admin absolute update: remaining_quantity = new_remaining_quantity
+// All UI displays (Product Quota Management, TSO Dashboard, Product Cards) read from
+// this database column via the API endpoints below.
+// ======================================================================================
 app.post('/api/product-caps/upload', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {

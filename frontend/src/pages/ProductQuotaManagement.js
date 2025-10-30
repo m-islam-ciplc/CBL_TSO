@@ -117,7 +117,7 @@ function ProductQuotaManagement() {
         const key = `${cap.product_id}_${cap.territory_name}`;
         quotasObj[key] = {
           max_quantity: cap.max_quantity,
-          remaining_quantity: cap.remaining_quantity || cap.max_quantity
+          remaining_quantity: cap.remaining_quantity !== undefined ? cap.remaining_quantity : cap.max_quantity
         };
       });
       
@@ -442,16 +442,15 @@ function ProductQuotaManagement() {
     {
       title: 'Action',
       key: 'action',
-      width: 100,
+      width: 60,
       render: (_, record) => (
         <Button
-          type="link"
+          type="text"
+          size="small"
           danger
           icon={<DeleteOutlined />}
           onClick={() => handleDeleteAllocation(record.productId, record.territoryName)}
-        >
-          Delete From Database
-        </Button>
+        />
       ),
     },
   ];
