@@ -16,8 +16,6 @@ import {
   Tag,
 } from 'antd';
 import {
-  SaveOutlined,
-  CalendarOutlined,
   PlusOutlined,
   DeleteOutlined,
   ReloadOutlined,
@@ -33,7 +31,6 @@ function ProductQuotaManagement() {
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [quotas, setQuotas] = useState({}); // { productId_territory: quantity }
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [editingQuota, setEditingQuota] = useState(null); // Track which quota is being edited
   const [pendingQuotaValue, setPendingQuotaValue] = useState(null); // Track pending edit value
   
@@ -139,62 +136,6 @@ function ProductQuotaManagement() {
     }));
   };
 
-  const handleSave = async () => {
-    if (!selectedDate) {
-      message.error('Please select a date');
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const dateStr = selectedDate.format('YYYY-MM-DD');
-      const quotasToSave = [];
-
-      Object.entries(quotas).forEach(([key, quotaData]) => {
-        const quantity = typeof quotaData === 'number' ? quotaData : quotaData.max_quantity;
-        if (quantity > 0) {
-          const [productId, territoryName] = key.split('_');
-          const product = products.find(p => p.id == productId);
-          if (product) {
-            quotasToSave.push({
-              date: dateStr,
-              product_id: parseInt(productId),
-              product_code: product.product_code,
-              product_name: product.name,
-              territory_name: territoryName,
-              max_quantity: quantity
-            });
-          }
-        }
-      });
-
-      console.log('🔍 Saving quotas:', quotasToSave.length, 'items');
-
-      if (quotasToSave.length === 0) {
-        message.warning('No quotas to save');
-        setSaving(false);
-        return;
-      }
-
-      const response = await axios.post('/api/product-caps/bulk', { quotas: quotasToSave });
-      console.log('✅ Save response:', response.data);
-      message.success('Quotas saved successfully');
-      loadQuotas();
-    } catch (error) {
-      console.error('❌ Error saving quotas:', error);
-      if (error.response) {
-        console.error('Error response:', error.response.data);
-        message.error(`Failed to save quotas: ${error.response.data.error || error.message}`);
-      } else {
-        message.error(`Failed to save quotas: ${error.message}`);
-      }
-    } finally {
-      setSaving(false);
-    }
-  };
-
-
-
   const handleAddProduct = (product) => {
     if (!selectedProducts.some(p => p.id === product.id)) {
       setSelectedProducts(prev => [...prev, product]);
@@ -217,7 +158,7 @@ function ProductQuotaManagement() {
     setSelectedTerritories(prev => prev.filter(t => t !== territory));
   };
 
-  const handleAddAllocation = () => {
+  const handleAddAllocation = async () => {
     if (selectedProducts.length === 0) {
       message.error('Please select at least one product');
       return;
@@ -231,7 +172,24 @@ function ProductQuotaManagement() {
       return;
     }
 
-    // Add allocation for each product and territory combination
+    // Prepare quotas to save
+    const dateStr = selectedDate.format('YYYY-MM-DD');
+    const quotasToSave = [];
+    
+    selectedProducts.forEach(product => {
+      selectedTerritories.forEach(territory => {
+        quotasToSave.push({
+          date: dateStr,
+          product_id: product.id,
+          product_code: product.product_code,
+          product_name: product.name,
+          territory_name: territory,
+          max_quantity: parseInt(quotaValue)
+        });
+      });
+    });
+
+    // Update local state first
     const newQuotas = { ...quotas };
     selectedProducts.forEach(product => {
       selectedTerritories.forEach(territory => {
@@ -249,7 +207,19 @@ function ProductQuotaManagement() {
     });
     setQuotas(newQuotas);
 
-    message.success(`Allocated ${quotaValue} units of ${selectedProducts.length} product(s) to ${selectedTerritories.length} territory/ies`);
+    // Save to database
+    try {
+      await axios.post('/api/product-caps/bulk', { quotas: quotasToSave });
+      message.success(`Allocated ${quotaValue} units of ${selectedProducts.length} product(s) to ${selectedTerritories.length} territory/ies`);
+      
+      // Reload to ensure consistency
+      await loadQuotas();
+    } catch (error) {
+      console.error('Error adding quotas:', error);
+      message.error('Failed to save quotas to database');
+      // Revert local state on error
+      loadQuotas();
+    }
     
     // Reset form
     setSelectedProducts([]);
@@ -326,7 +296,35 @@ function ProductQuotaManagement() {
     const [productId, territoryName] = key.split('_');
     const newMaxQuantity = parseInt(pendingQuotaValue) || 0;
     
-    // Get the current remaining_quantity to maintain the difference
+    // Clear editing state
+    setEditingQuota(null);
+    setPendingQuotaValue(null);
+    
+    // If quota is set to 0, delete it from database
+    if (newMaxQuantity === 0) {
+      try {
+        const dateStr = selectedDate.format('YYYY-MM-DD');
+        
+        await axios.delete(`/api/product-caps/${dateStr}/${productId}/${encodeURIComponent(territoryName)}`);
+        
+        // Remove from local state
+        const newQuotas = { ...quotas };
+        delete newQuotas[key];
+        setQuotas(newQuotas);
+        
+        message.success('Quota deleted successfully');
+        // Reload to ensure consistency
+        await loadQuotas();
+      } catch (error) {
+        console.error('Error deleting quota:', error);
+        message.error('Failed to delete quota from database');
+        // Revert local state on error
+        loadQuotas();
+      }
+      return;
+    }
+    
+    // Otherwise, update the quota
     const currentQuota = quotas[key];
     const currentRemaining = typeof currentQuota === 'number' ? currentQuota : (currentQuota?.remaining_quantity || 0);
     const currentMax = typeof currentQuota === 'number' ? currentQuota : (currentQuota?.max_quantity || 0);
@@ -343,10 +341,6 @@ function ProductQuotaManagement() {
         remaining_quantity: newRemainingQuantity
       }
     }));
-    
-    // Clear editing state
-    setEditingQuota(null);
-    setPendingQuotaValue(null);
     
     // Save to database using the PUT endpoint
     try {
@@ -373,25 +367,25 @@ function ProductQuotaManagement() {
       title: 'Territory',
       dataIndex: 'territoryName',
       key: 'territoryName',
-      width: 200,
+      width: 100,
     },
     {
       title: 'Product Code',
       dataIndex: 'productCode',
       key: 'productCode',
-      width: 120,
+      width: 80,
     },
     {
       title: 'Product Name',
       dataIndex: 'productName',
       key: 'productName',
-      width: 250,
+      width: 200,
     },
     {
       title: 'Quota',
       dataIndex: 'quantity',
       key: 'quantity',
-      width: 200,
+      width: 65,
       align: 'right',
       render: (quantity, record) => {
         const key = `${record.productId}_${record.territoryName}`;
@@ -399,25 +393,37 @@ function ProductQuotaManagement() {
         const displayValue = isEditing ? pendingQuotaValue : quantity;
         
         return (
-          <Space>
-            <InputNumber
-              min={0}
-              max={999999}
-              value={displayValue}
-              onChange={(value) => handleQuotaInputChange(record.productId, record.territoryName, value)}
-              style={{ width: '100px' }}
-            />
-            {isEditing && (
-              <Button
-                type="primary"
-                icon={<CheckOutlined />}
-                onClick={handleConfirmQuotaUpdate}
-                size="small"
-              >
-                Update
-              </Button>
-            )}
-          </Space>
+          <InputNumber
+            min={0}
+            max={999999}
+            value={displayValue}
+            onChange={(value) => handleQuotaInputChange(record.productId, record.territoryName, value)}
+            style={{ width: '100%' }}
+          />
+        );
+      },
+    },
+    {
+      title: 'Update',
+      key: 'update',
+      width: 70,
+      align: 'center',
+      render: (_, record) => {
+        const key = `${record.productId}_${record.territoryName}`;
+        const isEditing = editingQuota === key;
+        const displayValue = isEditing ? pendingQuotaValue : record.quantity;
+        const hasChanged = isEditing && displayValue !== record.quantity;
+        
+        return (
+          <Button
+            type={hasChanged ? 'primary' : 'default'}
+            icon={<CheckOutlined />}
+            onClick={handleConfirmQuotaUpdate}
+            disabled={!hasChanged}
+            size="small"
+          >
+            Update
+          </Button>
         );
       },
     },
@@ -425,7 +431,7 @@ function ProductQuotaManagement() {
       title: 'Sold',
       dataIndex: 'sold',
       key: 'sold',
-      width: 100,
+      width: 25,
       align: 'right',
       render: (sold) => (
         <Tag color="orange" style={{ fontSize: '12px', padding: '2px 8px' }}>
@@ -436,7 +442,7 @@ function ProductQuotaManagement() {
     {
       title: 'Action',
       key: 'action',
-      width: 180,
+      width: 100,
       render: (_, record) => (
         <Button
           type="link"
@@ -460,27 +466,24 @@ function ProductQuotaManagement() {
       </Text>
 
       {/* Allocation Form */}
-      <Card style={{ marginBottom: '16px' }}>
-        <Row gutter={[16, 16]} align="bottom">
-            <Col>
+      <Card title="Allocate Quotas" style={{ marginBottom: '16px' }}>
+        <Row gutter={[16, 16]} align="top">
+            <Col flex="none" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
               <Space direction="vertical">
                 <Text strong>Date:</Text>
-                <Space>
-                  <CalendarOutlined />
-                  <DatePicker
-                    value={selectedDate}
-                    onChange={setSelectedDate}
-                    format="YYYY-MM-DD"
-                  />
-                </Space>
+                <DatePicker
+                  value={selectedDate}
+                  onChange={setSelectedDate}
+                  format="YYYY-MM-DD"
+                />
               </Space>
             </Col>
-            <Col flex="auto">
+            <Col flex="none" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
               <Space direction="vertical" style={{ width: '100%' }}>
                 <Text strong>Products:</Text>
                 <Space direction="vertical" style={{ width: '100%' }}>
                   <AutoComplete
-                    style={{ width: '100%', minWidth: '300px' }}
+                    style={{ width: '800px' }}
                     placeholder="Type product name (e.g., dimitris, alpha)"
                     value={productSearch}
                     options={filteredProducts.map(p => ({
@@ -499,13 +502,19 @@ function ProductQuotaManagement() {
                     allowClear
                   />
                   {selectedProducts.length > 0 && (
-                    <div style={{ marginTop: '4px' }}>
+                    <div style={{ 
+                      marginTop: '4px', 
+                      width: '800px', 
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '4px'
+                    }}>
                       {selectedProducts.map(product => (
                         <Tag
                           key={product.id}
                           closable
                           onClose={() => handleRemoveProduct(product.id)}
-                          style={{ marginBottom: '4px' }}
+                          style={{ marginBottom: '4px', marginRight: '0' }}
                         >
                           {product.name} ({product.product_code})
                         </Tag>
@@ -515,12 +524,12 @@ function ProductQuotaManagement() {
                 </Space>
               </Space>
             </Col>
-            <Col>
+            <Col flex="none" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
               <Space direction="vertical">
                 <Text strong>Territories:</Text>
                 <Space direction="vertical" style={{ width: '100%' }}>
                   <AutoComplete
-                    style={{ width: '200px' }}
+                    style={{ width: '320px' }}
                     placeholder="Type territory (e.g., bari, bagura)"
                     value={territoryInput}
                     options={filteredTerritories.map(t => ({
@@ -534,13 +543,20 @@ function ProductQuotaManagement() {
                     allowClear
                   />
                   {selectedTerritories.length > 0 && (
-                    <div style={{ marginTop: '4px' }}>
+                    <div style={{ 
+                      marginTop: '4px', 
+                      width: '100%', 
+                      maxWidth: '320px',
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '4px'
+                    }}>
                       {selectedTerritories.map(territory => (
                         <Tag
                           key={territory}
                           closable
                           onClose={() => handleRemoveTerritory(territory)}
-                          style={{ marginBottom: '4px' }}
+                          style={{ marginBottom: '4px', marginRight: '0' }}
                         >
                           {territory}
                         </Tag>
@@ -550,11 +566,11 @@ function ProductQuotaManagement() {
                 </Space>
               </Space>
             </Col>
-            <Col>
+            <Col flex="none" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
               <Space direction="vertical">
                 <Text strong>Quota:</Text>
                 <Input
-                  style={{ width: '100px' }}
+                  style={{ width: '70px' }}
                   placeholder="Enter quantity"
                   value={quotaValue}
                   onChange={(e) => setQuotaValue(e.target.value)}
@@ -562,7 +578,7 @@ function ProductQuotaManagement() {
                 />
               </Space>
             </Col>
-            <Col>
+            <Col flex="none" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
               <Space direction="vertical">
                 <Text>&nbsp;</Text>
                 <Button
@@ -580,35 +596,17 @@ function ProductQuotaManagement() {
         <Row gutter={[16, 16]} align="middle" style={{ marginTop: '16px' }}>
           <Col>
             <Button
-              type="primary"
-              icon={<SaveOutlined />}
-              onClick={handleSave}
-              loading={saving}
-            >
-              Save All Quotas
-            </Button>
-          </Col>
-          <Col>
-            <Button
               icon={<ReloadOutlined />}
               onClick={loadQuotas}
             >
               Refresh
             </Button>
           </Col>
-          <Col>
-            <Text type="secondary">
-              {getAllocations().length} allocation(s) ready to save
-            </Text>
-          </Col>
         </Row>
       </Card>
 
       {/* Current Allocations Table */}
-      <Card>
-        <div style={{ marginBottom: '16px' }}>
-          <Text strong>Quotas ({getAllocations().length})</Text>
-        </div>
+      <Card title="Allocated Quotas">
         <Table
           dataSource={getAllocations()}
           columns={allocationColumns}
