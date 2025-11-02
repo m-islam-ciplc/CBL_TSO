@@ -643,6 +643,44 @@ db.connect((err) => {
 
 // Routes
 
+// SSE endpoint for quota change notifications
+const quotaSubscribers = new Set();
+
+app.get('/api/quota-stream', (req, res) => {
+  // Set headers for SSE
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+
+  // Add client to subscribers
+  quotaSubscribers.add(res);
+
+  // Send initial connection message
+  res.write('data: {"type":"connected"}\n\n');
+
+  // Cleanup on client disconnect
+  req.on('close', () => {
+    quotaSubscribers.delete(res);
+    console.log('Client disconnected from quota stream. Active subscribers:', quotaSubscribers.size);
+  });
+
+  console.log('Client connected to quota stream. Active subscribers:', quotaSubscribers.size);
+});
+
+// Broadcast quota change to all subscribers
+function broadcastQuotaChange() {
+  const message = JSON.stringify({ type: 'quotaChanged', timestamp: Date.now() });
+  quotaSubscribers.forEach(client => {
+    try {
+      client.write(`data: ${message}\n\n`);
+    } catch (err) {
+      console.error('Error sending SSE message:', err);
+      quotaSubscribers.delete(client);
+    }
+  });
+}
+
 // Authentication routes
 app.post('/api/auth/login', (req, res) => {
   const { username, password } = req.body;
@@ -798,15 +836,20 @@ app.delete('/api/users/:id', (req, res) => {
 });
 
 // ======================================================================================
-// PRODUCT QUOTA ROUTES - SINGLE SOURCE OF TRUTH: daily_quotas.remaining_quantity
+// PRODUCT QUOTA ROUTES - SINGLE SOURCE OF TRUTH
 // ======================================================================================
-// Remaining quantity logic:
-// - Initial allocation: remaining_quantity = max_quantity
-// - Order placed: remaining_quantity = remaining_quantity - ordered_quantity (capped at 0)
-// - Admin re-allocation: remaining_quantity = remaining_quantity + new_quantity
-// - Admin absolute update: remaining_quantity = new_remaining_quantity
+// SINGLE SOURCE OF TRUTH for product quantities:
+// 1. ALLOCATED: daily_quotas.max_quantity (total quota assigned)
+// 2. SOLD: Calculated from order_items table (actual units sold)
+// 3. REMAINING: Calculated as max_quantity - sold_quantity (always accurate)
+//
+// Simplified Approach:
+// - We DO NOT store remaining_quantity in database
+// - remaining_quantity is ALWAYS calculated: max_quantity - SUM(order_items.quantity)
+// - This guarantees 100% accuracy and eliminates consistency issues
+// - No need to UPDATE remaining_quantity on orders or quota changes
 // All UI displays (Product Quota Management, TSO Dashboard, Product Cards) read from
-// this database column via the API endpoints below.
+// these calculated values via the API endpoints below.
 // ======================================================================================
 app.post('/api/product-caps/upload', upload.single('file'), async (req, res) => {
   try {
@@ -874,9 +917,16 @@ app.get('/api/product-caps', (req, res) => {
   const { date, territory_name } = req.query;
   
   let query = `
-    SELECT pc.*, p.product_code, p.name as product_name
+    SELECT pc.*, 
+           p.product_code, 
+           p.name as product_name,
+           COALESCE(SUM(oi.quantity), 0) as sold_quantity,
+           pc.max_quantity - COALESCE(SUM(oi.quantity), 0) as remaining_quantity
     FROM daily_quotas pc
     JOIN products p ON pc.product_id = p.id
+    LEFT JOIN order_items oi ON oi.product_id = pc.product_id
+    LEFT JOIN orders o ON o.order_id = oi.order_id
+    LEFT JOIN dealers d ON d.id = o.dealer_id
     WHERE 1=1
   `;
   
@@ -892,7 +942,12 @@ app.get('/api/product-caps', (req, res) => {
     params.push(territory_name);
   }
   
-  query += ' ORDER BY pc.date DESC, p.product_code';
+  query += `
+      AND (o.dealer_id IS NULL OR d.territory_name = pc.territory_name)
+      AND (o.id IS NULL OR DATE(o.created_at) = pc.date)
+    GROUP BY pc.id, pc.date, pc.product_id, pc.territory_name, pc.max_quantity, p.product_code, p.name
+    ORDER BY pc.date DESC, p.product_code
+  `;
   
   db.query(query, params, (err, results) => {
     if (err) {
@@ -914,10 +969,17 @@ app.get('/api/product-caps/tso-today', (req, res) => {
   
   const query = `
     SELECT pc.*, p.product_code, p.name as product_name,
-           COALESCE(pc.remaining_quantity, pc.max_quantity) as remaining_quantity
+           COALESCE(SUM(oi.quantity), 0) as sold_quantity,
+           pc.max_quantity - COALESCE(SUM(oi.quantity), 0) as remaining_quantity
     FROM daily_quotas pc
     JOIN products p ON pc.product_id = p.id
+    LEFT JOIN order_items oi ON oi.product_id = pc.product_id
+    LEFT JOIN orders o ON o.order_id = oi.order_id
+    LEFT JOIN dealers d ON d.id = o.dealer_id
     WHERE DATE(pc.date) = CURDATE() AND pc.territory_name = ?
+      AND (o.dealer_id IS NULL OR d.territory_name = pc.territory_name)
+      AND (o.id IS NULL OR DATE(o.created_at) = pc.date)
+    GROUP BY pc.id, pc.date, pc.product_id, pc.territory_name, pc.max_quantity, p.product_code, p.name
     ORDER BY p.product_code
   `;
   
@@ -952,13 +1014,12 @@ app.post('/api/product-caps/bulk', (req, res) => {
     const insertPromises = quotas.map(quota => {
       return new Promise((resolve, reject) => {
         const query = `
-          INSERT INTO daily_quotas (date, product_id, product_code, product_name, territory_name, max_quantity, remaining_quantity)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO daily_quotas (date, product_id, product_code, product_name, territory_name, max_quantity)
+          VALUES (?, ?, ?, ?, ?, ?)
           ON DUPLICATE KEY UPDATE 
             max_quantity = max_quantity + VALUES(max_quantity),
             product_code = VALUES(product_code),
-            product_name = VALUES(product_name),
-            remaining_quantity = remaining_quantity + VALUES(max_quantity)
+            product_name = VALUES(product_name)
         `;
         
         console.log('💾 Inserting quota:', { date: quota.date, product_id: quota.product_id, territory: quota.territory_name, qty: quota.max_quantity });
@@ -969,8 +1030,7 @@ app.post('/api/product-caps/bulk', (req, res) => {
           quota.product_code, 
           quota.product_name, 
           quota.territory_name, 
-          quota.max_quantity,
-          quota.max_quantity // Initialize remaining_quantity with max_quantity
+          quota.max_quantity
         ], (err, result) => {
           if (err) {
             console.error('❌ Database error for quota:', err);
@@ -992,6 +1052,8 @@ app.post('/api/product-caps/bulk', (req, res) => {
             });
           }
           console.log('✅ Quotas saved successfully');
+          // Broadcast quota change to all connected clients
+          broadcastQuotaChange();
           res.json({ success: true, message: 'Quotas saved successfully' });
         });
       })
@@ -1007,21 +1069,20 @@ app.post('/api/product-caps/bulk', (req, res) => {
 // Update a quota (set absolute value, not accumulate)
 app.put('/api/product-caps/:date/:productId/:territoryName', (req, res) => {
   const { date, productId, territoryName } = req.params;
-  const { max_quantity, remaining_quantity } = req.body;
+  const { max_quantity } = req.body;
   
-  if (max_quantity === undefined || remaining_quantity === undefined) {
-    return res.status(400).json({ error: 'max_quantity and remaining_quantity are required' });
+  if (max_quantity === undefined) {
+    return res.status(400).json({ error: 'max_quantity is required' });
   }
   
   const query = `
     UPDATE daily_quotas 
     SET max_quantity = ?, 
-        remaining_quantity = ?,
         updated_at = CURRENT_TIMESTAMP
     WHERE date = ? AND product_id = ? AND territory_name = ?
   `;
   
-  db.query(query, [max_quantity, remaining_quantity, date, productId, territoryName], (err, result) => {
+  db.query(query, [max_quantity, date, productId, territoryName], (err, result) => {
     if (err) {
       console.error('Error updating quota:', err);
       return res.status(500).json({ error: 'Database error' });
@@ -1030,6 +1091,9 @@ app.put('/api/product-caps/:date/:productId/:territoryName', (req, res) => {
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Quota not found' });
     }
+    
+    // Broadcast quota change to all connected clients
+    broadcastQuotaChange();
     
     res.json({ success: true, message: 'Quota updated successfully' });
   });
@@ -1053,6 +1117,9 @@ app.delete('/api/product-caps/:date/:productId/:territoryName', (req, res) => {
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Quota not found' });
     }
+    
+    // Broadcast quota change to all connected clients
+    broadcastQuotaChange();
     
     res.json({ success: true, message: 'Quota deleted successfully' });
   });
@@ -1560,26 +1627,14 @@ app.post('/api/orders', async (req, res) => {
             
             const territory_name = dealerRows[0]?.territory_name;
             
-            // Add order items and decrement quotas
+            // Add order items
             for (const item of order_items) {
                 await db.promise().query(`
                     INSERT INTO order_items (order_id, product_id, quantity) 
                     VALUES (?, ?, ?)
                 `, [order_id, item.product_id, item.quantity]);
                 
-                // Decrement remaining_quantity if territory is known
-                if (territory_name) {
-                    console.log('🔧 Decrementing quota:', { product_id: item.product_id, quantity: item.quantity, territory_name });
-                    const [result] = await db.promise().query(`
-                        UPDATE daily_quotas 
-                        SET remaining_quantity = GREATEST(0, remaining_quantity - ?)
-                        WHERE product_id = ? 
-                          AND territory_name = ? 
-                          AND DATE(date) = CURDATE()
-                          AND remaining_quantity > 0
-                    `, [item.quantity, item.product_id, territory_name]);
-                    console.log('✅ Quota update result:', { affectedRows: result.affectedRows });
-                }
+                console.log('✅ Added order item:', { product_id: item.product_id, quantity: item.quantity });
             }
 
             // Commit transaction

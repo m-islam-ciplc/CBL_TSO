@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useUser } from '../contexts/UserContext';
 import {
   Card,
   Table,
@@ -26,6 +27,7 @@ import dayjs from 'dayjs';
 const { Title, Text } = Typography;
 
 function ProductQuotaManagement() {
+  const { triggerQuotaRefresh } = useUser();
   const [products, setProducts] = useState([]);
   const [territories, setTerritories] = useState([]);
   const [selectedDate, setSelectedDate] = useState(dayjs());
@@ -117,7 +119,8 @@ function ProductQuotaManagement() {
         const key = `${cap.product_id}_${cap.territory_name}`;
         quotasObj[key] = {
           max_quantity: cap.max_quantity,
-          remaining_quantity: cap.remaining_quantity !== undefined ? cap.remaining_quantity : cap.max_quantity
+          remaining_quantity: cap.remaining_quantity !== undefined && cap.remaining_quantity !== null ? cap.remaining_quantity : 0, // remaining_quantity can be 0, preserve 0 as valid value
+          sold_quantity: cap.sold_quantity !== undefined && cap.sold_quantity !== null ? cap.sold_quantity : 0 // Use actual sold quantity from orders
         };
       });
       
@@ -196,12 +199,9 @@ function ProductQuotaManagement() {
         const key = `${product.id}_${territory}`;
         const existingQuota = newQuotas[key];
         const currentMax = typeof existingQuota === 'number' ? existingQuota : (existingQuota?.max_quantity || 0);
-        const currentRemaining = typeof existingQuota === 'number' ? existingQuota : (existingQuota?.remaining_quantity || 0);
         const newMax = currentMax + parseInt(quotaValue);
-        const newRemaining = currentRemaining + parseInt(quotaValue);
         newQuotas[key] = {
-          max_quantity: newMax,
-          remaining_quantity: newRemaining
+          max_quantity: newMax
         };
       });
     });
@@ -214,6 +214,9 @@ function ProductQuotaManagement() {
       
       // Reload to ensure consistency
       await loadQuotas();
+      
+      // Trigger refresh in all TSO pages
+      triggerQuotaRefresh();
     } catch (error) {
       console.error('Error adding quotas:', error);
       message.error('Failed to save quotas to database');
@@ -255,7 +258,10 @@ function ProductQuotaManagement() {
     Object.entries(quotas).forEach(([key, quotaData]) => {
       const quantity = typeof quotaData === 'number' ? quotaData : quotaData.max_quantity;
       const remaining = typeof quotaData === 'number' ? quotaData : quotaData.remaining_quantity;
-      const sold = quantity - remaining;
+      // Use sold_quantity from backend (calculated from actual orders), fallback to calculation if not available
+      const sold = typeof quotaData === 'object' && quotaData.sold_quantity !== undefined 
+        ? quotaData.sold_quantity 
+        : quantity - remaining;
       
       if (quantity > 0) {
         const [productId, territoryName] = key.split('_');
@@ -269,7 +275,8 @@ function ProductQuotaManagement() {
             territoryName,
             quantity,
             remaining,
-            sold
+            sold,
+            date: selectedDate ? selectedDate.format('YYYY-MM-DD') : ''
           });
         }
       }
@@ -315,6 +322,9 @@ function ProductQuotaManagement() {
         message.success('Quota deleted successfully');
         // Reload to ensure consistency
         await loadQuotas();
+        
+        // Trigger refresh in all TSO pages
+        triggerQuotaRefresh();
       } catch (error) {
         console.error('Error deleting quota:', error);
         message.error('Failed to delete quota from database');
@@ -328,17 +338,22 @@ function ProductQuotaManagement() {
     const currentQuota = quotas[key];
     const currentRemaining = typeof currentQuota === 'number' ? currentQuota : (currentQuota?.remaining_quantity || 0);
     const currentMax = typeof currentQuota === 'number' ? currentQuota : (currentQuota?.max_quantity || 0);
+    const soldQuantity = typeof currentQuota === 'object' && currentQuota.sold_quantity !== undefined 
+      ? parseInt(currentQuota.sold_quantity) || 0 
+      : 0;
     
-    // Calculate the difference and adjust remaining_quantity accordingly
-    const difference = newMaxQuantity - currentMax;
-    const newRemainingQuantity = Math.max(0, currentRemaining + difference);
+    // Validate: newMaxQuantity cannot be less than soldQuantity
+    if (newMaxQuantity < soldQuantity) {
+      message.error(`Cannot reduce quota below sold quantity (${soldQuantity}). You cannot set max_quantity to ${newMaxQuantity} when ${soldQuantity} has already been sold.`);
+      return;
+    }
     
     // Update local state first for immediate UI feedback
     setQuotas(prev => ({
       ...prev,
       [key]: {
         max_quantity: newMaxQuantity,
-        remaining_quantity: newRemainingQuantity
+        remaining_quantity: null // Will be calculated by backend
       }
     }));
     
@@ -347,13 +362,15 @@ function ProductQuotaManagement() {
       const dateStr = selectedDate.format('YYYY-MM-DD');
       
       await axios.put(`/api/product-caps/${dateStr}/${productId}/${encodeURIComponent(territoryName)}`, {
-        max_quantity: newMaxQuantity,
-        remaining_quantity: newRemainingQuantity
+        max_quantity: newMaxQuantity
       });
       
       message.success('Quota updated successfully');
       // Reload to ensure consistency
       await loadQuotas();
+      
+      // Trigger refresh in all TSO pages
+      triggerQuotaRefresh();
     } catch (error) {
       console.error('Error updating quota:', error);
       message.error('Failed to update quota in database');
@@ -367,6 +384,12 @@ function ProductQuotaManagement() {
       title: 'Territory',
       dataIndex: 'territoryName',
       key: 'territoryName',
+      width: 100,
+    },
+    {
+      title: 'Date',
+      dataIndex: 'date',
+      key: 'date',
       width: 100,
     },
     {
@@ -474,6 +497,7 @@ function ProductQuotaManagement() {
                   value={selectedDate}
                   onChange={setSelectedDate}
                   format="YYYY-MM-DD"
+                  disabledDate={(current) => current && (current < dayjs().startOf('day') || current > dayjs().startOf('day'))} // Only allow today's date
                 />
               </Space>
             </Col>

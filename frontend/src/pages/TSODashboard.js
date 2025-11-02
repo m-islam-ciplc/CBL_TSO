@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useUser } from '../contexts/UserContext';
 import axios from 'axios';
 import {
@@ -25,17 +25,13 @@ import dayjs from 'dayjs';
 const { Title, Text } = Typography;
 
 function TSODashboard() {
-  const { territoryName, userName } = useUser();
+  const { territoryName, userName, quotaRefreshTrigger } = useUser();
   const [quotas, setQuotas] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (territoryName) {
-      loadQuotas();
-    }
-  }, [territoryName]);
-
-  const loadQuotas = async () => {
+  const loadQuotas = useCallback(async () => {
+    if (!territoryName) return;
+    
     try {
       setLoading(true);
       const response = await axios.get('/api/product-caps/tso-today', {
@@ -47,7 +43,35 @@ function TSODashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [territoryName]);
+
+  useEffect(() => {
+    if (territoryName) {
+      loadQuotas();
+    }
+  }, [territoryName, quotaRefreshTrigger, loadQuotas]);
+
+  // SSE for quota updates
+  useEffect(() => {
+    if (!territoryName) return;
+
+    const eventSource = new EventSource('http://localhost:3001/api/quota-stream');
+
+    eventSource.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === 'quotaChanged') {
+        loadQuotas();
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error('SSE error:', error);
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [territoryName, loadQuotas]);
 
   const columns = [
     {
@@ -74,13 +98,25 @@ function TSODashboard() {
       ),
     },
     {
+      title: 'Sold',
+      dataIndex: 'sold_quantity',
+      key: 'sold_quantity',
+      width: 80,
+      align: 'right',
+      render: (sold) => (
+        <Tag color="orange" style={{ fontSize: '12px', padding: '2px 8px' }}>
+          {sold || 0}
+        </Tag>
+      ),
+    },
+    {
       title: 'Remaining',
       dataIndex: 'remaining_quantity',
       key: 'remaining_quantity',
       width: 100,
       align: 'right',
-      render: (quantity, record) => {
-        const remaining = quantity !== undefined ? quantity : record.max_quantity;
+      render: (quantity) => {
+        const remaining = quantity !== undefined && quantity !== null ? quantity : 0; // 0 is a valid value for remaining quantity
         const isLow = remaining === 0;
         return (
           <Tag color={isLow ? 'red' : 'green'} style={{ fontSize: '12px', padding: '2px 8px' }}>
@@ -93,7 +129,7 @@ function TSODashboard() {
 
   const totalProducts = quotas.length;
   const totalAllocated = quotas.reduce((sum, q) => sum + q.max_quantity, 0);
-  const totalRemaining = quotas.reduce((sum, q) => sum + (q.remaining_quantity !== undefined ? q.remaining_quantity : q.max_quantity), 0);
+  const totalRemaining = quotas.reduce((sum, q) => sum + (q.remaining_quantity !== undefined && q.remaining_quantity !== null ? q.remaining_quantity : 0), 0);
 
   if (loading) {
     return (

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useMemo, useCallback } from 'react';
 
 const UserContext = createContext();
 
@@ -18,8 +18,13 @@ export const UserProvider = ({ children }) => {
   const [userName, setUserName] = useState(savedUser?.full_name || null);
   const [territoryName, setTerritoryName] = useState(savedUser?.territory_name || null);
   const [userId, setUserId] = useState(savedUser?.id || null);
+  const [quotaRefreshTrigger, setQuotaRefreshTrigger] = useState(0); // Trigger for quota refresh
 
-  const value = {
+  const triggerQuotaRefresh = useCallback(() => {
+    setQuotaRefreshTrigger(prev => prev + 1);
+  }, []);
+
+  const value = useMemo(() => ({
     userRole,
     userName,
     isAdmin: userRole === 'admin',
@@ -30,8 +35,10 @@ export const UserProvider = ({ children }) => {
     setTerritoryName,
     setUserId,
     territoryName,
-    userId
-  };
+    userId,
+    quotaRefreshTrigger,
+    triggerQuotaRefresh
+  }), [userRole, userName, territoryName, userId, quotaRefreshTrigger, triggerQuotaRefresh]);
 
   return (
     <UserContext.Provider value={value}>

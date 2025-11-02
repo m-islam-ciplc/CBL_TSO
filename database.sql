@@ -26,7 +26,6 @@ CREATE TABLE IF NOT EXISTS daily_quotas (
     product_name VARCHAR(255),
     territory_name VARCHAR(100) NOT NULL,
     max_quantity INT NOT NULL,
-    remaining_quantity INT NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (product_id) REFERENCES products(id),

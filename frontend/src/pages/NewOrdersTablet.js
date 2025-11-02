@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useUser } from '../contexts/UserContext';
 import './NewOrdersTablet.css';
@@ -37,7 +37,7 @@ const { Title, Text } = Typography;
 const { Option } = Select;
 
 function NewOrdersTablet({ onOrderCreated }) {
-  const { territoryName, isTSO } = useUser();
+  const { territoryName, isTSO, quotaRefreshTrigger } = useUser();
   const [form] = Form.useForm();
   const [dropdownData, setDropdownData] = useState({
     orderTypes: [],
@@ -115,38 +115,59 @@ function NewOrdersTablet({ onOrderCreated }) {
   }, [isTSO, territoryName, dropdownData.territories]);
 
   // Load product quotas for TSO users
+  const loadProductQuotas = useCallback(async () => {
+    if (isTSO && territoryName) {
+      try {
+        // Add timestamp to prevent caching
+        const timestamp = Date.now();
+        const response = await axios.get('/api/product-caps/tso-today', {
+          params: { 
+            territory_name: territoryName,
+            _t: timestamp // Cache buster
+          }
+        });
+        
+        // Convert array to object: { product_id: { max: max_quantity, remaining: remaining_quantity } }
+        const quotasObj = {};
+        response.data.forEach(cap => {
+          quotasObj[cap.product_id] = {
+            max: parseInt(cap.max_quantity) || 0,
+            remaining: parseInt(cap.remaining_quantity) || 0 // 0 is a valid remaining quantity value
+          };
+        });
+        
+        setProductQuotas(quotasObj);
+      } catch (error) {
+        console.error('Failed to load product quotas:', error);
+      }
+    }
+  }, [isTSO, territoryName]);
+
   useEffect(() => {
-    const loadProductQuotas = async () => {
-      if (isTSO && territoryName) {
-        try {
-          // Add timestamp to prevent caching
-          const timestamp = Date.now();
-          const response = await axios.get('/api/product-caps/tso-today', {
-            params: { 
-              territory_name: territoryName,
-              _t: timestamp // Cache buster
-            }
-          });
-          
-          // Convert array to object: { product_id: { max: max_quantity, remaining: remaining_quantity } }
-          const quotasObj = {};
-          response.data.forEach(cap => {
-            quotasObj[cap.product_id] = {
-              max: cap.max_quantity,
-              remaining: cap.remaining_quantity !== undefined ? cap.remaining_quantity : cap.max_quantity
-            };
-          });
-          
-          setProductQuotas(quotasObj);
-          console.log('📋 Loaded product quotas:', quotasObj);
-        } catch (error) {
-          console.error('Failed to load product quotas:', error);
-        }
+    loadProductQuotas();
+  }, [isTSO, territoryName, quotaRefreshTrigger, loadProductQuotas]);
+
+  // SSE for quota updates (for TSO users to see admin changes on different machines)
+  useEffect(() => {
+    if (!isTSO || !territoryName) return;
+
+    const eventSource = new EventSource('http://localhost:3001/api/quota-stream');
+
+    eventSource.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === 'quotaChanged') {
+        loadProductQuotas();
       }
     };
-    
-    loadProductQuotas();
-  }, [isTSO, territoryName]);
+
+    eventSource.onerror = (error) => {
+      console.error('SSE error:', error);
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [isTSO, territoryName, loadProductQuotas]);
 
   useEffect(() => {
     // Filter products based on search term AND quota (for TSO users)
@@ -600,7 +621,7 @@ function NewOrdersTablet({ onOrderCreated }) {
             response.data.forEach(cap => {
               quotasObj[cap.product_id] = {
                 max: cap.max_quantity,
-                remaining: cap.remaining_quantity !== undefined ? cap.remaining_quantity : cap.max_quantity
+                remaining: cap.remaining_quantity !== undefined && cap.remaining_quantity !== null ? cap.remaining_quantity : 0 // 0 is a valid remaining quantity value
               };
             });
             setProductQuotas(quotasObj);
