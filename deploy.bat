@@ -45,7 +45,7 @@ REM Check health endpoints
 echo 🔍 Checking health endpoints...
 
 REM Check backend health
-curl -f http://localhost:3001/health >nul 2>&1
+curl -f http://localhost:3002/health >nul 2>&1
 if errorlevel 1 (
     echo ❌ Backend health check failed
 ) else (
@@ -73,8 +73,8 @@ echo 🎉 Deployment completed!
 echo.
 echo 📋 Service URLs:
 echo    Frontend: http://localhost
-echo    Backend API: http://localhost:3001
-echo    Database: localhost:3306
+echo    Backend API: http://localhost:3002
+echo    Database: localhost:3307
 echo.
 echo 📚 Useful commands:
 echo    View logs: docker-compose logs -f

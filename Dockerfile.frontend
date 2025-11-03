@@ -1,20 +1,22 @@
 # Stage 1: Build the React application
-FROM node:18-alpine as build
+FROM node:18-alpine AS build
 
 WORKDIR /app
 
-# Install dependencies
+# Copy package files first for better caching
 COPY frontend/package*.json ./
-RUN npm install
 
-# Copy source code
+# Install dependencies
+RUN npm ci --only=production=false
+
+# Copy source code (excluding node_modules with .dockerignore)
 COPY frontend/ ./
 
 # Build the application
 RUN npm run build
 
 # Stage 2: Serve the application with Nginx
-FROM nginx:alpine as stage-1
+FROM nginx:alpine AS stage-1
 
 # Copy the build output from the build stage to Nginx html directory
 COPY --from=build /app/build /usr/share/nginx/html
