@@ -582,7 +582,8 @@ const db = mysql.createConnection({
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '#lme11@@',
     database: process.env.DB_NAME || 'cbl_so',
-    port: process.env.DB_PORT || 3306
+    port: process.env.DB_PORT || 3306,
+    dateStrings: true  // Return dates as strings instead of Date objects to preserve timezone
 });
 
 // Create transport table if it doesn't exist
@@ -1754,10 +1755,10 @@ app.get('/api/orders', (req, res) => {
 // Get available dates with orders
 app.get('/api/orders/available-dates', (req, res) => {
     const query = `
-        SELECT DISTINCT created_at
+        SELECT DISTINCT DATE(created_at) as date
         FROM orders 
         WHERE created_at IS NOT NULL
-        ORDER BY created_at DESC
+        ORDER BY date DESC
     `;
     
     db.query(query, (err, rows) => {
@@ -1769,15 +1770,10 @@ app.get('/api/orders/available-dates', (req, res) => {
         
         console.log('Raw database results:', rows);
         
-        // Extract unique dates from the full timestamps
-        const uniqueDates = new Set();
-        rows.forEach(row => {
-            const date = new Date(row.created_at);
-            const dateString = date.toISOString().split('T')[0];
-            uniqueDates.add(dateString);
-        });
+        // Extract dates directly from MySQL DATE() result
+        // With dateStrings: true, date is already a string in YYYY-MM-DD format
+        const dates = rows.map(row => row.date);
         
-        const dates = Array.from(uniqueDates).sort().reverse();
         console.log('Processed dates:', dates);
         res.json({ dates });
     });

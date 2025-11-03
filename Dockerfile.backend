@@ -1,6 +1,12 @@
 # Backend Dockerfile
 FROM node:18-alpine
 
+# Set timezone to Bangladesh
+ENV TZ=Asia/Dhaka
+
+# Install timezone data
+RUN apk add --no-cache tzdata
+
 # Set working directory
 WORKDIR /app
 
