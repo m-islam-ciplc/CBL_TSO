@@ -1,7 +1,10 @@
 services:
   # MySQL Database
   mysql:
-    image: mysql:8.0
+    build:
+      context: .
+      dockerfile: Dockerfile.mysql
+    image: cbl-so-mysql
     container_name: cbl-so-mysql
     restart: unless-stopped
     environment:
@@ -26,6 +29,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
+    image: cbl-so-backend
     container_name: cbl-so-backend
     restart: unless-stopped
     environment:
@@ -55,6 +59,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
+    image: cbl-so-frontend
     container_name: cbl-so-frontend
     restart: unless-stopped
     ports:
