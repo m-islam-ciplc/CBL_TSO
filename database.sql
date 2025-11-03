@@ -16,23 +16,6 @@ CREATE TABLE IF NOT EXISTS users (
     INDEX idx_territory_name (territory_name)
 );
 
--- Daily Quotas table
-CREATE TABLE IF NOT EXISTS daily_quotas (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    date DATE NOT NULL,
-    product_id INT NOT NULL,
-    product_code VARCHAR(50),
-    product_name VARCHAR(255),
-    territory_name VARCHAR(100) NOT NULL,
-    max_quantity INT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (product_id) REFERENCES products(id),
-    UNIQUE KEY unique_territory_product_date (date, product_id, territory_name),
-    INDEX idx_date_territory (date, territory_name),
-    INDEX idx_date_product (date, product_id)
-);
-
 -- Order Types table
 CREATE TABLE IF NOT EXISTS order_types (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -47,7 +30,6 @@ CREATE TABLE IF NOT EXISTS warehouses (
     alias VARCHAR(100) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
 
 -- Dealers table - Comprehensive schema with all columns from VW_ALL_CUSTOMER_INFO
 CREATE TABLE IF NOT EXISTS dealers (
@@ -86,11 +68,28 @@ CREATE TABLE IF NOT EXISTS dealers (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- Products table
+-- Products table (must come before daily_quotas)
 CREATE TABLE IF NOT EXISTS products (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Daily Quotas table
+CREATE TABLE IF NOT EXISTS daily_quotas (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    date DATE NOT NULL,
+    product_id INT NOT NULL,
+    product_code VARCHAR(50),
+    product_name VARCHAR(255),
+    territory_name VARCHAR(100) NOT NULL,
+    max_quantity INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES products(id),
+    UNIQUE KEY unique_territory_product_date (date, product_id, territory_name),
+    INDEX idx_date_territory (date, territory_name),
+    INDEX idx_date_product (date, product_id)
 );
 
 -- Orders table
