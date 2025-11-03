@@ -1,3 +1,5 @@
+name: cbl-so
+
 services:
   # MySQL Database
   mysql:
@@ -72,8 +74,10 @@ services:
 
 volumes:
   cbl-so-mysql-data:
+    name: cbl-so-mysql-data
     driver: local
 
 networks:
   cbl-so-network:
+    name: cbl-so-network
     driver: bridge

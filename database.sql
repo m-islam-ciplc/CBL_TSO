@@ -1,6 +1,5 @@
 -- CBL Sales Orders Database Schema
-CREATE DATABASE IF NOT EXISTS cbl_so;
-USE cbl_so;
+-- Note: Database is automatically created by Docker via MYSQL_DATABASE environment variable
 
 -- Users table for authentication
 CREATE TABLE IF NOT EXISTS users (
