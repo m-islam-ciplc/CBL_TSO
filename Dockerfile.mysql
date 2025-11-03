@@ -1,15 +1,10 @@
 # CBL SO MySQL Dockerfile
+# Custom MySQL image for CBL Sales Orders application
 FROM mysql:8.0
 
 # Copy custom MySQL configuration if needed (optional)
 # COPY my.cnf /etc/mysql/conf.d/
 
-# Set default environment variables
-ENV MYSQL_ROOT_PASSWORD=cbl_so_root_password
-ENV MYSQL_DATABASE=cbl_so
-ENV MYSQL_USER=cbl_so_user
-ENV MYSQL_PASSWORD=cbl_so_password
-
 # Keep the default MySQL entrypoint
-# The database.sql init script will still be mounted via docker-compose
+# Environment variables and database initialization are handled by docker-compose.yml
 
