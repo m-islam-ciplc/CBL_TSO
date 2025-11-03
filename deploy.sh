@@ -21,6 +21,10 @@ fi
 
 echo "✅ Docker and Docker Compose are available"
 
+# Stop any existing containers (if any)
+echo "🔄 Stopping any existing containers..."
+docker-compose down 2>/dev/null || true
+
 # Build and start services
 echo "🔨 Building and starting services..."
 docker-compose up -d --build

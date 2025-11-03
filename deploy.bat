@@ -22,6 +22,10 @@ if errorlevel 1 (
 
 echo ✅ Docker and Docker Compose are available
 
+REM Stop any existing containers (if any)
+echo 🔄 Stopping any existing containers...
+docker-compose down 2>nul
+
 REM Build and start services
 echo 🔨 Building and starting services...
 docker-compose up -d --build
