@@ -110,9 +110,28 @@ CREATE TABLE IF NOT EXISTS orders (
     FOREIGN KEY (product_id) REFERENCES products(id)
 );
 
--- Insert initial data
-INSERT INTO order_types (name) VALUES ('RO');
-INSERT INTO warehouses (name, alias) VALUES ('Head Office', 'Narayanganj Factory');
--- Dealers data will be imported from VW_ALL_CUSTOMER_INFO.xlsx file
-INSERT INTO products (name) VALUES ('6DGA-175T(H) Dimitris');
-
+-- Transports table
+CREATE TABLE IF NOT EXISTS transports (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    truck_slno INT,
+    truck_no VARCHAR(50),
+    engine_no VARCHAR(100),
+    truck_details VARCHAR(255),
+    driver_name VARCHAR(100),
+    route_no VARCHAR(50),
+    load_size VARCHAR(50),
+    load_weight VARCHAR(50),
+    remarks TEXT,
+    truck_type VARCHAR(50),
+    entered_by VARCHAR(100),
+    entered_date DATE,
+    entered_terminal VARCHAR(100),
+    updated_by VARCHAR(100),
+    updated_date DATE,
+    updated_terminal VARCHAR(100),
+    license_no VARCHAR(100),
+    transport_status VARCHAR(10) DEFAULT 'A',
+    vehicle_no VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
