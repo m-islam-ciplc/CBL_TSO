@@ -1697,6 +1697,9 @@ app.post('/api/orders', async (req, res) => {
             // Commit transaction
             await db.promise().commit();
 
+            // Broadcast quota change to notify all connected clients
+            broadcastQuotaChange();
+
             res.json({ 
                 success: true, 
                 order_id: order_id,

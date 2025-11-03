@@ -56,6 +56,30 @@ function ProductQuotaManagement() {
     loadQuotas();
   }, [selectedDate]);
 
+  // SSE for real-time quota updates when TSO creates orders
+  useEffect(() => {
+    // Use /api/quota-stream for Docker (Nginx proxy) or direct localhost for local dev
+    const sseUrl = process.env.NODE_ENV === 'production' 
+      ? '/api/quota-stream' 
+      : 'http://localhost:3001/api/quota-stream';
+    const eventSource = new EventSource(sseUrl);
+
+    eventSource.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === 'quotaChanged') {
+        loadQuotas();
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error('SSE connection error:', error);
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [selectedDate]);
+
   useEffect(() => {
     if (productSearch) {
       // Filter out already selected products
