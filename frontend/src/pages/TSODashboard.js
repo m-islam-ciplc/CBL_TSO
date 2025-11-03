@@ -49,13 +49,18 @@ function TSODashboard() {
     if (territoryName) {
       loadQuotas();
     }
-  }, [territoryName, quotaRefreshTrigger, loadQuotas]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [territoryName, quotaRefreshTrigger]);
 
-  // SSE for quota updates
+  // SSE for quota updates (for TSO users to see admin changes on different machines)
   useEffect(() => {
     if (!territoryName) return;
 
-    const eventSource = new EventSource('http://localhost:3001/api/quota-stream');
+    // Use /api/quota-stream for Docker (Nginx proxy) or direct localhost for local dev
+    const sseUrl = process.env.NODE_ENV === 'production' 
+      ? '/api/quota-stream' 
+      : 'http://localhost:3001/api/quota-stream';
+    const eventSource = new EventSource(sseUrl);
 
     eventSource.onmessage = (event) => {
       const data = JSON.parse(event.data);
@@ -65,13 +70,14 @@ function TSODashboard() {
     };
 
     eventSource.onerror = (error) => {
-      console.error('SSE error:', error);
+      console.error('SSE connection error:', error);
     };
 
     return () => {
       eventSource.close();
     };
-  }, [territoryName, loadQuotas]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [territoryName]);
 
   const columns = [
     {

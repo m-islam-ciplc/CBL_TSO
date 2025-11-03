@@ -651,7 +651,7 @@ app.get('/api/quota-stream', (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // CORS is handled by app.use(cors()) middleware at line 534
 
   // Add client to subscribers
   quotaSubscribers.add(res);
@@ -671,6 +671,7 @@ app.get('/api/quota-stream', (req, res) => {
 // Broadcast quota change to all subscribers
 function broadcastQuotaChange() {
   const message = JSON.stringify({ type: 'quotaChanged', timestamp: Date.now() });
+  console.log(`Broadcasting quota change to ${quotaSubscribers.size} subscribers`);
   quotaSubscribers.forEach(client => {
     try {
       client.write(`data: ${message}\n\n`);
@@ -1075,27 +1076,55 @@ app.put('/api/product-caps/:date/:productId/:territoryName', (req, res) => {
     return res.status(400).json({ error: 'max_quantity is required' });
   }
   
-  const query = `
-    UPDATE daily_quotas 
-    SET max_quantity = ?, 
-        updated_at = CURRENT_TIMESTAMP
-    WHERE date = ? AND product_id = ? AND territory_name = ?
+  // Check current sold quantity before updating
+  const checkSoldQuery = `
+    SELECT COALESCE(SUM(oi.quantity), 0) as sold_quantity
+    FROM orders o
+    JOIN order_items oi ON o.order_id = oi.order_id
+    JOIN dealers d ON d.id = o.dealer_id
+    WHERE oi.product_id = ? 
+      AND d.territory_name = ?
+      AND DATE(o.created_at) = ?
   `;
   
-  db.query(query, [max_quantity, date, productId, territoryName], (err, result) => {
+  db.query(checkSoldQuery, [productId, territoryName, date], (err, results) => {
     if (err) {
-      console.error('Error updating quota:', err);
+      console.error('Error checking sold quantity:', err);
       return res.status(500).json({ error: 'Database error' });
     }
     
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Quota not found' });
+    const soldQuantity = results[0]?.sold_quantity || 0;
+    
+    // Validate that new max_quantity is not less than sold_quantity
+    if (max_quantity < soldQuantity) {
+      return res.status(400).json({ 
+        error: `Cannot set quota below already sold quantity (${soldQuantity} units)` 
+      });
     }
     
-    // Broadcast quota change to all connected clients
-    broadcastQuotaChange();
+    // Proceed with update
+    const updateQuery = `
+      UPDATE daily_quotas 
+      SET max_quantity = ?, 
+          updated_at = CURRENT_TIMESTAMP
+      WHERE date = ? AND product_id = ? AND territory_name = ?
+    `;
     
-    res.json({ success: true, message: 'Quota updated successfully' });
+    db.query(updateQuery, [max_quantity, date, productId, territoryName], (err, result) => {
+      if (err) {
+        console.error('Error updating quota:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+      
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ error: 'Quota not found' });
+      }
+      
+      // Broadcast quota change to all connected clients
+      broadcastQuotaChange();
+      
+      res.json({ success: true, message: 'Quota updated successfully' });
+    });
   });
 });
 
@@ -1103,25 +1132,53 @@ app.put('/api/product-caps/:date/:productId/:territoryName', (req, res) => {
 app.delete('/api/product-caps/:date/:productId/:territoryName', (req, res) => {
   const { date, productId, territoryName } = req.params;
   
-  const query = `
-    DELETE FROM daily_quotas 
-    WHERE date = ? AND product_id = ? AND territory_name = ?
+  // Check current sold quantity before deleting
+  const checkSoldQuery = `
+    SELECT COALESCE(SUM(oi.quantity), 0) as sold_quantity
+    FROM orders o
+    JOIN order_items oi ON o.order_id = oi.order_id
+    JOIN dealers d ON d.id = o.dealer_id
+    WHERE oi.product_id = ? 
+      AND d.territory_name = ?
+      AND DATE(o.created_at) = ?
   `;
   
-  db.query(query, [date, productId, territoryName], (err, result) => {
+  db.query(checkSoldQuery, [productId, territoryName, date], (err, results) => {
     if (err) {
-      console.error('Error deleting quota:', err);
+      console.error('Error checking sold quantity:', err);
       return res.status(500).json({ error: 'Database error' });
     }
     
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Quota not found' });
+    const soldQuantity = results[0]?.sold_quantity || 0;
+    
+    // Validate that we're not deleting a quota with sold items
+    if (soldQuantity > 0) {
+      return res.status(400).json({ 
+        error: `Cannot delete quota with already sold quantity (${soldQuantity} units). Set quota to ${soldQuantity} instead.` 
+      });
     }
     
-    // Broadcast quota change to all connected clients
-    broadcastQuotaChange();
+    // Proceed with deletion
+    const deleteQuery = `
+      DELETE FROM daily_quotas 
+      WHERE date = ? AND product_id = ? AND territory_name = ?
+    `;
     
-    res.json({ success: true, message: 'Quota deleted successfully' });
+    db.query(deleteQuery, [date, productId, territoryName], (err, result) => {
+      if (err) {
+        console.error('Error deleting quota:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+      
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ error: 'Quota not found' });
+      }
+      
+      // Broadcast quota change to all connected clients
+      broadcastQuotaChange();
+      
+      res.json({ success: true, message: 'Quota deleted successfully' });
+    });
   });
 });
 

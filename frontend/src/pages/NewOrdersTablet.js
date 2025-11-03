@@ -145,13 +145,20 @@ function NewOrdersTablet({ onOrderCreated }) {
 
   useEffect(() => {
     loadProductQuotas();
-  }, [isTSO, territoryName, quotaRefreshTrigger, loadProductQuotas]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTSO, territoryName, quotaRefreshTrigger]);
 
   // SSE for quota updates (for TSO users to see admin changes on different machines)
   useEffect(() => {
     if (!isTSO || !territoryName) return;
 
-    const eventSource = new EventSource('http://localhost:3001/api/quota-stream');
+    // Use /api/quota-stream for Docker (Nginx proxy) or direct localhost for local dev
+    // In Docker: /api/ proxies to backend:3001
+    // In local dev: react-scripts proxy doesn't support SSE, so we bypass it
+    const sseUrl = process.env.NODE_ENV === 'production' 
+      ? '/api/quota-stream' 
+      : 'http://localhost:3001/api/quota-stream';
+    const eventSource = new EventSource(sseUrl);
 
     eventSource.onmessage = (event) => {
       const data = JSON.parse(event.data);
@@ -161,13 +168,14 @@ function NewOrdersTablet({ onOrderCreated }) {
     };
 
     eventSource.onerror = (error) => {
-      console.error('SSE error:', error);
+      console.error('SSE connection error:', error);
     };
 
     return () => {
       eventSource.close();
     };
-  }, [isTSO, territoryName, loadProductQuotas]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTSO, territoryName]);
 
   useEffect(() => {
     // Filter products based on search term AND quota (for TSO users)
