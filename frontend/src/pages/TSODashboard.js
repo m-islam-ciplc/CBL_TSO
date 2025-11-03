@@ -134,7 +134,6 @@ function TSODashboard() {
   ];
 
   const totalProducts = quotas.length;
-  const totalAllocated = quotas.reduce((sum, q) => sum + q.max_quantity, 0);
   const totalRemaining = quotas.reduce((sum, q) => sum + (q.remaining_quantity !== undefined && q.remaining_quantity !== null ? q.remaining_quantity : 0), 0);
 
   if (loading) {

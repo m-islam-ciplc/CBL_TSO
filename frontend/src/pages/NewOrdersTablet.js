@@ -12,25 +12,16 @@ import {
   message,
   Row,
   Col,
-  Space,
-  Statistic,
   InputNumber,
-  Divider,
-  Collapse,
   Modal,
   Tag,
 } from 'antd';
 import {
-  PlusOutlined,
-  DeleteOutlined,
-  ShoppingCartOutlined,
   SearchOutlined,
   CheckOutlined,
-  ArrowLeftOutlined,
   DownOutlined,
   UpOutlined,
   CloseOutlined,
-  CloseCircleOutlined,
 } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
@@ -54,8 +45,6 @@ function NewOrdersTablet({ onOrderCreated }) {
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [isDropdownCollapsed, setIsDropdownCollapsed] = useState(false);
   const [productQuantities, setProductQuantities] = useState({}); // Track quantities for each product
-  const [showReview, setShowReview] = useState(false); // Control review modal/page
-  const [expandedProductId, setExpandedProductId] = useState(null); // Track single expanded product card
   const [selectedProductForPopup, setSelectedProductForPopup] = useState(null); // Product for popup modal
   const [isPopupVisible, setIsPopupVisible] = useState(false); // Control popup visibility
   const [formValues, setFormValues] = useState({}); // Store form values in state for validation
@@ -290,21 +279,6 @@ function NewOrdersTablet({ onOrderCreated }) {
     }
   };
 
-  // Load products separately when needed
-  const loadProducts = async () => {
-    try {
-      const productsRes = await axios.get('/api/products');
-      setDropdownData(prev => ({
-        ...prev,
-        products: productsRes.data
-      }));
-      setFilteredProducts(productsRes.data);
-    } catch (error) {
-      console.error('Error loading products:', error);
-      message.error('Failed to load products');
-    }
-  };
-
   const filterDealersByTerritory = (territoryCode, territoryName) => {
     let filtered = dropdownData.dealers;
     
@@ -411,18 +385,6 @@ function NewOrdersTablet({ onOrderCreated }) {
     setIsPopupVisible(false);
     setSelectedProductForPopup(null);
   };
-
-  // Collapse any expanded card
-  const collapseExpandedCard = () => {
-    setExpandedProductId(null);
-  };
-
-  // Check if dealer is selected (simpler condition)
-  const isDealerSelected = () => {
-    const formValues = form.getFieldsValue();
-    return formValues.dealer;
-  };
-
 
   const updateProductQuantity = (productId, change) => {
     setProductQuantities(prev => {
@@ -538,115 +500,6 @@ function NewOrdersTablet({ onOrderCreated }) {
     message.success(`${product.product_code} (Qty: ${quantity}) added to order!`);
     return true;
   };
-
-  const updateOrderItem = (itemId, field, value) => {
-    const updatedItems = orderItems.map(item => 
-      item.id === itemId ? { ...item, [field]: value } : item
-    );
-    setOrderItems(updatedItems);
-    localStorage.setItem('tsoOrderItems', JSON.stringify(updatedItems));
-  };
-
-  const removeOrderItem = (itemId) => {
-    const updatedItems = orderItems.filter(item => item.id !== itemId);
-    setOrderItems(updatedItems);
-    localStorage.setItem('tsoOrderItems', JSON.stringify(updatedItems));
-  };
-
-  const handleSubmit = async () => {
-    if (orderItems.length === 0) {
-      message.error('Please add at least one product to the order');
-      return;
-    }
-
-    for (const item of orderItems) {
-      if (!item.product_id || !item.quantity || item.quantity <= 0) {
-        message.error('All order items must have a product and valid quantity');
-        return;
-      }
-    }
-
-    const values = form.getFieldsValue();
-    
-    // Validate all required fields
-    if (!values.orderType) {
-      message.error('Please select an Order Type');
-      return;
-    }
-    if (!values.warehouse) {
-      message.error('Please select a Warehouse');
-      return;
-    }
-    if (!values.territoryCode) {
-      message.error('Please select a Territory');
-      return;
-    }
-    if (!values.dealer) {
-      message.error('Please select a Dealer');
-      return;
-    }
-    if (!values.transport) {
-      message.error('Please select a Transport');
-      return;
-    }
-    
-    setLoading(true);
-
-    try {
-      const orderData = {
-        order_type_id: values.orderType,
-        dealer_id: values.dealer,
-        warehouse_id: values.warehouse,
-        transport_id: values.transport,
-        order_items: orderItems.map(item => ({
-          product_id: Number(item.product_id),
-          quantity: Number(item.quantity)
-        }))
-      };
-
-      const response = await axios.post('/api/orders', orderData);
-
-      if (response.data.success) {
-        message.success(`Order created successfully! Order ID: ${response.data.order_id} with ${response.data.item_count} product(s)`);
-        form.resetFields();
-        setOrderItems([]);
-        setFilteredDealers(dropdownData.dealers);
-        setSearchTerm('');
-        setIsAddingMore(false);
-        localStorage.removeItem('tsoFormData'); // Clear saved form data
-        setFormValues({});
-        
-        // Reload quotas to reflect new remaining quantities
-        if (isTSO && territoryName) {
-          const timestamp = Date.now();
-          axios.get('/api/product-caps/tso-today', {
-            params: { 
-              territory_name: territoryName,
-              _t: timestamp
-            }
-          }).then(response => {
-            const quotasObj = {};
-            response.data.forEach(cap => {
-              quotasObj[cap.product_id] = {
-                max: cap.max_quantity,
-                remaining: cap.remaining_quantity !== undefined && cap.remaining_quantity !== null ? cap.remaining_quantity : 0 // 0 is a valid remaining quantity value
-              };
-            });
-            setProductQuotas(quotasObj);
-            console.log('📋 Reloaded quotas after order:', quotasObj);
-          });
-        }
-        
-        onOrderCreated();
-      }
-    } catch (error) {
-      message.error(`Failed to create order: ${error.response?.data?.error || error.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-
 
   return (
     <div style={{ 

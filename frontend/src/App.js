@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { UserProvider, useUser } from './contexts/UserContext';
-import { Layout, Menu, Typography, Badge, Row, Col, Card, Statistic, Space, Button } from 'antd';
+import { Layout, Menu, Typography, Button } from 'antd';
 import './App.css';
   import {
   DashboardOutlined,
@@ -34,7 +34,7 @@ const { Header, Content } = Layout;
 const { Title } = Typography;
 
 function AppContent() {
-  const { userRole, userName, isTSO, setUserRole, setUserName } = useUser();
+  const { userRole, isTSO, setUserRole, setUserName } = useUser();
   const [stats, setStats] = useState({
     dealers: 0,
     warehouses: 0,
