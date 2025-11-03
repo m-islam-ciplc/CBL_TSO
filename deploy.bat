@@ -80,6 +80,8 @@ echo 📚 Useful commands:
 echo    View logs: docker-compose logs -f
 echo    Stop services: docker-compose down
 echo    Restart services: docker-compose restart
+echo    Clean build cache: docker builder prune -a
+echo    Remove all unused: docker system prune -a --volumes
 echo.
 echo 📖 For more information, see DOCKER_README.md
 echo.

@@ -204,6 +204,12 @@ docker volume prune
 
 # Full cleanup (CAREFUL: Removes everything)
 docker system prune -a
+
+# Clean Docker build cache (frees up disk space)
+docker builder prune -a
+
+# Remove all unused data, images, containers, and volumes (nuclear option)
+docker system prune -a --volumes
 ```
 
 ### **Quick Health Check**
