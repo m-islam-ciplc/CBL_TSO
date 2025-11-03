@@ -38,7 +38,6 @@ function NewOrdersTablet({ onOrderCreated }) {
     territories: [],
     transports: []
   });
-  const [loading, setLoading] = useState(false);
   const [filteredDealers, setFilteredDealers] = useState([]);
   const [orderItems, setOrderItems] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
