@@ -184,7 +184,7 @@ function Dashboard({ setStats }) {
               />
               <Alert
                 message="Database Connected"
-                description={`Connected to cbl_ordres with ${data.dealers.length} dealers and ${data.products.length} products`}
+                description={`Connected to cbl_so with ${data.dealers.length} dealers and ${data.products.length} products`}
                 type="success"
                 showIcon
                 style={{ marginBottom: '8px' }}

@@ -5,7 +5,7 @@ const db = mysql.createConnection({
     host: 'localhost',
     user: 'root',
     password: '#lme11@@',
-    database: 'cbl_ordres'
+    database: 'cbl_so'
 });
 
 console.log('🔄 Adding DEALER_CODE column to dealers table...\n');

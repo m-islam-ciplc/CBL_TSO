@@ -1,7 +1,7 @@
 @echo off
 setlocal enabledelayedexpansion
 
-echo 🚀 CBL Sales Order Docker Deployment Script
+echo 🚀 CBL Sales Orders Docker Deployment Script
 echo ==========================================
 
 REM Check if Docker is running
@@ -21,13 +21,6 @@ if errorlevel 1 (
 )
 
 echo ✅ Docker and Docker Compose are available
-
-REM Create .env file if it doesn't exist
-if not exist .env (
-    echo 📝 Creating .env file from template...
-    copy env.example .env >nul
-    echo ⚠️  Please review and update the .env file with your configuration
-)
 
 REM Build and start services
 echo 🔨 Building and starting services...

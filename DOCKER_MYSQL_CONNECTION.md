@@ -19,7 +19,7 @@ Connection Name: CBL Docker MySQL
 Hostname: localhost (or SERVER_IP if remote)
 Port: 3307
 Username: root
-Password: cbl_root_password
+Password: cbl_so_root_password
 ```
 
 #### **Step 4: Test Connection**
@@ -28,7 +28,7 @@ Password: cbl_root_password
 
 #### **Step 5: Connect**
 - Double-click the connection to connect
-- You should see the `cbl_ordres` database
+- You should see the `cbl_so` database
 
 ---
 
@@ -39,7 +39,7 @@ Password: cbl_root_password
 # Connect to MySQL container
 mysql -h localhost -P 3307 -u root -p
 
-# Enter password: cbl_root_password
+# Enter password: cbl_so_root_password
 ```
 
 #### **From Inside Docker Container:**
@@ -47,7 +47,7 @@ mysql -h localhost -P 3307 -u root -p
 # Access the MySQL container
 docker-compose exec mysql mysql -u root -p
 
-# Enter password: cbl_root_password
+# Enter password: cbl_so_root_password
 ```
 
 ---
@@ -59,8 +59,8 @@ Use the same connection details:
 - **Host:** localhost (or SERVER_IP)
 - **Port:** 3307
 - **Username:** root
-- **Password:** cbl_root_password
-- **Database:** cbl_ordres
+- **Password:** cbl_so_root_password
+- **Database:** cbl_so
 
 ---
 
@@ -69,14 +69,14 @@ Use the same connection details:
 ### **Connection Details:**
 - **Host:** localhost (or SERVER_IP if remote)
 - **Port:** 3307 (external), 3306 (internal)
-- **Database:** cbl_ordres
+- **Database:** cbl_so
 - **Root User:** root
-- **Root Password:** cbl_root_password
-- **App User:** cbl_user
-- **App Password:** cbl_password
+- **Root Password:** cbl_so_root_password
+- **App User:** cbl_so_user
+- **App Password:** cbl_so_password
 
 ### **Available Databases:**
-- `cbl_ordres` - Main application database
+- `cbl_so` - Main application database
 - `information_schema` - MySQL system database
 - `mysql` - MySQL system database
 - `performance_schema` - MySQL system database
@@ -87,7 +87,7 @@ Use the same connection details:
 
 ### **View All Tables:**
 ```sql
-USE cbl_ordres;
+USE cbl_so;
 SHOW TABLES;
 ```
 
@@ -104,13 +104,13 @@ SELECT * FROM table_name;
 ### **Create Backup:**
 ```bash
 # From host machine
-docker-compose exec mysql mysqldump -u root -p cbl_ordres > backup.sql
+docker-compose exec mysql mysqldump -u root -p cbl_so > backup.sql
 ```
 
 ### **Restore Backup:**
 ```bash
 # From host machine
-docker-compose exec -i mysql mysql -u root -p cbl_ordres < backup.sql
+docker-compose exec -i mysql mysql -u root -p cbl_so < backup.sql
 ```
 
 ---
@@ -134,7 +134,7 @@ docker-compose restart mysql
 # Reset root password
 docker-compose exec mysql mysql -u root -p
 # Enter current password, then:
-ALTER USER 'root'@'%' IDENTIFIED BY 'cbl_root_password';
+ALTER USER 'root'@'%' IDENTIFIED BY 'cbl_so_root_password';
 FLUSH PRIVILEGES;
 ```
 
@@ -152,7 +152,7 @@ netstat -tulpn | grep :3307
 docker-compose exec mysql mysql -u root -p -e "SHOW DATABASES;"
 
 # Create database if missing
-docker-compose exec mysql mysql -u root -p -e "CREATE DATABASE cbl_ordres;"
+docker-compose exec mysql mysql -u root -p -e "CREATE DATABASE cbl_so;"
 ```
 
 ---
@@ -162,7 +162,7 @@ docker-compose exec mysql mysql -u root -p -e "CREATE DATABASE cbl_ordres;"
 ### **Security:**
 - **Root password** is set in `docker-compose.yml`
 - **Change passwords** for production use
-- **Use app user** (`cbl_user`) for application connections
+- **Use app user** (`cbl_so_user`) for application connections
 - **Don't expose** MySQL port externally in production
 
 ### **Data Persistence:**
@@ -181,9 +181,9 @@ docker-compose exec mysql mysql -u root -p -e "CREATE DATABASE cbl_ordres;"
 
 | Method | Host | Port | Username | Password |
 |--------|------|------|----------|----------|
-| MySQL Workbench | localhost | 3307 | root | cbl_root_password |
-| Command Line | localhost | 3307 | root | cbl_root_password |
-| Application | mysql | 3306 | cbl_user | cbl_password |
+| MySQL Workbench | localhost | 3307 | root | cbl_so_root_password |
+| Command Line | localhost | 3307 | root | cbl_so_root_password |
+| Application | mysql | 3306 | cbl_so_user | cbl_so_password |
 
 ---
 
@@ -200,11 +200,11 @@ docker-compose logs mysql
 docker-compose exec mysql mysql -u root -p
 
 # Create database backup
-docker-compose exec mysql mysqldump -u root -p cbl_ordres > backup.sql
+docker-compose exec mysql mysqldump -u root -p cbl_so > backup.sql
 
 # Restore database
-docker-compose exec -i mysql mysql -u root -p cbl_ordres < backup.sql
+docker-compose exec -i mysql mysql -u root -p cbl_so < backup.sql
 
 # Check database size
-docker-compose exec mysql mysql -u root -p -e "SELECT table_schema AS 'Database', ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) AS 'Size (MB)' FROM information_schema.tables WHERE table_schema = 'cbl_ordres';"
+docker-compose exec mysql mysql -u root -p -e "SELECT table_schema AS 'Database', ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) AS 'Size (MB)' FROM information_schema.tables WHERE table_schema = 'cbl_so';"
 ```

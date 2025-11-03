@@ -1,6 +1,6 @@
-# CBL Sales Order - Docker Deployment Guide
+# CBL Sales Orders - Docker Deployment Guide
 
-This comprehensive guide explains how to deploy and manage the CBL Sales Order system using Docker containers.
+This comprehensive guide explains how to deploy and manage the CBL Sales Orders system using Docker containers.
 
 ## 📋 **Table of Contents**
 
@@ -56,10 +56,10 @@ The application consists of three services:
 
 ### 1. MySQL Database (`mysql`)
 - **Port:** 3307 (external), 3306 (internal)
-- **Database:** cbl_ordres
-- **User:** cbl_user
-- **Password:** cbl_password
-- **Root Password:** cbl_root_password
+- **Database:** cbl_so
+- **User:** cbl_so_user
+- **Password:** cbl_so_password
+- **Root Password:** cbl_so_root_password
 
 ### 2. Backend API (`backend`)
 - **Port:** 3002 (external), 3001 (internal)
@@ -72,26 +72,6 @@ The application consists of three services:
 - **Serves:** React build with Nginx
 
 ## Configuration
-
-### Environment Variables
-
-Create a `.env` file in the project root (copy from `env.example`):
-
-```bash
-# Database Configuration
-DB_HOST=mysql
-DB_PORT=3306
-DB_USER=cbl_user
-DB_PASSWORD=cbl_password
-DB_NAME=cbl_ordres
-
-# Application Configuration
-NODE_ENV=production
-PORT=3001
-
-# Frontend Configuration
-REACT_APP_API_URL=http://localhost:3002
-```
 
 ### Database Initialization
 
@@ -153,8 +133,8 @@ docker stats
 
 ### **Updates & Rebuilds**
 ```bash
-# Pull latest code from Git
-git pull origin main
+# Pull latest code from Git (if using Git)
+git pull
 
 # ⚠️ IMPORTANT: Always stop running containers first!
 docker-compose down
@@ -174,21 +154,23 @@ docker-compose restart mysql
 ### **Database Management**
 ```bash
 # Connect to MySQL container
-docker-compose exec mysql mysql -u cbl_user -p cbl_ordres
+docker-compose exec mysql mysql -u cbl_so_user -p cbl_so
 
 # Access MySQL shell as root
 docker-compose exec mysql mysql -u root -p
 
 # Create database backup
-docker-compose exec mysql mysqldump -u cbl_user -p cbl_ordres > backup.sql
+docker-compose exec mysql mysqldump -u cbl_so_user -p cbl_so > backup.sql
 
 # Restore database
-docker-compose exec -T mysql mysql -u cbl_user -p cbl_ordres < backup.sql
+docker-compose exec -T mysql mysql -u cbl_so_user -p cbl_so < backup.sql
 
 # Reset database (WARNING: Deletes all data)
 docker-compose down
-docker volume rm cbl_tso_mysql_data
+docker volume rm cbl_so_mysql_data
 docker-compose up -d --build
+
+# Note: Check actual volume name with: docker volume ls
 ```
 
 ### **Cleanup Commands**
@@ -241,9 +223,9 @@ docker-compose down -v
 docker-compose up -d --build
 
 # View detailed container info
-docker inspect cbl_tso_backend_1
-docker inspect cbl_tso_frontend_1
-docker inspect cbl_tso_mysql_1
+docker inspect cbl-so-backend
+docker inspect cbl-so-frontend
+docker inspect cbl-so-mysql
 ```
 
 ## Health Checks
@@ -267,8 +249,7 @@ Uploaded files are stored in the `uploads/` directory and are persisted across c
 
 ### 1. Security Considerations
 
-- Change default passwords in `docker-compose.yml`
-- Use environment variables for sensitive data
+- Change default passwords in `docker-compose.yml` (line 8-11)
 - Configure proper firewall rules
 - Use HTTPS in production (configure reverse proxy)
 
@@ -306,7 +287,7 @@ services:
 # Create backup script
 #!/bin/bash
 DATE=$(date +%Y%m%d_%H%M%S)
-docker-compose exec mysql mysqldump -u cbl_user -p cbl_ordres > backup_${DATE}.sql
+docker-compose exec mysql mysqldump -u cbl_so_user -p cbl_so > backup_${DATE}.sql
 ```
 
 ## Troubleshooting
@@ -315,7 +296,12 @@ docker-compose exec mysql mysqldump -u cbl_user -p cbl_ordres > backup_${DATE}.s
 
 1. **Port conflicts:**
    ```bash
-   # Check what's using ports
+   # Check what's using ports (Windows)
+   netstat -ano | findstr :80
+   netstat -ano | findstr :3002
+   netstat -ano | findstr :3307
+   
+   # Check what's using ports (Linux/Mac)
    netstat -tulpn | grep :80
    netstat -tulpn | grep :3002
    netstat -tulpn | grep :3307
@@ -384,7 +370,7 @@ docker-compose up -d --build
 docker stats
 
 # View specific service stats
-docker stats cbl-mysql cbl-backend cbl-frontend
+docker stats cbl-so-mysql cbl-so-backend cbl-so-frontend
 ```
 
 ### Application Logs

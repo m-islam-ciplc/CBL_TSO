@@ -539,7 +539,7 @@ app.get('/health', (req, res) => {
     res.status(200).json({ 
         status: 'OK', 
         timestamp: new Date().toISOString(),
-        service: 'CBL Sales Order API'
+        service: 'CBL Sales Orders API'
     });
 });
 
@@ -581,7 +581,7 @@ const db = mysql.createConnection({
     host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '#lme11@@',
-    database: process.env.DB_NAME || 'cbl_ordres',
+    database: process.env.DB_NAME || 'cbl_so',
     port: process.env.DB_PORT || 3306
 });
 
@@ -636,7 +636,7 @@ db.connect((err) => {
 
         // Start server only after database connection is established
         app.listen(PORT, () => {
-            console.log(`CBL Sales Order server running on port ${PORT}`);
+            console.log(`CBL Sales Orders server running on port ${PORT}`);
         });
     }
 });

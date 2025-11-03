@@ -1,6 +1,6 @@
--- CBL Sales Order Database Schema
-CREATE DATABASE IF NOT EXISTS cbl_ordres;
-USE cbl_ordres;
+-- CBL Sales Orders Database Schema
+CREATE DATABASE IF NOT EXISTS cbl_so;
+USE cbl_so;
 
 -- Users table for authentication
 CREATE TABLE IF NOT EXISTS users (

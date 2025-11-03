@@ -164,7 +164,7 @@ function AppContent() {
           {/* Logo and Title */}
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <Title level={4} style={{ color: 'white', margin: 0, marginRight: '24px' }}>
-              CBL Sales Order
+              CBL SO
             </Title>
           </div>
 

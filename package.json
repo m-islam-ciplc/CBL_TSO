@@ -1,7 +1,7 @@
 {
-  "name": "cbl-sales-order",
+  "name": "cbl-so",
   "version": "1.0.0",
-  "description": "CBL Sales Order - TSO order management system",
+  "description": "CBL Sales Orders - TSO order management system",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

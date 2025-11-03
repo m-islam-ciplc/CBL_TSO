@@ -1,4 +1,4 @@
-# CBL Sales Order
+# CBL Sales Orders
 
 A simple sales order management system for CBL TSOs to place orders for batteries and associated products.
 
@@ -33,31 +33,61 @@ mysql -u root -p < database.sql
 
 ### 3. Run the Application
 
-**For Windows (with hot reloading):**
+**Using Docker (Recommended):**
 ```bash
-# Start both servers with hot reloading
-start-windows.bat
+# Deploy using Docker
+deploy.bat
 
 # Or manually:
-npm run dev          # Backend with hot reloading
-cd frontend && npm start  # Frontend with hot reloading
+docker-compose up -d --build
 ```
 
 **Access Points:**
-- Frontend: http://localhost:3002 (main application)
-- Backend API: http://localhost:3001 (API endpoints only)
+- Frontend: http://localhost (main application)
+- Backend API: http://localhost:3002 (API endpoints only)
+- Database: localhost:3307
+
+**For Local Development (without Docker):**
+```bash
+# Start backend
+npm install
+npm run dev
+
+# In another terminal, start frontend
+cd frontend
+npm install
+npm start
+```
+
+**Access Points for Local Dev:**
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:3001
 
 ### 4. Stop the Application
+
+**If using Docker:**
 ```bash
-# Stop all servers
-stop-windows.bat
+docker-compose down
 ```
+
+**If using local development:**
+Press Ctrl+C in each terminal window
 
 ## Database Configuration
 
-- Database: `cbl_ordres`
+**For Docker:**
+- Database: `cbl_so`
+- Username: `cbl_so_user`
+- Password: `cbl_so_password`
+- Host: `localhost`
+- Port: `3307`
+
+**For Local Development:**
+- Database: `cbl_so`
 - Username: `root`
 - Password: `#lme11@@`
+- Host: `localhost`
+- Port: `3306`
 
 ## API Endpoints
 
@@ -68,11 +98,9 @@ stop-windows.bat
 - `POST /api/orders` - Create new order
 - `GET /api/orders` - Get all orders
 
-## Initial Data
+## Additional Resources
 
-The system comes with initial data:
-- Order Type: RO
-- Warehouse: Narayanganj Factory
-- Dealer: Kalam Enterprise
-- Product: 6DGA-175T(H) Dimitris
+- **Docker Deployment:** See `DOCKER_README.md` for comprehensive Docker guide
+- **Local Development:** Use `manage-servers.bat` on Windows for easy server management
+- **Database:** Schema is automatically created from `database.sql` in Docker setup
 

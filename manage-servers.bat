@@ -4,7 +4,7 @@ setlocal enabledelayedexpansion
 :MENU
 cls
 echo ========================================
-echo    CBL TSO - SERVER MANAGEMENT
+echo    CBL Sales Orders - SERVER MANAGEMENT
 echo ========================================
 echo.
 echo Choose an option:
@@ -30,7 +30,7 @@ goto MENU
 :START
 cls
 echo ========================================
-echo   STARTING CBL TSO SERVERS
+echo   STARTING CBL SALES ORDERS SERVERS
 echo ========================================
 echo.
 
@@ -89,7 +89,7 @@ goto MENU
 :STOP
 cls
 echo ========================================
-echo   STOPPING CBL TSO SERVERS
+echo   STOPPING CBL SALES ORDERS SERVERS
 echo ========================================
 echo.
 
@@ -134,7 +134,7 @@ goto MENU
 :RESTART
 cls
 echo ========================================
-echo   RESTARTING CBL TSO SERVERS
+echo   RESTARTING CBL SALES ORDERS SERVERS
 echo ========================================
 echo.
 
@@ -260,10 +260,10 @@ exit /b
 cls
 echo.
 echo ========================================
-echo   CBL TSO - SERVER MANAGEMENT
+echo   CBL Sales Orders - SERVER MANAGEMENT
 echo ========================================
 echo.
-echo Thanks for using CBL TSO Server Manager
+echo Thanks for using CBL Sales Orders Server Manager
 echo.
 timeout /t 2 /nobreak >nul
 exit /b

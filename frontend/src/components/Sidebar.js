@@ -51,7 +51,7 @@ function Sidebar({ activePage, setActivePage, stats = { dealers: 0, warehouses: 
     >
       <Box sx={{ p: 3, textAlign: 'center' }}>
         <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 1 }}>
-          CBL Sales Order
+          CBL SO
         </Typography>
         <Typography variant="body2" color="rgba(255,255,255,0.7)">
           TSO Management System

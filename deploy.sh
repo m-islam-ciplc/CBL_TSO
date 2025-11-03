@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# CBL Sales Order Docker Deployment Script
+# CBL Sales Orders Docker Deployment Script
 
 set -e
 
-echo "🚀 CBL Sales Order Docker Deployment Script"
+echo "🚀 CBL Sales Orders Docker Deployment Script"
 echo "=========================================="
 
 # Check if Docker is running
@@ -20,13 +20,6 @@ if ! command -v docker-compose &> /dev/null; then
 fi
 
 echo "✅ Docker and Docker Compose are available"
-
-# Create .env file if it doesn't exist
-if [ ! -f .env ]; then
-    echo "📝 Creating .env file from template..."
-    cp env.example .env
-    echo "⚠️  Please review and update the .env file with your configuration"
-fi
 
 # Build and start services
 echo "🔨 Building and starting services..."
@@ -44,7 +37,7 @@ docker-compose ps
 echo "🔍 Checking health endpoints..."
 
 # Check backend health
-if curl -f http://localhost:3001/health > /dev/null 2>&1; then
+if curl -f http://localhost:3002/health > /dev/null 2>&1; then
     echo "✅ Backend is healthy"
 else
     echo "❌ Backend health check failed"
@@ -69,12 +62,14 @@ echo "🎉 Deployment completed!"
 echo ""
 echo "📋 Service URLs:"
 echo "   Frontend: http://localhost"
-echo "   Backend API: http://localhost:3001"
-echo "   Database: localhost:3306"
+echo "   Backend API: http://localhost:3002"
+echo "   Database: localhost:3307"
 echo ""
 echo "📚 Useful commands:"
 echo "   View logs: docker-compose logs -f"
 echo "   Stop services: docker-compose down"
 echo "   Restart services: docker-compose restart"
+echo "   Clean build cache: docker builder prune -a"
+echo "   Remove all unused: docker system prune -a --volumes"
 echo ""
 echo "📖 For more information, see DOCKER_README.md"

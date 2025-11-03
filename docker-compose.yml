@@ -2,21 +2,20 @@ services:
   # MySQL Database
   mysql:
     image: mysql:8.0
-    container_name: cbl-mysql
+    container_name: cbl-so-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: cbl_root_password
-      MYSQL_DATABASE: cbl_ordres
-      MYSQL_USER: cbl_user
-      MYSQL_PASSWORD: cbl_password
+      MYSQL_ROOT_PASSWORD: cbl_so_root_password
+      MYSQL_DATABASE: cbl_so
+      MYSQL_USER: cbl_so_user
+      MYSQL_PASSWORD: cbl_so_password
     ports:
       - "3307:3306"
     volumes:
-      - mysql_data:/var/lib/mysql
+      - cbl_so_mysql_data:/var/lib/mysql
       - ./database.sql:/docker-entrypoint-initdb.d/init.sql
-      - ./uploads:/app/uploads
     networks:
-      - cbl-network
+      - cbl-so-network
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       timeout: 20s
@@ -27,15 +26,15 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
-    container_name: cbl-backend
+    container_name: cbl-so-backend
     restart: unless-stopped
     environment:
       NODE_ENV: production
       DB_HOST: mysql
       DB_PORT: 3306
-      DB_USER: cbl_user
-      DB_PASSWORD: cbl_password
-      DB_NAME: cbl_ordres
+      DB_USER: cbl_so_user
+      DB_PASSWORD: cbl_so_password
+      DB_NAME: cbl_so
     ports:
       - "3002:3001"
     volumes:
@@ -44,7 +43,7 @@ services:
       mysql:
         condition: service_healthy
     networks:
-      - cbl-network
+      - cbl-so-network
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
       interval: 30s
@@ -56,7 +55,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
-    container_name: cbl-frontend
+    container_name: cbl-so-frontend
     restart: unless-stopped
     ports:
       - "80:80"
@@ -64,12 +63,12 @@ services:
       backend:
         condition: service_healthy
     networks:
-      - cbl-network
+      - cbl-so-network
 
 volumes:
-  mysql_data:
+  cbl_so_mysql_data:
     driver: local
 
 networks:
-  cbl-network:
+  cbl-so-network:
     driver: bridge

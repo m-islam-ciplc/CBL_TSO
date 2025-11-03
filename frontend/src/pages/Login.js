@@ -65,7 +65,7 @@ function Login() {
       >
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <SafetyOutlined style={{ fontSize: '48px', color: '#1890ff', marginBottom: '16px' }} />
-          <Title level={2} style={{ marginBottom: '8px' }}>CBL Sales Order</Title>
+          <Title level={2} style={{ marginBottom: '8px' }}>CBL SO</Title>
           <Text type="secondary">Please login to continue</Text>
         </div>
 
