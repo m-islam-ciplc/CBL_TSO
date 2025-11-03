@@ -218,7 +218,7 @@ function UserManagement() {
   return (
     <div>
       <Title level={3} style={{ marginBottom: '8px' }}>
-        User Management
+        Manage Users
       </Title>
       <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
         Manage user accounts and permissions

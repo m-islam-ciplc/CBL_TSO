@@ -83,10 +83,14 @@ function AppContent() {
     const path = location.pathname;
     if (path === '/' || path === '/dashboard') return 'dashboard';
     if (path === '/new-orders') return 'new-orders';
+    if (path === '/review-orders') return 'review-orders';
     if (path === '/placed-orders') return 'placed-orders';
-    if (path === '/dealer-management') return 'dealer-management';
+    if (path === '/manage-dealers') return 'manage-dealers';
+    if (path === '/manage-products') return 'manage-products';
+    if (path === '/manage-transports') return 'manage-transports';
+    if (path === '/manage-quotas') return 'manage-quotas';
     if (path === '/user-management') return 'user-management';
-    if (path === '/product-quota') return 'product-quota';
+    if (path === '/daily-report') return 'daily-report';
     return 'dashboard';
   };
 
@@ -118,35 +122,35 @@ function AppContent() {
       label: 'Placed Orders',
     },
     {
-      key: 'dealer-management',
+      key: 'manage-dealers',
       icon: <UserOutlined />,
       label: 'Manage Dealers',
     },
     {
-      key: 'product-management',
+      key: 'manage-products',
       icon: <ShoppingCartOutlined />,
       label: 'Manage Products',
     },
     {
-      key: 'transport-management',
+      key: 'manage-transports',
       icon: <TruckOutlined />,
       label: 'Manage Transports',
     },
+    ...(userRole === 'admin' ? [{
+      key: 'user-management',
+      icon: <TeamOutlined />,
+      label: 'Manage Users',
+    },
+    {
+      key: 'manage-quotas',
+      icon: <BarChartOutlined />,
+      label: 'Manage Quotas',
+    }] : []),
     {
       key: 'daily-report',
       icon: <FileExcelOutlined />,
       label: 'Daily Report',
     },
-    ...(userRole === 'admin' ? [{
-      key: 'user-management',
-      icon: <TeamOutlined />,
-      label: 'User Management',
-    },
-    {
-      key: 'product-quota',
-      icon: <BarChartOutlined />,
-      label: 'Product Quota',
-    }] : []),
   ];
 
   return (
@@ -241,17 +245,17 @@ function AppContent() {
             <NewOrdersTablet onOrderCreated={refreshOrders} /> : 
             <PlacedOrders refreshTrigger={refreshTrigger} />
           } />
-          <Route path="/dealer-management" element={
+          <Route path="/manage-dealers" element={
             isTSO ? 
             <NewOrdersTablet onOrderCreated={refreshOrders} /> : 
             <DealerManagement />
           } />
-          <Route path="/product-management" element={
+          <Route path="/manage-products" element={
             isTSO ? 
             <NewOrdersTablet onOrderCreated={refreshOrders} /> : 
             <ProductManagement />
           } />
-          <Route path="/transport-management" element={
+          <Route path="/manage-transports" element={
             isTSO ? 
             <NewOrdersTablet onOrderCreated={refreshOrders} /> : 
             <TransportManagement />
@@ -266,7 +270,7 @@ function AppContent() {
             <UserManagement /> : 
             <Dashboard setStats={setStats} />
           } />
-          <Route path="/product-quota" element={
+          <Route path="/manage-quotas" element={
             userRole === 'admin' ? 
             <ProductQuotaManagement /> : 
             <Dashboard setStats={setStats} />

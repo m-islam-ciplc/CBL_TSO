@@ -733,7 +733,7 @@ app.post('/api/auth/logout', (req, res) => {
   res.json({ success: true, message: 'Logged out successfully' });
 });
 
-// User Management routes
+// Manage Users routes
 app.get('/api/users', (req, res) => {
   const query = 'SELECT id, username, full_name, role, territory_name, is_active, created_at, updated_at FROM users ORDER BY id';
   
