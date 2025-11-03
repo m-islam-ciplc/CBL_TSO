@@ -167,7 +167,7 @@ docker-compose exec -T mysql mysql -u cbl_so_user -p cbl_so < backup.sql
 
 # Reset database (WARNING: Deletes all data)
 docker-compose down
-docker volume rm cbl_so_mysql_data
+docker volume rm cbl-so-mysql-data
 docker-compose up -d --build
 
 # Note: Check actual volume name with: docker volume ls

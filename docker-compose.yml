@@ -15,7 +15,7 @@ services:
     ports:
       - "3307:3306"
     volumes:
-      - cbl_so_mysql_data:/var/lib/mysql
+      - cbl-so-mysql-data:/var/lib/mysql
       - ./database.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - cbl-so-network
@@ -71,7 +71,7 @@ services:
       - cbl-so-network
 
 volumes:
-  cbl_so_mysql_data:
+  cbl-so-mysql-data:
     driver: local
 
 networks:
