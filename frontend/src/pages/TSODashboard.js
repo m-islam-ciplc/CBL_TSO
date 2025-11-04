@@ -19,6 +19,7 @@ import {
   CheckCircleOutlined,
   InfoCircleOutlined,
   ReloadOutlined,
+  ShoppingCartOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
@@ -122,7 +123,7 @@ function TSODashboard() {
       width: 100,
       align: 'right',
       render: (quantity) => {
-        const remaining = quantity !== undefined && quantity !== null ? quantity : 0; // 0 is a valid value for remaining quantity
+        const remaining = quantity !== undefined && quantity !== null ? quantity : 0;
         const isLow = remaining === 0;
         return (
           <Tag color={isLow ? 'red' : 'green'} style={{ fontSize: '12px', padding: '2px 8px' }}>
@@ -133,8 +134,7 @@ function TSODashboard() {
     },
   ];
 
-  const totalProducts = quotas.length;
-  const totalRemaining = quotas.reduce((sum, q) => sum + (q.remaining_quantity !== undefined && q.remaining_quantity !== null ? q.remaining_quantity : 0), 0);
+  // Remove the old totalProducts and totalRemaining calculations as they're now in the Statistic components
 
   if (loading) {
     return (
@@ -163,26 +163,146 @@ function TSODashboard() {
         />
 
         <Row gutter={[16, 16]}>
-          <Col xs={24} sm={12}>
-            <Card>
+          <Col xs={24} sm={8}>
+            <Card
+              style={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                border: 'none',
+                height: '100%',
+              }}
+            >
               <Statistic
-                title="Products Allocated"
-                value={totalProducts}
+                title={<span style={{ color: 'white' }}>Products Allocated</span>}
+                value={quotas.length}
                 prefix={<GiftOutlined />}
                 suffix="items"
-                valueStyle={{ color: '#1890ff' }}
+                valueStyle={{ color: 'white', fontSize: '24px' }}
+                style={{ marginBottom: '16px' }}
               />
+              <div
+                style={{
+                  maxHeight: '300px',
+                  overflowY: 'auto',
+                  borderTop: '1px solid rgba(255,255,255,0.15)',
+                  paddingTop: '12px',
+                }}
+              >
+                {quotas.length === 0 ? (
+                  <Text style={{ color: 'white', opacity: 0.8 }}>No products allocated</Text>
+                ) : (
+                  quotas.map((q) => (
+                    <div
+                      key={q.id}
+                      style={{
+                        color: 'white',
+                        padding: '8px 0',
+                        borderBottom: '1px solid rgba(255,255,255,0.15)',
+                        fontSize: '14px',
+                      }}
+                    >
+                      {q.product_name || q.product_code} x {q.max_quantity || 0}
+                    </div>
+                  ))
+                )}
+              </div>
             </Card>
           </Col>
-          <Col xs={24} sm={12}>
-            <Card>
+          <Col xs={24} sm={8}>
+            <Card
+              style={{
+                background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                border: 'none',
+                height: '100%',
+              }}
+            >
               <Statistic
-                title="Remaining Quantity"
-                value={totalRemaining}
+                title={<span style={{ color: 'white' }}>Sold Quantity</span>}
+                value={quotas.reduce((sum, q) => sum + Number(q.sold_quantity || 0), 0)}
+                prefix={<ShoppingCartOutlined />}
+                suffix="units"
+                valueStyle={{ color: 'white', fontSize: '24px' }}
+                style={{ marginBottom: '16px' }}
+              />
+              <div
+                style={{
+                  maxHeight: '300px',
+                  overflowY: 'auto',
+                  borderTop: '1px solid rgba(255,255,255,0.15)',
+                  paddingTop: '12px',
+                }}
+              >
+                {quotas.filter((q) => (q.sold_quantity || 0) > 0).length === 0 ? (
+                  <Text style={{ color: 'white', opacity: 0.8 }}>No sales yet</Text>
+                ) : (
+                  quotas
+                    .filter((q) => (q.sold_quantity || 0) > 0)
+                    .map((q) => (
+                      <div
+                        key={q.id}
+                        style={{
+                          color: 'white',
+                          padding: '8px 0',
+                          borderBottom: '1px solid rgba(255,255,255,0.15)',
+                          fontSize: '14px',
+                        }}
+                      >
+                        {q.product_name || q.product_code} x {q.sold_quantity || 0}
+                      </div>
+                    ))
+                )}
+              </div>
+            </Card>
+          </Col>
+          <Col xs={24} sm={8}>
+            <Card
+              style={{
+                background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                border: 'none',
+                height: '100%',
+              }}
+            >
+              <Statistic
+                title={<span style={{ color: 'white' }}>Remaining Quantity</span>}
+                value={quotas.reduce((sum, q) => sum + Number(q.remaining_quantity !== undefined && q.remaining_quantity !== null ? q.remaining_quantity : 0), 0)}
                 prefix={<CheckCircleOutlined />}
                 suffix="units"
-                valueStyle={{ color: totalRemaining > 0 ? '#52c41a' : '#ff4d4f' }}
+                valueStyle={{ color: 'white', fontSize: '24px' }}
+                style={{ marginBottom: '16px' }}
               />
+              <div
+                style={{
+                  maxHeight: '300px',
+                  overflowY: 'auto',
+                  borderTop: '1px solid rgba(255,255,255,0.15)',
+                  paddingTop: '12px',
+                }}
+              >
+                {quotas.filter((q) => {
+                  const remaining = q.remaining_quantity !== undefined && q.remaining_quantity !== null ? q.remaining_quantity : 0;
+                  return remaining > 0;
+                }).length === 0 ? (
+                  <Text style={{ color: 'white', opacity: 0.8 }}>No remaining quantity</Text>
+                ) : (
+                  quotas
+                    .filter((q) => {
+                      const remaining = q.remaining_quantity !== undefined && q.remaining_quantity !== null ? q.remaining_quantity : 0;
+                      return remaining > 0;
+                    })
+                    .map((q) => (
+                      <div
+                        key={q.id}
+                        style={{
+                          color: 'white',
+                          padding: '8px 0',
+                          borderBottom: '1px solid rgba(255,255,255,0.15)',
+                          fontSize: '14px',
+                        }}
+                      >
+                        {q.product_name || q.product_code} x {q.remaining_quantity !== undefined && q.remaining_quantity !== null ? q.remaining_quantity : 0}
+                      </div>
+                    ))
+                )}
+              </div>
             </Card>
           </Col>
         </Row>

@@ -961,39 +961,51 @@ app.get('/api/product-caps', (req, res) => {
   });
 });
 
-// Get today's product quotas for a TSO
-app.get('/api/product-caps/tso-today', (req, res) => {
-  const { territory_name } = req.query;
-  
-  if (!territory_name) {
-    return res.status(400).json({ error: 'Territory name is required' });
-  }
-  
-  const query = `
-    SELECT pc.*, p.product_code, p.name as product_name,
-           COALESCE(SUM(oi.quantity), 0) as sold_quantity,
-           pc.max_quantity - COALESCE(SUM(oi.quantity), 0) as remaining_quantity
-    FROM daily_quotas pc
-    JOIN products p ON pc.product_id = p.id
-    LEFT JOIN order_items oi ON oi.product_id = pc.product_id
-    LEFT JOIN orders o ON o.order_id = oi.order_id
-    LEFT JOIN dealers d ON d.id = o.dealer_id
-    WHERE DATE(pc.date) = CURDATE() AND pc.territory_name = ?
-      AND (o.dealer_id IS NULL OR d.territory_name = pc.territory_name)
-      AND (o.id IS NULL OR DATE(o.created_at) = pc.date)
-    GROUP BY pc.id, pc.date, pc.product_id, pc.territory_name, pc.max_quantity, p.product_code, p.name
-    ORDER BY p.product_code
-  `;
-  
-  db.query(query, [territory_name], (err, results) => {
-    if (err) {
-      console.error('Error fetching TSO quotas:', err);
-      return res.status(500).json({ error: 'Database error' });
+  // Get today's product quotas for a TSO
+  app.get('/api/product-caps/tso-today', (req, res) => {
+    const { territory_name } = req.query;
+    
+    if (!territory_name) {
+      return res.status(400).json({ error: 'Territory name is required' });
     }
     
-    res.json(results);
+    const query = `
+      SELECT pc.*,
+             p.product_code,
+             p.name as product_name,
+             COALESCE((
+               SELECT SUM(oi.quantity)
+               FROM order_items oi
+               JOIN orders o ON o.order_id = oi.order_id
+               JOIN dealers d ON d.id = o.dealer_id
+               WHERE oi.product_id = pc.product_id
+                 AND d.territory_name = pc.territory_name
+                 AND DATE(o.created_at) = pc.date
+             ), 0) as sold_quantity,
+             pc.max_quantity - COALESCE((
+               SELECT SUM(oi.quantity)
+               FROM order_items oi
+               JOIN orders o ON o.order_id = oi.order_id
+               JOIN dealers d ON d.id = o.dealer_id
+               WHERE oi.product_id = pc.product_id
+                 AND d.territory_name = pc.territory_name
+                 AND DATE(o.created_at) = pc.date
+             ), 0) as remaining_quantity
+      FROM daily_quotas pc
+      JOIN products p ON pc.product_id = p.id
+      WHERE DATE(pc.date) = CURDATE() AND pc.territory_name = ?
+      ORDER BY p.product_code
+    `;
+    
+    db.query(query, [territory_name], (err, results) => {
+      if (err) {
+        console.error('Error fetching TSO quotas:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+      
+      res.json(results);
+    });
   });
-});
 
 // Bulk save product caps
 app.post('/api/product-caps/bulk', (req, res) => {
