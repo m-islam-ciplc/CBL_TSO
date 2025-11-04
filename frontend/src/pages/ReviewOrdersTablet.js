@@ -56,22 +56,27 @@ function ReviewOrdersTablet({ onOrderCreated }) {
     }
   }, [formInitialValues, form]);
 
-  // Also try to load form data on component mount
+  // Load form data when dropdown data is ready
   useEffect(() => {
-    const savedFormData = localStorage.getItem('tsoFormData');
-    if (savedFormData && !dataLoading) {
-      try {
-        const formData = JSON.parse(savedFormData);
-        console.log('🔍 Auto-loading form data on mount:', formData);
-        if (Object.keys(formData).length > 0) {
-          form.setFieldsValue(formData);
-          console.log('✅ Form values auto-set on mount');
+    if (!dataLoading && dropdownData.orderTypes && dropdownData.orderTypes.length > 0) {
+      const savedFormData = localStorage.getItem('tsoFormData');
+      if (savedFormData) {
+        try {
+          const formData = JSON.parse(savedFormData);
+          console.log('🔍 Auto-loading form data after dropdown data loaded:', formData);
+          if (Object.keys(formData).length > 0) {
+            // Use setTimeout to ensure form is fully initialized
+            setTimeout(() => {
+              form.setFieldsValue(formData);
+              console.log('✅ Form values auto-set after dropdown loaded');
+            }, 100);
+          }
+        } catch (error) {
+          console.error('Error auto-loading form data:', error);
         }
-      } catch (error) {
-        console.error('Error auto-loading form data:', error);
       }
     }
-  }, [dataLoading, form]);
+  }, [dataLoading, dropdownData, form]);
 
   useEffect(() => {
     loadDropdownData();

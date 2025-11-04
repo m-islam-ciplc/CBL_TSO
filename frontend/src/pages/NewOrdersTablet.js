@@ -236,16 +236,39 @@ function NewOrdersTablet({ onOrderCreated }) {
           const formData = JSON.parse(savedFormData);
           console.log('Loading saved form data in loadDropdownData:', formData);
           
-          // Set form values
+          // Set form values in steps to ensure dealers are filtered before dealer value is set
           setTimeout(() => {
-            form.setFieldsValue(formData);
-            setFormValues(formData); // Store in state for validation
-            // If territory is saved, filter dealers accordingly
+            // First, set territory and filter dealers if territory exists
             if (formData.territoryCode) {
               const territory = territories.find(t => t.code === formData.territoryCode);
               if (territory) {
-                filterDealersByTerritory(territory.code, territory.name);
+                // Filter dealers synchronously first to check if dealer ID exists
+                let filtered = dealersRes.data.filter(dealer => dealer.territory_code === territory.code);
+                setFilteredDealers(filtered); // Update state
+                
+                // Check if saved dealer ID exists in filtered dealers
+                const dealerExists = formData.dealer && filtered.some(d => d.id === formData.dealer);
+                
+                // Set form values - include dealer only if it exists in filtered list
+                const valuesToSet = { ...formData };
+                if (!dealerExists) {
+                  // Clear dealer if it doesn't exist in filtered list
+                  valuesToSet.dealer = undefined;
+                }
+                
+                form.setFieldsValue(valuesToSet);
+                setFormValues(valuesToSet); // Store in state for validation
+              } else {
+                // Territory not found, set form values without dealer
+                const { dealer, ...formDataWithoutDealer } = formData;
+                form.setFieldsValue(formDataWithoutDealer);
+                setFormValues(formDataWithoutDealer);
               }
+            } else {
+              // No territory, set form values but clear dealer
+              const { dealer, ...formDataWithoutDealer } = formData;
+              form.setFieldsValue(formDataWithoutDealer);
+              setFormValues(formDataWithoutDealer);
             }
           }, 100);
         } catch (error) {
@@ -348,10 +371,7 @@ function NewOrdersTablet({ onOrderCreated }) {
   };
 
   const handleTransportChange = (value) => {
-    // Auto-collapse the Order Details card when transport is selected
-    if (value) {
-      setIsDropdownCollapsed(true);
-    }
+    // Transport selection handler - no auto-collapse
   };
 
   const handleDealerChange = (dealerId) => {
@@ -558,6 +578,19 @@ function NewOrdersTablet({ onOrderCreated }) {
             style={{ marginTop: '12px' }}
             onValuesChange={(changedValues, allValues) => {
               setFormValues(allValues);
+              // Auto-save form data to localStorage so it persists when navigating via navbar
+              const individualValues = {
+                orderType: allValues.orderType,
+                warehouse: allValues.warehouse,
+                territoryCode: allValues.territoryCode,
+                dealer: allValues.dealer,
+                transport: allValues.transport
+              };
+              // Only save if there are actual values
+              const hasValues = Object.values(individualValues).some(value => value !== undefined && value !== null && value !== '');
+              if (hasValues) {
+                localStorage.setItem('tsoFormData', JSON.stringify(individualValues));
+              }
             }}
           >
             <Row gutter={[4, 6]} align="middle">
