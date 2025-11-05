@@ -11,3 +11,13 @@
 .ant-menu-horizontal .ant-menu-item > .anticon {
   margin-right: 4px !important;
 }
+
+/* Selected menu item with Warehouses card gradient */
+.ant-menu-horizontal .ant-menu-item-selected {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+  border-radius: 4px;
+}
+
+.ant-menu-horizontal .ant-menu-item-selected::after {
+  display: none !important;
+}
