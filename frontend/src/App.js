@@ -199,30 +199,19 @@ function AppContent() {
           <div style={{ 
             display: 'flex', 
             alignItems: 'center', 
-            gap: '12px',
             marginLeft: '16px'
           }}>
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '8px', 
-              padding: '8px 12px',
-              backgroundColor: 'rgba(255,255,255,0.1)',
-              borderRadius: '8px',
-            }}>
-              <TabletOutlined style={{ color: 'white', fontSize: '16px' }} />
-              <span style={{ color: 'white', fontSize: '12px' }}>{userRole.toUpperCase()}</span>
-            </div>
             <Button
               type="text"
               icon={<LogoutOutlined />}
               onClick={handleLogout}
               style={{ 
                 color: 'white',
-                border: '1px solid rgba(255,255,255,0.3)'
+                border: '1px solid rgba(255,255,255,0.3)',
+                borderRadius: '4px'
               }}
             >
-              Logout
+              {userRole === 'admin' ? 'Admin Logout' : userRole === 'tso' ? 'TSO Logout' : `${userRole.charAt(0).toUpperCase() + userRole.slice(1)} Logout`}
             </Button>
           </div>
         </Header>
