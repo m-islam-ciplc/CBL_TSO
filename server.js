@@ -940,13 +940,26 @@ app.get('/api/product-caps', (req, res) => {
     SELECT pc.*, 
            p.product_code, 
            p.name as product_name,
-           COALESCE(SUM(oi.quantity), 0) as sold_quantity,
-           pc.max_quantity - COALESCE(SUM(oi.quantity), 0) as remaining_quantity
+           COALESCE((
+             SELECT SUM(oi.quantity)
+             FROM order_items oi
+             INNER JOIN orders o ON o.order_id = oi.order_id
+             INNER JOIN dealers d ON d.id = o.dealer_id
+             WHERE oi.product_id = pc.product_id
+               AND d.territory_name = pc.territory_name
+               AND DATE(o.created_at) = pc.date
+           ), 0) as sold_quantity,
+           pc.max_quantity - COALESCE((
+             SELECT SUM(oi.quantity)
+             FROM order_items oi
+             INNER JOIN orders o ON o.order_id = oi.order_id
+             INNER JOIN dealers d ON d.id = o.dealer_id
+             WHERE oi.product_id = pc.product_id
+               AND d.territory_name = pc.territory_name
+               AND DATE(o.created_at) = pc.date
+           ), 0) as remaining_quantity
     FROM daily_quotas pc
     JOIN products p ON pc.product_id = p.id
-    LEFT JOIN order_items oi ON oi.product_id = pc.product_id
-    LEFT JOIN orders o ON o.order_id = oi.order_id
-    LEFT JOIN dealers d ON d.id = o.dealer_id
     WHERE 1=1
   `;
   
@@ -963,9 +976,6 @@ app.get('/api/product-caps', (req, res) => {
   }
   
   query += `
-      AND (o.dealer_id IS NULL OR d.territory_name = pc.territory_name)
-      AND (o.id IS NULL OR DATE(o.created_at) = pc.date)
-    GROUP BY pc.id, pc.date, pc.product_id, pc.territory_name, pc.max_quantity, p.product_code, p.name
     ORDER BY pc.date DESC, p.product_code
   `;
   
