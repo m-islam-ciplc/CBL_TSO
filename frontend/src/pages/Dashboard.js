@@ -126,12 +126,12 @@ function Dashboard({ setStats }) {
               background: 'linear-gradient(135deg, #fd7e14 0%, #ff9500 50%, #ffaa00 100%)', 
               color: 'white'
             }}
-            bodyStyle={{ padding: '16px' }}
+            bodyStyle={{ padding: '12px' }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <CheckCircleOutlined style={{ fontSize: '24px', color: 'white' }} />
               <div>
-                <div style={{ color: 'white', fontSize: '14px', fontWeight: 500, marginBottom: '4px' }}>
+                <div style={{ color: 'white' }}>
                   Backend Connected
                 </div>
                 <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: '12px' }}>
@@ -147,12 +147,12 @@ function Dashboard({ setStats }) {
               background: 'linear-gradient(135deg, #20c997 0%, #17a2b8 50%, #6f42c1 100%)', 
               color: 'white'
             }}
-            bodyStyle={{ padding: '16px' }}
+            bodyStyle={{ padding: '12px' }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <DatabaseOutlined style={{ fontSize: '24px', color: 'white' }} />
               <div>
-                <div style={{ color: 'white', fontSize: '14px', fontWeight: 500, marginBottom: '4px' }}>
+                <div style={{ color: 'white' }}>
                   Database Connected
                 </div>
                 <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: '12px' }}>
@@ -168,12 +168,12 @@ function Dashboard({ setStats }) {
               background: 'linear-gradient(135deg, #c41d7f 0%, #eb2f96 50%, #ff69b4 100%)', 
               color: 'white'
             }}
-            bodyStyle={{ padding: '16px' }}
+            bodyStyle={{ padding: '12px' }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <ShoppingCartOutlined style={{ fontSize: '24px', color: 'white' }} />
               <div>
-                <div style={{ color: 'white', fontSize: '14px', fontWeight: 500, marginBottom: '4px' }}>
+                <div style={{ color: 'white' }}>
                   {data.orders.length} Orders Processed
                 </div>
                 <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: '12px' }}>

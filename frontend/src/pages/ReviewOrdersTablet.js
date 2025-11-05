@@ -28,7 +28,7 @@ const { Title, Text } = Typography;
 const { Option } = Select;
 
 function ReviewOrdersTablet({ onOrderCreated }) {
-  const { isTSO } = useUser();
+  const { isTSO, userId } = useUser();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
@@ -271,6 +271,7 @@ function ReviewOrdersTablet({ onOrderCreated }) {
         dealer_id: values.dealer,
         warehouse_id: values.warehouse,
         transport_id: values.transport,
+        user_id: userId, // Include user_id to track which TSO created the order
         order_items: orderItems.map(item => ({
           product_id: Number(item.product_id),
           quantity: Number(item.quantity)

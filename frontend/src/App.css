@@ -1,6 +1,9 @@
 /* Reduce spacing between menu icon and text */
 .ant-menu-horizontal .ant-menu-item {
   padding: 0 8px !important;
+  border-radius: 4px !important;
+  height: 40px !important;
+  line-height: 40px !important;
 }
 
 .ant-menu-horizontal .ant-menu-item > .anticon + span,
@@ -12,12 +15,23 @@
   margin-right: 4px !important;
 }
 
-/* Selected menu item with Warehouses card gradient */
+/* Hover state with subtle golden highlight */
+.ant-menu-horizontal .ant-menu-item:hover {
+  background: rgba(255, 193, 7, 0.2) !important;
+  border-radius: 4px !important;
+}
+
+/* Selected menu item with Golden Gradient */
 .ant-menu-horizontal .ant-menu-item-selected {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
-  border-radius: 4px;
+  background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%) !important;
+  border-radius: 4px !important;
 }
 
 .ant-menu-horizontal .ant-menu-item-selected::after {
   display: none !important;
+}
+
+/* Standardize all Card padding to 12px */
+.ant-card-body {
+  padding: 12px !important;
 }

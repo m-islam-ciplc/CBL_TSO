@@ -1748,11 +1748,14 @@ app.post('/api/orders', async (req, res) => {
         await db.promise().beginTransaction();
         
         try {
+            // Get user_id from request body (sent from frontend)
+            const user_id = req.body.user_id || null;
+            
             // Create the main order
             await db.promise().query(`
-                INSERT INTO orders (order_id, order_type_id, dealer_id, warehouse_id, transport_id) 
-                VALUES (?, ?, ?, ?, ?)
-            `, [order_id, order_type_id, dealer_id, warehouse_id, transport_id]);
+                INSERT INTO orders (order_id, order_type_id, dealer_id, warehouse_id, transport_id, user_id) 
+                VALUES (?, ?, ?, ?, ?, ?)
+            `, [order_id, order_type_id, dealer_id, warehouse_id, transport_id, user_id]);
 
             // Get dealer's territory for quota tracking
             const [dealerRows] = await db.promise().query(`
@@ -1801,7 +1804,10 @@ app.post('/api/orders', async (req, res) => {
 
 // Get all orders with their items
 app.get('/api/orders', (req, res) => {
-    const query = `
+    // Get user_id from query parameter (sent from frontend for TSO users)
+    const user_id = req.query.user_id;
+    
+    let query = `
         SELECT 
             o.*, 
             ot.name as order_type, 
@@ -1820,11 +1826,22 @@ app.get('/api/orders', (req, res) => {
         LEFT JOIN dealers d ON o.dealer_id = d.id
         LEFT JOIN warehouses w ON o.warehouse_id = w.id
         LEFT JOIN order_items oi ON o.order_id = oi.order_id
-        GROUP BY o.id, o.order_id, o.order_type_id, o.dealer_id, o.warehouse_id, o.created_at, ot.name, d.name, d.territory_name, w.name
+    `;
+    
+    const params = [];
+    
+    // Filter by user_id if provided (for TSO users to see only their orders)
+    if (user_id) {
+        query += ' WHERE o.user_id = ?';
+        params.push(user_id);
+    }
+    
+    query += `
+        GROUP BY o.id, o.order_id, o.order_type_id, o.dealer_id, o.warehouse_id, o.created_at, o.user_id, ot.name, d.name, d.territory_name, w.name
         ORDER BY o.created_at DESC
     `;
     
-    db.query(query, (err, results) => {
+    db.query(query, params, (err, results) => {
         if (err) {
             res.status(500).json({ error: err.message });
         } else {

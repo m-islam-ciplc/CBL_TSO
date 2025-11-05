@@ -11,7 +11,7 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
   const navigate = useNavigate();
-  const { setUserRole, setUserName, setTerritoryName } = useUser();
+  const { setUserRole, setUserName, setTerritoryName, setUserId } = useUser();
 
   const handleSubmit = async (values) => {
     setLoading(true);
@@ -25,6 +25,7 @@ function Login() {
         setUserName(user.full_name);
         setTerritoryName(user.territory_name);
         setUserRole(user.role);
+        setUserId(user.id);
         
         // Store in sessionStorage
         sessionStorage.setItem('user', JSON.stringify(user));

@@ -155,11 +155,15 @@ function TSODashboard() {
         </div>
 
         <Alert
-          message="Today's Product Allocations"
-          description={`Your quota allocations for ${dayjs().format('MMMM D, YYYY')}`}
+          message={<span style={{ color: 'white', fontSize: '14px' }}>{`Your quota allocations for ${dayjs().format('MMMM D, YYYY')}`}</span>}
           type="info"
           showIcon
-          icon={<InfoCircleOutlined />}
+          icon={<InfoCircleOutlined style={{ color: 'white', fontSize: '16px' }} />}
+          style={{
+            padding: '12px',
+            background: 'linear-gradient(135deg, #2c3e50 0%, #34495e 100%)',
+            border: 'none',
+          }}
         />
 
         <Row gutter={[16, 16]}>
@@ -170,6 +174,7 @@ function TSODashboard() {
                 border: 'none',
                 height: '100%',
               }}
+              bodyStyle={{ padding: '12px' }}
             >
               <Statistic
                 title={<span style={{ color: 'white' }}>Products Allocated</span>}
@@ -214,6 +219,7 @@ function TSODashboard() {
                 border: 'none',
                 height: '100%',
               }}
+              bodyStyle={{ padding: '12px' }}
             >
               <Statistic
                 title={<span style={{ color: 'white' }}>Sold Quantity</span>}
@@ -260,6 +266,7 @@ function TSODashboard() {
                 border: 'none',
                 height: '100%',
               }}
+              bodyStyle={{ padding: '12px' }}
             >
               <Statistic
                 title={<span style={{ color: 'white' }}>Remaining Quantity</span>}
@@ -317,7 +324,7 @@ function TSODashboard() {
           </Button>
         </div>
 
-        <Card title="Product Allocations">
+        <Card title="Product Allocations" bodyStyle={{ padding: '12px' }}>
           {quotas.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 0' }}>
               <InfoCircleOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />

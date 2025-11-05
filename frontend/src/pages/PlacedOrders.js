@@ -30,7 +30,7 @@ const { Title, Text } = Typography;
 const { Option } = Select;
 
 function PlacedOrders({ refreshTrigger }) {
-  const { isTSO } = useUser();
+  const { isTSO, userId } = useUser();
   const [orders, setOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -62,7 +62,9 @@ function PlacedOrders({ refreshTrigger }) {
   const loadOrders = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/orders');
+      // For TSO users, filter orders by their user_id
+      const params = isTSO && userId ? { user_id: userId } : {};
+      const response = await axios.get('/api/orders', { params });
       setOrders(response.data);
 
       // Load products for all orders automatically

@@ -129,10 +129,13 @@ CREATE TABLE IF NOT EXISTS orders (
     dealer_id INT NOT NULL,
     warehouse_id INT NOT NULL,
     transport_id INT,
+    user_id INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (order_type_id) REFERENCES order_types(id),
     FOREIGN KEY (dealer_id) REFERENCES dealers(id),
-    FOREIGN KEY (warehouse_id) REFERENCES warehouses(id)
+    FOREIGN KEY (warehouse_id) REFERENCES warehouses(id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_user_id (user_id)
 );
 
 -- Order Items table (separate table for order items)

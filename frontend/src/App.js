@@ -110,6 +110,11 @@ function AppContent() {
       icon: <CheckOutlined />,
       label: 'Review Orders',
     },
+    {
+      key: 'placed-orders',
+      icon: <OrderedListOutlined />,
+      label: 'Placed Orders',
+    },
   ] : [
     {
       key: 'dashboard',
@@ -157,13 +162,15 @@ function AppContent() {
     <Layout style={{ minHeight: '100vh' }}>
       {userRole && (
         <Header style={{
-          background: 'linear-gradient(90deg, #2c3e50 0%, #34495e 100%)',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           padding: '0 24px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
           zIndex: 1000,
+          height: '40px',
+          lineHeight: '40px',
         }}>
           {/* Logo and Title */}
           <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -240,11 +247,7 @@ function AppContent() {
           } />
           <Route path="/new-orders" element={<NewOrdersTablet onOrderCreated={refreshOrders} />} />
           <Route path="/review-orders" element={<ReviewOrdersTablet onOrderCreated={refreshOrders} />} />
-          <Route path="/placed-orders" element={
-            isTSO ? 
-            <NewOrdersTablet onOrderCreated={refreshOrders} /> : 
-            <PlacedOrders refreshTrigger={refreshTrigger} />
-          } />
+          <Route path="/placed-orders" element={<PlacedOrders refreshTrigger={refreshTrigger} />} />
           <Route path="/manage-dealers" element={
             isTSO ? 
             <NewOrdersTablet onOrderCreated={refreshOrders} /> : 

@@ -512,7 +512,7 @@ function ProductQuotaManagement() {
       </Text>
 
       {/* Allocation Form */}
-      <Card title="Allocate Quotas" style={{ marginBottom: '16px' }}>
+      <Card title="Allocate Quotas" style={{ marginBottom: '16px' }} bodyStyle={{ padding: '12px' }}>
         <Row gutter={[16, 16]} align="top">
             <Col flex="none" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
               <Space direction="vertical">
@@ -653,7 +653,7 @@ function ProductQuotaManagement() {
       </Card>
 
       {/* Current Allocations Table */}
-      <Card title="Allocated Quotas">
+      <Card title="Allocated Quotas" bodyStyle={{ padding: '12px' }}>
         <Table
           dataSource={getAllocations()}
           columns={allocationColumns}
