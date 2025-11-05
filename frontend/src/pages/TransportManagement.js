@@ -240,40 +240,54 @@ function TransportManagement() {
       {/* Statistics */}
       <Row gutter={[16, 16]} style={{ marginBottom: '16px' }}>
         <Col xs={24} sm={12} md={6}>
-          <Card size="small">
+          <Card 
+            size="small"
+            style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}
+          >
             <Statistic
-              title="Total Transports"
+              title={<span style={{ color: 'white' }}>Total Transports</span>}
               value={transports.length}
-              prefix={<TruckOutlined />}
+              prefix={<TruckOutlined style={{ color: 'white' }} />}
+              valueStyle={{ color: 'white', fontSize: '20px' }}
             />
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
-          <Card size="small">
+          <Card 
+            size="small"
+            style={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', color: 'white' }}
+          >
             <Statistic
-              title="Active Transports"
+              title={<span style={{ color: 'white' }}>Active Transports</span>}
               value={activeCount}
-              prefix={<CheckCircleOutlined />}
-              valueStyle={{ color: '#52c41a' }}
+              prefix={<CheckCircleOutlined style={{ color: 'white' }} />}
+              valueStyle={{ color: 'white', fontSize: '20px' }}
             />
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
-          <Card size="small">
+          <Card 
+            size="small"
+            style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', color: 'white' }}
+          >
             <Statistic
-              title="Inactive Transports"
+              title={<span style={{ color: 'white' }}>Inactive Transports</span>}
               value={inactiveCount}
-              prefix={<CheckCircleOutlined />}
-              valueStyle={{ color: '#ff4d4f' }}
+              prefix={<CheckCircleOutlined style={{ color: 'white' }} />}
+              valueStyle={{ color: 'white', fontSize: '20px' }}
             />
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
-          <Card size="small">
+          <Card 
+            size="small"
+            style={{ background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', color: 'white' }}
+          >
             <Statistic
-              title="Displayed"
+              title={<span style={{ color: 'white' }}>Displayed</span>}
               value={filteredTransports.length}
-              prefix={<SearchOutlined />}
+              prefix={<SearchOutlined style={{ color: 'white' }} />}
+              valueStyle={{ color: 'white', fontSize: '20px' }}
             />
           </Card>
         </Col>

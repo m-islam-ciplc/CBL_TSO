@@ -391,17 +391,29 @@ function ProductManagement() {
 
       {/* Statistics */}
       <Row gutter={[16, 16]} style={{ marginBottom: '16px' }}>
-        {stats.map((stat, index) => (
-          <Col xs={24} sm={12} md={6} key={index}>
-            <Card size="small">
-              <Statistic
-                title={stat.title}
-                value={stat.value}
-                prefix={stat.icon}
-              />
-            </Card>
-          </Col>
-        ))}
+        {stats.map((stat, index) => {
+          const gradients = [
+            'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', // Purple
+            'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', // Pink/Red
+            'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', // Blue/Cyan
+            'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', // Green/Teal
+          ];
+          return (
+            <Col xs={24} sm={12} md={6} key={index}>
+              <Card 
+                size="small"
+                style={{ background: gradients[index % gradients.length], color: 'white' }}
+              >
+                <Statistic
+                  title={<span style={{ color: 'white' }}>{stat.title}</span>}
+                  value={stat.value}
+                  prefix={React.cloneElement(stat.icon, { style: { color: 'white' } })}
+                  valueStyle={{ color: 'white', fontSize: '20px' }}
+                />
+              </Card>
+            </Col>
+          );
+        })}
       </Row>
 
       {/* Filters */}

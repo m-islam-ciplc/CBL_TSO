@@ -14,6 +14,8 @@ import {
   message,
   Row,
   Col,
+  DatePicker,
+  Space,
 } from 'antd';
 import {
   ReloadOutlined,
@@ -24,7 +26,9 @@ import {
   CarOutlined,
   DeleteOutlined,
   DownOutlined,
+  ClearOutlined,
 } from '@ant-design/icons';
+import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -36,7 +40,14 @@ function PlacedOrders({ refreshTrigger }) {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedDate, setSelectedDate] = useState(dayjs()); // Default to today
+  const [productFilter, setProductFilter] = useState(null);
+  const [dealerFilter, setDealerFilter] = useState(null);
+  const [transportFilter, setTransportFilter] = useState(null);
   const [orderProducts, setOrderProducts] = useState({});
+  const [productsList, setProductsList] = useState([]);
+  const [dealersList, setDealersList] = useState([]);
+  const [transportsList, setTransportsList] = useState([]);
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 20,
@@ -57,7 +68,27 @@ function PlacedOrders({ refreshTrigger }) {
 
   useEffect(() => {
     filterOrders();
-  }, [orders, searchTerm, statusFilter]);
+  }, [orders, searchTerm, statusFilter, selectedDate, productFilter, dealerFilter, transportFilter]);
+
+  // Load dropdown data
+  useEffect(() => {
+    loadDropdownData();
+  }, []);
+
+  const loadDropdownData = async () => {
+    try {
+      const [productsRes, dealersRes, transportsRes] = await Promise.all([
+        axios.get('/api/products'),
+        axios.get('/api/dealers'),
+        axios.get('/api/transports')
+      ]);
+      setProductsList(productsRes.data || []);
+      setDealersList(dealersRes.data || []);
+      setTransportsList(transportsRes.data || []);
+    } catch (error) {
+      console.error('Failed to load dropdown data:', error);
+    }
+  };
 
   const loadOrders = async () => {
     try {
@@ -102,12 +133,39 @@ function PlacedOrders({ refreshTrigger }) {
   const filterOrders = () => {
     let filtered = orders;
 
+    // Date filter - default to today
+    if (selectedDate) {
+      const selectedDateStr = selectedDate.format('YYYY-MM-DD');
+      filtered = filtered.filter(order => {
+        const orderDate = dayjs(order.created_at).format('YYYY-MM-DD');
+        return orderDate === selectedDateStr;
+      });
+    }
+
+    // Product filter
+    if (productFilter) {
+      filtered = filtered.filter(order => {
+        const products = orderProducts[order.order_id] || [];
+        return products.some(p => p.product_id === productFilter || p.product_code === productFilter);
+      });
+    }
+
+    // Dealer/Vendor filter
+    if (dealerFilter) {
+      filtered = filtered.filter(order => order.dealer_id === dealerFilter);
+    }
+
+    // Transport filter
+    if (transportFilter) {
+      filtered = filtered.filter(order => order.transport_id === transportFilter);
+    }
+
     // Search filter
     if (searchTerm) {
       filtered = filtered.filter(order =>
         order.order_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.dealer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.product_name.toLowerCase().includes(searchTerm.toLowerCase())
+        order.dealer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.product_name?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -119,6 +177,15 @@ function PlacedOrders({ refreshTrigger }) {
     setFilteredOrders(filtered);
     // Reset pagination when filters change
     setPagination(prev => ({ ...prev, current: 1 }));
+  };
+
+  const clearFilters = () => {
+    setSelectedDate(dayjs()); // Reset to today
+    setProductFilter(null);
+    setDealerFilter(null);
+    setTransportFilter(null);
+    setSearchTerm('');
+    setStatusFilter('all');
   };
 
   const handleTableChange = (newPagination) => {
@@ -299,46 +366,145 @@ function PlacedOrders({ refreshTrigger }) {
       </Text>
 
       {/* Filters */}
-      <Card style={{ marginBottom: '16px' }}>
-        <Row gutter={[16, 16]} align="middle" style={{ padding: '16px 0' }}>
-          <Col xs={24} sm={12} md={8}>
-            <Input
-              placeholder="Search orders..."
-              prefix={<SearchOutlined />}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              size="middle"
-            />
+      <Card style={{ marginBottom: '16px' }} bodyStyle={{ padding: '12px' }}>
+        <Row gutter={[12, 12]}>
+          <Col xs={24} sm={12} md={6}>
+            <Space direction="vertical" style={{ width: '100%' }} size="small">
+              <Text strong style={{ fontSize: '12px' }}>Date</Text>
+              <DatePicker
+                value={selectedDate}
+                onChange={setSelectedDate}
+                format="YYYY-MM-DD"
+                style={{ width: '100%' }}
+                size="middle"
+                allowClear={false}
+              />
+            </Space>
           </Col>
-          <Col xs={24} sm={12} md={8}>
-            <Select
-              placeholder="Filter by status"
-              value={statusFilter}
-              onChange={setStatusFilter}
-              style={{ width: '100%' }}
-              size="middle"
-              allowClear
-              showSearch
-              filterOption={(input, option) => {
-                const optionText = option?.children?.toString() || '';
-                return optionText.toLowerCase().includes(input.toLowerCase());
-              }}
-            >
-              <Option value="all">All Orders</Option>
-              <Option value="new">New</Option>
-              <Option value="processing">Processing</Option>
-              <Option value="shipped">Shipped</Option>
-              <Option value="completed">Completed</Option>
-            </Select>
+          <Col xs={24} sm={12} md={6}>
+            <Space direction="vertical" style={{ width: '100%' }} size="small">
+              <Text strong style={{ fontSize: '12px' }}>Product</Text>
+              <Select
+                placeholder="All Products"
+                value={productFilter}
+                onChange={setProductFilter}
+                style={{ width: '100%' }}
+                size="middle"
+                allowClear
+                showSearch
+                filterOption={(input, option) => {
+                  const optionText = option?.children?.toString() || '';
+                  return optionText.toLowerCase().includes(input.toLowerCase());
+                }}
+              >
+                {productsList.map(product => (
+                  <Option key={product.id} value={product.id}>
+                    {product.product_code} - {product.name}
+                  </Option>
+                ))}
+              </Select>
+            </Space>
           </Col>
-          <Col xs={24} sm={12} md={8}>
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={loadOrders}
-              style={{ width: '100%' }}
-            >
-              Refresh
-            </Button>
+          <Col xs={24} sm={12} md={6}>
+            <Space direction="vertical" style={{ width: '100%' }} size="small">
+              <Text strong style={{ fontSize: '12px' }}>Dealer</Text>
+              <Select
+                placeholder="All Dealers"
+                value={dealerFilter}
+                onChange={setDealerFilter}
+                style={{ width: '100%' }}
+                size="middle"
+                allowClear
+                showSearch
+                filterOption={(input, option) => {
+                  const optionText = option?.children?.toString() || '';
+                  return optionText.toLowerCase().includes(input.toLowerCase());
+                }}
+              >
+                {dealersList.map(dealer => (
+                  <Option key={dealer.id} value={dealer.id}>
+                    {dealer.name}
+                  </Option>
+                ))}
+              </Select>
+            </Space>
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Space direction="vertical" style={{ width: '100%' }} size="small">
+              <Text strong style={{ fontSize: '12px' }}>Transport</Text>
+              <Select
+                placeholder="All Transports"
+                value={transportFilter}
+                onChange={setTransportFilter}
+                style={{ width: '100%' }}
+                size="middle"
+                allowClear
+                showSearch
+                filterOption={(input, option) => {
+                  const optionText = option?.children?.toString() || '';
+                  return optionText.toLowerCase().includes(input.toLowerCase());
+                }}
+              >
+                {transportsList.map(transport => (
+                  <Option key={transport.id} value={transport.id}>
+                    {transport.truck_details || transport.truck_no || `Transport #${transport.id}`}
+                  </Option>
+                ))}
+              </Select>
+            </Space>
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Space direction="vertical" style={{ width: '100%' }} size="small">
+              <Text strong style={{ fontSize: '12px' }}>Search</Text>
+              <Input
+                placeholder="Search orders..."
+                prefix={<SearchOutlined />}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                size="middle"
+                allowClear
+              />
+            </Space>
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Space direction="vertical" style={{ width: '100%' }} size="small">
+              <Text strong style={{ fontSize: '12px' }}>Status</Text>
+              <Select
+                placeholder="All Status"
+                value={statusFilter}
+                onChange={setStatusFilter}
+                style={{ width: '100%' }}
+                size="middle"
+                allowClear
+              >
+                <Option value="all">All Orders</Option>
+                <Option value="new">New</Option>
+                <Option value="processing">Processing</Option>
+                <Option value="shipped">Shipped</Option>
+                <Option value="completed">Completed</Option>
+              </Select>
+            </Space>
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Space direction="vertical" style={{ width: '100%' }} size="small">
+              <Text strong style={{ fontSize: '12px' }}>Actions</Text>
+              <Space style={{ width: '100%' }}>
+                <Button
+                  icon={<ReloadOutlined />}
+                  onClick={loadOrders}
+                  style={{ flex: 1 }}
+                >
+                  Refresh
+                </Button>
+                <Button
+                  icon={<ClearOutlined />}
+                  onClick={clearFilters}
+                  style={{ flex: 1 }}
+                >
+                  Clear
+                </Button>
+              </Space>
+            </Space>
           </Col>
         </Row>
       </Card>
@@ -346,9 +512,7 @@ function PlacedOrders({ refreshTrigger }) {
       {/* Orders Table */}
       <Card>
         <div style={{ marginBottom: '16px' }}>
-          <Text strong style={{ fontSize: '16px' }}>
-            Orders ({filteredOrders.length})
-          </Text>
+          <Text strong>Orders ({filteredOrders.length})</Text>
         </div>
 
         {filteredOrders.length === 0 ? (

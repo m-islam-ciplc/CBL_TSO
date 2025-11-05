@@ -414,40 +414,55 @@ function DealerManagement() {
       {/* Statistics */}
       <Row gutter={[16, 16]} style={{ marginBottom: '16px' }}>
         <Col xs={24} sm={12} md={6}>
-          <Card size="small">
+          <Card 
+            size="small"
+            style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}
+          >
             <Statistic
-              title="Total Dealers"
+              title={<span style={{ color: 'white' }}>Total Dealers</span>}
               value={dealers.length}
-              prefix={<UserOutlined />}
+              prefix={<UserOutlined style={{ color: 'white' }} />}
+              valueStyle={{ color: 'white', fontSize: '20px' }}
             />
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
-          <Card size="small">
+          <Card 
+            size="small"
+            style={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', color: 'white' }}
+          >
             <Statistic
-              title="Active Dealers"
+              title={<span style={{ color: 'white' }}>Active Dealers</span>}
               value={dealers.filter(d => d.dealer_status === 'O').length}
-              prefix={<ShopOutlined />}
-              valueStyle={{ color: '#52c41a' }}
+              prefix={<ShopOutlined style={{ color: 'white' }} />}
+              valueStyle={{ color: 'white', fontSize: '20px' }}
             />
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
-          <Card size="small">
+          <Card 
+            size="small"
+            style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', color: 'white' }}
+          >
             <Statistic
-              title="Territories"
+              title={<span style={{ color: 'white' }}>Territories</span>}
               value={territories.length}
-              prefix={<EnvironmentOutlined />}
+              prefix={<EnvironmentOutlined style={{ color: 'white' }} />}
+              valueStyle={{ color: 'white', fontSize: '20px' }}
             />
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
-          <Card size="small">
+          <Card 
+            size="small"
+            style={{ background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', color: 'white' }}
+          >
             <Statistic
-              title="With Contact"
+              title={<span style={{ color: 'white' }}>With Contact</span>}
               value={dealers.filter(d => d.contact).length}
-              prefix={<PhoneOutlined />}
-              suffix="/1580"
+              prefix={<PhoneOutlined style={{ color: 'white' }} />}
+              suffix={<span style={{ color: 'rgba(255,255,255,0.8)' }}>/1580</span>}
+              valueStyle={{ color: 'white', fontSize: '20px' }}
             />
           </Card>
         </Col>
