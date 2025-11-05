@@ -123,7 +123,7 @@ function Dashboard({ setStats }) {
         <Col xs={24} sm={8} md={8}>
           <Card 
             style={{ 
-              background: 'linear-gradient(135deg, #52c41a 0%, #73d13d 100%)', 
+              background: 'linear-gradient(135deg, #fd7e14 0%, #ff9500 50%, #ffaa00 100%)', 
               color: 'white'
             }}
             bodyStyle={{ padding: '16px' }}
@@ -144,7 +144,7 @@ function Dashboard({ setStats }) {
         <Col xs={24} sm={8} md={8}>
           <Card 
             style={{ 
-              background: 'linear-gradient(135deg, #1890ff 0%, #40a9ff 100%)', 
+              background: 'linear-gradient(135deg, #20c997 0%, #17a2b8 50%, #6f42c1 100%)', 
               color: 'white'
             }}
             bodyStyle={{ padding: '16px' }}
@@ -165,7 +165,7 @@ function Dashboard({ setStats }) {
         <Col xs={24} sm={8} md={8}>
           <Card 
             style={{ 
-              background: 'linear-gradient(135deg, #722ed1 0%, #9254de 100%)', 
+              background: 'linear-gradient(135deg, #c41d7f 0%, #eb2f96 50%, #ff69b4 100%)', 
               color: 'white'
             }}
             bodyStyle={{ padding: '16px' }}
