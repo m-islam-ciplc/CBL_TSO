@@ -1635,7 +1635,7 @@ app.post('/api/dealers/import', upload.single('file'), async (req, res) => {
 
 // Get all order types
 app.get('/api/order-types', (req, res) => {
-    db.query('SELECT id, name FROM order_types', (err, results) => {
+    db.query('SELECT id, name FROM order_types ORDER BY id', (err, results) => {
         if (err) {
             res.status(500).json({ error: err.message });
         } else {
@@ -1646,7 +1646,7 @@ app.get('/api/order-types', (req, res) => {
 
 // Get all warehouses
 app.get('/api/warehouses', (req, res) => {
-    db.query('SELECT id, name, alias FROM warehouses', (err, results) => {
+    db.query('SELECT id, name, alias FROM warehouses ORDER BY id', (err, results) => {
         if (err) {
             res.status(500).json({ error: err.message });
         } else {
