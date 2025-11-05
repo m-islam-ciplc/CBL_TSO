@@ -64,8 +64,8 @@ function AppContent() {
     sessionStorage.removeItem('token');
     
     // Clear form data
-    localStorage.removeItem('tsoFormData');
-    localStorage.removeItem('tsoOrderItems');
+    sessionStorage.removeItem('tsoFormData');
+    sessionStorage.removeItem('tsoOrderItems');
     
     // Clear user context
     setUserRole(null);

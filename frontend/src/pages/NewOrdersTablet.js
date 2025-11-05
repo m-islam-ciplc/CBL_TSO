@@ -53,7 +53,7 @@ function NewOrdersTablet({ onOrderCreated }) {
   useEffect(() => {
     loadDropdownData();
     // Load existing order items from localStorage
-    const savedOrderItems = localStorage.getItem('tsoOrderItems');
+    const savedOrderItems = sessionStorage.getItem('tsoOrderItems');
     if (savedOrderItems) {
       try {
         const parsedItems = JSON.parse(savedOrderItems);
@@ -65,7 +65,7 @@ function NewOrdersTablet({ onOrderCreated }) {
     }
     
     // Check if we have saved form data (means user clicked "Add More")
-    const savedFormData = localStorage.getItem('tsoFormData');
+    const savedFormData = sessionStorage.getItem('tsoFormData');
     if (savedFormData && savedOrderItems) {
       // User has both saved form data and existing order items - they're adding more
       setIsAddingMore(true);
@@ -75,7 +75,7 @@ function NewOrdersTablet({ onOrderCreated }) {
   // Auto-select territory for TSO users
   useEffect(() => {
     if (isTSO && territoryName && dropdownData.territories.length > 0) {
-      const savedFormData = localStorage.getItem('tsoFormData');
+      const savedFormData = sessionStorage.getItem('tsoFormData');
       if (!savedFormData) {
         // Clean territory name from context (remove " Territory" suffix)
         const cleanTerritoryName = territoryName.replace(/\s+Territory$/i, '');
@@ -230,7 +230,7 @@ function NewOrdersTablet({ onOrderCreated }) {
       setFilteredProducts(productsRes.data); // Initialize filtered products
 
       // Try to restore saved form data, otherwise use defaults
-      const savedFormData = localStorage.getItem('tsoFormData');
+      const savedFormData = sessionStorage.getItem('tsoFormData');
       if (savedFormData) {
         try {
           const formData = JSON.parse(savedFormData);
@@ -507,7 +507,7 @@ function NewOrdersTablet({ onOrderCreated }) {
     setOrderItems(updatedItems);
     
     // Save to localStorage
-    localStorage.setItem('tsoOrderItems', JSON.stringify(updatedItems));
+    sessionStorage.setItem('tsoOrderItems', JSON.stringify(updatedItems));
     
     // Reset quantity for this product
     setProductQuantities(prev => ({
@@ -589,7 +589,7 @@ function NewOrdersTablet({ onOrderCreated }) {
               // Only save if there are actual values
               const hasValues = Object.values(individualValues).some(value => value !== undefined && value !== null && value !== '');
               if (hasValues) {
-                localStorage.setItem('tsoFormData', JSON.stringify(individualValues));
+                sessionStorage.setItem('tsoFormData', JSON.stringify(individualValues));
               }
             }}
           >
@@ -895,14 +895,14 @@ function NewOrdersTablet({ onOrderCreated }) {
                   console.log('🔍 Has form values to save:', hasValues);
                   
                   if (hasValues) {
-                    localStorage.setItem('tsoFormData', JSON.stringify(individualValues));
+                    sessionStorage.setItem('tsoFormData', JSON.stringify(individualValues));
                     console.log('✅ Form data saved to localStorage:', individualValues);
                   } else {
                     console.log('❌ No form values to save - form might be empty');
                   }
                   
                   // Verify it was saved
-                  const saved = localStorage.getItem('tsoFormData');
+                  const saved = sessionStorage.getItem('tsoFormData');
                   console.log('🔍 Verification - saved data:', saved);
                   
                   window.location.href = '/review-orders';

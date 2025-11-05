@@ -59,7 +59,7 @@ function ReviewOrdersTablet({ onOrderCreated }) {
   // Load form data when dropdown data is ready
   useEffect(() => {
     if (!dataLoading && dropdownData.orderTypes && dropdownData.orderTypes.length > 0) {
-      const savedFormData = localStorage.getItem('tsoFormData');
+      const savedFormData = sessionStorage.getItem('tsoFormData');
       if (savedFormData) {
         try {
           const formData = JSON.parse(savedFormData);
@@ -81,7 +81,7 @@ function ReviewOrdersTablet({ onOrderCreated }) {
   useEffect(() => {
     loadDropdownData();
     // Load order items from localStorage or context
-    const savedOrderItems = localStorage.getItem('tsoOrderItems');
+    const savedOrderItems = sessionStorage.getItem('tsoOrderItems');
     if (savedOrderItems) {
       setOrderItems(JSON.parse(savedOrderItems));
     }
@@ -132,7 +132,7 @@ function ReviewOrdersTablet({ onOrderCreated }) {
       });
 
       // Load saved form data if it exists - only after dropdown data is ready
-      const savedFormData = localStorage.getItem('tsoFormData');
+      const savedFormData = sessionStorage.getItem('tsoFormData');
       console.log('🔍 Raw saved form data from localStorage:', savedFormData);
       if (savedFormData) {
         try {
@@ -218,19 +218,19 @@ function ReviewOrdersTablet({ onOrderCreated }) {
       item.id === itemId ? { ...item, [field]: value } : item
     );
     setOrderItems(updatedItems);
-    localStorage.setItem('tsoOrderItems', JSON.stringify(updatedItems));
+    sessionStorage.setItem('tsoOrderItems', JSON.stringify(updatedItems));
   };
 
   const removeOrderItem = (itemId) => {
     const updatedItems = orderItems.filter(item => item.id !== itemId);
     setOrderItems(updatedItems);
-    localStorage.setItem('tsoOrderItems', JSON.stringify(updatedItems));
+    sessionStorage.setItem('tsoOrderItems', JSON.stringify(updatedItems));
   };
 
   const clearAllItems = () => {
     setOrderItems([]);
-    localStorage.removeItem('tsoOrderItems');
-    localStorage.removeItem('tsoFormData');
+    sessionStorage.removeItem('tsoOrderItems');
+    sessionStorage.removeItem('tsoFormData');
     form.resetFields();
     message.success('All items and form data cleared');
   };
@@ -285,8 +285,8 @@ function ReviewOrdersTablet({ onOrderCreated }) {
         
         // Clear the order and form data
         setOrderItems([]);
-        localStorage.removeItem('tsoOrderItems');
-        localStorage.removeItem('tsoFormData');
+        sessionStorage.removeItem('tsoOrderItems');
+        sessionStorage.removeItem('tsoFormData');
         form.resetFields();
         
         onOrderCreated();
@@ -615,8 +615,8 @@ function ReviewOrdersTablet({ onOrderCreated }) {
                onClick={() => {
                  // Clear all order data
                  setOrderItems([]);
-                 localStorage.removeItem('tsoOrderItems');
-                 localStorage.removeItem('tsoFormData');
+                 sessionStorage.removeItem('tsoOrderItems');
+                 sessionStorage.removeItem('tsoFormData');
                  form.resetFields();
                  message.info('Order cancelled');
                  window.location.href = '/new-orders';
@@ -638,7 +638,7 @@ function ReviewOrdersTablet({ onOrderCreated }) {
                onClick={() => {
                  // Save current form data before navigating
                  const formValues = form.getFieldsValue();
-                 localStorage.setItem('tsoFormData', JSON.stringify(formValues));
+                 sessionStorage.setItem('tsoFormData', JSON.stringify(formValues));
                  window.location.href = '/new-orders';
                }}
                style={{ 
