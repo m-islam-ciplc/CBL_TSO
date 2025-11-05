@@ -104,15 +104,34 @@ docker-compose up -d --build
 
 ### **Stop Services**
 ```bash
-# Stop all services (keeps data)
+# Stop all services (keeps data, networks, and images)
 docker-compose down
 
-# Stop and remove everything (KEEPS DATA)
-docker-compose down
-
-# Stop and remove everything INCLUDING DATA
+# Stop and remove everything INCLUDING DATA (WARNING: Deletes database)
 docker-compose down -v
+# or
+docker-compose down --volumes
+
+# Stop, remove images, and volumes (COMPLETE CLEANUP)
+docker-compose down --rmi all --volumes
+# This removes:
+#   ✅ Containers
+#   ✅ Networks  
+#   ✅ All images used by services (--rmi all)
+#   ✅ All volumes including database data (--volumes)
+#   ⚠️  WARNING: This deletes ALL data permanently!
 ```
+
+**What Each Command Does:**
+
+| Command | Containers | Networks | Images | Volumes | Use Case |
+|---------|-----------|----------|--------|---------|----------|
+| `docker-compose down` | ✅ Removed | ✅ Removed | ❌ Kept | ❌ Kept | Normal shutdown, keep data |
+| `docker-compose down -v` | ✅ Removed | ✅ Removed | ❌ Kept | ✅ Removed | Fresh database, keep images |
+| `docker-compose down --rmi all` | ✅ Removed | ✅ Removed | ✅ Removed | ❌ Kept | Remove images, keep data |
+| `docker-compose down --rmi all --volumes` | ✅ Removed | ✅ Removed | ✅ Removed | ✅ Removed | **Complete cleanup** |
+
+> **⚠️ Important:** `--volumes` flag deletes database data, uploaded files, and all persisted data. Always backup before using `--volumes` in production!
 
 ### **Status & Monitoring**
 ```bash
@@ -214,12 +233,16 @@ docker-compose logs --tail=50
 
 ### **Emergency Commands**
 ```bash
-# Force restart everything
+# Force restart everything (keeps data)
 docker-compose down
 docker-compose up -d --build
 
-# Reset everything (WARNING: Deletes data)
+# Reset everything - fresh database (WARNING: Deletes data)
 docker-compose down -v
+docker-compose up -d --build
+
+# Complete cleanup - remove everything including images (WARNING: Deletes ALL data)
+docker-compose down --rmi all --volumes
 docker-compose up -d --build
 
 # View detailed container info
@@ -227,6 +250,24 @@ docker inspect cbl-so-backend
 docker inspect cbl-so-frontend
 docker inspect cbl-so-mysql
 ```
+
+**Complete Cleanup Explained:**
+```bash
+docker-compose down --rmi all --volumes
+```
+This command removes:
+- ✅ All containers
+- ✅ All networks
+- ✅ All images built by this project (`--rmi all`)
+- ✅ All volumes including database data (`--volumes`)
+
+**Result:** Complete fresh start. Database will be recreated from `database.sql` on next `docker-compose up`.
+
+> **💡 Use Case:** When you need to:
+> - Fix schema issues (reapply `database.sql`)
+> - Start completely fresh
+> - Free up disk space
+> - Resolve persistent Docker issues
 
 ## Health Checks
 
@@ -352,15 +393,27 @@ docker-compose exec mysql mysqldump -u cbl_so_user -p cbl_so > backup_${DATE}.sq
 ### Reset Everything
 
 ```bash
-# Stop and remove everything
+# Option 1: Reset database but keep images
 docker-compose down -v
-
-# Remove images (optional)
-docker-compose down --rmi all
-
-# Start fresh
 docker-compose up -d --build
+
+# Option 2: Complete cleanup (removes images and volumes)
+docker-compose down --rmi all --volumes
+docker-compose up -d --build
+
+# Option 3: Step-by-step (if you need more control)
+docker-compose down          # Stop containers
+docker-compose down --rmi all --volumes  # Remove images and volumes
+docker-compose up -d --build  # Rebuild and start fresh
 ```
+
+**What Happens:**
+- All containers, networks, images, and volumes are removed
+- On next `docker-compose up`, everything is rebuilt from scratch
+- Database is recreated from `database.sql` (fresh schema)
+- All data is permanently deleted
+
+> **⚠️ WARNING:** Always backup your database before using `--volumes` flag!
 
 ## Monitoring
 

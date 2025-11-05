@@ -128,13 +128,23 @@ CREATE TABLE IF NOT EXISTS orders (
     order_type_id INT NOT NULL,
     dealer_id INT NOT NULL,
     warehouse_id INT NOT NULL,
-    product_id INT NOT NULL,
-    quantity INT NOT NULL,
+    transport_id INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (order_type_id) REFERENCES order_types(id),
     FOREIGN KEY (dealer_id) REFERENCES dealers(id),
-    FOREIGN KEY (warehouse_id) REFERENCES warehouses(id),
-    FOREIGN KEY (product_id) REFERENCES products(id)
+    FOREIGN KEY (warehouse_id) REFERENCES warehouses(id)
+);
+
+-- Order Items table (separate table for order items)
+CREATE TABLE IF NOT EXISTS order_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id VARCHAR(50) NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES products(id),
+    INDEX idx_order_id (order_id),
+    INDEX idx_product_id (product_id)
 );
 
 -- Transports table
