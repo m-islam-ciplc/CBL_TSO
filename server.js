@@ -573,7 +573,25 @@ const upload = multer({
 
 // Create uploads directory if it doesn't exist
 if (!fs.existsSync('uploads')) {
-    fs.mkdirSync('uploads');
+    fs.mkdirSync('uploads', { recursive: true });
+    console.log('📁 Created uploads directory');
+} else {
+    console.log('📁 Uploads directory exists');
+}
+
+// Check uploads directory permissions
+try {
+    fs.accessSync('uploads', fs.constants.R_OK | fs.constants.W_OK);
+    console.log('✅ Uploads directory is readable and writable');
+} catch (err) {
+    console.error('❌ Uploads directory permission issue:', err.message);
+    // Try to fix permissions (only works on Unix-like systems)
+    try {
+        fs.chmodSync('uploads', 0o777);
+        console.log('🔧 Fixed uploads directory permissions');
+    } catch (chmodErr) {
+        console.error('❌ Could not fix permissions:', chmodErr.message);
+    }
 }
 
 // MySQL connection
@@ -1203,9 +1221,33 @@ app.post('/api/products/import', upload.single('file'), async (req, res) => {
         }
 
         console.log('📁 Processing uploaded product file (CBL products only):', req.file.filename);
+        console.log('📁 File path:', req.file.path);
+        console.log('📁 File size:', req.file.size, 'bytes');
+
+        // Check if file exists and is readable
+        if (!fs.existsSync(req.file.path)) {
+            console.error('❌ Uploaded file does not exist at path:', req.file.path);
+            return res.status(500).json({ error: 'Uploaded file not found. Please check uploads directory permissions.' });
+        }
+
+        // Check uploads directory permissions
+        try {
+            fs.accessSync('uploads', fs.constants.W_OK);
+        } catch (err) {
+            console.error('❌ Uploads directory is not writable:', err.message);
+            return res.status(500).json({ error: 'Uploads directory is not writable. Please check directory permissions.' });
+        }
 
         // Read the uploaded Excel file
-        const workbook = XLSX.readFile(req.file.path);
+        let workbook;
+        try {
+            workbook = XLSX.readFile(req.file.path);
+        } catch (readError) {
+            console.error('❌ Error reading Excel file:', readError.message);
+            console.error('❌ File path:', req.file.path);
+            return res.status(500).json({ error: `Failed to read Excel file: ${readError.message}. Please check file format and permissions.` });
+        }
+
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
@@ -1375,6 +1417,18 @@ PRODUCT_CATEGORY
 
     } catch (error) {
         console.error('❌ Import failed:', error.message);
+        console.error('❌ Error stack:', error.stack);
+        
+        // Clean up uploaded file on error
+        if (req.file && fs.existsSync(req.file.path)) {
+            try {
+                fs.unlinkSync(req.file.path);
+                console.log('🗑️ Cleaned up uploaded file after error');
+            } catch (cleanupError) {
+                console.error('❌ Error cleaning up file:', cleanupError.message);
+            }
+        }
+        
         res.status(500).json({ error: 'Import failed: ' + error.message });
     }
 });

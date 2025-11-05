@@ -71,8 +71,37 @@ CREATE TABLE IF NOT EXISTS dealers (
 -- Products table (must come before daily_quotas)
 CREATE TABLE IF NOT EXISTS products (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL UNIQUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    product_code VARCHAR(50) NOT NULL UNIQUE,
+    name VARCHAR(255) NOT NULL,
+    unit_measure VARCHAR(50),
+    product_category VARCHAR(50),
+    brand_code VARCHAR(50),
+    brand_name VARCHAR(100),
+    application_code VARCHAR(50),
+    application_name VARCHAR(100),
+    price_date DATE,
+    unit_tp DECIMAL(10, 2),
+    oem_price DECIMAL(10, 2),
+    b2b_price DECIMAL(10, 2),
+    special_price DECIMAL(10, 2),
+    employee_price DECIMAL(10, 2),
+    cash_price DECIMAL(10, 2),
+    mrp DECIMAL(10, 2),
+    unit_trade_price DECIMAL(10, 2),
+    unit_vat DECIMAL(10, 2),
+    supp_tax DECIMAL(10, 2),
+    gross_profit DECIMAL(10, 2),
+    bonus_allow VARCHAR(10),
+    discount_allow VARCHAR(10),
+    discount_type VARCHAR(50),
+    discount_val DECIMAL(10, 2),
+    pack_size VARCHAR(50),
+    shipper_qty INT,
+    status VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_product_code (product_code),
+    INDEX idx_product_category (product_category)
 );
 
 -- Daily Quotas table

@@ -5,6 +5,10 @@ FROM mysql:8.0
 # Copy custom MySQL configuration with Bangladesh timezone
 COPY my.cnf /etc/mysql/conf.d/
 
+# Copy database schema into the image
+# This ensures the schema is baked into the image and doesn't depend on host filesystem
+COPY database.sql /docker-entrypoint-initdb.d/init.sql
+
 # Keep the default MySQL entrypoint
 # Environment variables and database initialization are handled by docker-compose.yml
 

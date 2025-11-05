@@ -18,7 +18,8 @@ services:
       - "3307:3306"
     volumes:
       - cbl-so-mysql-data:/var/lib/mysql
-      - ./database.sql:/docker-entrypoint-initdb.d/init.sql
+      # database.sql is now copied into the image via Dockerfile.mysql
+      # No need for bind mount - image is self-contained
     networks:
       - cbl-so-network
     healthcheck:
