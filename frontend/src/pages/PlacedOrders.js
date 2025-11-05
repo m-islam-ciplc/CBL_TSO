@@ -362,7 +362,7 @@ function PlacedOrders({ refreshTrigger }) {
         Placed Orders
       </Title>
       <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
-        View and manage orders placed by TSOs
+        {isTSO ? 'View orders placed by you' : 'View and manage orders placed by TSOs'}
       </Text>
 
       {/* Filters */}
@@ -455,19 +455,6 @@ function PlacedOrders({ refreshTrigger }) {
           </Col>
           <Col xs={24} sm={12} md={6}>
             <Space direction="vertical" style={{ width: '100%' }} size="small">
-              <Text strong style={{ fontSize: '12px' }}>Search</Text>
-              <Input
-                placeholder="Search orders..."
-                prefix={<SearchOutlined />}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                size="middle"
-                allowClear
-              />
-            </Space>
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <Space direction="vertical" style={{ width: '100%' }} size="small">
               <Text strong style={{ fontSize: '12px' }}>Status</Text>
               <Select
                 placeholder="All Status"
@@ -511,8 +498,17 @@ function PlacedOrders({ refreshTrigger }) {
 
       {/* Orders Table */}
       <Card>
-        <div style={{ marginBottom: '16px' }}>
-          <Text strong>Orders ({filteredOrders.length})</Text>
+        <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text strong>{isTSO ? `Today's Orders (${filteredOrders.length})` : `Today's Orders Placed by TSOs (${filteredOrders.length})`}</Text>
+          <Input
+            placeholder="Search orders..."
+            prefix={<SearchOutlined />}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            size="middle"
+            allowClear
+            style={{ width: '300px' }}
+          />
         </div>
 
         {filteredOrders.length === 0 ? (
