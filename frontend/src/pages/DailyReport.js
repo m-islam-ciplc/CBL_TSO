@@ -257,7 +257,7 @@ function DailyReport() {
           {orderId}
         </Tag>
       ),
-      width: 120,
+      width: 90,
       sorter: (a, b) => a.order_id.localeCompare(b.order_id),
     },
     {

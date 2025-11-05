@@ -1742,7 +1742,7 @@ app.post('/api/orders', async (req, res) => {
             }
         }
 
-        const order_id = 'ORD-' + uuidv4().substring(0, 8).toUpperCase();
+        const order_id = uuidv4().substring(0, 8).toUpperCase();
         
         // Start transaction
         await db.promise().beginTransaction();

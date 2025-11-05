@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useUser } from '../contexts/UserContext';
 import {
@@ -58,23 +58,6 @@ function PlacedOrders({ refreshTrigger }) {
     defaultPageSize: 20,
   });
 
-  useEffect(() => {
-    loadOrders();
-  }, []);
-
-  useEffect(() => {
-    loadOrders();
-  }, [refreshTrigger]);
-
-  useEffect(() => {
-    filterOrders();
-  }, [orders, searchTerm, statusFilter, selectedDate, productFilter, dealerFilter, transportFilter]);
-
-  // Load dropdown data
-  useEffect(() => {
-    loadDropdownData();
-  }, []);
-
   const loadDropdownData = async () => {
     try {
       const [productsRes, dealersRes, transportsRes] = await Promise.all([
@@ -90,7 +73,7 @@ function PlacedOrders({ refreshTrigger }) {
     }
   };
 
-  const loadOrders = async () => {
+  const loadOrders = useCallback(async () => {
     try {
       setLoading(true);
       // For TSO users, filter orders by their user_id
@@ -128,7 +111,24 @@ function PlacedOrders({ refreshTrigger }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [isTSO, userId]);
+
+  useEffect(() => {
+    loadOrders();
+  }, [loadOrders]);
+
+  useEffect(() => {
+    loadOrders();
+  }, [refreshTrigger, loadOrders]);
+
+  useEffect(() => {
+    filterOrders();
+  }, [orders, searchTerm, statusFilter, selectedDate, productFilter, dealerFilter, transportFilter]);
+
+  // Load dropdown data
+  useEffect(() => {
+    loadDropdownData();
+  }, []);
 
   const filterOrders = () => {
     let filtered = orders;
@@ -236,7 +236,7 @@ function PlacedOrders({ refreshTrigger }) {
           {orderId}
         </Tag>
       ),
-      width: 120,
+      width: 90,
       sorter: (a, b) => a.order_id.localeCompare(b.order_id),
     },
     {
@@ -338,7 +338,7 @@ function PlacedOrders({ refreshTrigger }) {
       width: 150,
       sorter: (a, b) => new Date(a.created_at) - new Date(b.created_at),
     },
-    {
+    ...(!isTSO ? [{
       title: 'Actions',
       key: 'actions',
       render: (_, record) => (
@@ -353,7 +353,7 @@ function PlacedOrders({ refreshTrigger }) {
         </Tooltip>
       ),
       width: 60,
-    },
+    }] : []),
   ];
 
   return (
