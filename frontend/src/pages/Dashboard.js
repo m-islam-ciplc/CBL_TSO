@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Row, Col, Card, Statistic, Typography, List, Avatar, Spin, Alert, Space } from 'antd';
+import { Row, Col, Card, Statistic, Typography, List, Spin, Alert, Space } from 'antd';
 import {
   UserOutlined,
   ShopOutlined,
@@ -213,7 +213,6 @@ function Dashboard({ setStats }) {
                 renderItem={order => (
                   <List.Item key={order.id}>
                     <List.Item.Meta
-                      avatar={<Avatar style={{ backgroundColor: '#1890ff' }}>{order.order_id.substring(4, 6)}</Avatar>}
                       title={<Text strong>{order.order_id}</Text>}
                       description={
                         <div>
