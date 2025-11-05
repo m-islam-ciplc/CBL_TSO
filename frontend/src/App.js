@@ -174,33 +174,35 @@ function AppContent() {
         }}>
           {/* Logo and Title */}
           <div style={{ display: 'flex', alignItems: 'center' }}>
-            <Title level={4} style={{ color: 'white', margin: 0, marginRight: '24px' }}>
+            <Title level={4} style={{ color: 'white', margin: 0, marginRight: '24px' }} className="header-logo">
               CBL SO
             </Title>
           </div>
 
           {/* Navigation Menu */}
-          <Menu
-            theme="dark"
-            mode="horizontal"
-            selectedKeys={[getSelectedKey()]}
-            onClick={handleMenuClick}
-            items={menuItems}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              flex: 1,
-              justifyContent: 'center',
-            }}
-            overflowedIndicator={null}
-          />
+          <div style={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>
+            <Menu
+              theme="dark"
+              mode="horizontal"
+              selectedKeys={[getSelectedKey()]}
+              onClick={handleMenuClick}
+              items={menuItems}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                width: '100%',
+                justifyContent: 'center',
+              }}
+              overflowedIndicator={null}
+            />
+          </div>
 
           {/* User Role Display and Logout */}
           <div style={{ 
             display: 'flex', 
             alignItems: 'center', 
             marginLeft: '16px'
-          }}>
+          }} className="header-logout">
             <Button
               type="text"
               icon={<LogoutOutlined />}

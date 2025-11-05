@@ -35,3 +35,46 @@
 .ant-card-body {
   padding: 12px !important;
 }
+
+/* Tablet portrait mode - reduce spacing instead of font size */
+@media (max-width: 1024px) and (orientation: portrait) {
+  /* Reduce space between CBL SO and first menu button */
+  .header-logo {
+    margin-right: 8px !important;
+  }
+  
+  /* Reduce space between last menu item and logout button */
+  .header-logout {
+    margin-left: 8px !important;
+  }
+  
+  /* Make menu scrollable if needed */
+  .ant-menu-horizontal {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    white-space: nowrap !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+  }
+  
+  .ant-menu-horizontal::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+  }
+  
+  .ant-menu-horizontal .ant-menu-item {
+    display: inline-flex !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+  
+  /* Reduce header padding in portrait */
+  .ant-layout-header {
+    padding: 0 8px !important;
+  }
+}
+
+/* Ensure menu container allows scrolling */
+.ant-menu-horizontal {
+  min-width: 0 !important;
+}
