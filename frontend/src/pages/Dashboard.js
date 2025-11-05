@@ -118,9 +118,76 @@ function Dashboard({ setStats }) {
         </Col>
       </Row>
 
+      {/* System Status Cards */}
+      <Row gutter={[12, 12]} style={{ marginBottom: '24px' }}>
+        <Col xs={24} sm={8} md={8}>
+          <Card 
+            style={{ 
+              background: 'linear-gradient(135deg, #52c41a 0%, #73d13d 100%)', 
+              color: 'white'
+            }}
+            bodyStyle={{ padding: '16px' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <CheckCircleOutlined style={{ fontSize: '24px', color: 'white' }} />
+              <div>
+                <div style={{ color: 'white', fontSize: '14px', fontWeight: 500, marginBottom: '4px' }}>
+                  Backend Connected
+                </div>
+                <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: '12px' }}>
+                  API server is responding correctly
+                </div>
+              </div>
+            </div>
+          </Card>
+        </Col>
+        <Col xs={24} sm={8} md={8}>
+          <Card 
+            style={{ 
+              background: 'linear-gradient(135deg, #1890ff 0%, #40a9ff 100%)', 
+              color: 'white'
+            }}
+            bodyStyle={{ padding: '16px' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <DatabaseOutlined style={{ fontSize: '24px', color: 'white' }} />
+              <div>
+                <div style={{ color: 'white', fontSize: '14px', fontWeight: 500, marginBottom: '4px' }}>
+                  Database Connected
+                </div>
+                <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: '12px' }}>
+                  {data.dealers.length} dealers, {data.products.length} products
+                </div>
+              </div>
+            </div>
+          </Card>
+        </Col>
+        <Col xs={24} sm={8} md={8}>
+          <Card 
+            style={{ 
+              background: 'linear-gradient(135deg, #722ed1 0%, #9254de 100%)', 
+              color: 'white'
+            }}
+            bodyStyle={{ padding: '16px' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <ShoppingCartOutlined style={{ fontSize: '24px', color: 'white' }} />
+              <div>
+                <div style={{ color: 'white', fontSize: '14px', fontWeight: 500, marginBottom: '4px' }}>
+                  {data.orders.length} Orders Processed
+                </div>
+                <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: '12px' }}>
+                  System operational
+                </div>
+              </div>
+            </div>
+          </Card>
+        </Col>
+      </Row>
+
       {/* Content Cards */}
       <Row gutter={[16, 16]}>
-        <Col xs={24} md={12}>
+        <Col xs={24} md={24}>
           <Card
             title={
               <Space>
@@ -165,39 +232,6 @@ function Dashboard({ setStats }) {
                 style={{ maxHeight: '300px', overflow: 'auto' }}
               />
             )}
-          </Card>
-        </Col>
-        <Col xs={24} md={12}>
-          <Card
-            title={
-              <Space>
-                <CheckCircleOutlined />
-                System Status
-              </Space>
-            }
-          >
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Alert
-                message="Backend Connected"
-                description="API server is responding correctly"
-                type="success"
-                showIcon
-                style={{ marginBottom: '8px' }}
-              />
-              <Alert
-                message="Database Connected"
-                description={`Connected to cbl_so with ${data.dealers.length} dealers and ${data.products.length} products`}
-                type="success"
-                showIcon
-                style={{ marginBottom: '8px' }}
-              />
-              <Alert
-                message={`${data.orders.length} Orders Processed`}
-                description="Order management system is operational"
-                type="info"
-                showIcon
-              />
-            </Space>
           </Card>
         </Col>
       </Row>
