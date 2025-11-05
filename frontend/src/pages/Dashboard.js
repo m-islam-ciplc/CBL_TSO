@@ -153,7 +153,9 @@ function Dashboard({ setStats }) {
                           <Text>{order.dealer_name}</Text>
                           <br />
                           <Text type="secondary" style={{ fontSize: '12px' }}>
-                            {order.product_name} • Qty: {order.quantity}
+                            {order.item_count > 1 
+                              ? `${order.item_count} items • Total Qty: ${order.quantity || 0}` 
+                              : `${order.product_name || 'N/A'} • Qty: ${order.quantity || 0}`}
                           </Text>
                         </div>
                       }

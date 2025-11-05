@@ -1809,7 +1809,12 @@ app.get('/api/orders', (req, res) => {
             d.territory_name as dealer_territory, 
             w.name as warehouse_name,
             w.alias as warehouse_alias,
-            COUNT(oi.id) as item_count
+            COUNT(oi.id) as item_count,
+            COALESCE(SUM(oi.quantity), 0) as quantity,
+            (SELECT p.name FROM order_items oi2 
+             JOIN products p ON oi2.product_id = p.id 
+             WHERE oi2.order_id = o.order_id 
+             ORDER BY oi2.id LIMIT 1) as product_name
         FROM orders o
         LEFT JOIN order_types ot ON o.order_type_id = ot.id
         LEFT JOIN dealers d ON o.dealer_id = d.id
