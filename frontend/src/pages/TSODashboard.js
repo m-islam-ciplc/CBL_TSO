@@ -145,7 +145,7 @@ function TSODashboard() {
   }
 
   return (
-    <div style={{ padding: '24px' }}>
+    <div>
       <Space direction="vertical" style={{ width: '100%' }} size="large">
         <div>
           <Title level={2}>Welcome, {userName}!</Title>
