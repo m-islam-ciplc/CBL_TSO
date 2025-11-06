@@ -1,3 +1,9 @@
+/* Menu Container - Prevent overflow and overlapping */
+.menu-container {
+  overflow: hidden;
+  position: relative;
+}
+
 /* Custom Menu Bar - Normal View */
 .custom-menu-bar {
   display: flex;
@@ -5,6 +11,7 @@
   white-space: nowrap;
   gap: 4px;
   padding: 0 8px;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
 .custom-menu-item {
@@ -18,9 +25,11 @@
   color: white;
   white-space: nowrap;
   flex-shrink: 0;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, opacity 0.2s;
   user-select: none;
   font-size: 14px;
+  position: relative;
+  z-index: 1;
 }
 
 .custom-menu-item:hover {
@@ -50,6 +59,11 @@
 /* Floating Menu Button - Hidden by default, shows on narrow screens */
 .floating-menu-button {
   display: none !important;
+  transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.3s ease;
+}
+
+.floating-menu-button.ant-float-btn {
+  transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.3s ease;
 }
 
 /* Drawer Menu Items */
@@ -121,11 +135,16 @@
 /* Mobile devices - Show floating button, hide menu bar */
 @media (max-width: 767px) {
   .custom-menu-bar {
-    display: none;
+    display: none !important;
+    opacity: 0;
+    visibility: hidden;
   }
   
   .floating-menu-button {
     display: block !important;
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
   }
 
   /* Reduce header padding on mobile */
@@ -148,25 +167,20 @@
   }
 }
 
-/* Tablet devices - Try to show menu bar, fallback to floating button if needed */
-@media (min-width: 768px) and (max-width: 1024px) {
-  /* On tablets, try to show menu bar with reduced spacing */
+/* Tablet devices - Show floating button earlier to prevent overlap */
+@media (min-width: 768px) and (max-width: 1100px) {
+  /* Hide menu bar and show floating button to prevent overlap */
   .custom-menu-bar {
-    display: flex;
-    gap: 2px;
-  }
-  
-  .custom-menu-item {
-    padding: 0 6px;
-    font-size: 13px;
-  }
-  
-  .custom-menu-label {
-    font-size: 13px;
+    display: none !important;
+    opacity: 0;
+    visibility: hidden;
   }
   
   .floating-menu-button {
-    display: none !important;
+    display: block !important;
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
   }
 
   /* Reduce header padding on tablets */
@@ -184,25 +198,18 @@
   }
 }
 
-/* Tablet portrait - If menu still doesn't fit, show floating button */
-@media (min-width: 768px) and (max-width: 900px) and (orientation: portrait) {
+/* Desktop - Show menu bar, hide floating button */
+@media (min-width: 1101px) {
   .custom-menu-bar {
-    display: none;
-  }
-  
-  .floating-menu-button {
-    display: block !important;
-  }
-}
-
-/* Tablet landscape - Usually has enough space for menu */
-@media (min-width: 900px) and (max-width: 1024px) and (orientation: landscape) {
-  .custom-menu-bar {
-    display: flex;
+    display: flex !important;
+    opacity: 1;
+    visibility: visible;
   }
   
   .floating-menu-button {
     display: none !important;
+    opacity: 0;
+    visibility: hidden;
   }
 }
 
