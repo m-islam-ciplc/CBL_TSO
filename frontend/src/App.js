@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { UserProvider, useUser } from './contexts/UserContext';
-import { Layout, Menu, Typography, Button } from 'antd';
+import { Layout, Typography, Button, FloatButton, Drawer } from 'antd';
 import './App.css';
   import {
   DashboardOutlined,
@@ -16,6 +16,7 @@ import './App.css';
   TeamOutlined,
   BarChartOutlined,
   LogoutOutlined,
+  MenuOutlined,
 } from '@ant-design/icons';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -43,6 +44,7 @@ function AppContent() {
   });
 
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -75,8 +77,9 @@ function AppContent() {
     navigate('/login');
   };
 
-  const handleMenuClick = (e) => {
-    navigate(`/${e.key}`);
+  const handleMenuClick = (key) => {
+    navigate(`/${key}`);
+    setDrawerOpen(false); // Close drawer after navigation
   };
 
   const getSelectedKey = () => {
@@ -176,22 +179,23 @@ function AppContent() {
             </Title>
           </div>
 
-          {/* Navigation Menu */}
-          <div style={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>
-            <Menu
-              theme="dark"
-              mode="horizontal"
-              selectedKeys={[getSelectedKey()]}
-              onClick={handleMenuClick}
-              items={menuItems}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                width: '100%',
-                justifyContent: 'center',
-              }}
-              overflowedIndicator={null}
-            />
+          {/* Navigation Menu - Custom Menu Bar */}
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} className="menu-container">
+            <div className="custom-menu-bar">
+              {menuItems.map(item => {
+                const isSelected = getSelectedKey() === item.key;
+                return (
+                  <div
+                    key={item.key}
+                    className={`custom-menu-item ${isSelected ? 'custom-menu-item-selected' : ''}`}
+                    onClick={() => handleMenuClick(item.key)}
+                  >
+                    <span className="custom-menu-icon">{item.icon}</span>
+                    <span className="custom-menu-label">{item.label}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           {/* User Role Display and Logout */}
@@ -268,6 +272,47 @@ function AppContent() {
           } />
         </Routes>
       </Content>
+
+      {/* Floating Menu Button with Drawer - Shows on narrow screens */}
+      {userRole && (
+        <>
+          <FloatButton
+            icon={<MenuOutlined />}
+            type="primary"
+            style={{
+              display: 'none', // Hidden by default, shown via CSS media query
+            }}
+            className="floating-menu-button"
+            onClick={() => setDrawerOpen(true)}
+            tooltip="Menu"
+          />
+
+          <Drawer
+            title="Navigation Menu"
+            placement="right"
+            onClose={() => setDrawerOpen(false)}
+            open={drawerOpen}
+            width={280}
+            className="navigation-drawer"
+          >
+            <div className="drawer-menu-items">
+              {menuItems.map(item => {
+                const isSelected = getSelectedKey() === item.key;
+                return (
+                  <div
+                    key={item.key}
+                    className={`drawer-menu-item ${isSelected ? 'drawer-menu-item-selected' : ''}`}
+                    onClick={() => handleMenuClick(item.key)}
+                  >
+                    <span className="drawer-menu-item-icon">{item.icon}</span>
+                    <span className="drawer-menu-item-label">{item.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </Drawer>
+        </>
+      )}
     </Layout>
   );
 }

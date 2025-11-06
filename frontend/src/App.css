@@ -1,34 +1,45 @@
-/* Reduce spacing between menu icon and text */
-.ant-menu-horizontal .ant-menu-item {
-  padding: 0 8px !important;
-  border-radius: 4px !important;
-  height: 40px !important;
-  line-height: 40px !important;
+/* Custom Menu Bar - Normal View */
+.custom-menu-bar {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  gap: 4px;
+  padding: 0 8px;
 }
 
-.ant-menu-horizontal .ant-menu-item > .anticon + span,
-.ant-menu-horizontal .ant-menu-item > span {
-  margin-left: 4px !important;
+.custom-menu-item {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+  height: 40px;
+  line-height: 40px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: white;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background-color 0.2s;
+  user-select: none;
+  font-size: 14px;
 }
 
-.ant-menu-horizontal .ant-menu-item > .anticon {
-  margin-right: 4px !important;
-}
-
-/* Hover state with subtle golden highlight */
-.ant-menu-horizontal .ant-menu-item:hover {
+.custom-menu-item:hover {
   background: rgba(255, 193, 7, 0.2) !important;
-  border-radius: 4px !important;
 }
 
-/* Selected menu item with Golden Gradient */
-.ant-menu-horizontal .ant-menu-item-selected {
+.custom-menu-item-selected {
   background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%) !important;
-  border-radius: 4px !important;
 }
 
-.ant-menu-horizontal .ant-menu-item-selected::after {
-  display: none !important;
+.custom-menu-icon {
+  margin-right: 4px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 14px;
+}
+
+.custom-menu-label {
+  font-size: 14px;
 }
 
 /* Standardize all Card padding to 12px */
@@ -36,47 +47,163 @@
   padding: 12px !important;
 }
 
-/* Tablet portrait mode - reduce spacing instead of font size */
-@media (max-width: 1024px) and (orientation: portrait) {
-  /* Reduce space between CBL SO and first menu button */
-  .header-logo {
-    margin-right: 8px !important;
+/* Floating Menu Button - Hidden by default, shows on narrow screens */
+.floating-menu-button {
+  display: none !important;
+}
+
+/* Drawer Menu Items */
+.drawer-menu-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.drawer-menu-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  cursor: pointer;
+  color: #333;
+  border-radius: 6px;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.drawer-menu-item:hover {
+  background: #f5f5f5;
+}
+
+.drawer-menu-item-selected {
+  background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+  color: white;
+}
+
+.drawer-menu-item-selected:hover {
+  background: linear-gradient(135deg, #ffb300 0%, #f57c00 100%);
+}
+
+.drawer-menu-item-icon {
+  margin-right: 12px;
+  font-size: 18px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.drawer-menu-item-label {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+/* Drawer Title Styling */
+.navigation-drawer .ant-drawer-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-bottom: none;
+}
+
+.navigation-drawer .ant-drawer-header-title {
+  color: white;
+}
+
+.navigation-drawer .ant-drawer-title {
+  color: white;
+  font-weight: 600;
+}
+
+.navigation-drawer .ant-drawer-close {
+  color: white;
+}
+
+.navigation-drawer .ant-drawer-close:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Mobile devices - Show floating button, hide menu bar */
+@media (max-width: 767px) {
+  .custom-menu-bar {
+    display: none;
   }
   
-  /* Reduce space between last menu item and logout button */
+  .floating-menu-button {
+    display: block !important;
+  }
+
+  /* Reduce header padding on mobile */
+  .header-logo {
+    margin-right: 8px !important;
+    font-size: 14px !important;
+  }
+  
   .header-logout {
     margin-left: 8px !important;
   }
   
-  /* Make menu scrollable if needed */
-  .ant-menu-horizontal {
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    white-space: nowrap !important;
-    -webkit-overflow-scrolling: touch !important;
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE and Edge */
+  .header-logout .ant-btn {
+    padding: 4px 8px !important;
+    font-size: 12px !important;
   }
   
-  .ant-menu-horizontal::-webkit-scrollbar {
-    display: none; /* Chrome, Safari, Opera */
-  }
-  
-  .ant-menu-horizontal .ant-menu-item {
-    display: inline-flex !important;
-    white-space: nowrap !important;
-    flex-shrink: 0 !important;
-  }
-  
-  /* Reduce header padding in portrait */
   .ant-layout-header {
     padding: 0 8px !important;
   }
 }
 
-/* Ensure menu container allows scrolling */
-.ant-menu-horizontal {
-  min-width: 0 !important;
+/* Tablet devices - Try to show menu bar, fallback to floating button if needed */
+@media (min-width: 768px) and (max-width: 1024px) {
+  /* On tablets, try to show menu bar with reduced spacing */
+  .custom-menu-bar {
+    display: flex;
+    gap: 2px;
+  }
+  
+  .custom-menu-item {
+    padding: 0 6px;
+    font-size: 13px;
+  }
+  
+  .custom-menu-label {
+    font-size: 13px;
+  }
+  
+  .floating-menu-button {
+    display: none !important;
+  }
+
+  /* Reduce header padding on tablets */
+  .header-logo {
+    margin-right: 12px !important;
+    font-size: 15px !important;
+  }
+  
+  .header-logout {
+    margin-left: 12px !important;
+  }
+  
+  .ant-layout-header {
+    padding: 0 12px !important;
+  }
+}
+
+/* Tablet portrait - If menu still doesn't fit, show floating button */
+@media (min-width: 768px) and (max-width: 900px) and (orientation: portrait) {
+  .custom-menu-bar {
+    display: none;
+  }
+  
+  .floating-menu-button {
+    display: block !important;
+  }
+}
+
+/* Tablet landscape - Usually has enough space for menu */
+@media (min-width: 900px) and (max-width: 1024px) and (orientation: landscape) {
+  .custom-menu-bar {
+    display: flex;
+  }
+  
+  .floating-menu-button {
+    display: none !important;
+  }
 }
 
 /* Recent Orders Grid - 5 cards per row on desktop (lg and above) */
