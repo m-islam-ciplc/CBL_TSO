@@ -14,7 +14,8 @@ async function generateExcelReport(orders, date) {
     try {
         // Load the Book1.xlsx template
         const templateWorkbook = new ExcelJS.Workbook();
-        await templateWorkbook.xlsx.readFile('Book1.xlsx');
+        const templatePath = require('path').join(__dirname, '..', 'Resources', 'Book1.xlsx');
+        await templateWorkbook.xlsx.readFile(templatePath);
         const templateWorksheet = templateWorkbook.getWorksheet('Invoice 15.08.24');
         
         // Create new workbook based on template
@@ -2014,7 +2015,7 @@ app.get('/api/orders/tso-report/:date', async (req, res) => {
                 d.address as dealer_address,
                 d.contact as dealer_contact,
                 w.name as warehouse_name,
-            w.alias as warehouse_alias,
+                w.alias as warehouse_alias,
                 DATE(o.created_at) as order_date
             FROM orders o
             LEFT JOIN order_types ot ON o.order_type_id = ot.id
