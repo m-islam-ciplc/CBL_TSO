@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Row, Col, Card, Statistic, Typography, List, Spin, Alert, Space } from 'antd';
+import { Row, Col, Card, Statistic, Typography, Spin, Alert, Space } from 'antd';
 import {
   UserOutlined,
   ShopOutlined,
@@ -9,6 +9,7 @@ import {
   CheckCircleOutlined,
   DatabaseOutlined,
   BarChartOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
@@ -185,55 +186,74 @@ function Dashboard({ setStats }) {
         </Col>
       </Row>
 
-      {/* Content Cards */}
-      <Row gutter={[16, 16]}>
-        <Col xs={24} md={24}>
-          <Card
-            title={
-              <Space>
-                <BarChartOutlined />
-                Recent Orders
-              </Space>
-            }
-            style={{ height: '400px' }}
-          >
-            {data.orders.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 0' }}>
-                <ShoppingCartOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />
-                <Title level={5} type="secondary">
-                  No orders yet
-                </Title>
-                <Text type="secondary">
-                  Create your first order to get started
-                </Text>
-              </div>
-            ) : (
-              <List
-                dataSource={data.orders.slice(0, 5)}
-                renderItem={order => (
-                  <List.Item key={order.id}>
-                    <List.Item.Meta
-                      title={<Text strong>{order.order_id}</Text>}
-                      description={
-                        <div>
-                          <Text>{order.dealer_name}</Text>
-                          <br />
-                          <Text type="secondary" style={{ fontSize: '12px' }}>
-                            {order.item_count > 1 
-                              ? `${order.item_count} items • Total Qty: ${order.quantity || 0}` 
-                              : `${order.product_name || 'N/A'} • Qty: ${order.quantity || 0}`}
-                          </Text>
-                        </div>
-                      }
-                    />
-                  </List.Item>
-                )}
-                style={{ maxHeight: '300px', overflow: 'auto' }}
-              />
-            )}
-          </Card>
-        </Col>
-      </Row>
+      {/* Recent Orders Grid */}
+      <Card
+        title={
+          <Space>
+            <BarChartOutlined />
+            Recent Orders
+          </Space>
+        }
+        style={{ marginBottom: '24px' }}
+      >
+        {data.orders.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '40px 0' }}>
+            <ShoppingCartOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />
+            <Title level={5} type="secondary">
+              No orders yet
+            </Title>
+            <Text type="secondary">
+              Create your first order to get started
+            </Text>
+          </div>
+        ) : (
+          <Row gutter={[16, 16]} className="order-cards-row">
+            {data.orders.slice(0, 10).map(order => (
+              <Col 
+                xs={24} 
+                sm={12} 
+                md={12}
+                key={order.id}
+                className="order-card-col"
+              >
+                <Card
+                  size="small"
+                  style={{
+                    height: '100%',
+                    border: '1px solid #f0f0f0',
+                    borderRadius: '8px',
+                  }}
+                  bodyStyle={{ padding: '12px' }}
+                >
+                  <div style={{ marginBottom: '8px' }}>
+                    <Space>
+                      <FileTextOutlined style={{ color: '#1890ff' }} />
+                      <Text strong style={{ fontSize: '14px' }}>
+                        {order.order_id}
+                      </Text>
+                    </Space>
+                  </div>
+                  <div style={{ marginBottom: '8px' }}>
+                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                      Dealer:{' '}
+                    </Text>
+                    <Text style={{ fontSize: '13px' }}>
+                      {order.dealer_name || 'N/A'}
+                    </Text>
+                  </div>
+                  <div>
+                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                      {order.item_count > 1 
+                        ? `${order.item_count} items • Total Qty: ${order.quantity || 0}` 
+                        : `${order.product_name || 'N/A'} • Qty: ${order.quantity || 0}`}
+                    </Text>
+                  </div>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        )}
+      </Card>
     </div>
   );
 }

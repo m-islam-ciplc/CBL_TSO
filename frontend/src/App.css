@@ -78,3 +78,22 @@
 .ant-menu-horizontal {
   min-width: 0 !important;
 }
+
+/* Recent Orders Grid - 5 cards per row on desktop (lg and above) */
+@media (min-width: 992px) {
+  /* Use flexbox with gap for precise 5-column layout */
+  .ant-card-body > .ant-row.order-cards-row {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 16px !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+  
+  .order-card-col {
+    flex: 0 0 calc((100% - 64px) / 5) !important;
+    max-width: calc((100% - 64px) / 5) !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+}
