@@ -192,22 +192,24 @@ function TSODashboard() {
                   paddingTop: '12px',
                 }}
               >
-                {quotas.length === 0 ? (
+                {quotas.filter((q) => (q.max_quantity || 0) > 0).length === 0 ? (
                   <Text style={{ color: 'white', opacity: 0.8 }}>No products allocated</Text>
                 ) : (
-                  quotas.map((q) => (
-                    <div
-                      key={q.id}
-                      style={{
-                        color: 'white',
-                        padding: '8px 0',
-                        borderBottom: '1px solid rgba(255,255,255,0.15)',
-                        fontSize: '14px',
-                      }}
-                    >
-                      {q.product_name || q.product_code} x {q.max_quantity || 0}
-                    </div>
-                  ))
+                  quotas
+                    .filter((q) => (q.max_quantity || 0) > 0)
+                    .map((q) => (
+                      <div
+                        key={q.id}
+                        style={{
+                          color: 'white',
+                          padding: '8px 0',
+                          borderBottom: '1px solid rgba(255,255,255,0.15)',
+                          fontSize: '14px',
+                        }}
+                      >
+                        {q.product_name || q.product_code} x {q.max_quantity}
+                      </div>
+                    ))
                 )}
               </div>
             </Card>

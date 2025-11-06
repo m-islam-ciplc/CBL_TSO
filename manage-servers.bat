@@ -44,13 +44,16 @@ if not errorlevel 1 (
     if exist backend\node_modules (
         echo Backend dependencies already installed
     ) else (
+        cd backend
         call npm install
+        cd ..
     )
     
     echo.
     echo Starting Backend server...
-    start "Backend Server (Port 3001)" cmd /k "npm run dev"
+    start "Backend Server (Port 3001)" cmd /k "cd /d %~dp0backend && npm run dev"
     echo ✅ Backend started in new window
+    timeout /t 2 /nobreak >nul
 )
 
 echo.
@@ -70,7 +73,7 @@ if not errorlevel 1 (
     
     echo.
     echo Starting Frontend server...
-    start "Frontend Server (Port 3002)" cmd /k "cd frontend && set PORT=3002 && npm start"
+    start "Frontend Server (Port 3002)" cmd /k "cd /d %~dp0frontend && set PORT=3002 && npm start"
     echo ✅ Frontend started in new window
 )
 
@@ -245,14 +248,19 @@ REM Internal function to start servers (used by restart)
 REM Check and start backend
 netstat -ano | findstr :3001 | findstr LISTENING >nul
 if errorlevel 1 (
-    start "Backend Server (Port 3001)" cmd /k "npm run dev"
+    if not exist backend\node_modules (
+        cd backend
+        call npm install
+        cd ..
+    )
+    start "Backend Server (Port 3001)" cmd /k "cd /d %~dp0backend && npm run dev"
     timeout /t 2 /nobreak >nul
 )
 
 REM Check and start frontend
 netstat -ano | findstr :3002 | findstr LISTENING >nul
 if errorlevel 1 (
-    start "Frontend Server (Port 3002)" cmd /k "cd frontend && set PORT=3002 && npm start"
+    start "Frontend Server (Port 3002)" cmd /k "cd /d %~dp0frontend && set PORT=3002 && npm start"
 )
 exit /b
 

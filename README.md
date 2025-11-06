@@ -49,14 +49,17 @@ docker-compose up -d --build
 
 **For Local Development (without Docker):**
 ```bash
-# Start backend
-npm install
-npm run dev
+# Install all dependencies
+npm run install:all
 
-# In another terminal, start frontend
-cd frontend
-npm install
-npm start
+# Start backend (in one terminal)
+npm run dev:backend
+
+# Start frontend (in another terminal)
+npm run start:frontend
+
+# Or start both together
+npm run start:all
 ```
 
 **Access Points for Local Dev:**

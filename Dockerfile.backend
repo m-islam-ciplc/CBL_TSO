@@ -10,16 +10,17 @@ RUN apk add --no-cache tzdata
 # Set working directory
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy package files from backend folder
+COPY backend/package*.json ./
 
 # Install dependencies
 RUN npm ci --only=production
 
-# Copy application code
-COPY server.js ./
+# Copy application code from backend folder
+COPY backend/server.js ./
+COPY backend/Book1.xlsx ./
+# Copy database.sql from root
 COPY database.sql ./
-COPY Book1.xlsx ./
 
 # Create uploads directory with proper permissions
 RUN mkdir -p uploads && chmod 777 uploads

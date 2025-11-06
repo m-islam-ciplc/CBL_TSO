@@ -45,7 +45,7 @@ services:
     ports:
       - "3002:3001"
     volumes:
-      - ./uploads:/app/uploads
+      - ./backend/uploads:/app/uploads
     depends_on:
       mysql:
         condition: service_healthy

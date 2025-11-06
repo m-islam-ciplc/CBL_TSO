@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+backend/node_modules/
 frontend/node_modules/
 
 # Environment variables
@@ -77,6 +78,7 @@ build/
 
 # Uploaded files (keep root Excel files, ignore uploads folder)
 uploads/
+backend/uploads/
 
 # Temporary folders
 tmp/
