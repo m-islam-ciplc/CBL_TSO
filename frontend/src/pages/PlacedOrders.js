@@ -85,7 +85,6 @@ function PlacedOrders({ refreshTrigger }) {
       const productPromises = response.data.map(async (order) => {
         try {
           const productResponse = await axios.get(`/api/orders/${order.order_id}`);
-          console.log(`Loaded products for order ${order.order_id}:`, productResponse.data.items);
           return {
             orderId: order.order_id,
             products: productResponse.data.items || []
@@ -104,7 +103,6 @@ function PlacedOrders({ refreshTrigger }) {
       productResults.forEach(result => {
         productsMap[result.orderId] = result.products;
       });
-      console.log('Final products map:', productsMap);
       setOrderProducts(productsMap);
     } catch (error) {
       message.error('Failed to load orders');
@@ -280,7 +278,6 @@ function PlacedOrders({ refreshTrigger }) {
       key: 'product_details',
       render: (_, record) => {
         const products = orderProducts[record.order_id] || [];
-        console.log(`Rendering products for order ${record.order_id}:`, products);
         
         if (products.length === 0) {
           return (

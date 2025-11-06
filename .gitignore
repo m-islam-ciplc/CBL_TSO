@@ -71,6 +71,13 @@ dist
 .out
 .storybook-out
 
+# Build outputs
+frontend/build/
+build/
+
+# Uploaded files (keep root Excel files, ignore uploads folder)
+uploads/
+
 # Temporary folders
 tmp/
 temp/
