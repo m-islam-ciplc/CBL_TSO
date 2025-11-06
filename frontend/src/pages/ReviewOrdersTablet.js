@@ -27,6 +27,13 @@ import { useUser } from '../contexts/UserContext';
 const { Title, Text } = Typography;
 const { Option } = Select;
 
+// Helper function to remove M/S prefix from dealer names
+const removeMSPrefix = (name) => {
+  if (!name) return name;
+  // Remove "M/S", "M/S.", "M/S " prefix (case insensitive, with or without space/period)
+  return name.replace(/^M\/S[.\s]*/i, '').trim();
+};
+
 function ReviewOrdersTablet({ onOrderCreated }) {
   const { isTSO, userId } = useUser();
   const [form] = Form.useForm();
@@ -443,7 +450,7 @@ function ReviewOrdersTablet({ onOrderCreated }) {
                   disabled
                 >
                   {(dropdownData.filteredDealers || dropdownData.dealers) && (dropdownData.filteredDealers || dropdownData.dealers).length > 0 ? (dropdownData.filteredDealers || dropdownData.dealers).map(dealer => (
-                    <Option key={dealer.id} value={dealer.id}>{dealer.name}</Option>
+                    <Option key={dealer.id} value={dealer.id}>{removeMSPrefix(dealer.name)}</Option>
                   )) : (
                     <Option disabled>No dealers loaded</Option>
                   )}

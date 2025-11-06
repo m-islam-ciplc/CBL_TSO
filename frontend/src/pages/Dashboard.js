@@ -14,6 +14,13 @@ import {
 
 const { Title, Text } = Typography;
 
+// Helper function to remove M/S prefix from dealer names
+const removeMSPrefix = (name) => {
+  if (!name) return name;
+  // Remove "M/S", "M/S.", "M/S " prefix (case insensitive, with or without space/period)
+  return name.replace(/^M\/S[.\s]*/i, '').trim();
+};
+
 function Dashboard({ setStats }) {
   const [data, setData] = useState({
     orderTypes: [],
@@ -238,7 +245,7 @@ function Dashboard({ setStats }) {
                       Dealer:{' '}
                     </Text>
                     <Text style={{ fontSize: '13px' }}>
-                      {order.dealer_name || 'N/A'}
+                      {removeMSPrefix(order.dealer_name) || 'N/A'}
                     </Text>
                   </div>
                   <div>

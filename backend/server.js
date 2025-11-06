@@ -1710,7 +1710,7 @@ app.get('/api/dealers/filter', (req, res) => {
 
 // Get all products
 app.get('/api/products', (req, res) => {
-    db.query('SELECT id, name, product_code, unit_tp, mrp FROM products', (err, results) => {
+    db.query('SELECT id, product_code, name, brand_code, brand_name, application_name, unit_tp FROM products', (err, results) => {
         if (err) {
             res.status(500).json({ error: err.message });
         } else {

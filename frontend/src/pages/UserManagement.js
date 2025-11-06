@@ -130,24 +130,29 @@ function UserManagement() {
       title: 'ID',
       dataIndex: 'id',
       key: 'id',
-      width: 60,
+      ellipsis: true,
     },
     {
       title: 'Username',
       dataIndex: 'username',
       key: 'username',
+      ellipsis: true,
       sorter: (a, b) => a.username.localeCompare(b.username),
     },
     {
       title: 'Full Name',
       dataIndex: 'full_name',
       key: 'full_name',
+      ellipsis: {
+        showTitle: true,
+      },
       sorter: (a, b) => a.full_name.localeCompare(b.full_name),
     },
     {
       title: 'Role',
       dataIndex: 'role',
       key: 'role',
+      ellipsis: true,
       render: (role) => {
         const colors = {
           admin: 'red',
@@ -167,11 +172,14 @@ function UserManagement() {
       title: 'Territory',
       dataIndex: 'territory_name',
       key: 'territory_name',
+      ellipsis: true,
     },
     {
       title: 'Status',
       dataIndex: 'is_active',
       key: 'is_active',
+      width: 100,
+      align: 'center',
       render: (isActive) => (
         <Tag color={isActive ? 'green' : 'red'}>
           {isActive ? 'Active' : 'Inactive'}
@@ -182,6 +190,7 @@ function UserManagement() {
       title: 'Actions',
       key: 'actions',
       width: 180,
+      align: 'center',
       render: (_, record) => (
         <Space>
           <Button

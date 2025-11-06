@@ -27,6 +27,13 @@ import {
 const { Title, Text } = Typography;
 const { Option } = Select;
 
+// Helper function to remove M/S prefix from dealer names
+const removeMSPrefix = (name) => {
+  if (!name) return name;
+  // Remove "M/S", "M/S.", "M/S " prefix (case insensitive, with or without space/period)
+  return name.replace(/^M\/S[.\s]*/i, '').trim();
+};
+
 function NewOrdersTablet({ onOrderCreated }) {
   const { territoryName, isTSO, quotaRefreshTrigger } = useUser();
   const [form] = Form.useForm();
@@ -561,7 +568,7 @@ function NewOrdersTablet({ onOrderCreated }) {
                     {dropdownData.orderTypes.find(t => t.id === form.getFieldValue('orderType'))?.name} • {' '}
                     {form.getFieldValue('warehouse') && dropdownData.warehouses.find(w => w.id === form.getFieldValue('warehouse'))?.name} • {' '}
                     {form.getFieldValue('territoryCode') && dropdownData.territories.find(t => t.code === form.getFieldValue('territoryCode'))?.name} • {' '}
-                    {form.getFieldValue('dealer') && filteredDealers.find(d => d.id === form.getFieldValue('dealer'))?.name} • {' '}
+                    {form.getFieldValue('dealer') && removeMSPrefix(filteredDealers.find(d => d.id === form.getFieldValue('dealer'))?.name)} • {' '}
                     {form.getFieldValue('transport') && dropdownData.transports.find(t => t.id === form.getFieldValue('transport'))?.truck_details}
                   </Text>
                 )}
@@ -692,7 +699,7 @@ function NewOrdersTablet({ onOrderCreated }) {
                     onChange={handleDealerChange}
                   >
                     {filteredDealers.map(dealer => (
-                      <Option key={dealer.id} value={dealer.id}>{dealer.name}</Option>
+                      <Option key={dealer.id} value={dealer.id}>{removeMSPrefix(dealer.name)}</Option>
                     ))}
                   </Select>
                 </Form.Item>

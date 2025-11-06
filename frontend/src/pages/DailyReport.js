@@ -6,6 +6,13 @@ import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
 
+// Helper function to remove M/S prefix from dealer names
+const removeMSPrefix = (name) => {
+  if (!name) return name;
+  // Remove "M/S", "M/S.", "M/S " prefix (case insensitive, with or without space/period)
+  return name.replace(/^M\/S[.\s]*/i, '').trim();
+};
+
 function DailyReport() {
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [loading, setLoading] = useState(false);
@@ -252,20 +259,22 @@ function DailyReport() {
       title: 'Order ID',
       dataIndex: 'order_id',
       key: 'order_id',
+      ellipsis: true,
       render: (orderId) => (
         <Tag color="blue" style={{ fontSize: '12px' }}>
           {orderId}
         </Tag>
       ),
-      width: 90,
       sorter: (a, b) => a.order_id.localeCompare(b.order_id),
     },
     {
       title: 'Dealer',
       dataIndex: 'dealer_name',
       key: 'dealer_name',
-      ellipsis: true,
-      width: 300,
+      ellipsis: {
+        showTitle: true,
+      },
+      render: (name) => removeMSPrefix(name || 'N/A'),
       sorter: (a, b) => a.dealer_name.localeCompare(b.dealer_name),
     },
     {
@@ -273,7 +282,6 @@ function DailyReport() {
       dataIndex: 'dealer_territory',
       key: 'dealer_territory',
       ellipsis: true,
-      width: 120,
       render: (territory) => territory || 'N/A',
       sorter: (a, b) => {
         const territoryA = a.dealer_territory || 'N/A';
@@ -284,6 +292,7 @@ function DailyReport() {
     {
       title: 'Products',
       key: 'products',
+      ellipsis: true,
       render: (_, record) => {
         return (
           <div>
@@ -293,12 +302,14 @@ function DailyReport() {
           </div>
         );
       },
-      width: 60,
       sorter: (a, b) => (a.item_count || 0) - (b.item_count || 0),
     },
     {
       title: 'Product Details',
       key: 'product_details',
+      ellipsis: {
+        showTitle: true,
+      },
       render: (_, record) => {
         const products = orderProducts[record.order_id] || [];
         
@@ -336,14 +347,14 @@ function DailyReport() {
           </div>
         );
       },
-      width: 400,
     },
     {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
+      width: 100,
+      align: 'center',
       render: (status) => <Tag color="default">New</Tag>,
-      width: 80,
       sorter: (a, b) => {
         const statusA = a.status || 'new';
         const statusB = b.status || 'new';
@@ -354,8 +365,8 @@ function DailyReport() {
       title: 'Created',
       dataIndex: 'created_at',
       key: 'created_at',
+      ellipsis: true,
       render: (date) => new Date(date).toLocaleString(),
-      width: 150,
       sorter: (a, b) => new Date(a.created_at) - new Date(b.created_at),
     },
   ];
@@ -469,7 +480,7 @@ function DailyReport() {
               pageSizeOptions: ['10', '20', '50', '100'],
               defaultPageSize: 20,
             }}
-            scroll={{ x: 1200 }}
+            scroll={{ x: 'max-content' }}
             size="small"
           />
         </Card>

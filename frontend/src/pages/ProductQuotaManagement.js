@@ -408,32 +408,34 @@ function ProductQuotaManagement() {
       title: 'Territory',
       dataIndex: 'territoryName',
       key: 'territoryName',
-      width: 100,
+      ellipsis: true,
     },
     {
       title: 'Date',
       dataIndex: 'date',
       key: 'date',
-      width: 100,
+      ellipsis: true,
     },
     {
       title: 'Product Code',
       dataIndex: 'productCode',
       key: 'productCode',
-      width: 80,
+      ellipsis: true,
     },
     {
       title: 'Product Name',
       dataIndex: 'productName',
       key: 'productName',
-      width: 200,
+      ellipsis: {
+        showTitle: true,
+      },
     },
     {
       title: 'Quota',
       dataIndex: 'quantity',
       key: 'quantity',
-      width: 65,
       align: 'right',
+      ellipsis: true,
       render: (quantity, record) => {
         const key = `${record.productId}_${record.territoryName}`;
         const isEditing = editingQuota === key;
@@ -453,7 +455,7 @@ function ProductQuotaManagement() {
     {
       title: 'Update',
       key: 'update',
-      width: 70,
+      width: 90,
       align: 'center',
       render: (_, record) => {
         const key = `${record.productId}_${record.territoryName}`;
@@ -478,8 +480,8 @@ function ProductQuotaManagement() {
       title: 'Sold',
       dataIndex: 'sold',
       key: 'sold',
-      width: 25,
       align: 'right',
+      ellipsis: true,
       render: (sold) => (
         <Tag color="orange" style={{ fontSize: '12px', padding: '2px 8px' }}>
           {sold || 0}
@@ -489,7 +491,8 @@ function ProductQuotaManagement() {
     {
       title: 'Action',
       key: 'action',
-      width: 60,
+      width: 70,
+      align: 'center',
       render: (_, record) => (
         <Button
           type="text"
@@ -658,6 +661,7 @@ function ProductQuotaManagement() {
           columns={allocationColumns}
           rowKey="key"
           pagination={{ pageSize: 20 }}
+          scroll={{ x: 'max-content' }}
           locale={{ emptyText: 'No allocations yet. Add allocations using the form above.' }}
           size="small"
         />

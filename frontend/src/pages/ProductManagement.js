@@ -37,11 +37,6 @@ function ProductManagement() {
   const [loading, setLoading] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
-  const [brandFilter, setBrandFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [categories, setCategories] = useState([]);
-  const [brands, setBrands] = useState([]);
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 20,
@@ -58,20 +53,13 @@ function ProductManagement() {
 
   useEffect(() => {
     filterProducts();
-  }, [products, searchTerm, categoryFilter, brandFilter, statusFilter]);
+  }, [products, searchTerm]);
 
   const loadProducts = async () => {
     setLoading(true);
     try {
       const response = await axios.get('/api/products');
       setProducts(response.data);
-      
-      // Extract unique categories and brands for filters
-      const uniqueCategories = [...new Set(response.data.map(p => p.product_category).filter(Boolean))];
-      const uniqueBrands = [...new Set(response.data.map(p => p.brand_name).filter(Boolean))];
-      
-      setCategories(uniqueCategories);
-      setBrands(uniqueBrands);
     } catch (error) {
       message.error('Failed to load products');
       console.error('Error loading products:', error);
@@ -87,20 +75,10 @@ function ProductManagement() {
       filtered = filtered.filter(product =>
         product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.product_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.brand_name?.toLowerCase().includes(searchTerm.toLowerCase())
+        product.brand_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.brand_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.application_name?.toLowerCase().includes(searchTerm.toLowerCase())
       );
-    }
-
-    if (categoryFilter) {
-      filtered = filtered.filter(product => product.product_category === categoryFilter);
-    }
-
-    if (brandFilter) {
-      filtered = filtered.filter(product => product.brand_name === brandFilter);
-    }
-
-    if (statusFilter) {
-      filtered = filtered.filter(product => product.status === statusFilter);
     }
 
     setFilteredProducts(filtered);
@@ -172,8 +150,7 @@ function ProductManagement() {
           'DISCOUNT_TYPE',
           'DISCOUNT_VAL',
           'PACK_SIZE',
-          'SHIPPER_QTY',
-          'STATUS'
+          'SHIPPER_QTY'
         ],
         [
           'L113DU001',
@@ -201,8 +178,7 @@ function ProductManagement() {
           'P',
           0,
           '1',
-          10,
-          'A'
+          10
         ],
         [
           'L101AF032',
@@ -230,8 +206,7 @@ function ProductManagement() {
           'P',
           0,
           '1',
-          10,
-          'A'
+          10
         ]
       ];
 
@@ -251,103 +226,65 @@ function ProductManagement() {
     }
   };
 
-  const baseColumns = [
+  const columns = [
     {
       title: 'Product Code',
       dataIndex: 'product_code',
       key: 'product_code',
-      width: 120,
-      render: (text) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{text}</div>,
+      ellipsis: true,
+      render: (text) => text,
       sorter: (a, b) => a.product_code.localeCompare(b.product_code),
     },
     {
       title: 'Product Name',
       dataIndex: 'name',
       key: 'name',
-      width: 250,
-      render: (text) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{text}</div>,
+      ellipsis: {
+        showTitle: true,
+      },
+      render: (text) => text,
       sorter: (a, b) => a.name.localeCompare(b.name),
     },
     {
-      title: 'Brand',
-      dataIndex: 'brand_name',
-      key: 'brand_name',
-      width: 120,
-      render: (text) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{text || '-'}</div>,
+      title: 'Brand Code',
+      dataIndex: 'brand_code',
+      key: 'brand_code',
+      ellipsis: true,
+      render: (text) => text || '-',
     },
     {
-      title: 'Category',
-      dataIndex: 'product_category',
-      key: 'product_category',
-      width: 100,
-      render: (text) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{text || '-'}</div>,
+      title: 'Brand Name',
+      dataIndex: 'brand_name',
+      key: 'brand_name',
+      ellipsis: {
+        showTitle: true,
+      },
+      render: (text) => text || '-',
     },
-  ];
-
-  const priceColumns = [
+    {
+      title: 'Application Name',
+      dataIndex: 'application_name',
+      key: 'application_name',
+      ellipsis: {
+        showTitle: true,
+      },
+      render: (text) => text || '-',
+    },
     {
       title: 'Unit TP',
       dataIndex: 'unit_tp',
       key: 'unit_tp',
-      width: 100,
-      render: (value) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{value ? `৳${value.toLocaleString()}` : '-'}</div>,
+      ellipsis: true,
+      render: (value) => value ? `৳${value.toLocaleString()}` : '-',
       sorter: (a, b) => (a.unit_tp || 0) - (b.unit_tp || 0),
     },
-    {
-      title: 'MRP',
-      dataIndex: 'mrp',
-      key: 'mrp',
-      width: 100,
-      render: (value) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{value ? `৳${value.toLocaleString()}` : '-'}</div>,
-      sorter: (a, b) => (a.mrp || 0) - (b.mrp || 0),
-    },
   ];
-
-  const otherColumns = [
-    {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-      width: 80,
-      render: (status) => (
-        <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>
-          <Tag color={status === 'A' ? 'green' : 'red'}>
-            {status === 'A' ? 'Active' : 'Inactive'}
-          </Tag>
-        </div>
-      ),
-    },
-    {
-      title: 'Updated',
-      dataIndex: 'updated_at',
-      key: 'updated_at',
-      width: 120,
-      render: (date) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{date ? new Date(date).toLocaleDateString() : '-'}</div>,
-    },
-  ];
-
-  const columns = isTSO ? [...baseColumns, ...otherColumns] : [...baseColumns, ...priceColumns, ...otherColumns];
 
   const stats = [
     {
       title: 'Total Products',
       value: products.length,
       icon: <ShopOutlined style={{ color: '#1890ff' }} />,
-    },
-    {
-      title: 'Active Products',
-      value: products.filter(p => p.status === 'A').length,
-      icon: <TagOutlined style={{ color: '#52c41a' }} />,
-    },
-    {
-      title: 'Brands',
-      value: brands.length,
-      icon: <TagOutlined style={{ color: '#722ed1' }} />,
-    },
-    {
-      title: 'Categories',
-      value: categories.length,
-      icon: <ShopOutlined style={{ color: '#fa8c16' }} />,
     },
   ];
 
@@ -419,66 +356,13 @@ function ProductManagement() {
       {/* Filters */}
       <Card style={{ marginBottom: '16px' }}>
         <Row gutter={[16, 16]}>
-          <Col xs={24} sm={8} md={6}>
+          <Col xs={24} sm={12} md={8}>
             <Input
               placeholder="Search products..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               allowClear
             />
-          </Col>
-          <Col xs={12} sm={8} md={4}>
-            <Select
-              placeholder="Category"
-              value={categoryFilter}
-              onChange={setCategoryFilter}
-              allowClear
-              showSearch
-              filterOption={(input, option) => {
-                const optionText = option?.children?.toString() || '';
-                return optionText.toLowerCase().includes(input.toLowerCase());
-              }}
-              style={{ width: '100%' }}
-            >
-              {categories.map(category => (
-                <Option key={category} value={category}>{category}</Option>
-              ))}
-            </Select>
-          </Col>
-          <Col xs={12} sm={8} md={4}>
-            <Select
-              placeholder="Brand"
-              value={brandFilter}
-              onChange={setBrandFilter}
-              allowClear
-              showSearch
-              filterOption={(input, option) => {
-                const optionText = option?.children?.toString() || '';
-                return optionText.toLowerCase().includes(input.toLowerCase());
-              }}
-              style={{ width: '100%' }}
-            >
-              {brands.map(brand => (
-                <Option key={brand} value={brand}>{brand}</Option>
-              ))}
-            </Select>
-          </Col>
-          <Col xs={12} sm={8} md={4}>
-            <Select
-              placeholder="Status"
-              value={statusFilter}
-              onChange={setStatusFilter}
-              allowClear
-              showSearch
-              filterOption={(input, option) => {
-                const optionText = option?.children?.toString() || '';
-                return optionText.toLowerCase().includes(input.toLowerCase());
-              }}
-              style={{ width: '100%' }}
-            >
-              <Option value="A">Active</Option>
-              <Option value="I">Inactive</Option>
-            </Select>
           </Col>
         </Row>
       </Card>
@@ -496,7 +380,7 @@ function ProductManagement() {
           rowKey="id"
           pagination={pagination}
           onChange={handleTableChange}
-          scroll={{ x: 1000 }}
+          scroll={{ x: 'max-content' }}
           size="small"
         />
       </Card>

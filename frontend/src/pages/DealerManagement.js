@@ -28,6 +28,13 @@ import {
 } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
+
+// Helper function to remove M/S prefix from dealer names
+const removeMSPrefix = (name) => {
+  if (!name) return name;
+  // Remove "M/S", "M/S.", "M/S " prefix (case insensitive, with or without space/period)
+  return name.replace(/^M\/S[.\s]*/i, '').trim();
+};
 const { Option } = Select;
 
 function DealerManagement() {
@@ -241,7 +248,7 @@ function DealerManagement() {
     }
 
     if (statusFilter) {
-      filtered = filtered.filter(dealer => dealer.dealer_status === statusFilter);
+      filtered = filtered.filter(dealer => dealer.active_status === statusFilter);
     }
 
     setFilteredDealers(filtered);
@@ -281,9 +288,11 @@ function DealerManagement() {
 
   const getStatusTag = (status) => {
     switch (status) {
+      case 'A':
       case 'O':
         return <Tag color="green">Active</Tag>;
       case 'N':
+      case 'I':
         return <Tag color="red">Inactive</Tag>;
       default:
         return <Tag color="default">{status || 'Unknown'}</Tag>;
@@ -295,24 +304,28 @@ function DealerManagement() {
       title: 'Dealer Code',
       dataIndex: 'dealer_code',
       key: 'dealer_code',
-      width: 50,
-      render: (text) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{text}</div>,
+      // Auto-size based on content
+      ellipsis: true,
       sorter: (a, b) => a.dealer_code.localeCompare(b.dealer_code),
     },
     {
       title: 'Name',
       dataIndex: 'name',
       key: 'name',
-      width: 250,
-      render: (text) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{text}</div>,
+      // Auto-size based on content with ellipsis for long names
+      ellipsis: {
+        showTitle: true, // Show full text on hover
+      },
+      render: (text) => removeMSPrefix(text),
       sorter: (a, b) => a.name.localeCompare(b.name),
     },
     {
       title: 'Territory',
       dataIndex: 'territory_name',
       key: 'territory_name',
-      width: 100,
-      render: (territory) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{territory || 'N/A'}</div>,
+      // Auto-size based on content
+      ellipsis: true,
+      render: (territory) => territory || 'N/A',
       sorter: (a, b) => {
         const territoryA = a.territory_name || 'N/A';
         const territoryB = b.territory_name || 'N/A';
@@ -321,17 +334,15 @@ function DealerManagement() {
     },
     {
       title: 'Status',
-      dataIndex: 'dealer_status',
-      key: 'dealer_status',
-      width: 20,
-      render: (status) => (
-        <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>
-          {getStatusTag(status)}
-        </div>
-      ),
+      dataIndex: 'active_status',
+      key: 'active_status',
+      // Fixed width for status tags (they're small)
+      width: 100,
+      align: 'center',
+      render: (status) => getStatusTag(status),
       sorter: (a, b) => {
-        const statusA = a.dealer_status || '';
-        const statusB = b.dealer_status || '';
+        const statusA = a.active_status || '';
+        const statusB = b.active_status || '';
         return statusA.localeCompare(statusB);
       },
     },
@@ -339,8 +350,8 @@ function DealerManagement() {
       title: 'Type',
       dataIndex: 'dealer_type',
       key: 'dealer_type',
-      width: 20,
-      render: (text) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{text}</div>,
+      // Auto-size based on content
+      ellipsis: true,
       sorter: (a, b) => {
         const typeA = a.dealer_type || '';
         const typeB = b.dealer_type || '';
@@ -351,8 +362,9 @@ function DealerManagement() {
       title: 'Contact',
       dataIndex: 'contact',
       key: 'contact',
-      width: 120,
-      render: (contact) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{contact || 'N/A'}</div>,
+      // Auto-size based on content
+      ellipsis: true,
+      render: (contact) => contact || 'N/A',
       sorter: (a, b) => {
         const contactA = a.contact || 'N/A';
         const contactB = b.contact || 'N/A';
@@ -363,8 +375,11 @@ function DealerManagement() {
       title: 'Address',
       dataIndex: 'address',
       key: 'address',
-      width: 300,
-      render: (address) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{address || 'N/A'}</div>,
+      // Auto-size based on content with ellipsis for long addresses
+      ellipsis: {
+        showTitle: true, // Show full address on hover
+      },
+      render: (address) => address || 'N/A',
       sorter: (a, b) => {
         const addressA = a.address || 'N/A';
         const addressB = b.address || 'N/A';
@@ -433,7 +448,7 @@ function DealerManagement() {
           >
             <Statistic
               title={<span style={{ color: 'white' }}>Active Dealers</span>}
-              value={dealers.filter(d => d.dealer_status === 'O').length}
+              value={dealers.filter(d => d.active_status === 'A').length}
               prefix={<ShopOutlined style={{ color: 'white' }} />}
               valueStyle={{ color: 'white', fontSize: '20px' }}
             />
@@ -512,7 +527,7 @@ function DealerManagement() {
                 return optionText.toLowerCase().includes(input.toLowerCase());
               }}
             >
-              <Option value="O">Active</Option>
+              <Option value="A">Active</Option>
               <Option value="N">Inactive</Option>
             </Select>
           </Col>
@@ -532,7 +547,7 @@ function DealerManagement() {
           rowKey="id"
           pagination={pagination}
           onChange={handleTableChange}
-          scroll={{ x: 1000 }}
+          scroll={{ x: 'max-content' }}
           size="small"
         />
       </Card>

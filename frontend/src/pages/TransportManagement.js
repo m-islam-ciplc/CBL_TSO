@@ -150,48 +150,50 @@ function TransportManagement() {
       title: 'ID',
       dataIndex: 'id',
       key: 'id',
-      width: 50,
-      render: (text) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{text}</div>,
+      ellipsis: true,
+      render: (text) => text,
       sorter: (a, b) => a.id - b.id,
     },
     {
       title: 'Truck No',
       dataIndex: 'truck_no',
       key: 'truck_no',
-      width: 100,
-      render: (text) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{text}</div>,
+      ellipsis: true,
+      render: (text) => text,
       sorter: (a, b) => (a.truck_no || '').localeCompare(b.truck_no || ''),
     },
     {
       title: 'Truck Details',
       dataIndex: 'truck_details',
       key: 'truck_details',
-      width: 250,
-      render: (text) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{text}</div>,
+      ellipsis: {
+        showTitle: true,
+      },
+      render: (text) => text,
       sorter: (a, b) => (a.truck_details || '').localeCompare(b.truck_details || ''),
     },
     {
       title: 'Driver Name',
       dataIndex: 'driver_name',
       key: 'driver_name',
-      width: 120,
-      render: (text) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{text}</div>,
+      ellipsis: true,
+      render: (text) => text,
       sorter: (a, b) => (a.driver_name || '').localeCompare(b.driver_name || ''),
     },
     {
       title: 'Route No',
       dataIndex: 'route_no',
       key: 'route_no',
-      width: 80,
-      render: (text) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{text}</div>,
+      ellipsis: true,
+      render: (text) => text,
       sorter: (a, b) => (a.route_no || '').localeCompare(b.route_no || ''),
     },
     {
       title: 'Load Size',
       dataIndex: 'load_size',
       key: 'load_size',
-      width: 100,
-      render: (text) => <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{text}</div>,
+      ellipsis: true,
+      render: (text) => text,
       sorter: (a, b) => (a.load_size || '').localeCompare(b.load_size || ''),
     },
   ];
@@ -333,7 +335,7 @@ function TransportManagement() {
           rowKey="id"
           pagination={pagination}
           onChange={handleTableChange}
-          scroll={{ x: 1000 }}
+          scroll={{ x: 'max-content' }}
           size="small"
         />
       </Card>

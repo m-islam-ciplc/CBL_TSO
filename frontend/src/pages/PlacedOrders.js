@@ -33,6 +33,13 @@ import dayjs from 'dayjs';
 const { Title, Text } = Typography;
 const { Option } = Select;
 
+// Helper function to remove M/S prefix from dealer names
+const removeMSPrefix = (name) => {
+  if (!name) return name;
+  // Remove "M/S", "M/S.", "M/S " prefix (case insensitive, with or without space/period)
+  return name.replace(/^M\/S[.\s]*/i, '').trim();
+};
+
 function PlacedOrders({ refreshTrigger }) {
   const { isTSO, userId } = useUser();
   const [orders, setOrders] = useState([]);
@@ -238,20 +245,22 @@ function PlacedOrders({ refreshTrigger }) {
       title: 'Order ID',
       dataIndex: 'order_id',
       key: 'order_id',
+      ellipsis: true,
       render: (orderId) => (
         <Tag color="blue" style={{ fontSize: '12px' }}>
           {orderId}
         </Tag>
       ),
-      width: 90,
       sorter: (a, b) => a.order_id.localeCompare(b.order_id),
     },
     {
       title: 'Dealer',
       dataIndex: 'dealer_name',
       key: 'dealer_name',
-      ellipsis: true,
-      width: 300,
+      ellipsis: {
+        showTitle: true,
+      },
+      render: (name) => removeMSPrefix(name || 'N/A'),
       sorter: (a, b) => a.dealer_name.localeCompare(b.dealer_name),
     },
     {
@@ -259,7 +268,6 @@ function PlacedOrders({ refreshTrigger }) {
       dataIndex: 'dealer_territory',
       key: 'dealer_territory',
       ellipsis: true,
-      width: 120,
       render: (territory) => territory || 'N/A',
       sorter: (a, b) => {
         const territoryA = a.dealer_territory || 'N/A';
@@ -270,6 +278,7 @@ function PlacedOrders({ refreshTrigger }) {
     {
       title: 'Products',
       key: 'products',
+      ellipsis: true,
       render: (_, record) => {
         return (
           <div>
@@ -279,12 +288,14 @@ function PlacedOrders({ refreshTrigger }) {
           </div>
         );
       },
-      width: 70,
       sorter: (a, b) => (a.item_count || 0) - (b.item_count || 0),
     },
     {
       title: 'Product Details',
       key: 'product_details',
+      ellipsis: {
+        showTitle: true,
+      },
       render: (_, record) => {
         const products = orderProducts[record.order_id] || [];
         
@@ -322,14 +333,14 @@ function PlacedOrders({ refreshTrigger }) {
           </div>
         );
       },
-      width: 400,
     },
     {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
+      width: 100,
+      align: 'center',
       render: (status) => getStatusTag(status || 'new'),
-      width: 80,
       sorter: (a, b) => {
         const statusA = a.status || 'new';
         const statusB = b.status || 'new';
@@ -340,13 +351,15 @@ function PlacedOrders({ refreshTrigger }) {
       title: 'Created',
       dataIndex: 'created_at',
       key: 'created_at',
+      ellipsis: true,
       render: (date) => new Date(date).toLocaleString(),
-      width: 150,
       sorter: (a, b) => new Date(a.created_at) - new Date(b.created_at),
     },
     ...(!isTSO ? [{
       title: 'Actions',
       key: 'actions',
+      width: 80,
+      align: 'center',
       render: (_, record) => {
         const orderDate = dayjs(record.created_at).format('YYYY-MM-DD');
         const today = dayjs().format('YYYY-MM-DD');
@@ -365,7 +378,6 @@ function PlacedOrders({ refreshTrigger }) {
           </Tooltip>
         );
       },
-      width: 60,
     }] : []),
   ];
 
@@ -436,7 +448,7 @@ function PlacedOrders({ refreshTrigger }) {
               >
                 {dealersList.map(dealer => (
                   <Option key={dealer.id} value={dealer.id}>
-                    {dealer.name}
+                    {removeMSPrefix(dealer.name)}
                   </Option>
                 ))}
               </Select>
@@ -541,7 +553,7 @@ function PlacedOrders({ refreshTrigger }) {
             rowKey="id"
             pagination={pagination}
             onChange={handleTableChange}
-            scroll={{ x: 1200 }}
+            scroll={{ x: 'max-content' }}
             size="small"
           />
         )}
