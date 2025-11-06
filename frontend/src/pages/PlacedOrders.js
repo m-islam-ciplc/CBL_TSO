@@ -16,6 +16,7 @@ import {
   Col,
   DatePicker,
   Space,
+  Popconfirm,
 } from 'antd';
 import {
   ReloadOutlined,
@@ -230,11 +231,12 @@ function PlacedOrders({ refreshTrigger }) {
     }
     
     try {
-      await axios.delete(`/api/orders/${orderId}`);
-      message.success('Order deleted successfully');
+      const response = await axios.delete(`/api/orders/${orderId}`);
+      message.success(response.data.message || 'Order deleted successfully');
       loadOrders(); // Refresh the orders list
     } catch (error) {
-      message.error('Failed to delete order');
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to delete order';
+      message.error(errorMessage);
     }
   };
 
@@ -365,17 +367,43 @@ function PlacedOrders({ refreshTrigger }) {
         const today = dayjs().format('YYYY-MM-DD');
         const isToday = orderDate === today;
         
+        if (!isToday) {
+          return (
+            <Tooltip title="Only today's orders can be deleted">
+              <Button
+                type="text"
+                size="small"
+                danger
+                icon={<DeleteOutlined />}
+                disabled
+              />
+            </Tooltip>
+          );
+        }
+
         return (
-          <Tooltip title={isToday ? "Delete Order" : "Only today's orders can be deleted"}>
-            <Button
-              type="text"
-              size="small"
-              danger
-              icon={<DeleteOutlined />}
-              onClick={() => handleDeleteOrder(record.id, record.created_at)}
-              disabled={!isToday}
-            />
-          </Tooltip>
+          <Popconfirm
+            title="Delete Order"
+            description={
+              <div>
+                <div>Are you sure you want to delete order {record.order_id}?</div>
+                <div>This will also delete all associated items, and quotas will revert to the TSO.</div>
+              </div>
+            }
+            onConfirm={() => handleDeleteOrder(record.id, record.created_at)}
+            okText="Yes, Delete"
+            cancelText="Cancel"
+            okButtonProps={{ danger: true }}
+          >
+            <Tooltip title="Delete Order">
+              <Button
+                type="text"
+                size="small"
+                danger
+                icon={<DeleteOutlined />}
+              />
+            </Tooltip>
+          </Popconfirm>
         );
       },
     }] : []),

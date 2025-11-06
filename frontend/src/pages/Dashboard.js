@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Row, Col, Card, Statistic, Typography, Spin, Alert, Space } from 'antd';
+import { Row, Col, Card, Statistic, Typography, Spin, Alert, Space, DatePicker, Radio } from 'antd';
+import dayjs from 'dayjs';
 import {
-  UserOutlined,
-  ShopOutlined,
   AppstoreOutlined,
   ShoppingCartOutlined,
   CheckCircleOutlined,
@@ -24,42 +23,79 @@ const removeMSPrefix = (name) => {
 function Dashboard({ setStats }) {
   const [data, setData] = useState({
     orderTypes: [],
-    dealers: [],
-    warehouses: [],
     products: [],
     orders: []
   });
+  const [stats, setLocalStats] = useState({
+    totalQuantity: 0,
+    totalValue: 0
+  });
   const [loading, setLoading] = useState(true);
+  const [dateFilter, setDateFilter] = useState('today'); // 'today' or 'all'
+  const [selectedDate, setSelectedDate] = useState(dayjs());
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [dateFilter, selectedDate]);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [orderTypes, dealers, warehouses, products, orders] = await Promise.all([
+      const [orderTypes, products] = await Promise.all([
         axios.get('/api/order-types'),
-        axios.get('/api/dealers'),
-        axios.get('/api/warehouses'),
-        axios.get('/api/products'),
-        axios.get('/api/orders')
+        axios.get('/api/products')
       ]);
+
+      // Fetch orders based on date filter
+      let orders;
+      if (dateFilter === 'today') {
+        const today = selectedDate.format('YYYY-MM-DD');
+        const response = await axios.get(`/api/orders/date/${today}`);
+        orders = response.data.orders || [];
+      } else {
+        const response = await axios.get('/api/orders');
+        orders = response.data || [];
+      }
+
+      // Calculate total quantity from orders
+      const totalQuantity = orders.reduce((sum, order) => sum + (parseInt(order.quantity) || 0), 0);
+
+      // Fetch order items to calculate total value
+      let totalValue = 0;
+      try {
+        // Fetch each order with its items to get unit_tp
+        const orderPromises = orders.map(order => 
+          axios.get(`/api/orders/${order.order_id}`).catch(() => ({ data: { items: [] } }))
+        );
+        const orderResponses = await Promise.all(orderPromises);
+        
+        orderResponses.forEach(response => {
+          if (response.data && response.data.items && Array.isArray(response.data.items)) {
+            response.data.items.forEach(item => {
+              const quantity = parseInt(item.quantity) || 0;
+              const unitTp = parseFloat(item.unit_tp) || 0;
+              totalValue += quantity * unitTp;
+            });
+          }
+        });
+      } catch (error) {
+        console.error('Error fetching order items for value calculation:', error);
+      }
 
       const newData = {
         orderTypes: orderTypes.data,
-        dealers: dealers.data,
-        warehouses: warehouses.data,
         products: products.data,
-        orders: orders.data
+        orders: orders
       };
 
       setData(newData);
+      setLocalStats({
+        totalQuantity,
+        totalValue
+      });
       setStats({
-        dealers: dealers.data.length,
-        warehouses: warehouses.data.length,
         products: products.data.length,
-        orders: orders.data.length,
+        orders: orders.length,
       });
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
@@ -78,32 +114,32 @@ function Dashboard({ setStats }) {
 
   return (
     <div>
-      <Title level={3} style={{ marginBottom: '24px' }}>
-        Dashboard
-      </Title>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <Title level={3} style={{ margin: 0 }}>
+          Dashboard
+        </Title>
+        <Space>
+          <Radio.Group 
+            value={dateFilter} 
+            onChange={(e) => setDateFilter(e.target.value)}
+            size="small"
+          >
+            <Radio.Button value="today">Today</Radio.Button>
+            <Radio.Button value="all">All Orders</Radio.Button>
+          </Radio.Group>
+          {dateFilter === 'today' && (
+            <DatePicker
+              value={selectedDate}
+              onChange={(date) => setSelectedDate(date || dayjs())}
+              format="YYYY-MM-DD"
+              size="small"
+            />
+          )}
+        </Space>
+      </div>
 
       {/* Statistics Cards */}
       <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
-        <Col xs={24} sm={12} md={6}>
-          <Card style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
-            <Statistic
-              title={<span style={{ color: 'white' }}>Dealers</span>}
-              value={data.dealers.length}
-              prefix={<UserOutlined />}
-              valueStyle={{ color: 'white', fontSize: '24px' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card style={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', color: 'white' }}>
-            <Statistic
-              title={<span style={{ color: 'white' }}>Warehouses</span>}
-              value={data.warehouses.length}
-              prefix={<ShopOutlined />}
-              valueStyle={{ color: 'white', fontSize: '24px' }}
-            />
-          </Card>
-        </Col>
         <Col xs={24} sm={12} md={6}>
           <Card style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', color: 'white' }}>
             <Statistic
@@ -120,6 +156,26 @@ function Dashboard({ setStats }) {
               title={<span style={{ color: 'white' }}>Total Orders</span>}
               value={data.orders.length}
               prefix={<ShoppingCartOutlined />}
+              valueStyle={{ color: 'white', fontSize: '24px' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card style={{ background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', color: 'white' }}>
+            <Statistic
+              title={<span style={{ color: 'white' }}>Total Quantity</span>}
+              value={stats.totalQuantity}
+              prefix={<ShoppingCartOutlined />}
+              valueStyle={{ color: 'white', fontSize: '24px' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card style={{ background: 'linear-gradient(135deg, #30cfd0 0%, #330867 100%)', color: 'white' }}>
+            <Statistic
+              title={<span style={{ color: 'white' }}>Total Value</span>}
+              value={stats.totalValue.toLocaleString('en-BD', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              prefix="৳"
               valueStyle={{ color: 'white', fontSize: '24px' }}
             />
           </Card>
@@ -164,7 +220,7 @@ function Dashboard({ setStats }) {
                   Database Connected
                 </div>
                 <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: '12px' }}>
-                  {data.dealers.length} dealers, {data.products.length} products
+                  {data.products.length} products, {data.orders.length} orders
                 </div>
               </div>
             </div>

@@ -185,18 +185,16 @@ function TSODashboard() {
                 prefix={<GiftOutlined />}
                 suffix="items"
                 valueStyle={{ color: 'white', fontSize: '24px' }}
-                style={{ marginBottom: '16px' }}
               />
               <div
                 style={{
                   maxHeight: '300px',
                   overflowY: 'auto',
-                  borderTop: '1px solid rgba(255,255,255,0.15)',
-                  paddingTop: '12px',
+                  marginTop: '16px',
                 }}
               >
                 {quotas.filter((q) => (q.max_quantity || 0) > 0).length === 0 ? (
-                  <Text style={{ color: 'white', opacity: 0.8 }}>No products allocated</Text>
+                  <Text style={{ color: 'white', opacity: 0.8, fontSize: '14px' }}>No products allocated</Text>
                 ) : (
                   quotas
                     .filter((q) => (q.max_quantity || 0) > 0)
@@ -204,13 +202,12 @@ function TSODashboard() {
                       <div
                         key={q.id}
                         style={{
-                          color: 'white',
                           padding: '8px 0',
-                          borderBottom: '1px solid rgba(255,255,255,0.15)',
-                          fontSize: '14px',
                         }}
                       >
-                        {q.product_name || q.product_code} x {q.max_quantity}
+                        <Text style={{ color: 'white', fontSize: '14px' }}>
+                          {q.product_name || q.product_code} x {q.max_quantity}
+                        </Text>
                       </div>
                     ))
                 )}
@@ -232,18 +229,16 @@ function TSODashboard() {
                 prefix={<ShoppingCartOutlined />}
                 suffix="units"
                 valueStyle={{ color: 'white', fontSize: '24px' }}
-                style={{ marginBottom: '16px' }}
               />
               <div
                 style={{
                   maxHeight: '300px',
                   overflowY: 'auto',
-                  borderTop: '1px solid rgba(255,255,255,0.15)',
-                  paddingTop: '12px',
+                  marginTop: '16px',
                 }}
               >
                 {quotas.filter((q) => (q.sold_quantity || 0) > 0).length === 0 ? (
-                  <Text style={{ color: 'white', opacity: 0.8 }}>No sales yet</Text>
+                  <Text style={{ color: 'white', opacity: 0.8, fontSize: '14px' }}>No sales yet</Text>
                 ) : (
                   quotas
                     .filter((q) => (q.sold_quantity || 0) > 0)
@@ -251,13 +246,12 @@ function TSODashboard() {
                       <div
                         key={q.id}
                         style={{
-                          color: 'white',
                           padding: '8px 0',
-                          borderBottom: '1px solid rgba(255,255,255,0.15)',
-                          fontSize: '14px',
                         }}
                       >
-                        {q.product_name || q.product_code} x {q.sold_quantity || 0}
+                        <Text style={{ color: 'white', fontSize: '14px' }}>
+                          {q.product_name || q.product_code} x {q.sold_quantity || 0}
+                        </Text>
                       </div>
                     ))
                 )}
@@ -279,21 +273,19 @@ function TSODashboard() {
                 prefix={<CheckCircleOutlined />}
                 suffix="units"
                 valueStyle={{ color: 'white', fontSize: '24px' }}
-                style={{ marginBottom: '16px' }}
               />
               <div
                 style={{
                   maxHeight: '300px',
                   overflowY: 'auto',
-                  borderTop: '1px solid rgba(255,255,255,0.15)',
-                  paddingTop: '12px',
+                  marginTop: '16px',
                 }}
               >
                 {quotas.filter((q) => {
                   const remaining = q.remaining_quantity !== undefined && q.remaining_quantity !== null ? q.remaining_quantity : 0;
                   return remaining > 0;
                 }).length === 0 ? (
-                  <Text style={{ color: 'white', opacity: 0.8 }}>No remaining quantity</Text>
+                  <Text style={{ color: 'white', opacity: 0.8, fontSize: '14px' }}>No remaining quantity</Text>
                 ) : (
                   quotas
                     .filter((q) => {
@@ -304,13 +296,12 @@ function TSODashboard() {
                       <div
                         key={q.id}
                         style={{
-                          color: 'white',
                           padding: '8px 0',
-                          borderBottom: '1px solid rgba(255,255,255,0.15)',
-                          fontSize: '14px',
                         }}
                       >
-                        {q.product_name || q.product_code} x {q.remaining_quantity !== undefined && q.remaining_quantity !== null ? q.remaining_quantity : 0}
+                        <Text style={{ color: 'white', fontSize: '14px' }}>
+                          {q.product_name || q.product_code} x {q.remaining_quantity !== undefined && q.remaining_quantity !== null ? q.remaining_quantity : 0}
+                        </Text>
                       </div>
                     ))
                 )}

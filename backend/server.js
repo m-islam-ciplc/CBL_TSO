@@ -25,30 +25,58 @@ async function generateExcelReport(orders, date) {
         // Copy the template structure exactly
         await copyWorksheetStructure(templateWorksheet, worksheet, orders, date);
         
-        // Set specific column widths for columns A to E
-        const columnWidths = [10, 10, 25, 50, 25]; // A, B, C, D, E in characters
-        
-        for (let col = 1; col <= 5; col++) {
-            const column = worksheet.getColumn(col);
-            column.width = columnWidths[col - 1]; // Set specific character width
-            column.hidden = false; // Ensure column is visible
-        }
-        
-        // Set columns F to last column: width 10 characters and wrap text
-        for (let col = 6; col <= worksheet.columnCount; col++) {
-            const column = worksheet.getColumn(col);
-            column.width = 10; // Set width to 10 characters
-            column.hidden = false; // Ensure column is visible
+        // Auto-fit columns based on content
+        // Calculate optimal width for each column
+        worksheet.columns.forEach((column, colNumber) => {
+            let maxLength = 0;
+            const columnNumber = colNumber + 1;
             
-            // Apply wrap text to all cells in this column
-            worksheet.getColumn(col).eachCell({ includeEmpty: false }, (cell) => {
-                if (cell.alignment) {
-                    cell.alignment.wrapText = true;
-                } else {
-                    cell.alignment = { wrapText: true };
+            // Check header row (row 1)
+            const headerCell = worksheet.getRow(1).getCell(columnNumber);
+            if (headerCell.value) {
+                const headerLength = String(headerCell.value).length;
+                maxLength = Math.max(maxLength, headerLength);
+            }
+            
+            // Check all data rows
+            worksheet.eachRow({ includeEmpty: false }, (row) => {
+                const cell = row.getCell(columnNumber);
+                if (cell.value != null) {
+                    let cellLength = 0;
+                    
+                    if (typeof cell.value === 'string') {
+                        cellLength = cell.value.length;
+                    } else if (typeof cell.value === 'number') {
+                        cellLength = String(cell.value).length;
+                    } else if (cell.value instanceof Date) {
+                        cellLength = cell.value.toLocaleString().length;
+                    } else {
+                        cellLength = String(cell.value).length;
+                    }
+                    
+                    // Add some padding (1.2x for better readability)
+                    maxLength = Math.max(maxLength, Math.ceil(cellLength * 1.2));
                 }
             });
-        }
+            
+            // Set column width (minimum 10, maximum 50, or calculated width)
+            const optimalWidth = Math.max(10, Math.min(maxLength + 2, 50));
+            column.width = optimalWidth;
+            column.hidden = false;
+            
+            // For columns F onwards (product columns), apply wrap text if content is long
+            if (columnNumber >= 6) {
+                worksheet.getColumn(columnNumber).eachCell({ includeEmpty: false }, (cell) => {
+                    if (cell.value && String(cell.value).length > 15) {
+                        if (cell.alignment) {
+                            cell.alignment.wrapText = true;
+                        } else {
+                            cell.alignment = { wrapText: true };
+                        }
+                    }
+                });
+            }
+        });
         
         // Generate Excel buffer
         const buffer = await workbook.xlsx.writeBuffer();
@@ -1936,7 +1964,7 @@ app.get('/api/orders/date/:date', async (req, res) => {
             return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
         }
         
-        // Get orders for the specific date
+        // Get orders for the specific date with item_count and quantity
         const ordersQuery = `
             SELECT 
                 o.*, 
@@ -1946,14 +1974,22 @@ app.get('/api/orders/date/:date', async (req, res) => {
                 d.address as dealer_address,
                 d.contact as dealer_contact,
                 w.name as warehouse_name,
-            w.alias as warehouse_alias,
-                DATE(o.created_at) as order_date
+                w.alias as warehouse_alias,
+                DATE(o.created_at) as order_date,
+                COUNT(oi.id) as item_count,
+                COALESCE(SUM(oi.quantity), 0) as quantity,
+                (SELECT p.name FROM order_items oi2 
+                 JOIN products p ON oi2.product_id = p.id 
+                 WHERE oi2.order_id = o.order_id 
+                 ORDER BY oi2.id LIMIT 1) as product_name
             FROM orders o
             LEFT JOIN order_types ot ON o.order_type_id = ot.id
             LEFT JOIN dealers d ON o.dealer_id = d.id
             LEFT JOIN warehouses w ON o.warehouse_id = w.id
+            LEFT JOIN order_items oi ON o.order_id = oi.order_id
             WHERE DATE(o.created_at) = ?
-            ORDER BY o.created_at ASC
+            GROUP BY o.id, o.order_id, o.order_type_id, o.dealer_id, o.warehouse_id, o.created_at, o.user_id, ot.name, d.name, d.territory_name, d.address, d.contact, w.name, w.alias
+            ORDER BY o.created_at DESC
         `;
         
         const orders = await db.promise().query(ordersQuery, [date]);
@@ -2358,22 +2394,63 @@ app.post('/api/transports/import', upload.single('file'), async (req, res) => {
 });
 
 // Delete an order by ID
-app.delete('/api/orders/:id', (req, res) => {
+app.delete('/api/orders/:id', async (req, res) => {
     const orderId = req.params.id;
 
-    const query = 'DELETE FROM orders WHERE id = ?';
+    try {
+        // Start transaction
+        await db.promise().beginTransaction();
 
-    db.query(query, [orderId], (err, results) => {
-        if (err) {
-            res.status(500).json({ error: err.message });
-        } else if (results.affectedRows === 0) {
-            res.status(404).json({ error: 'Order not found' });
-        } else {
+        try {
+            // First, get the order_id (UUID) to delete related order_items
+            const [orderRows] = await db.promise().query(
+                'SELECT order_id FROM orders WHERE id = ?',
+                [orderId]
+            );
+
+            if (!orderRows || orderRows.length === 0) {
+                await db.promise().rollback();
+                return res.status(404).json({ error: 'Order not found' });
+            }
+
+            const orderUUID = orderRows[0].order_id;
+
+            // Delete all order_items associated with this order
+            await db.promise().query(
+                'DELETE FROM order_items WHERE order_id = ?',
+                [orderUUID]
+            );
+
+            // Delete the order itself
+            const [deleteResult] = await db.promise().query(
+                'DELETE FROM orders WHERE id = ?',
+                [orderId]
+            );
+
+            if (deleteResult.affectedRows === 0) {
+                await db.promise().rollback();
+                return res.status(404).json({ error: 'Order not found' });
+            }
+
+            // Commit transaction
+            await db.promise().commit();
+
+            // Broadcast quota change to notify all connected clients
+            // This will trigger quota recalculation for TSO dashboards
+            broadcastQuotaChange();
+
             res.json({
                 success: true,
-                message: 'Order deleted successfully'
+                message: 'Order and associated items deleted successfully'
             });
+        } catch (error) {
+            // Rollback transaction on error
+            await db.promise().rollback();
+            throw error;
         }
-    });
+    } catch (error) {
+        console.error('Error deleting order:', error);
+        res.status(500).json({ error: error.message });
+    }
 });
 

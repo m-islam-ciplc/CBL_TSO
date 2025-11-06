@@ -129,6 +129,16 @@ function AppContent() {
       icon: <OrderedListOutlined />,
       label: 'Placed Orders',
     },
+    ...(userRole === 'admin' ? [{
+      key: 'manage-quotas',
+      icon: <BarChartOutlined />,
+      label: 'Manage Quotas',
+    }] : []),
+    {
+      key: 'daily-report',
+      icon: <FileExcelOutlined />,
+      label: 'Daily Report',
+    },
     {
       key: 'manage-dealers',
       icon: <UserOutlined />,
@@ -148,17 +158,7 @@ function AppContent() {
       key: 'user-management',
       icon: <TeamOutlined />,
       label: 'Manage Users',
-    },
-    {
-      key: 'manage-quotas',
-      icon: <BarChartOutlined />,
-      label: 'Manage Quotas',
     }] : []),
-    {
-      key: 'daily-report',
-      icon: <FileExcelOutlined />,
-      label: 'Daily Report',
-    },
   ];
 
   return (

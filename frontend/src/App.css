@@ -132,8 +132,8 @@
   color: rgba(255, 255, 255, 0.8);
 }
 
-/* Mobile devices - Show floating button, hide menu bar */
-@media (max-width: 767px) {
+/* Mobile devices (phones) - Show floating button, hide menu bar */
+@media (max-width: 600px) {
   .custom-menu-bar {
     display: none !important;
     opacity: 0;
@@ -147,7 +147,6 @@
     transition: opacity 0.3s ease, visibility 0.3s ease;
   }
 
-  /* Reduce header padding on mobile */
   .header-logo {
     margin-right: 8px !important;
     font-size: 14px !important;
@@ -167,23 +166,20 @@
   }
 }
 
-/* Tablet devices - Show floating button earlier to prevent overlap */
-@media (min-width: 768px) and (max-width: 1100px) {
-  /* Hide menu bar and show floating button to prevent overlap */
+/* 7-inch Tablets - Show menu bar, hide floating button */
+@media (min-width: 601px) and (max-width: 1024px) {
   .custom-menu-bar {
+    display: flex !important;
+    opacity: 1;
+    visibility: visible;
+  }
+  
+  .floating-menu-button {
     display: none !important;
     opacity: 0;
     visibility: hidden;
   }
-  
-  .floating-menu-button {
-    display: block !important;
-    opacity: 1;
-    visibility: visible;
-    transition: opacity 0.3s ease, visibility 0.3s ease;
-  }
 
-  /* Reduce header padding on tablets */
   .header-logo {
     margin-right: 12px !important;
     font-size: 15px !important;
@@ -199,7 +195,7 @@
 }
 
 /* Desktop - Show menu bar, hide floating button */
-@media (min-width: 1101px) {
+@media (min-width: 1025px) {
   .custom-menu-bar {
     display: flex !important;
     opacity: 1;

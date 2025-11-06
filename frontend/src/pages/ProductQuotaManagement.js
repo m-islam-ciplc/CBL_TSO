@@ -403,6 +403,13 @@ function ProductQuotaManagement() {
     }
   };
 
+  // Disable all dates except today
+  const disabledDate = (current) => {
+    if (!current) return false;
+    const today = dayjs().startOf('day');
+    return !current.isSame(today, 'day');
+  };
+
   const allocationColumns = [
     {
       title: 'Territory',
@@ -524,6 +531,7 @@ function ProductQuotaManagement() {
                   value={selectedDate}
                   onChange={setSelectedDate}
                   format="YYYY-MM-DD"
+                  disabledDate={disabledDate}
                 />
               </Space>
             </Col>
