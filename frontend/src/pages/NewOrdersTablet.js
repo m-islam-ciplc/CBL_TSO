@@ -1002,7 +1002,7 @@ function NewOrdersTablet({ onOrderCreated }) {
               <InputNumber
                 min={0}
                 max={9999}
-                value={productQuantities[selectedProductForPopup.id] || 0}
+                value={productQuantities[selectedProductForPopup.id] > 0 ? productQuantities[selectedProductForPopup.id] : null}
                 onChange={(value) => {
                   const newQty = value || 0;
                   setProductQuantities(prev => ({
@@ -1017,7 +1017,7 @@ function NewOrdersTablet({ onOrderCreated }) {
                   height: '40px'
                 }}
                 controls={false}
-                placeholder="0"
+                placeholder=""
               />
               
               <Button
