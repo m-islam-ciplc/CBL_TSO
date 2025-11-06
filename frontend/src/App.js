@@ -162,15 +162,12 @@ function AppContent() {
     <Layout style={{ minHeight: '100vh' }}>
       {userRole && (
         <Header style={{
+          height: '40px',
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           padding: '0 24px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
-          zIndex: 1000,
-          height: '40px',
-          lineHeight: '40px',
         }}>
           {/* Logo and Title */}
           <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -222,7 +219,7 @@ function AppContent() {
       <Content style={{ 
         padding: userRole ? '12px' : '0', 
         background: '#f0f2f5',
-        minHeight: 'calc(100vh - 64px)',
+        minHeight: userRole ? 'calc(100vh - 40px)' : '100vh',
       }}>
         <Routes>
           <Route path="/login" element={<Login />} />
