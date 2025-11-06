@@ -2095,15 +2095,6 @@ app.get('/api/orders/mr-report/:date', async (req, res) => {
             return res.status(404).json({ error: 'No orders found for the specified date' });
         }
         
-        // Get all products to create column headers
-        const productsQuery = `
-            SELECT product_code, name, unit_tp 
-            FROM products 
-            ORDER BY name ASC
-        `;
-        const products = await db.promise().query(productsQuery);
-        const allProducts = products[0];
-        
         // Get order items for all orders
         const orderItemsQuery = `
             SELECT oi.order_id, p.name as product_name, oi.quantity
@@ -2112,6 +2103,9 @@ app.get('/api/orders/mr-report/:date', async (req, res) => {
             WHERE oi.order_id IN (${orders[0].map(() => '?').join(',')})
         `;
         const orderItems = await db.promise().query(orderItemsQuery, orders[0].map(order => order.order_id));
+        
+        // Get only products that are actually ordered (distinct products from order_items)
+        const orderedProducts = [...new Set(orderItems[0].map(item => item.product_name))].sort();
         
         // Group order items by order_id
         const orderItemsMap = {};
@@ -2124,8 +2118,8 @@ app.get('/api/orders/mr-report/:date', async (req, res) => {
         
         // Create CSV headers
         const headers = ['internalId', 'orderType', 'orderDate', 'warehouse', 'DealerName'];
-        allProducts.forEach(product => {
-            headers.push(product.name);
+        orderedProducts.forEach(productName => {
+            headers.push(productName);
         });
         
         // Create CSV rows
@@ -2141,9 +2135,9 @@ app.get('/api/orders/mr-report/:date', async (req, res) => {
                 order.dealer_name
             ];
             
-            // Add quantities for each product
-            allProducts.forEach(product => {
-                const quantity = orderItemsMap[order.order_id]?.[product.name] || '';
+            // Add quantities for each ordered product
+            orderedProducts.forEach(productName => {
+                const quantity = orderItemsMap[order.order_id]?.[productName] || '';
                 row.push(quantity);
             });
             
