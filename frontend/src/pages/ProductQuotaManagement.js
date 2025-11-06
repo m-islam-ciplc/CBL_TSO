@@ -505,14 +505,14 @@ function ProductQuotaManagement() {
   return (
     <div>
       <Title level={3} style={{ marginBottom: '8px' }}>
-        Product Quota Management
+        Daily Quota Management
       </Title>
       <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
-        Allocate product quotas per territory by date
+        Allocate daily sales quotas by territory and monitor consumption in real time.
       </Text>
 
       {/* Allocation Form */}
-      <Card title="Allocate Quotas" style={{ marginBottom: '16px' }} bodyStyle={{ padding: '12px' }}>
+      <Card title="Allocate Daily Quotas" style={{ marginBottom: '16px' }} bodyStyle={{ padding: '12px' }}>
         <Row gutter={[16, 16]} align="top">
             <Col flex="none" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
               <Space direction="vertical">
@@ -521,7 +521,6 @@ function ProductQuotaManagement() {
                   value={selectedDate}
                   onChange={setSelectedDate}
                   format="YYYY-MM-DD"
-                  disabledDate={(current) => current && (current < dayjs().startOf('day') || current > dayjs().startOf('day'))} // Only allow today's date
                 />
               </Space>
             </Col>
@@ -653,7 +652,7 @@ function ProductQuotaManagement() {
       </Card>
 
       {/* Current Allocations Table */}
-      <Card title="Allocated Quotas" bodyStyle={{ padding: '12px' }}>
+      <Card title="Allocated Daily Quotas" bodyStyle={{ padding: '12px' }}>
         <Table
           dataSource={getAllocations()}
           columns={allocationColumns}

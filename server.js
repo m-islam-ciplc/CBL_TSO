@@ -868,7 +868,7 @@ app.delete('/api/users/:id', (req, res) => {
 // - remaining_quantity is ALWAYS calculated: max_quantity - SUM(order_items.quantity)
 // - This guarantees 100% accuracy and eliminates consistency issues
 // - No need to UPDATE remaining_quantity on orders or quota changes
-// All UI displays (Product Quota Management, TSO Dashboard, Product Cards) read from
+// All UI displays (Daily Quota Management, TSO Dashboard, Product Cards) read from
 // these calculated values via the API endpoints below.
 // ======================================================================================
 app.post('/api/product-caps/upload', upload.single('file'), async (req, res) => {
@@ -1392,7 +1392,6 @@ app.post('/api/products/import', upload.single('file'), async (req, res) => {
 
                 importedCount++;
                 console.log(`✅ Imported product: ${productData[1]} (${productData[0]})`);
-PRODUCT_CATEGORY
             } catch (error) {
                 if (error.code === 'ER_DUP_ENTRY') {
                     console.log(`🔄 Duplicate product: ${productData[1]} (${productData[0]})`);

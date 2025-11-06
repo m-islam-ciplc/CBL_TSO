@@ -212,7 +212,16 @@ function PlacedOrders({ refreshTrigger }) {
     );
   }
 
-  const handleDeleteOrder = async (orderId) => {
+  const handleDeleteOrder = async (orderId, orderCreatedAt) => {
+    // Additional safety check: only allow deletion of today's orders
+    const orderDate = dayjs(orderCreatedAt).format('YYYY-MM-DD');
+    const today = dayjs().format('YYYY-MM-DD');
+    
+    if (orderDate !== today) {
+      message.error('Only today\'s orders can be deleted');
+      return;
+    }
+    
     try {
       await axios.delete(`/api/orders/${orderId}`);
       message.success('Order deleted successfully');
@@ -338,17 +347,24 @@ function PlacedOrders({ refreshTrigger }) {
     ...(!isTSO ? [{
       title: 'Actions',
       key: 'actions',
-      render: (_, record) => (
-        <Tooltip title="Delete Order">
-          <Button
-            type="text"
-            size="small"
-            danger
-            icon={<DeleteOutlined />}
-            onClick={() => handleDeleteOrder(record.id)}
-          />
-        </Tooltip>
-      ),
+      render: (_, record) => {
+        const orderDate = dayjs(record.created_at).format('YYYY-MM-DD');
+        const today = dayjs().format('YYYY-MM-DD');
+        const isToday = orderDate === today;
+        
+        return (
+          <Tooltip title={isToday ? "Delete Order" : "Only today's orders can be deleted"}>
+            <Button
+              type="text"
+              size="small"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => handleDeleteOrder(record.id, record.created_at)}
+              disabled={!isToday}
+            />
+          </Tooltip>
+        );
+      },
       width: 60,
     }] : []),
   ];
@@ -359,11 +375,11 @@ function PlacedOrders({ refreshTrigger }) {
         Placed Orders
       </Title>
       <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
-        {isTSO ? 'View orders placed by you' : 'View and manage orders placed by TSOs'}
+        {isTSO ? "View orders you've placed and filter by date, product, dealer, or transport." : 'View and manage all orders placed by TSOs.'}
       </Text>
 
       {/* Filters */}
-      <Card style={{ marginBottom: '16px' }} bodyStyle={{ padding: '12px' }}>
+      <Card title="Filter Orders" style={{ marginBottom: '16px' }} bodyStyle={{ padding: '12px' }}>
         <Row gutter={[12, 12]}>
           <Col xs={24} sm={12} md={6}>
             <Space direction="vertical" style={{ width: '100%' }} size="small">
