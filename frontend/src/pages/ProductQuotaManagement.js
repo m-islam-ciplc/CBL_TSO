@@ -621,7 +621,7 @@ useEffect(() => {
       </Text>
 
       <Tabs activeKey={activeTab} onChange={setActiveTab}>
-        <TabPane tab="Allocate Today" key="allocate">
+        <TabPane tab="Allocate Daily Quotas" key="allocate">
           {/* Allocation Form */}
           <Card title="Allocate Daily Quotas" style={{ marginBottom: '16px' }} bodyStyle={{ padding: '12px' }}>
             <Row gutter={[16, 16]} align="top">
