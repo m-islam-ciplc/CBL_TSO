@@ -15,6 +15,7 @@ import {
   Input,
   AutoComplete,
   Tag,
+  Tabs,
 } from 'antd';
 import {
   PlusOutlined,
@@ -42,6 +43,12 @@ function ProductQuotaManagement() {
   const [territoryInput, setTerritoryInput] = useState('');
   const [selectedTerritories, setSelectedTerritories] = useState([]);
   const [quotaValue, setQuotaValue] = useState('');
+
+  // Historical quotas view state
+  const [historyDate, setHistoryDate] = useState(dayjs());
+  const [historyAllocations, setHistoryAllocations] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('allocate');
   
   // Filtered options for dropdowns
   const [filteredProducts, setFilteredProducts] = useState([]);
@@ -55,6 +62,12 @@ function ProductQuotaManagement() {
   useEffect(() => {
     loadQuotas();
   }, [selectedDate]);
+
+useEffect(() => {
+  if (activeTab === 'history') {
+    loadHistoryQuotas();
+  }
+}, [historyDate, activeTab]);
 
   // SSE for real-time quota updates when TSO creates orders
   useEffect(() => {
@@ -152,6 +165,35 @@ function ProductQuotaManagement() {
     } catch (error) {
       // No quotas for this date is normal
       setQuotas({});
+    }
+  };
+
+  const loadHistoryQuotas = async () => {
+    if (!historyDate) {
+      setHistoryAllocations([]);
+      return;
+    }
+
+    try {
+      setHistoryLoading(true);
+      const dateStr = historyDate.format('YYYY-MM-DD');
+      const response = await axios.get(`/api/product-caps?date=${dateStr}`);
+      const rows = (response.data || []).map(cap => ({
+        key: `${cap.product_id}_${cap.territory_name}_${cap.date}`,
+        date: cap.date,
+        territoryName: cap.territory_name,
+        productCode: cap.product_code,
+        productName: cap.product_name,
+        quantity: Number(cap.max_quantity) || 0,
+        sold: Number(cap.sold_quantity) || 0,
+        remaining: Number(cap.remaining_quantity) || 0,
+      }));
+      setHistoryAllocations(rows);
+    } catch (error) {
+      console.error('Failed to load historical quotas:', error);
+      setHistoryAllocations([]);
+    } finally {
+      setHistoryLoading(false);
     }
   };
 
@@ -410,6 +452,11 @@ function ProductQuotaManagement() {
     return !current.isSame(today, 'day');
   };
 
+  const disabledHistoryDate = (current) => {
+    if (!current) return false;
+    return current.isAfter(dayjs(), 'day');
+  };
+
   const allocationColumns = [
     {
       title: 'Territory',
@@ -512,6 +559,58 @@ function ProductQuotaManagement() {
     },
   ];
 
+  const historyColumns = [
+    {
+      title: 'Date',
+      dataIndex: 'date',
+      key: 'date',
+      ellipsis: true,
+    },
+    {
+      title: 'Territory',
+      dataIndex: 'territoryName',
+      key: 'territoryName',
+      ellipsis: true,
+    },
+    {
+      title: 'Product Code',
+      dataIndex: 'productCode',
+      key: 'productCode',
+      ellipsis: true,
+    },
+    {
+      title: 'Product Name',
+      dataIndex: 'productName',
+      key: 'productName',
+      ellipsis: {
+        showTitle: true,
+      },
+    },
+    {
+      title: 'Quota',
+      dataIndex: 'quantity',
+      key: 'quantity',
+      align: 'right',
+      ellipsis: true,
+    },
+    {
+      title: 'Sold',
+      dataIndex: 'sold',
+      key: 'sold',
+      align: 'right',
+      ellipsis: true,
+    },
+    {
+      title: 'Remaining',
+      dataIndex: 'remaining',
+      key: 'remaining',
+      align: 'right',
+      ellipsis: true,
+    },
+  ];
+
+  const { TabPane } = Tabs;
+
   return (
     <div>
       <Title level={3} style={{ marginBottom: '8px' }}>
@@ -521,9 +620,11 @@ function ProductQuotaManagement() {
         Allocate daily sales quotas by territory and monitor consumption in real time.
       </Text>
 
-      {/* Allocation Form */}
-      <Card title="Allocate Daily Quotas" style={{ marginBottom: '16px' }} bodyStyle={{ padding: '12px' }}>
-        <Row gutter={[16, 16]} align="top">
+      <Tabs activeKey={activeTab} onChange={setActiveTab}>
+        <TabPane tab="Allocate Today" key="allocate">
+          {/* Allocation Form */}
+          <Card title="Allocate Daily Quotas" style={{ marginBottom: '16px' }} bodyStyle={{ padding: '12px' }}>
+            <Row gutter={[16, 16]} align="top">
             <Col flex="none" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
               <Space direction="vertical">
                 <Text strong>Date:</Text>
@@ -650,30 +751,73 @@ function ProductQuotaManagement() {
             </Col>
           </Row>
 
-        <Row gutter={[16, 16]} align="middle" style={{ marginTop: '16px' }}>
-          <Col>
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={loadQuotas}
-            >
-              Refresh
-            </Button>
-          </Col>
-        </Row>
-      </Card>
+            <Row gutter={[16, 16]} align="middle" style={{ marginTop: '16px' }}>
+              <Col>
+                <Button
+                  icon={<ReloadOutlined />}
+                  onClick={loadQuotas}
+                >
+                  Refresh
+                </Button>
+              </Col>
+            </Row>
+          </Card>
 
-      {/* Current Allocations Table */}
-      <Card title="Allocated Daily Quotas" bodyStyle={{ padding: '12px' }}>
-        <Table
-          dataSource={getAllocations()}
-          columns={allocationColumns}
-          rowKey="key"
-          pagination={{ pageSize: 20 }}
-          scroll={{ x: 'max-content' }}
-          locale={{ emptyText: 'No allocations yet. Add allocations using the form above.' }}
-          size="small"
-        />
-      </Card>
+          {/* Current Allocations Table */}
+          <Card title="Allocated Daily Quotas" bodyStyle={{ padding: '12px' }}>
+            <Table
+              dataSource={getAllocations()}
+              columns={allocationColumns}
+              rowKey="key"
+              pagination={{ pageSize: 20 }}
+              scroll={{ x: 'max-content' }}
+              locale={{ emptyText: 'No allocations yet. Add allocations using the form above.' }}
+              size="small"
+            />
+          </Card>
+        </TabPane>
+
+        <TabPane tab="Previously Allocated Quotas" key="history">
+          <Card title="Previously Allocated Quotas" bodyStyle={{ padding: '12px' }}>
+            <Row gutter={[16, 16]} align="middle">
+              <Col xs={24} sm={12} md={8}>
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  <Text strong>Select Date</Text>
+                  <DatePicker
+                    value={historyDate}
+                    onChange={(value) => setHistoryDate(value || dayjs())}
+                    format="YYYY-MM-DD"
+                    style={{ width: '100%' }}
+                    disabledDate={disabledHistoryDate}
+                    allowClear={false}
+                  />
+                </Space>
+              </Col>
+            </Row>
+            <Row gutter={[16, 16]} align="middle" style={{ marginTop: 16, marginBottom: 12 }}>
+              <Col>
+                <Button
+                  icon={<ReloadOutlined />}
+                  onClick={loadHistoryQuotas}
+                  disabled={historyLoading}
+                >
+                  Refresh
+                </Button>
+              </Col>
+            </Row>
+            <Table
+              dataSource={historyAllocations}
+              columns={historyColumns}
+              rowKey="key"
+              pagination={{ pageSize: 20 }}
+              scroll={{ x: 'max-content' }}
+              size="small"
+              loading={historyLoading}
+              locale={{ emptyText: 'No quotas found for this date.' }}
+            />
+          </Card>
+        </TabPane>
+      </Tabs>
     </div>
   );
 }

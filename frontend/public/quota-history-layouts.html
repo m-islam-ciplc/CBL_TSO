@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Quota History Layout Concepts</title>
+    <style>
+      :root {
+        font-family: Arial, sans-serif;
+        color: #222;
+      }
+      body {
+        margin: 24px;
+        background: #f5f7fb;
+      }
+      h1 {
+        margin-bottom: 16px;
+      }
+      .layout-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 24px;
+      }
+      section {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 12px 32px rgba(31, 45, 61, 0.08);
+        border: 1px solid #eef2f7;
+        padding: 24px;
+      }
+      section h2 {
+        margin: 0 0 12px;
+        font-size: 18px;
+        color: #1f2d3d;
+      }
+      section p {
+        margin: 0 0 16px;
+        font-size: 14px;
+        color: #66738b;
+      }
+      .preview {
+        border: 1px dashed #cbd6e2;
+        border-radius: 10px;
+        background: #f9fbff;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .preview h3 {
+        font-size: 15px;
+        margin: 0;
+      }
+      .btn {
+        padding: 10px 14px;
+        border-radius: 6px;
+        border: none;
+        background: linear-gradient(120deg, #1d8cf8 0%, #3358f4 100%);
+        color: #fff;
+        font-weight: 600;
+        cursor: default;
+        align-self: flex-start;
+      }
+      .form-row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .form-row label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #506690;
+      }
+      .form-row input {
+        padding: 8px;
+        border-radius: 6px;
+        border: 1px solid #ccd6eb;
+        background: #fff;
+        flex: 1;
+        min-width: 160px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+        border-radius: 6px;
+        overflow: hidden;
+        box-shadow: inset 0 0 0 1px #e6ecf5;
+      }
+      table thead {
+        background: #eef4ff;
+        color: #42526e;
+      }
+      table th,
+      table td {
+        padding: 8px 10px;
+        border-bottom: 1px solid #e6ecf5;
+        text-align: left;
+      }
+      table tbody tr:nth-child(every) {
+        background: #fdfdfd;
+      }
+      .card {
+        border-radius: 10px;
+        border: 1px solid #dfe7f3;
+        background: #fff;
+        padding: 12px 16px;
+      }
+      .card-title {
+        font-weight: 600;
+        margin-bottom: 12px;
+        color: #1f2d3d;
+      }
+      .tabs {
+        display: flex;
+        border-bottom: 1px solid #dfe7f3;
+        margin-bottom: 12px;
+      }
+      .tab {
+        padding: 10px 16px;
+        cursor: default;
+        font-weight: 600;
+        color: #617192;
+      }
+      .tab.active {
+        color: #1d8cf8;
+        border-bottom: 2px solid #1d8cf8;
+      }
+      .collapse {
+        border-radius: 10px;
+        border: 1px solid #dfe7f3;
+        overflow: hidden;
+      }
+      .collapse-header {
+        background: linear-gradient(120deg, #f5f7fb 0%, #eef2f6 100%);
+        padding: 12px 16px;
+        cursor: default;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 600;
+        color: #506690;
+      }
+      .collapse-body {
+        padding: 16px;
+        background: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Manage Quotas – Historical View Concepts</h1>
+    <p style="margin-bottom: 24px; color: #617192; max-width: 600px;">
+      Quick mockups showing different ways to surface read-only historical quotas without cluttering
+      the daily allocation workflow.
+    </p>
+
+    <div class="layout-container">
+      <section>
+        <h2>1. Drawer on Demand</h2>
+        <p>Primary view stays focused on today. A button opens a right-side drawer with history.</p>
+        <div class="preview">
+          <div class="form-row" style="justify-content: space-between;">
+            <h3 style="margin: 0;">Allocate Daily Quotas</h3>
+            <button class="btn">View History</button>
+          </div>
+          <div class="card" style="border-style: dashed;">
+            <div class="card-title">Drawer (History)</div>
+            <div class="form-row">
+              <label for="drawer-date">Select Date</label>
+              <input id="drawer-date" type="date" value="2025-03-01" />
+              <button class="btn" style="padding: 8px 12px;">Refresh</button>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Territory</th>
+                  <th>Product</th>
+                  <th>Quota</th>
+                  <th>Sold</th>
+                  <th>Remaining</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>2025-03-01</td>
+                  <td>Dhaka Central</td>
+                  <td>PC1001</td>
+                  <td>200</td>
+                  <td>150</td>
+                  <td>50</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>2. Tabs</h2>
+        <p>Switch between “Allocate” and “History” tabs. Keeps surfaces separate but within one page.</p>
+        <div class="preview">
+          <div class="card">
+            <div class="tabs">
+              <div class="tab active">Allocate Today</div>
+              <div class="tab">History</div>
+            </div>
+            <div class="card-title">History Panel</div>
+            <div class="form-row">
+              <label for="tab-date">Select Date</label>
+              <input id="tab-date" type="date" value="2025-02-28" />
+              <button class="btn" style="padding: 8px 12px;">Refresh</button>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Territory</th>
+                  <th>Product</th>
+                  <th>Quota</th>
+                  <th>Sold</th>
+                  <th>Remaining</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>2025-02-28</td>
+                  <td>Chattogram South</td>
+                  <td>PC2040</td>
+                  <td>120</td>
+                  <td>110</td>
+                  <td>10</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>3. Collapsible Panel</h2>
+        <p>History table lives inside a collapse block. Default collapsed to save space.</p>
+        <div class="preview">
+          <div class="card-title">Allocate Daily Quotas</div>
+          <div class="card" style="min-height: 80px;">(Allocation form here)</div>
+
+          <div class="collapse">
+            <div class="collapse-header">
+              View Previously Allocated Quotas
+              <span>▼</span>
+            </div>
+            <div class="collapse-body">
+              <div class="form-row">
+                <label for="collapse-date">Select Date</label>
+                <input id="collapse-date" type="date" value="2025-01-15" />
+                <button class="btn" style="padding: 8px 12px;">Refresh</button>
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Territory</th>
+                    <th>Product</th>
+                    <th>Quota</th>
+                    <th>Sold</th>
+                    <th>Remaining</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>2025-01-15</td>
+                    <td>Rajshahi North</td>
+                    <td>PC7788</td>
+                    <td>90</td>
+                    <td>65</td>
+                    <td>25</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>4. Separate History Page</h2>
+        <p>
+          Primary screen stays clean; a “View Historical Allocations” link opens a dedicated read-only
+          page.
+        </p>
+        <div class="preview">
+          <div class="form-row" style="justify-content: space-between;">
+            <div>
+              <h3 style="margin: 0;">Allocate Daily Quotas</h3>
+              <small style="color: #8a94ab;">Today’s date only</small>
+            </div>
+            <a href="#" style="align-self: flex-end; font-weight: 600; color: #1d8cf8;">
+              View historical allocations →
+            </a>
+          </div>
+          <div class="card" style="min-height: 80px;">(Allocation form here)</div>
+
+          <div class="card" style="margin-top: 16px;">
+            <div class="card-title">Historical Allocations (separate page)</div>
+            <div class="form-row">
+              <label for="page-date">Select Date</label>
+              <input id="page-date" type="date" value="2024-12-31" />
+              <button class="btn" style="padding: 8px 12px;">Refresh</button>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Territory</th>
+                  <th>Product</th>
+                  <th>Quota</th>
+                  <th>Sold</th>
+                  <th>Remaining</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>2024-12-31</td>
+                  <td>Khulna Metro</td>
+                  <td>PC9910</td>
+                  <td>150</td>
+                  <td>149</td>
+                  <td>1</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>
+
