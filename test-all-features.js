@@ -21,13 +21,17 @@ let testData = {
   testTransportId: null,
   testOrderId: null,
   testUserId: null,
+  availableDates: [],
+  rangeStartDate: null,
+  rangeEndDate: null,
 };
 
 function test(name, fn) {
   tests.push({ name, fn });
 }
 
-function makeRequest(path, method = 'GET', data = null) {
+function makeRequest(path, method = 'GET', data = null, options = {}) {
+  const { raw = false } = options;
   return new Promise((resolve, reject) => {
     const url = new URL(path, BASE_URL);
     const options = {
@@ -41,11 +45,24 @@ function makeRequest(path, method = 'GET', data = null) {
     };
 
     const req = http.request(options, (res) => {
-      let body = '';
-      res.on('data', (chunk) => (body += chunk));
+      const chunks = [];
+      res.on('data', (chunk) => chunks.push(chunk));
       res.on('end', () => {
+        const buffer = Buffer.concat(chunks.map((chunk) => Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+
+        if (raw) {
+          resolve({ status: res.statusCode, data: buffer, headers: res.headers });
+          return;
+        }
+
+        const body = buffer.toString('utf8');
+        if (!body) {
+          resolve({ status: res.statusCode, data: null, headers: res.headers });
+          return;
+        }
+
         try {
-          const json = body ? JSON.parse(body) : null;
+          const json = JSON.parse(body);
           resolve({ status: res.statusCode, data: json, headers: res.headers });
         } catch (e) {
           resolve({ status: res.statusCode, data: body, headers: res.headers });
@@ -188,6 +205,14 @@ test('Setup: Get Test Data IDs', async () => {
     const usersRes = await makeRequest('/api/users');
     if (usersRes.status === 200 && usersRes.data.length > 0) {
       testData.testUserId = usersRes.data[0].id;
+    }
+
+    // Get available dates
+    const datesRes = await makeRequest('/api/orders/available-dates');
+    if (datesRes.status === 200 && datesRes.data && Array.isArray(datesRes.data.dates) && datesRes.data.dates.length > 0) {
+      testData.availableDates = datesRes.data.dates;
+      testData.rangeStartDate = datesRes.data.dates[datesRes.data.dates.length - 1];
+      testData.rangeEndDate = datesRes.data.dates[0];
     }
 
     if (testData.testDealerId && testData.testProductId && testData.testWarehouseId && 
@@ -426,6 +451,82 @@ test('Functional: Filter Orders by User ID (TSO View)', async () => {
     return { pass: false, message: 'Some orders do not belong to the filtered user' };
   }
   return { pass: false, message: `Failed to filter orders by user: ${result.status}` };
+});
+
+// Test 9: Preview Range Orders (Dealer Aggregation)
+test('Functional: Preview Range Orders', async () => {
+  if (!testData.rangeStartDate || !testData.rangeEndDate) {
+    return { pass: true, message: 'Skipped: No available dates for range preview' };
+  }
+
+  const result = await makeRequest(`/api/orders/range?startDate=${testData.rangeStartDate}&endDate=${testData.rangeEndDate}`);
+
+  if (result.status === 200 && result.data && Array.isArray(result.data.orders)) {
+    return { pass: true, message: `Range preview returned ${result.data.orders.length} dealer summaries` };
+  }
+
+  if (result.status === 404) {
+    return { pass: true, message: `No orders between ${testData.rangeStartDate} and ${testData.rangeEndDate}` };
+  }
+
+  return { pass: false, message: `Failed to preview range orders: ${result.status} - ${JSON.stringify(result.data)}` };
+});
+
+// Test 10: Download Range Excel Report
+test('Functional: Download Range Excel Report', async () => {
+  if (!testData.rangeStartDate || !testData.rangeEndDate) {
+    return { pass: true, message: 'Skipped: No available dates for range Excel' };
+  }
+
+  const result = await makeRequest(
+    `/api/orders/tso-report-range?startDate=${testData.rangeStartDate}&endDate=${testData.rangeEndDate}`,
+    'GET',
+    null,
+    { raw: true }
+  );
+
+  if (result.status === 200) {
+    const contentType = result.headers['content-type'] || '';
+    if (contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') && result.data.length > 0) {
+      return { pass: true, message: 'Range Excel report generated successfully (binary data received)' };
+    }
+    return { pass: false, message: `Unexpected range Excel response headers/content-type: ${contentType}` };
+  }
+
+  if (result.status === 404) {
+    return { pass: true, message: `No orders for Excel range ${testData.rangeStartDate} - ${testData.rangeEndDate}` };
+  }
+
+  return { pass: false, message: `Failed to download range Excel: ${result.status}` };
+});
+
+// Test 11: Download Single-Date Excel Report
+test('Functional: Download Single-Date Excel Report', async () => {
+  const targetDate = testData.rangeEndDate || testData.rangeStartDate;
+  if (!targetDate) {
+    return { pass: true, message: 'Skipped: No available date for single-day Excel' };
+  }
+
+  const result = await makeRequest(
+    `/api/orders/tso-report/${targetDate}`,
+    'GET',
+    null,
+    { raw: true }
+  );
+
+  if (result.status === 200) {
+    const contentType = result.headers['content-type'] || '';
+    if (contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') && result.data.length > 0) {
+      return { pass: true, message: `Single-date Excel report generated (date: ${targetDate})` };
+    }
+    return { pass: false, message: `Unexpected single-date Excel response headers/content-type: ${contentType}` };
+  }
+
+  if (result.status === 404) {
+    return { pass: true, message: `No orders for date ${targetDate}` };
+  }
+
+  return { pass: false, message: `Failed to download single-date Excel: ${result.status}` };
 });
 
 // ============================================================================

@@ -9,70 +9,195 @@ const XLSX = require('xlsx');
 const ExcelJS = require('exceljs');
 const fs = require('fs');
 
-// Excel report generation function using ExcelJS to replicate Book1.xlsx exactly
-async function generateExcelReport(orders, date) {
+// Excel report generation function using ExcelJS without external template
+async function generateExcelReport(orders, options = {}) {
     try {
-        // Load the Book1.xlsx template
-        const templateWorkbook = new ExcelJS.Workbook();
-        const templatePath = require('path').join(__dirname, '..', 'Resources', 'Book1.xlsx');
-        await templateWorkbook.xlsx.readFile(templatePath);
-        const templateWorksheet = templateWorkbook.getWorksheet('Invoice 15.08.24');
-        
-        // Create new workbook based on template
+        const {
+            date = '',
+            sheetTitle,
+            dateLabel,
+        } = options;
+
+        // Create new workbook
         const workbook = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet(`Invoice ${date.replace(/-/g, '.')}`);
+        const worksheetName = sheetTitle
+            || (date ? `Invoice ${date.replace(/-/g, '.')}` : 'Invoice Report');
+        const worksheet = workbook.addWorksheet(worksheetName);
         
-        // Copy the template structure exactly
-        await copyWorksheetStructure(templateWorksheet, worksheet, orders, date);
-        
-        // Auto-fit columns based on content
-        // Calculate optimal width for each column
+        // Build worksheet contents programmatically
+        await buildWorksheetStructure(worksheet, orders, { date, dateLabel, sheetTitle });
+
+        const excelDisplayOffset = 0.78;
+        const desiredColumnWidths = {
+            A: 5.78,
+            B: 16.22,
+            C: 26.22,
+            D: 29.22,
+            E: 19.44,
+            F: 17.55,
+            G: 11.55,
+            H: 13.88,
+            I: 15.11,
+            J: 13.88,
+            K: 14.33,
+            L: 15.33,
+            M: 17.77,
+            N: 13.22,
+            O: 15.55,
+            P: 14,
+            Q: 11.77,
+            R: 18.55,
+            S: 14.88,
+            T: 13.66,
+            U: 18.55,
+            V: 16.66,
+            W: 16.44,
+            X: 14.44,
+            Y: 19.44,
+            Z: 14.66,
+            AA: 18.22,
+            AB: 13.44,
+            AC: 16.33,
+            AD: 12.11,
+            AE: 15.11,
+            AF: 16.88,
+            AG: 18.66,
+            AH: 20.11,
+            AI: 17.22,
+            AJ: 19.44,
+            AK: 15.88,
+            AL: 18.22,
+            AM: 10.33,
+            AN: 8.77,
+            AO: 14.55,
+            AP: 11,
+            AQ: 14.11,
+            AR: 12.88,
+            AS: 12.22,
+            AT: 10,
+            AU: 11.33,
+            AV: 13.11,
+            AW: 14.44,
+            AX: 11.77,
+            AY: 14.22,
+            AZ: 16,
+            BA: 20.44,
+            BB: 17,
+            BC: 17.33,
+            BD: 15.66,
+            BE: 16,
+            BF: 14.11,
+            BG: 11.88,
+            BH: 15,
+            BI: 13.77,
+            BJ: 13.33,
+            BK: 11.11,
+            BL: 14.22,
+            BM: 13,
+            BN: 15.22,
+            BO: 17.11,
+            BP: 12.22,
+            BQ: 15.22,
+            BR: 14.44,
+            BS: 13.88,
+            BT: 12.33,
+            BU: 10.88,
+            BV: 14.66,
+            BW: 10.88,
+            BX: 14.66,
+            BY: 12.66,
+            BZ: 12.66,
+            CA: 15.88,
+            CB: 12.66,
+            CC: 15.88,
+            CD: 11.77,
+            CE: 11.77,
+            CF: 15.11,
+            CG: 10.77,
+            CH: 9.11,
+            CI: 17.77,
+            CJ: 15.77,
+            CK: 17.77,
+            CL: 13,
+            CM: 15.77,
+            CN: 18.22,
+            CO: 15.33,
+            CP: 14.88,
+            CQ: 12.44,
+            CR: 10.33,
+            CS: 13.22,
+            CT: 11.66,
+            CU: 10.66,
+            CV: 14.55,
+            CW: 9.66,
+            CX: 9.66,
+            CY: 9.66,
+            CZ: 11.88,
+            DA: 12.88,
+            DB: 11.11,
+            DC: 11.55,
+            DD: 9.22,
+            DE: 10.88,
+            DF: 9.22,
+            DG: 8.44,
+            DH: 8.44,
+            DI: 8.44,
+            DJ: 8.44,
+            DK: 8.44,
+            DL: 10.11,
+            DM: 11.44,
+            DN: 11.44,
+            DO: 12.33,
+            DP: 12.33,
+            DQ: 19.55,
+        };
+
         worksheet.columns.forEach((column, colNumber) => {
-            let maxLength = 0;
             const columnNumber = colNumber + 1;
-            
-            // Check header row (row 1)
+            const columnLetter = column.letter;
+            let maxLength = 0;
+
             const headerCell = worksheet.getRow(1).getCell(columnNumber);
             if (headerCell.value) {
-                const headerLength = String(headerCell.value).length;
-                maxLength = Math.max(maxLength, headerLength);
+                maxLength = Math.max(maxLength, String(headerCell.value).trim().length);
             }
-            
-            // Check all data rows
+
             worksheet.eachRow({ includeEmpty: false }, (row) => {
                 const cell = row.getCell(columnNumber);
-                if (cell.value != null) {
-                    let cellLength = 0;
-                    
-                    if (typeof cell.value === 'string') {
-                        cellLength = cell.value.length;
-                    } else if (typeof cell.value === 'number') {
-                        cellLength = String(cell.value).length;
-                    } else if (cell.value instanceof Date) {
-                        cellLength = cell.value.toLocaleString().length;
-                    } else {
-                        cellLength = String(cell.value).length;
-                    }
-                    
-                    // Add some padding (1.2x for better readability)
-                    maxLength = Math.max(maxLength, Math.ceil(cellLength * 1.2));
+                if (cell.value == null) {
+                    return;
                 }
+
+                let cellLength = 0;
+                if (typeof cell.value === 'string') {
+                    const trimmed = cell.value.trim();
+                    cellLength = trimmed.length;
+                } else if (typeof cell.value === 'number') {
+                    cellLength = cell.value.toString().trim().length;
+                } else if (cell.value instanceof Date) {
+                    cellLength = cell.value.toLocaleDateString().trim().length;
+                } else {
+                    cellLength = String(cell.value).trim().length;
+                }
+
+                maxLength = Math.max(maxLength, cellLength);
             });
-            
-            // Set column width (minimum 10, maximum 50, or calculated width)
-            const optimalWidth = Math.max(10, Math.min(maxLength + 2, 50));
-            column.width = optimalWidth;
+
+        const desiredWidth = desiredColumnWidths[columnLetter];
+        const isTransportColumn = column.key === 'transport';
+        if (desiredWidth != null) {
+            column.width = desiredWidth + excelDisplayOffset;
+        } else if (isTransportColumn) {
+            column.width = 18.11 + excelDisplayOffset;
+        } else {
+            column.width = Math.max(3.5, Math.min(maxLength + 0.05, 30));
+        }
             column.hidden = false;
-            
-            // For columns F onwards (product columns), apply wrap text if content is long
+
             if (columnNumber >= 6) {
                 worksheet.getColumn(columnNumber).eachCell({ includeEmpty: false }, (cell) => {
-                    if (cell.value && String(cell.value).length > 15) {
-                        if (cell.alignment) {
-                            cell.alignment.wrapText = true;
-                        } else {
-                            cell.alignment = { wrapText: true };
-                        }
+                    if (cell.value && String(cell.value).trim().length > 20) {
+                        cell.alignment = { ...(cell.alignment || {}), wrapText: true };
                     }
                 });
             }
@@ -88,472 +213,565 @@ async function generateExcelReport(orders, date) {
     }
 }
 
-// Function to copy worksheet structure from template
-async function copyWorksheetStructure(templateWorksheet, newWorksheet, orders, date) {
-    // Get ALL products from database (not just from orders) - exclude dummy products
+async function fetchOrdersWithItemsBetween(startDate, endDate) {
+    const ordersQuery = `
+        SELECT 
+            o.*, 
+            ot.name AS order_type,
+            d.id AS dealer_id,
+            d.name AS dealer_name, 
+            d.territory_name AS dealer_territory,
+            d.address AS dealer_address,
+            d.contact AS dealer_contact,
+            w.name AS warehouse_name,
+            w.alias AS warehouse_alias,
+            t.truck_details AS transport_name,
+            DATE(o.created_at) AS order_date
+        FROM orders o
+        LEFT JOIN order_types ot ON o.order_type_id = ot.id
+        LEFT JOIN dealers d ON o.dealer_id = d.id
+        LEFT JOIN warehouses w ON o.warehouse_id = w.id
+        LEFT JOIN transports t ON o.transport_id = t.id
+        WHERE DATE(o.created_at) BETWEEN ? AND ?
+        ORDER BY o.created_at ASC
+    `;
+
+    const [orders] = await db.promise().query(ordersQuery, [startDate, endDate]);
+    if (!orders.length) {
+        return [];
+    }
+
+    const orderIds = orders.map(order => order.order_id);
+    const [items] = await db.promise().query(`
+        SELECT 
+            oi.*, 
+            p.name AS product_name, 
+            p.product_code, 
+            p.unit_tp, 
+            p.unit_trade_price,
+            p.mrp
+        FROM order_items oi
+        LEFT JOIN products p ON oi.product_id = p.id
+        WHERE oi.order_id IN (?)
+        ORDER BY oi.order_id, oi.id
+    `, [orderIds]);
+
+    const itemsByOrder = {};
+    orderIds.forEach(id => {
+        itemsByOrder[id] = [];
+    });
+    items.forEach(item => {
+        if (!itemsByOrder[item.order_id]) {
+            itemsByOrder[item.order_id] = [];
+        }
+        itemsByOrder[item.order_id].push(item);
+    });
+
+    return orders.map(order => ({
+        ...order,
+        items: itemsByOrder[order.order_id] || []
+    }));
+}
+
+function buildDealerRangeSummary(orders) {
+    const dealerMap = new Map();
+    let totalQuantity = 0;
+    let totalValue = 0;
+
+            orders.forEach(order => {
+        const dealerKey = order.dealer_id || order.dealer_name || order.order_id;
+        const orderDate = order.order_date ? order.order_date.toString() : null;
+        let dealerEntry = dealerMap.get(dealerKey);
+
+        if (!dealerEntry) {
+            dealerEntry = {
+                id: dealerKey,
+                dealer_name: order.dealer_name || 'Unknown dealer',
+                dealer_territory: order.dealer_territory || null,
+                warehouse_names: new Set(),
+                transport_names: new Set(),
+                dealer_address: order.dealer_address || '',
+                dealer_contact: order.dealer_contact || '',
+                order_count: 0,
+                total_quantity: 0,
+                total_value: 0,
+                products: new Map(),
+                earliestDate: orderDate,
+                latestDate: orderDate,
+            };
+            dealerMap.set(dealerKey, dealerEntry);
+        } else {
+            if (!dealerEntry.dealer_address && order.dealer_address) {
+                dealerEntry.dealer_address = order.dealer_address;
+            }
+            if (!dealerEntry.dealer_contact && order.dealer_contact) {
+                dealerEntry.dealer_contact = order.dealer_contact;
+            }
+        }
+
+        dealerEntry.order_count += 1;
+        if (order.warehouse_name) {
+            dealerEntry.warehouse_names.add(order.warehouse_name);
+        }
+        if (order.warehouse_alias) {
+            dealerEntry.warehouse_names.add(order.warehouse_alias);
+        }
+        if (order.transport_name) {
+            dealerEntry.transport_names = dealerEntry.transport_names || new Set();
+            dealerEntry.transport_names.add(order.transport_name);
+        } else if (order.transport) {
+            dealerEntry.transport_names = dealerEntry.transport_names || new Set();
+            dealerEntry.transport_names.add(order.transport);
+        }
+        if (orderDate) {
+            if (!dealerEntry.earliestDate || orderDate < dealerEntry.earliestDate) {
+                dealerEntry.earliestDate = orderDate;
+            }
+            if (!dealerEntry.latestDate || orderDate > dealerEntry.latestDate) {
+                dealerEntry.latestDate = orderDate;
+            }
+        }
+
+        let orderQuantity = 0;
+        let orderValue = 0;
+
+        (order.items || []).forEach(item => {
+            const quantity = Number(item.quantity) || 0;
+            orderQuantity += quantity;
+
+            const unitPrice = item.unit_tp != null
+                ? Number(item.unit_tp)
+                : item.unit_trade_price != null
+                    ? Number(item.unit_trade_price)
+                    : 0;
+            orderValue += quantity * unitPrice;
+
+            const productCode = item.product_code || `product_${item.product_id || item.id}`;
+            let productSummary = dealerEntry.products.get(productCode);
+
+            if (!productSummary) {
+                productSummary = {
+                    product_code: item.product_code || '',
+                    product_name: item.product_name || '',
+                    quantity: 0,
+                    unit_tp: item.unit_tp != null
+                        ? Number(item.unit_tp)
+                        : item.unit_trade_price != null
+                            ? Number(item.unit_trade_price)
+                            : null,
+                };
+                dealerEntry.products.set(productCode, productSummary);
+            }
+
+            productSummary.quantity += quantity;
+            if (productSummary.unit_tp == null && item.unit_tp != null) {
+                productSummary.unit_tp = Number(item.unit_tp);
+            }
+        });
+
+        dealerEntry.total_quantity += orderQuantity;
+        dealerEntry.total_value += orderValue;
+
+        totalQuantity += orderQuantity;
+        totalValue += orderValue;
+    });
+
+    const summaries = Array.from(dealerMap.values())
+        .map(entry => {
+            const productSummaries = Array.from(entry.products.values())
+                .sort((a, b) => (a.product_name || '').localeCompare(b.product_name || ''));
+            
+            const earliest = entry.earliestDate;
+            const latest = entry.latestDate;
+            let dateSpan = '';
+            if (earliest && latest) {
+                dateSpan = earliest === latest ? earliest : `${earliest} - ${latest}`;
+            }
+
+            return {
+                id: entry.id,
+                dealer_name: entry.dealer_name,
+                dealer_territory: entry.dealer_territory,
+                dealer_address: entry.dealer_address,
+                dealer_contact: entry.dealer_contact,
+                warehouse_names: Array.from(entry.warehouse_names),
+                transport_names: entry.transport_names ? Array.from(entry.transport_names) : [],
+                order_count: entry.order_count,
+                distinct_products: productSummaries.length,
+                total_quantity: entry.total_quantity,
+                total_value: Number(entry.total_value.toFixed(2)),
+                date_span: dateSpan,
+                product_summaries: productSummaries,
+            };
+        })
+        .sort((a, b) => (a.dealer_name || '').localeCompare(b.dealer_name || ''));
+
+    return {
+        summaries,
+        total_dealers: summaries.length,
+        total_quantity: totalQuantity,
+        total_value: Number(totalValue.toFixed(2)),
+    };
+}
+
+function convertDealerSummariesToOrders(summaries, dateLabel) {
+    return summaries.map((summary) => {
+        const warehouseName = summary.warehouse_names && summary.warehouse_names.length
+            ? summary.warehouse_names.join(', ')
+            : '';
+        const transportNamesArray = summary.transport_names || [];
+        const transportValue = transportNamesArray.length > 1
+            ? 'Different Transport Providers'
+            : (transportNamesArray[0] || '');
+
+        return {
+            order_id: `RANGE-${summary.id}`,
+            order_type: 'Range',
+            dealer_name: summary.dealer_name || '',
+            dealer_territory: summary.dealer_territory || '',
+            dealer_address: summary.dealer_address || '',
+            dealer_contact: summary.dealer_contact || '',
+            warehouse_name: warehouseName,
+            transport_name: transportValue,
+            transport_names: transportNamesArray,
+            items: (summary.product_summaries || []).map(product => ({
+                product_code: product.product_code || '',
+                product_name: product.product_name || '',
+                quantity: product.quantity || 0,
+                unit_tp: product.unit_tp != null ? Number(product.unit_tp) : null,
+            })),
+            order_date: dateLabel,
+        };
+    });
+}
+
+// Function to build worksheet structure programmatically
+async function buildWorksheetStructure(worksheet, orders, options = {}) {
+    const { dateLabel } = options;
+
+    const defaultFont = { name: 'Calibri', size: 8 };
+    const headerFont = { ...defaultFont, bold: true };
+    const thinBorder = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' },
+    };
+
+    const styleCell = (cell, {
+        bold = false,
+        alignment = { horizontal: 'center', vertical: 'middle' },
+        fill,
+        numFmt,
+        font = {},
+        border = thinBorder,
+    } = {}) => {
+        cell.font = { ...defaultFont, ...font, bold };
+        cell.alignment = alignment;
+        if (border) {
+            cell.border = border;
+        }
+        if (fill) {
+            cell.fill = fill;
+        }
+        if (numFmt) {
+            cell.numFmt = numFmt;
+        }
+    };
+
+    // Fetch complete product catalogue (excluding dummy application)
     const allProductsQuery = `
-        SELECT product_code, name as product_name, application_name, unit_tp, mrp 
-        FROM products 
+        SELECT product_code, name as product_name, application_name, unit_tp
+        FROM products
         WHERE status = 'A' AND application_name != 'Dummy'
         ORDER BY application_name, product_name
     `;
-    
+
     const [allProductsResult] = await db.promise().query(allProductsQuery);
     const allProducts = allProductsResult;
-    
-    // Group products by application
+
+    // Group products by application and prepare lookup maps
     const productsByApplication = {};
-    allProducts.forEach(product => {
+    const productInfoMap = new Map();
+
+    allProducts.forEach((product) => {
         const appName = product.application_name || 'Other';
         if (!productsByApplication[appName]) {
             productsByApplication[appName] = [];
         }
         productsByApplication[appName].push(product);
-    });
-    
-    // Create summary section with database application units as segments
-    const newRow1 = newWorksheet.getRow(1);
-    newRow1.getCell(1).value = 'Seg';
-    newRow1.getCell(2).value = 'Qty';
-    newRow1.getCell(3).value = 'Invoice Value';
-    
-    // Apply formatting from template header row
-    const templateRow1 = templateWorksheet.getRow(1);
-    for (let col = 1; col <= 3; col++) {
-        const templateCell = templateRow1.getCell(col);
-        const newCell = newRow1.getCell(col);
-        
-        if (templateCell.font) {
-            newCell.font = {
-                ...templateCell.font,
-                bold: templateCell.font.bold,
-                italic: templateCell.font.italic,
-                color: templateCell.font.color,
-                size: 8,
-                name: 'Calibri'
-            };
-        }
-        
-        if (templateCell.alignment) {
-            newCell.alignment = { ...templateCell.alignment };
-        }
-        
-        if (templateCell.border) {
-            newCell.border = { ...templateCell.border };
-        }
-        
-        if (templateCell.fill) {
-            newCell.fill = { ...templateCell.fill };
-        }
-        
-        if (templateCell.numFmt) {
-            newCell.numFmt = templateCell.numFmt;
-        }
-    }
-    
-    // Add application names as segments from database with total quantities
-    let summaryRow = 2;
-    const applicationNames = Object.keys(productsByApplication);
-    applicationNames.forEach(appName => {
-        const summaryRowObj = newWorksheet.getRow(summaryRow);
-        summaryRowObj.getCell(1).value = appName; // Use database application name as segment
-        
-        // Calculate total quantity for this application segment
-        let segmentTotalQty = 0;
-        let segmentTotalValue = 0;
-        const appProducts = productsByApplication[appName];
-        
-        // Sum up quantities and values for all products in this application across all orders
-        appProducts.forEach(product => {
-            orders.forEach(order => {
-                if (order.items) {
-                    const item = order.items.find(item => item.product_code === product.product_code);
-                    if (item) {
-                        segmentTotalQty += item.quantity;
-                        segmentTotalValue += item.quantity * (product.unit_tp || 0);
-                    }
-                }
-            });
+        productInfoMap.set(product.product_code, {
+            application: appName,
+            unit_tp: product.unit_tp != null ? Number(product.unit_tp) : 0,
+            product_name: product.product_name || '',
+            product_code: product.product_code,
         });
-        
-        summaryRowObj.getCell(2).value = segmentTotalQty; // Total quantity for this segment
-        summaryRowObj.getCell(3).value = segmentTotalValue; // Total invoice value for this segment
-        
-        // Apply formatting from template data rows
-        const templateRow = templateWorksheet.getRow(2);
-        for (let col = 1; col <= 3; col++) {
-            const templateCell = templateRow.getCell(col);
-            const newCell = summaryRowObj.getCell(col);
-            
-            if (templateCell.font) {
-                newCell.font = {
-                    ...templateCell.font,
-                    bold: templateCell.font.bold,
-                    italic: templateCell.font.italic,
-                    color: templateCell.font.color,
-                    size: 8,
-                    name: 'Calibri'
-                };
-            }
-            
-            if (templateCell.alignment) {
-                newCell.alignment = { ...templateCell.alignment };
-            }
-            
-            if (templateCell.border) {
-                newCell.border = { ...templateCell.border };
-            }
-            
-            if (templateCell.fill) {
-                newCell.fill = { ...templateCell.fill };
-            }
-            
-            if (templateCell.numFmt) {
-                newCell.numFmt = templateCell.numFmt;
-            }
-        }
-        
-        summaryRow++;
     });
-    
-    // Add total row
-    const totalRow = newWorksheet.getRow(summaryRow);
-    totalRow.getCell(1).value = 'Total';
-    
-    // Calculate grand total of all quantities and values
+
+    const applicationNames = Object.keys(productsByApplication).sort((a, b) =>
+        a.localeCompare(b),
+    );
+
+    const applicationTotals = {};
+    applicationNames.forEach((appName) => {
+        applicationTotals[appName] = { qty: 0, value: 0 };
+        productsByApplication[appName].sort((a, b) => (a.product_name || '').localeCompare(b.product_name || ''));
+    });
+
     let grandTotalQty = 0;
     let grandTotalValue = 0;
-    orders.forEach(order => {
-        if (order.items) {
-            order.items.forEach(item => {
-                grandTotalQty += item.quantity;
-                // Find the product to get unit_tp
-                const product = allProducts.find(p => p.product_code === item.product_code);
-                if (product) {
-                    grandTotalValue += item.quantity * (product.unit_tp || 0);
-                }
-            });
-        }
+
+    orders.forEach((order) => {
+        (order.items || []).forEach((item) => {
+            const qty = Number(item.quantity) || 0;
+            const productInfo = productInfoMap.get(item.product_code);
+            const appName = productInfo?.application || 'Other';
+            const unitTp = productInfo?.unit_tp != null ? Number(productInfo.unit_tp) : 0;
+
+            if (!applicationTotals[appName]) {
+                applicationTotals[appName] = { qty: 0, value: 0 };
+            }
+
+            applicationTotals[appName].qty += qty;
+            applicationTotals[appName].value += qty * unitTp;
+
+            grandTotalQty += qty;
+            grandTotalValue += qty * unitTp;
+        });
     });
     
-    totalRow.getCell(2).value = grandTotalQty; // Grand total quantity
-    totalRow.getCell(3).value = grandTotalValue; // Grand total invoice value
-    
-    // Apply formatting to total row
-    const templateTotalRow = templateWorksheet.getRow(9);
-    for (let col = 1; col <= 3; col++) {
-        const templateCell = templateTotalRow.getCell(col);
-        const newCell = totalRow.getCell(col);
-        
-        if (templateCell.font) {
-            newCell.font = {
-                ...templateCell.font,
-                bold: templateCell.font.bold,
-                italic: templateCell.font.italic,
-                color: templateCell.font.color,
-                size: 8,
-                name: 'Calibri'
-            };
-        }
-        
-        if (templateCell.alignment) {
-            newCell.alignment = { ...templateCell.alignment };
-        }
-        
-        if (templateCell.border) {
-            newCell.border = { ...templateCell.border };
-        }
-        
-        if (templateCell.fill) {
-            newCell.fill = { ...templateCell.fill };
-        }
-        
-        if (templateCell.numFmt) {
-            newCell.numFmt = templateCell.numFmt;
-        }
+    // Summary header
+    const dateRow = worksheet.getRow(1);
+    if (dateLabel) {
+        styleCell(dateRow.getCell(1), {
+            alignment: { horizontal: 'left', vertical: 'middle' },
+            border: null,
+            bold: false,
+        });
+        dateRow.getCell(1).value = 'Date:';
+
+        styleCell(dateRow.getCell(2), {
+            alignment: { horizontal: 'left', vertical: 'middle' },
+            border: null,
+            bold: false,
+        });
+        dateRow.getCell(2).value = dateLabel;
     }
-    
-    // Copy header row from template with formatting
-    const templateHeaderRow = templateWorksheet.getRow(10);
-    const headerRowNum = summaryRow + 1; // Start after summary section
-    const newHeaderRow = newWorksheet.getRow(headerRowNum);
-    
-    // Copy first 5 columns exactly (Sl. No., Territory, Name of Dealer, Address, Contact Person & Number) with formatting
-    for (let col = 1; col <= 5; col++) {
-        const templateCell = templateHeaderRow.getCell(col);
-        const newCell = newHeaderRow.getCell(col);
-        
-        newCell.value = templateCell.value;
-        
-        // Copy ALL formatting from template
-        if (templateCell.font) {
-            newCell.font = {
-                ...templateCell.font,
-                bold: templateCell.font.bold,
-                italic: templateCell.font.italic,
-                color: templateCell.font.color,
-                size: 8,
-                name: 'Calibri'
-            };
-        }
-        
-        if (templateCell.alignment) {
-            newCell.alignment = { ...templateCell.alignment };
-        }
-        
-        if (templateCell.border) {
-            newCell.border = { ...templateCell.border };
-        }
-        
-        if (templateCell.fill) {
-            newCell.fill = { ...templateCell.fill };
-        }
-        
-        if (templateCell.numFmt) {
-            newCell.numFmt = templateCell.numFmt;
-        }
-    }
-    
-    // Add product columns with merged application headers and proper formatting
+
+    const summaryHeaderRow = worksheet.getRow(2);
+    styleCell(summaryHeaderRow.getCell(1), { bold: true });
+    summaryHeaderRow.getCell(1).value = 'Seg';
+    styleCell(summaryHeaderRow.getCell(2), { bold: true });
+    summaryHeaderRow.getCell(2).value = 'Qty';
+    styleCell(summaryHeaderRow.getCell(3), { bold: true });
+    summaryHeaderRow.getCell(3).value = 'Invoice Value';
+
+    let summaryRowIndex = 3;
+
+    // Summary rows per application
+    applicationNames.forEach((appName) => {
+        const row = worksheet.getRow(summaryRowIndex);
+        const totals = applicationTotals[appName] || { qty: 0, value: 0 };
+
+        styleCell(row.getCell(1), {
+            alignment: { horizontal: 'left', vertical: 'middle' },
+        });
+        row.getCell(1).value = appName;
+
+        styleCell(row.getCell(2), {});
+        row.getCell(2).value = totals.qty;
+
+        styleCell(row.getCell(3), { numFmt: '#,##0.00' });
+        row.getCell(3).value = Number(totals.value.toFixed(2));
+
+        summaryRowIndex += 1;
+    });
+
+    // Total row
+    const totalRow = worksheet.getRow(summaryRowIndex);
+    styleCell(totalRow.getCell(1), { bold: true, alignment: { horizontal: 'left', vertical: 'middle' } });
+    totalRow.getCell(1).value = 'Total';
+
+    styleCell(totalRow.getCell(2), { bold: true });
+    totalRow.getCell(2).value = grandTotalQty;
+
+    styleCell(totalRow.getCell(3), { bold: true, numFmt: '#,##0.00' });
+    totalRow.getCell(3).value = Number(grandTotalValue.toFixed(2));
+
+    const headerRowIndex = summaryRowIndex + 1;
+
+    // Column headers for dealer information
+    const headers = [
+        'Sl. No.',
+        'Territory',
+        'Name of Dealer',
+        'Address',
+        'Contact Person & Number',
+    ];
+
+    headers.forEach((title, index) => {
+        const cell = worksheet.getRow(headerRowIndex).getCell(index + 1);
+        styleCell(cell, {
+            bold: true,
+            alignment: { horizontal: index === 0 ? 'center' : 'left', vertical: 'middle' },
+        });
+        cell.value = title;
+    });
+
+    // Product columns
+    const productColumnMap = {};
+    const productColumns = [];
     let currentCol = 6;
-    // const applicationNames = Object.keys(productsByApplication); // Already defined above
-    applicationNames.forEach(appName => {
+
+    applicationNames.forEach((appName) => {
         const products = productsByApplication[appName];
+        if (!products || !products.length) {
+            return;
+        }
+
         const appStartCol = currentCol;
         const appEndCol = currentCol + products.length - 1;
-        
-        // Merge cells for application header
-        newWorksheet.mergeCells(headerRowNum, appStartCol, headerRowNum, appEndCol);
-        const mergedCell = newHeaderRow.getCell(appStartCol);
-        mergedCell.value = appName;
-        
-        // Apply formatting from template PC column
-        const templateCell = templateHeaderRow.getCell(6);
-        if (templateCell.font) {
-            mergedCell.font = {
-                ...templateCell.font,
-                bold: templateCell.font.bold,
-                italic: templateCell.font.italic,
-                color: templateCell.font.color,
-                size: 8,
-                name: 'Calibri'
-            };
-        }
-        
-        if (templateCell.alignment) {
-            mergedCell.alignment = { ...templateCell.alignment };
-        }
-        
-        if (templateCell.border) {
-            mergedCell.border = { ...templateCell.border };
-        }
-        
-        if (templateCell.fill) {
-            mergedCell.fill = { ...templateCell.fill };
-        }
-        
-        if (templateCell.numFmt) {
-            mergedCell.numFmt = templateCell.numFmt;
-        }
-        
-        // Add individual product columns with product names and prices
-        products.forEach(product => {
-            // Product name row
-            const productNameRow = headerRowNum + 1;
-            const productNameCell = newWorksheet.getRow(productNameRow).getCell(currentCol);
-            productNameCell.value = product.product_name; // Use full product name
-            
-            // Apply formatting from template
-            if (templateCell.font) {
-                productNameCell.font = {
-                    ...templateCell.font,
-                    bold: templateCell.font.bold,
-                    italic: templateCell.font.italic,
-                    color: templateCell.font.color,
-                size: 8,
-                name: 'Calibri'
-                };
-            }
-            
-            if (templateCell.alignment) {
-                productNameCell.alignment = { ...templateCell.alignment };
-            }
-            
-            if (templateCell.border) {
-                productNameCell.border = { ...templateCell.border };
-            }
-            
-            if (templateCell.fill) {
-                productNameCell.fill = { ...templateCell.fill };
-            }
-            
-            if (templateCell.numFmt) {
-                productNameCell.numFmt = templateCell.numFmt;
-            }
-            
-            // Price row (unit_tp)
-            const priceRow = headerRowNum + 2;
-            const priceCell = newWorksheet.getRow(priceRow).getCell(currentCol);
-            priceCell.value = product.unit_tp || 0; // Show unit trade price
-            
-            // Apply formatting from template
-            if (templateCell.font) {
-                priceCell.font = {
-                    ...templateCell.font,
-                    bold: templateCell.font.bold,
-                    italic: templateCell.font.italic,
-                    color: templateCell.font.color,
-                size: 8,
-                name: 'Calibri'
-                };
-            }
-            
-            if (templateCell.alignment) {
-                priceCell.alignment = { ...templateCell.alignment };
-            }
-            
-            if (templateCell.border) {
-                priceCell.border = { ...templateCell.border };
-            }
-            
-            if (templateCell.fill) {
-                priceCell.fill = { ...templateCell.fill };
-            }
-            
-            if (templateCell.numFmt) {
-                priceCell.numFmt = templateCell.numFmt;
-            }
-            
-            currentCol++;
+        worksheet.mergeCells(headerRowIndex, appStartCol, headerRowIndex, appEndCol);
+
+        const headerCell = worksheet.getRow(headerRowIndex).getCell(appStartCol);
+        styleCell(headerCell, { bold: true });
+        headerCell.value = appName;
+
+        products.forEach((product) => {
+            const column = currentCol;
+            const nameRow = worksheet.getRow(headerRowIndex + 1).getCell(column);
+            styleCell(nameRow, {
+                bold: true,
+                alignment: { horizontal: 'left', vertical: 'middle' },
+            });
+            nameRow.value = product.product_name || product.product_code;
+
+            const priceRow = worksheet.getRow(headerRowIndex + 2).getCell(column);
+            styleCell(priceRow, {
+                alignment: { horizontal: 'center', vertical: 'middle' },
+                numFmt: '#,##0.00',
+            });
+            priceRow.value = product.unit_tp != null ? Number(product.unit_tp) : 0;
+
+            productColumnMap[product.product_code] = column;
+            productColumns.push(column);
+            currentCol += 1;
         });
     });
-    
-    // Copy merged cells from template (for summary section only)
-    if (templateWorksheet.model.merges) {
-        templateWorksheet.model.merges.forEach(merge => {
-            // Only copy merges that are in the summary section (rows 1-9)
-            if (merge.top <= 9) {
-                newWorksheet.mergeCells(merge);
-            }
-        });
-    }
-    
-    // Add dealer data rows starting after headers and price rows
-    let currentRow = headerRowNum + 3; // Start after header, product code, and price rows
-    let serialNo = 1;
-    
-        // If no orders, add a sample row to show the structure
-        if (orders.length === 0) {
-            const sampleRow = newWorksheet.getRow(currentRow);
-            sampleRow.getCell(1).value = 1; // Sl. No.
-            sampleRow.getCell(2).value = 'No Orders'; // Territory
-            sampleRow.getCell(3).value = 'No Orders Found'; // Name of Dealer
-            sampleRow.getCell(4).value = ''; // Address
-            sampleRow.getCell(5).value = ''; // Contact
-            
-            // Apply font formatting to sample row cells
-            for (let col = 1; col <= 5; col++) {
-                sampleRow.getCell(col).font = { name: 'Calibri', size: 8 };
-            }
-        
-        // Add zeros for all products
-        let productCol = 6;
-        allProducts.forEach(product => {
-            const newCell = sampleRow.getCell(productCol);
-            newCell.value = 0;
-            newCell.alignment = { horizontal: 'center', vertical: 'middle' };
-            newCell.font = { name: 'Calibri', size: 8 };
-            // No highlighting for 0 quantities (sample row)
-            productCol++;
-        });
-        currentRow++;
-    }
-    
-    orders.forEach(order => {
-        const newRow = newWorksheet.getRow(currentRow);
-        
-        // Create dealer row data
-        const dealerRow = {
-            serialNo: serialNo++,
-            orderType: order.order_type || 'RO',
-            orderDate: date,
-            warehouseName: order.warehouse_name || 'Head Office',
-            dealerName: order.dealer_name || '',
-            products: {}
-        };
-        
-        // Initialize all products with 0 quantity
-        allProducts.forEach(product => {
-            dealerRow.products[product.product_code] = 0;
-        });
-        
-        // Fill in actual quantities from order items
-        order.items.forEach(item => {
-            dealerRow.products[item.product_code] = (dealerRow.products[item.product_code] || 0) + item.quantity;
-        });
-        
-        // Fill row data according to Book1.xlsx structure
-        newRow.getCell(1).value = dealerRow.serialNo; // Sl. No.
-        newRow.getCell(2).value = order.dealer_territory || ''; // Territory name from database
-        newRow.getCell(3).value = dealerRow.dealerName; // Name of Dealer
-        newRow.getCell(4).value = order.dealer_address || ''; // Address from database
-        newRow.getCell(5).value = order.dealer_contact || ''; // Contact Person & Number from database
-        
-        // Apply font formatting to dealer information cells
-        for (let col = 1; col <= 5; col++) {
-            newRow.getCell(col).font = { name: 'Calibri', size: 8 };
-        }
-        
-            // Add product quantities - map to correct columns based on product order
-            let productCol = 6;
-            allProducts.forEach(product => {
-                const newCell = newRow.getCell(productCol);
-                // Get quantity for this specific product
-                const quantity = dealerRow.products[product.product_code] || 0;
-                newCell.value = quantity;
-                newCell.font = { name: 'Calibri', size: 8 };
-            
-            // Apply formatting from template data rows (row 13 in template)
-            const templateRow = templateWorksheet.getRow(13);
-            const templateCell = templateRow.getCell(productCol);
-            
-            if (templateCell.font) {
-                newCell.font = {
-                    ...templateCell.font,
-                    bold: templateCell.font.bold,
-                    italic: templateCell.font.italic,
-                    color: templateCell.font.color,
-                    size: 8,
-                    name: 'Calibri'
-                };
-            }
-            
-            if (templateCell.alignment) {
-                newCell.alignment = { ...templateCell.alignment };
-            }
-            
-            if (templateCell.border) {
-                newCell.border = { ...templateCell.border };
-            }
-            
-            if (templateCell.numFmt) {
-                newCell.numFmt = templateCell.numFmt;
-            }
-            
-            // Apply olive green background if quantity > 0 (after template formatting)
-            if (quantity > 0) {
-                newCell.fill = {
-                    type: 'pattern',
-                    pattern: 'solid',
-                    fgColor: { argb: 'FFD8E4BC' } // Excel background color #EBF1DE
-                };
-            }
-            
-            productCol++;
-        });
-        
-        currentRow++;
+
+    // Freeze panes below product header rows
+    worksheet.views = [
+        { state: 'frozen', xSplit: 5, ySplit: headerRowIndex + 2 },
+    ];
+
+    const transportColumnIndex = currentCol;
+    const transportColumn = worksheet.getColumn(transportColumnIndex);
+    transportColumn.key = 'transport';
+
+    styleCell(worksheet.getRow(headerRowIndex).getCell(transportColumnIndex), {
+        bold: true,
+        alignment: { horizontal: 'left', vertical: 'middle' },
     });
+    worksheet.getRow(headerRowIndex).getCell(transportColumnIndex).value = 'Transport';
+
+    styleCell(worksheet.getRow(headerRowIndex + 1).getCell(transportColumnIndex), {
+        alignment: { horizontal: 'center', vertical: 'middle' },
+    });
+    worksheet.getRow(headerRowIndex + 1).getCell(transportColumnIndex).value = '';
+
+    styleCell(worksheet.getRow(headerRowIndex + 2).getCell(transportColumnIndex), {
+        alignment: { horizontal: 'center', vertical: 'middle' },
+    });
+    worksheet.getRow(headerRowIndex + 2).getCell(transportColumnIndex).value = '';
+
+    let dataRowIndex = headerRowIndex + 3;
+    let serial = 1;
+
+    if (!orders.length) {
+        const row = worksheet.getRow(dataRowIndex);
+        styleCell(row.getCell(1), {});
+        row.getCell(1).value = 1;
+        styleCell(row.getCell(2), { alignment: { horizontal: 'left', vertical: 'middle' } });
+        row.getCell(2).value = 'No Orders';
+        styleCell(row.getCell(3), { alignment: { horizontal: 'left', vertical: 'middle' } });
+        row.getCell(3).value = 'No Orders Found';
+        for (let col = 4; col <= 5; col++) {
+            styleCell(row.getCell(col), { alignment: { horizontal: 'left', vertical: 'middle' } });
+            row.getCell(col).value = '';
+        }
+
+        productColumns.forEach((column) => {
+            const cell = row.getCell(column);
+            styleCell(cell, {});
+            cell.value = 0;
+        });
+
+        styleCell(row.getCell(transportColumnIndex), { alignment: { horizontal: 'left', vertical: 'middle' } });
+        row.getCell(transportColumnIndex).value = '';
+        dataRowIndex += 1;
+            } else {
+        orders.forEach((order) => {
+            const row = worksheet.getRow(dataRowIndex);
+
+            styleCell(row.getCell(1), {});
+            row.getCell(1).value = serial++;
+
+            styleCell(row.getCell(2), { alignment: { horizontal: 'left', vertical: 'middle' } });
+            row.getCell(2).value = order.dealer_territory || '';
+
+        styleCell(row.getCell(3), { alignment: { horizontal: 'left', vertical: 'middle' } });
+        row.getCell(3).value = order.dealer_name || '';
+
+        styleCell(row.getCell(4), { alignment: { horizontal: 'left', vertical: 'middle' } });
+        row.getCell(4).value = order.dealer_address || '';
+
+        styleCell(row.getCell(5), { alignment: { horizontal: 'left', vertical: 'middle' } });
+        row.getCell(5).value = order.dealer_contact || '';
+
+        productColumns.forEach((column) => {
+            const cell = row.getCell(column);
+                styleCell(cell, {});
+                cell.value = 0;
+            });
+
+            const quantityByProduct = {};
+            (order.items || []).forEach((item) => {
+                const code = item.product_code;
+                if (!code) {
+                    return;
+                }
+                quantityByProduct[code] = (quantityByProduct[code] || 0) + (Number(item.quantity) || 0);
+            });
+
+            Object.entries(quantityByProduct).forEach(([productCode, quantity]) => {
+                const column = productColumnMap[productCode];
+                if (!column) {
+                    return;
+                }
+            const cell = row.getCell(column);
+                cell.value = quantity;
+                if (quantity > 0) {
+                    cell.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: 'FFD8E4BC' },
+                    };
+                }
+            });
+
+            styleCell(row.getCell(transportColumnIndex), { alignment: { horizontal: 'left', vertical: 'middle' } });
+            const transportValue =
+                order.transport_name ||
+                (Array.isArray(order.transport_names) && order.transport_names.length > 1
+                    ? 'Different Transport Providers'
+                    : Array.isArray(order.transport_names) && order.transport_names.length === 1
+                        ? order.transport_names[0]
+                        : order.transport || order.warehouse_name || '');
+            row.getCell(transportColumnIndex).value = transportValue;
+
+            dataRowIndex += 1;
+        });
+    }
 }
 
 const app = express();
@@ -1905,52 +2123,42 @@ app.get('/api/orders/available-dates', (req, res) => {
     });
 });
 
-// Get order details with items
-app.get('/api/orders/:orderId', (req, res) => {
-    const { orderId } = req.params;
-    
-    // Get order details
-    const orderQuery = `
-        SELECT o.*, ot.name as order_type, d.name as dealer_name, d.territory_name as dealer_territory, w.name as warehouse_name
-        FROM orders o
-        LEFT JOIN order_types ot ON o.order_type_id = ot.id
-        LEFT JOIN dealers d ON o.dealer_id = d.id
-        LEFT JOIN warehouses w ON o.warehouse_id = w.id
-        WHERE o.order_id = ?
-    `;
-    
-    db.query(orderQuery, [orderId], (err, orderResults) => {
-        if (err) {
-            res.status(500).json({ error: err.message });
-            return;
+// Get aggregated orders for a date range
+app.get('/api/orders/range', async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+
+        if (!startDate || !endDate) {
+            return res.status(400).json({ error: 'startDate and endDate are required' });
         }
-        
-        if (orderResults.length === 0) {
-            res.status(404).json({ error: 'Order not found' });
-            return;
+
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+            return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
         }
-        
-        // Get order items
-        const itemsQuery = `
-            SELECT oi.*, p.name as product_name, p.product_code, p.unit_tp, p.mrp, p.unit_trade_price
-            FROM order_items oi
-            LEFT JOIN products p ON oi.product_id = p.id
-            WHERE oi.order_id = ?
-            ORDER BY oi.id
-        `;
-        
-        db.query(itemsQuery, [orderId], (err, itemsResults) => {
-            if (err) {
-                res.status(500).json({ error: err.message });
-                return;
-            }
-            
-            const order = orderResults[0];
-            order.items = itemsResults;
-            
-            res.json(order);
+
+        if (startDate > endDate) {
+            return res.status(400).json({ error: 'startDate cannot be after endDate' });
+        }
+
+        const ordersWithItems = await fetchOrdersWithItemsBetween(startDate, endDate);
+        if (!ordersWithItems.length) {
+            return res.status(404).json({ error: `No orders found between ${startDate} and ${endDate}` });
+        }
+
+        const { summaries, total_dealers, total_quantity, total_value } = buildDealerRangeSummary(ordersWithItems);
+
+        res.json({
+            orders: summaries,
+            total_dealers,
+            total_quantity,
+            total_value,
+            total_original_orders: ordersWithItems.length,
         });
-    });
+    } catch (error) {
+        console.error('Error fetching range orders:', error);
+        res.status(500).json({ error: error.message });
+    }
 });
 
 // Get orders for a specific date
@@ -1975,6 +2183,7 @@ app.get('/api/orders/date/:date', async (req, res) => {
                 d.contact as dealer_contact,
                 w.name as warehouse_name,
                 w.alias as warehouse_alias,
+                t.truck_details as transport_name,
                 DATE(o.created_at) as order_date,
                 COUNT(oi.id) as item_count,
                 COALESCE(SUM(oi.quantity), 0) as quantity,
@@ -1986,6 +2195,7 @@ app.get('/api/orders/date/:date', async (req, res) => {
             LEFT JOIN order_types ot ON o.order_type_id = ot.id
             LEFT JOIN dealers d ON o.dealer_id = d.id
             LEFT JOIN warehouses w ON o.warehouse_id = w.id
+            LEFT JOIN transports t ON o.transport_id = t.id
             LEFT JOIN order_items oi ON o.order_id = oi.order_id
             WHERE DATE(o.created_at) = ?
             GROUP BY o.id, o.order_id, o.order_type_id, o.dealer_id, o.warehouse_id, o.created_at, o.user_id, ot.name, d.name, d.territory_name, d.address, d.contact, w.name, w.alias
@@ -2052,11 +2262,13 @@ app.get('/api/orders/tso-report/:date', async (req, res) => {
                 d.contact as dealer_contact,
                 w.name as warehouse_name,
                 w.alias as warehouse_alias,
+                t.truck_details as transport_name,
                 DATE(o.created_at) as order_date
             FROM orders o
             LEFT JOIN order_types ot ON o.order_type_id = ot.id
             LEFT JOIN dealers d ON o.dealer_id = d.id
             LEFT JOIN warehouses w ON o.warehouse_id = w.id
+            LEFT JOIN transports t ON o.transport_id = t.id
             WHERE DATE(o.created_at) = ?
             ORDER BY o.created_at ASC
         `;
@@ -2086,7 +2298,10 @@ app.get('/api/orders/tso-report/:date', async (req, res) => {
         }
         
         // Generate Excel report
-        const reportData = await generateExcelReport(ordersWithItems, date);
+        const reportData = await generateExcelReport(ordersWithItems, {
+            date,
+            dateLabel: date,
+        });
         
         // Set headers for file download
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -2098,6 +2313,95 @@ app.get('/api/orders/tso-report/:date', async (req, res) => {
         console.error('Error generating Excel report:', error);
         res.status(500).json({ error: error.message });
     }
+});
+
+// Generate TSO Excel report for orders within a date range
+app.get('/api/orders/tso-report-range', async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+
+        if (!startDate || !endDate) {
+            return res.status(400).json({ error: 'startDate and endDate are required' });
+        }
+
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+            return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+        }
+
+        if (startDate > endDate) {
+            return res.status(400).json({ error: 'startDate cannot be after endDate' });
+        }
+
+        const ordersWithItems = await fetchOrdersWithItemsBetween(startDate, endDate);
+        console.log('Range Excel request', { startDate, endDate, ordersCount: ordersWithItems.length });
+        if (!ordersWithItems.length) {
+            return res.status(404).json({ error: `No orders found between ${startDate} and ${endDate}` });
+        }
+
+        const dateLabel = `${startDate} to ${endDate}`;
+        const { summaries } = buildDealerRangeSummary(ordersWithItems);
+        const aggregatedOrders = convertDealerSummariesToOrders(summaries, dateLabel);
+        const reportData = await generateExcelReport(aggregatedOrders, {
+            date: startDate,
+            dateLabel,
+        });
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="TSO_Order_Report_${startDate}_${endDate}.xlsx"`);
+        res.send(reportData);
+    } catch (error) {
+        console.error('Error generating range Excel report:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get order details with items
+app.get('/api/orders/:orderId', (req, res) => {
+    const { orderId } = req.params;
+    
+    // Get order details
+    const orderQuery = `
+        SELECT o.*, ot.name as order_type, d.name as dealer_name, d.territory_name as dealer_territory, w.name as warehouse_name
+        FROM orders o
+        LEFT JOIN order_types ot ON o.order_type_id = ot.id
+        LEFT JOIN dealers d ON o.dealer_id = d.id
+        LEFT JOIN warehouses w ON o.warehouse_id = w.id
+        WHERE o.order_id = ?
+    `;
+    
+    db.query(orderQuery, [orderId], (err, orderResults) => {
+        if (err) {
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        
+        if (orderResults.length === 0) {
+            res.status(404).json({ error: 'Order not found' });
+            return;
+        }
+        
+        // Get order items
+        const itemsQuery = `
+            SELECT oi.*, p.name as product_name, p.product_code, p.unit_tp, p.mrp, p.unit_trade_price
+            FROM order_items oi
+            LEFT JOIN products p ON oi.product_id = p.id
+            WHERE oi.order_id = ?
+            ORDER BY oi.id
+        `;
+        
+        db.query(itemsQuery, [orderId], (err, itemsResults) => {
+            if (err) {
+                res.status(500).json({ error: err.message });
+                return;
+            }
+            
+            const order = orderResults[0];
+            order.items = itemsResults;
+            
+            res.json(order);
+        });
+    });
 });
 
 // Generate MR Order Report CSV (using warehouse aliases)
