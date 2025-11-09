@@ -110,7 +110,7 @@ This comprehensive test will:
 ### 📄 Daily Report
 - [ ] Select date works
 - [ ] Preview orders works
-- [ ] Download TSO Excel works
+- [ ] Download Daily Order Report Excel works
 - [ ] Download MR CSV works
 - [ ] MR CSV only shows ordered products (not all products)
 - [ ] Excel report generates correctly
@@ -158,7 +158,7 @@ This comprehensive test will:
 3. Select a date with orders
 4. Download MR CSV
 5. Verify CSV only contains ordered products
-6. Download TSO Excel
+6. Download Daily Order Report Excel
 7. Verify Excel generates correctly
 
 ## Notes

@@ -572,63 +572,6 @@ function DailyReport() {
       ),
     },
     {
-      title: 'Transport',
-      dataIndex: 'transport_names',
-      key: 'transport_names',
-      ellipsis: true,
-      render: (names = []) => {
-        if (!names || names.length === 0) {
-          return 'N/A';
-        }
-        if (names.length === 1) {
-          return names[0];
-        }
-        return 'Different Transport Providers';
-      },
-    },
-    {
-      title: 'Total Qty',
-      dataIndex: 'total_quantity',
-      key: 'total_quantity',
-      width: 110,
-      align: 'center',
-      sorter: (a, b) => (a.total_quantity || 0) - (b.total_quantity || 0),
-    },
-    {
-      title: 'Total Value',
-      dataIndex: 'total_value',
-      key: 'total_value',
-      width: 140,
-      align: 'center',
-      render: (value) => {
-        const numeric = Number(value || 0);
-        return numeric > 0 ? `৳${numeric.toLocaleString()}` : '৳0';
-      },
-      sorter: (a, b) => (a.total_value || 0) - (b.total_value || 0),
-    },
-    {
-      title: 'Date Span',
-      dataIndex: 'date_span',
-      key: 'date_span',
-      ellipsis: true,
-      render: (span) => span || 'N/A',
-    },
-    {
-      title: 'Transport',
-      dataIndex: 'transport_names',
-      key: 'transport_names',
-      ellipsis: true,
-      render: (names = []) => {
-        if (!names || names.length === 0) {
-          return 'N/A';
-        }
-        if (names.length === 1) {
-          return names[0];
-        }
-        return 'Different Transport Providers';
-      },
-    },
-    {
       title: 'Product Details',
       key: 'product_details',
       ellipsis: {
@@ -671,6 +614,48 @@ function DailyReport() {
         );
       },
     },
+    {
+      title: 'Transport',
+      dataIndex: 'transport_names',
+      key: 'transport_names',
+      ellipsis: true,
+      render: (names = []) => {
+        if (!names || names.length === 0) {
+          return 'N/A';
+        }
+        if (names.length === 1) {
+          return names[0];
+        }
+        return 'Different Transport Providers';
+      },
+    },
+    {
+      title: 'Total Qty',
+      dataIndex: 'total_quantity',
+      key: 'total_quantity',
+      width: 110,
+      align: 'center',
+      sorter: (a, b) => (a.total_quantity || 0) - (b.total_quantity || 0),
+    },
+    {
+      title: 'Total Value',
+      dataIndex: 'total_value',
+      key: 'total_value',
+      width: 140,
+      align: 'center',
+      render: (value) => {
+        const numeric = Number(value || 0);
+        return numeric > 0 ? `৳${numeric.toLocaleString()}` : '৳0';
+      },
+      sorter: (a, b) => (a.total_value || 0) - (b.total_value || 0),
+    },
+    {
+      title: 'Date Span',
+      dataIndex: 'date_span',
+      key: 'date_span',
+      ellipsis: true,
+      render: (span) => span || 'N/A',
+    },
   ];
 
   return (
@@ -682,8 +667,7 @@ function DailyReport() {
         Generate Excel reports for orders placed on a specific date or across a date range
       </Text>
 
-      {/* Actions */}
-      <Card style={{ marginBottom: '16px' }}>
+      <Card title="Daily Report (Single Date)" style={{ marginBottom: 16 }}>
         <Row gutter={[16, 16]} align="bottom">
           <Col xs={24} sm={12} md={6}>
             <Space direction="vertical" style={{ width: '100%' }}>
@@ -718,7 +702,7 @@ function DailyReport() {
               loading={loading}
               style={{ width: '100%' }}
             >
-              Download TSO Excel
+              Download Daily Order Report Excel
             </Button>
           </Col>
           <Col xs={24} sm={12} md={6}>
@@ -732,8 +716,11 @@ function DailyReport() {
             </Button>
           </Col>
         </Row>
-        <Row gutter={[16, 16]} align="bottom" style={{ marginTop: '16px' }}>
-          <Col xs={24} sm={12} md={4}>
+      </Card>
+
+      <Card title="Order Summary (Date Range)" style={{ marginBottom: 24 }}>
+        <Row gutter={[16, 16]} align="bottom">
+          <Col xs={24} sm={12} md={6}>
             <Space direction="vertical" style={{ width: '100%' }}>
               <Text strong>Start Date</Text>
               <DatePicker
@@ -746,7 +733,7 @@ function DailyReport() {
               />
             </Space>
           </Col>
-          <Col xs={24} sm={12} md={4}>
+          <Col xs={24} sm={12} md={6}>
             <Space direction="vertical" style={{ width: '100%' }}>
               <Text strong>End Date</Text>
               <DatePicker
@@ -759,33 +746,27 @@ function DailyReport() {
               />
             </Space>
           </Col>
-          <Col xs={24} sm={12} md={8}>
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Text strong>Preview Orders</Text>
-              <Button
-                type="default"
-                icon={<EyeOutlined />}
-                onClick={handlePreviewRange}
-                loading={loading}
-                style={{ width: '100%' }}
-              >
-                Preview Range Orders
-              </Button>
-            </Space>
+          <Col xs={24} sm={12} md={6}>
+            <Button
+              type="default"
+              icon={<EyeOutlined />}
+              onClick={handlePreviewRange}
+              loading={loading}
+              style={{ width: '100%' }}
+            >
+              Preview Range Orders
+            </Button>
           </Col>
-          <Col xs={24} sm={12} md={8}>
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Text strong>Download Excel</Text>
-              <Button
-                type="primary"
-                icon={<FileExcelOutlined />}
-                onClick={handleGenerateRangeReport}
-                loading={loading}
-                style={{ width: '100%' }}
-              >
-                Download Range Excel
-              </Button>
-            </Space>
+          <Col xs={24} sm={12} md={6}>
+            <Button
+              type="primary"
+              icon={<FileExcelOutlined />}
+              onClick={handleGenerateRangeReport}
+              loading={loading}
+              style={{ width: '100%' }}
+            >
+              Download Order Summary Excel
+            </Button>
           </Col>
         </Row>
       </Card>

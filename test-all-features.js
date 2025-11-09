@@ -472,8 +472,8 @@ test('Functional: Preview Range Orders', async () => {
   return { pass: false, message: `Failed to preview range orders: ${result.status} - ${JSON.stringify(result.data)}` };
 });
 
-// Test 10: Download Range Excel Report
-test('Functional: Download Range Excel Report', async () => {
+// Test 10: Download Order Summary Excel Report
+test('Functional: Download Order Summary Excel Report', async () => {
   if (!testData.rangeStartDate || !testData.rangeEndDate) {
     return { pass: true, message: 'Skipped: No available dates for range Excel' };
   }
@@ -497,7 +497,7 @@ test('Functional: Download Range Excel Report', async () => {
     return { pass: true, message: `No orders for Excel range ${testData.rangeStartDate} - ${testData.rangeEndDate}` };
   }
 
-  return { pass: false, message: `Failed to download range Excel: ${result.status}` };
+  return { pass: false, message: `Failed to Download Order Summary Excel: ${result.status}` };
 });
 
 // Test 11: Download Single-Date Excel Report
