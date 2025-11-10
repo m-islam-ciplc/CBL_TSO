@@ -236,13 +236,13 @@ async function fetchOrdersWithItemsBetween(startDate, endDate) {
         ORDER BY o.created_at ASC
     `;
 
-    const [orders] = await db.promise().query(ordersQuery, [startDate, endDate]);
+    const [orders] = await dbPromise.query(ordersQuery, [startDate, endDate]);
     if (!orders.length) {
         return [];
     }
 
     const orderIds = orders.map(order => order.order_id);
-    const [items] = await db.promise().query(`
+    const [items] = await dbPromise.query(`
         SELECT 
             oi.*, 
             p.name AS product_name, 
@@ -487,7 +487,7 @@ async function buildWorksheetStructure(worksheet, orders, options = {}) {
         ORDER BY application_name, product_name
     `;
 
-    const [allProductsResult] = await db.promise().query(allProductsQuery);
+    const [allProductsResult] = await dbPromise.query(allProductsQuery);
     const allProducts = allProductsResult;
 
     // Group products by application and prepare lookup maps
@@ -853,6 +853,26 @@ const db = mysql.createPool({
     queueLimit: 0,
     dateStrings: true // Return dates as strings instead of Date objects to preserve timezone
 });
+const dbPromise = db.promise();
+
+const withTransaction = async (handler) => {
+    const connection = await dbPromise.getConnection();
+    try {
+        await connection.beginTransaction();
+        const result = await handler(connection);
+        await connection.commit();
+        return result;
+    } catch (error) {
+        try {
+            await connection.rollback();
+        } catch (rollbackError) {
+            console.error('Rollback error:', rollbackError);
+        }
+        throw error;
+    } finally {
+        connection.release();
+    }
+};
 
 // Create transport table if it doesn't exist
 const createTransportTable = () => {
@@ -1287,76 +1307,53 @@ app.get('/api/product-caps', (req, res) => {
   });
 
 // Bulk save product caps
-app.post('/api/product-caps/bulk', (req, res) => {
+app.post('/api/product-caps/bulk', async (req, res) => {
   const { quotas } = req.body;
-  
+
   console.log('📥 Received bulk save request:', quotas?.length, 'quotas');
-  
+
   if (!quotas || !Array.isArray(quotas)) {
     console.error('❌ Invalid quotas data:', quotas);
     return res.status(400).json({ error: 'Invalid quotas data' });
   }
-  
-  // Start a transaction
-  db.beginTransaction((err) => {
-    if (err) {
-      console.error('Error starting transaction:', err);
-      return res.status(500).json({ error: 'Database error' });
-    }
-    
-    const insertPromises = quotas.map(quota => {
-      return new Promise((resolve, reject) => {
-        const query = `
-          INSERT INTO daily_quotas (date, product_id, product_code, product_name, territory_name, max_quantity)
-          VALUES (?, ?, ?, ?, ?, ?)
-          ON DUPLICATE KEY UPDATE 
-            max_quantity = max_quantity + VALUES(max_quantity),
-            product_code = VALUES(product_code),
-            product_name = VALUES(product_name)
-        `;
-        
-        console.log('💾 Inserting quota:', { date: quota.date, product_id: quota.product_id, territory: quota.territory_name, qty: quota.max_quantity });
-        
-        db.query(query, [
-          quota.date, 
-          quota.product_id, 
-          quota.product_code, 
-          quota.product_name, 
-          quota.territory_name, 
+
+  const insertQuery = `
+    INSERT INTO daily_quotas (date, product_id, product_code, product_name, territory_name, max_quantity)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON DUPLICATE KEY UPDATE 
+      max_quantity = max_quantity + VALUES(max_quantity),
+      product_code = VALUES(product_code),
+      product_name = VALUES(product_name)
+  `;
+
+  try {
+    await withTransaction(async (connection) => {
+      for (const quota of quotas) {
+        console.log('💾 Inserting quota:', {
+          date: quota.date,
+          product_id: quota.product_id,
+          territory: quota.territory_name,
+          qty: quota.max_quantity
+        });
+
+        await connection.query(insertQuery, [
+          quota.date,
+          quota.product_id,
+          quota.product_code,
+          quota.product_name,
+          quota.territory_name,
           quota.max_quantity
-        ], (err, result) => {
-          if (err) {
-            console.error('❌ Database error for quota:', err);
-            reject(err);
-          } else {
-            resolve(result);
-          }
-        });
-      });
+        ]);
+      }
     });
-    
-    Promise.all(insertPromises)
-      .then(() => {
-        db.commit((err) => {
-          if (err) {
-            console.error('Error committing transaction:', err);
-            return db.rollback(() => {
-              res.status(500).json({ error: 'Failed to save quotas' });
-            });
-          }
-          console.log('✅ Quotas saved successfully');
-          // Broadcast quota change to all connected clients
-          broadcastQuotaChange();
-          res.json({ success: true, message: 'Quotas saved successfully' });
-        });
-      })
-      .catch((err) => {
-        console.error('❌ Error saving quotas:', err);
-        db.rollback(() => {
-          res.status(500).json({ error: err.message || 'Failed to save quotas' });
-        });
-      });
-  });
+
+    console.log('✅ Quotas saved successfully');
+    broadcastQuotaChange();
+    res.json({ success: true, message: 'Quotas saved successfully' });
+  } catch (error) {
+    console.error('❌ Error saving quotas:', error);
+    res.status(500).json({ error: error.message || 'Failed to save quotas' });
+  }
 });
 
 // Update a quota (set absolute value, not accumulate)
@@ -1566,72 +1563,69 @@ app.post('/api/products/import', upload.single('file'), async (req, res) => {
             });
         }
 
-        // Start transaction
-        await db.promise().beginTransaction();
-
         let importedCount = 0;
         let duplicateCount = 0;
         let errorCount = 0;
 
-        // Process each row (skip header row)
-        console.log(`📊 Processing ${jsonData.length - 1} data rows...`);
-        for (let i = 1; i < jsonData.length; i++) {
-            const row = jsonData[i];
-            if (!row || row.length === 0) continue;
-            
-            console.log(`📝 Processing row ${i}:`, row.slice(0, 5)); // Log first 5 columns
+        await withTransaction(async (connection) => {
+            // Process each row (skip header row)
+            console.log(`📊 Processing ${jsonData.length - 1} data rows...`);
+            for (let i = 1; i < jsonData.length; i++) {
+                const row = jsonData[i];
+                if (!row || row.length === 0) continue;
+                
+                console.log(`📝 Processing row ${i}:`, row.slice(0, 5)); // Log first 5 columns
 
-            const productCode = row[columnMap.productCode]?.toString().trim();
-            const productName = row[columnMap.productName]?.toString().trim();
-            const productCategory = row[columnMap.productCategory]?.toString().trim();
-            
-            // Skip if required fields are missing
-            if (!productCode || !productName) {
-                console.log(`⚠️ Skipping row ${i}: Missing required fields (product_code: ${productCode}, product_name: ${productName})`);
-                errorCount++;
-                continue;
-            }
+                const productCode = row[columnMap.productCode]?.toString().trim();
+                const productName = row[columnMap.productName]?.toString().trim();
+                const productCategory = row[columnMap.productCategory]?.toString().trim();
+                
+                // Skip if required fields are missing
+                if (!productCode || !productName) {
+                    console.log(`⚠️ Skipping row ${i}: Missing required fields (product_code: ${productCode}, product_name: ${productName})`);
+                    errorCount++;
+                    continue;
+                }
 
-            // Skip if product category is not CBL
-            if (productCategory !== 'CBL') {
-                console.log(`⚠️ Skipping row ${i}: Product category is not CBL (${productCategory})`);
-                errorCount++;
-                continue;
-            }
+                // Skip if product category is not CBL
+                if (productCategory !== 'CBL') {
+                    console.log(`⚠️ Skipping row ${i}: Product category is not CBL (${productCategory})`);
+                    errorCount++;
+                    continue;
+                }
 
-            const productData = [
-                productCode,
-                productName,
-                row[columnMap.unitMeasure]?.toString().trim() || null,
-                row[columnMap.productCategory]?.toString().trim() || null,
-                row[columnMap.brandCode]?.toString().trim() || null,
-                row[columnMap.brandName]?.toString().trim() || null,
-                row[columnMap.applicationCode]?.toString().trim() || null,
-                row[columnMap.applicationName]?.toString().trim() || null,
-                row[columnMap.priceDate] ? new Date((row[columnMap.priceDate] - 25569) * 86400 * 1000) : null,
-                row[columnMap.unitTp] ? parseFloat(row[columnMap.unitTp]) : null,
-                row[columnMap.oemPrice] ? parseFloat(row[columnMap.oemPrice]) : null,
-                row[columnMap.b2bPrice] ? parseFloat(row[columnMap.b2bPrice]) : null,
-                row[columnMap.specialPrice] ? parseFloat(row[columnMap.specialPrice]) : null,
-                row[columnMap.employeePrice] ? parseFloat(row[columnMap.employeePrice]) : null,
-                row[columnMap.cashPrice] ? parseFloat(row[columnMap.cashPrice]) : null,
-                row[columnMap.mrp] ? parseFloat(row[columnMap.mrp]) : null,
-                row[columnMap.unitTradePrice] ? parseFloat(row[columnMap.unitTradePrice]) : null,
-                row[columnMap.unitVat] ? parseFloat(row[columnMap.unitVat]) : null,
-                row[columnMap.suppTax] ? parseFloat(row[columnMap.suppTax]) : null,
-                row[columnMap.grossProfit] ? parseFloat(row[columnMap.grossProfit]) : null,
-                row[columnMap.bonusAllow]?.toString().trim() || null,
-                row[columnMap.discountAllow]?.toString().trim() || null,
-                row[columnMap.discountType]?.toString().trim() || null,
-                row[columnMap.discountVal] ? parseFloat(row[columnMap.discountVal]) : null,
-                row[columnMap.packSize]?.toString().trim() || null,
-                row[columnMap.shipperQty] ? parseInt(row[columnMap.shipperQty]) : null,
-                row[columnMap.status]?.toString().trim() || null
-            ];
+                const productData = [
+                    productCode,
+                    productName,
+                    row[columnMap.unitMeasure]?.toString().trim() || null,
+                    row[columnMap.productCategory]?.toString().trim() || null,
+                    row[columnMap.brandCode]?.toString().trim() || null,
+                    row[columnMap.brandName]?.toString().trim() || null,
+                    row[columnMap.applicationCode]?.toString().trim() || null,
+                    row[columnMap.applicationName]?.toString().trim() || null,
+                    row[columnMap.priceDate] ? new Date((row[columnMap.priceDate] - 25569) * 86400 * 1000) : null,
+                    row[columnMap.unitTp] ? parseFloat(row[columnMap.unitTp]) : null,
+                    row[columnMap.oemPrice] ? parseFloat(row[columnMap.oemPrice]) : null,
+                    row[columnMap.b2bPrice] ? parseFloat(row[columnMap.b2bPrice]) : null,
+                    row[columnMap.specialPrice] ? parseFloat(row[columnMap.specialPrice]) : null,
+                    row[columnMap.employeePrice] ? parseFloat(row[columnMap.employeePrice]) : null,
+                    row[columnMap.cashPrice] ? parseFloat(row[columnMap.cashPrice]) : null,
+                    row[columnMap.mrp] ? parseFloat(row[columnMap.mrp]) : null,
+                    row[columnMap.unitTradePrice] ? parseFloat(row[columnMap.unitTradePrice]) : null,
+                    row[columnMap.unitVat] ? parseFloat(row[columnMap.unitVat]) : null,
+                    row[columnMap.suppTax] ? parseFloat(row[columnMap.suppTax]) : null,
+                    row[columnMap.grossProfit] ? parseFloat(row[columnMap.grossProfit]) : null,
+                    row[columnMap.bonusAllow]?.toString().trim() || null,
+                    row[columnMap.discountAllow]?.toString().trim() || null,
+                    row[columnMap.discountType]?.toString().trim() || null,
+                    row[columnMap.discountVal] ? parseFloat(row[columnMap.discountVal]) : null,
+                    row[columnMap.packSize]?.toString().trim() || null,
+                    row[columnMap.shipperQty] ? parseInt(row[columnMap.shipperQty]) : null,
+                    row[columnMap.status]?.toString().trim() || null
+                ];
 
-            try {
-
-                await db.promise().query(`
+                try {
+                    await connection.query(`
                     INSERT INTO products (
                         product_code, name, unit_measure, product_category, brand_code, brand_name,
                         application_code, application_name, price_date, unit_tp, oem_price, b2b_price,
@@ -1643,20 +1637,18 @@ app.post('/api/products/import', upload.single('file'), async (req, res) => {
 
                 importedCount++;
                 console.log(`✅ Imported product: ${productData[1]} (${productData[0]})`);
-            } catch (error) {
-                if (error.code === 'ER_DUP_ENTRY') {
-                    console.log(`🔄 Duplicate product: ${productData[1]} (${productData[0]})`);
-                    duplicateCount++;
-                } else {
-                    console.log(`❌ Error importing row ${i}:`, error.message);
-                    console.log(`❌ Product data:`, productData || 'Not defined');
-                    errorCount++;
+                } catch (error) {
+                    if (error.code === 'ER_DUP_ENTRY') {
+                        console.log(`🔄 Duplicate product: ${productData[1]} (${productData[0]})`);
+                        duplicateCount++;
+                    } else {
+                        console.log(`❌ Error importing row ${i}:`, error.message);
+                        console.log(`❌ Product data:`, productData || 'Not defined');
+                        errorCount++;
+                    }
                 }
             }
-        }
-
-        // Commit transaction
-        await db.promise().commit();
+        });
 
         console.log(`✅ Import completed: ${importedCount} imported, ${duplicateCount} duplicates, ${errorCount} errors`);
 
@@ -1768,101 +1760,95 @@ app.post('/api/dealers/import', upload.single('file'), async (req, res) => {
         const hasDealerCode = columnMap.dealerCode !== undefined;
         console.log(`📋 Dealer code column: ${hasDealerCode ? 'Found' : 'Will generate from dealer name'}`);
 
-        // Start transaction
-        await db.promise().beginTransaction();
-
         let importedCount = 0;
         let duplicateCount = 0;
         let errorCount = 0;
 
-        // Process each row
-        console.log(`📊 Processing ${jsonData.length - 1} data rows...`);
-        for (let i = 1; i < jsonData.length; i++) {
-            const row = jsonData[i];
-            if (!row || row.length === 0) continue;
-            
-            console.log(`📝 Processing row ${i}:`, row.slice(0, 5)); // Log first 5 columns
+        await withTransaction(async (connection) => {
+            console.log(`📊 Processing ${jsonData.length - 1} data rows...`);
+            for (let i = 1; i < jsonData.length; i++) {
+                const row = jsonData[i];
+                if (!row || row.length === 0) continue;
 
-            const dealerName = row[columnMap.dealerName]?.toString().trim();
-            
-            // Skip if dealer name is missing
-            if (!dealerName) {
-                console.log(`⚠️ Skipping row ${i}: Missing dealer name`);
-                errorCount++;
-                continue;
-            }
+                console.log(`📝 Processing row ${i}:`, row.slice(0, 5)); // Log first 5 columns
 
-            // Generate dealer_code from dealer_name if not provided
-            const dealerCode = hasDealerCode 
-                ? row[columnMap.dealerCode]?.toString().trim() 
-                : dealerName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 20);
+                const dealerName = row[columnMap.dealerName]?.toString().trim();
 
-            const dealerData = [
-                dealerCode,
-                dealerName,
-                row[columnMap.shortName]?.toString().trim() || null,
-                row[columnMap.proprietorName]?.toString().trim() || null,
-                row[columnMap.address]?.toString().trim() || null,
-                row[columnMap.contact]?.toString().trim() || null,
-                row[columnMap.email]?.toString().trim() || null,
-                row[columnMap.natCode]?.toString().trim() || null,
-                row[columnMap.natName]?.toString().trim() || null,
-                row[columnMap.divCode]?.toString().trim() || null,
-                row[columnMap.divName]?.toString().trim() || null,
-                row[columnMap.territoryCode]?.toString().trim() || null,
-                row[columnMap.territoryName]?.toString().trim() || null,
-                row[columnMap.distCode]?.toString().trim() || null,
-                row[columnMap.distName]?.toString().trim() || null,
-                row[columnMap.thanaCode]?.toString().trim() || null,
-                row[columnMap.thanaName]?.toString().trim() || null,
-                row[columnMap.srCode]?.toString().trim() || null,
-                row[columnMap.srName]?.toString().trim() || null,
-                row[columnMap.nsmCode]?.toString().trim() || null,
-                row[columnMap.nsmName]?.toString().trim() || null,
-                row[columnMap.custOrigin]?.toString().trim() || null,
-                row[columnMap.dealerStatus]?.toString().trim() || null,
-                row[columnMap.activeStatus]?.toString().trim() || null,
-                row[columnMap.dealerProptr]?.toString().trim() || null,
-                row[columnMap.dealerType]?.toString().trim() || null,
-                row[columnMap.priceType]?.toString().trim() || null,
-                row[columnMap.custDiscCategory]?.toString().trim() || null,
-                row[columnMap.partyType]?.toString().trim() || null,
-                row[columnMap.erpStatus]?.toString().trim() || null
-            ];
-
-            try {
-
-                await db.promise().query(`
-                    INSERT INTO dealers (
-                        dealer_code, name, short_name, proprietor_name, address, contact, email,
-                        nat_code, nat_name, div_code, div_name, territory_code, territory_name,
-                        dist_code, dist_name, thana_code, thana_name, sr_code, sr_name,
-                        nsm_code, nsm_name, cust_origin, dealer_status, active_status,
-                        dealer_proptr, dealer_type, price_type, cust_disc_category, party_type, erp_status
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                `, dealerData);
-
-                importedCount++;
-                console.log(`✅ Imported dealer: ${dealerData[1]} (${dealerData[0]})`);
-
-            } catch (error) {
-                if (error.code === 'ER_DUP_ENTRY') {
-                    console.log(`🔄 Duplicate dealer: ${dealerData[1]} (${dealerData[0]})`);
-                    duplicateCount++;
-                } else {
-                    console.log(`❌ Error importing row ${i}:`, error.message);
-                    console.log(`❌ Dealer data:`, dealerData || 'Not defined');
-                    console.log(`❌ Full error:`, error);
+                // Skip if dealer name is missing
+                if (!dealerName) {
+                    console.log(`⚠️ Skipping row ${i}: Missing dealer name`);
                     errorCount++;
+                    continue;
+                }
+
+                // Generate dealer_code from dealer_name if not provided
+                const dealerCode = hasDealerCode
+                    ? row[columnMap.dealerCode]?.toString().trim()
+                    : dealerName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 20);
+
+                const dealerData = [
+                    dealerCode,
+                    dealerName,
+                    row[columnMap.shortName]?.toString().trim() || null,
+                    row[columnMap.proprietorName]?.toString().trim() || null,
+                    row[columnMap.address]?.toString().trim() || null,
+                    row[columnMap.contact]?.toString().trim() || null,
+                    row[columnMap.email]?.toString().trim() || null,
+                    row[columnMap.natCode]?.toString().trim() || null,
+                    row[columnMap.natName]?.toString().trim() || null,
+                    row[columnMap.divCode]?.toString().trim() || null,
+                    row[columnMap.divName]?.toString().trim() || null,
+                    row[columnMap.territoryCode]?.toString().trim() || null,
+                    row[columnMap.territoryName]?.toString().trim() || null,
+                    row[columnMap.distCode]?.toString().trim() || null,
+                    row[columnMap.distName]?.toString().trim() || null,
+                    row[columnMap.thanaCode]?.toString().trim() || null,
+                    row[columnMap.thanaName]?.toString().trim() || null,
+                    row[columnMap.srCode]?.toString().trim() || null,
+                    row[columnMap.srName]?.toString().trim() || null,
+                    row[columnMap.nsmCode]?.toString().trim() || null,
+                    row[columnMap.nsmName]?.toString().trim() || null,
+                    row[columnMap.custOrigin]?.toString().trim() || null,
+                    row[columnMap.dealerStatus]?.toString().trim() || null,
+                    row[columnMap.activeStatus]?.toString().trim() || null,
+                    row[columnMap.dealerProptr]?.toString().trim() || null,
+                    row[columnMap.dealerType]?.toString().trim() || null,
+                    row[columnMap.priceType]?.toString().trim() || null,
+                    row[columnMap.custDiscCategory]?.toString().trim() || null,
+                    row[columnMap.partyType]?.toString().trim() || null,
+                    row[columnMap.erpStatus]?.toString().trim() || null
+                ];
+
+                try {
+                    await connection.query(`
+                        INSERT INTO dealers (
+                            dealer_code, name, short_name, proprietor_name, address, contact, email,
+                            nat_code, nat_name, div_code, div_name, territory_code, territory_name,
+                            dist_code, dist_name, thana_code, thana_name, sr_code, sr_name,
+                            nsm_code, nsm_name, cust_origin, dealer_status, active_status,
+                            dealer_proptr, dealer_type, price_type, cust_disc_category, party_type, erp_status
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    `, dealerData);
+
+                    importedCount++;
+                    console.log(`✅ Imported dealer: ${dealerData[1]} (${dealerData[0]})`);
+                } catch (error) {
+                    if (error.code === 'ER_DUP_ENTRY') {
+                        console.log(`🔄 Duplicate dealer: ${dealerData[1]} (${dealerData[0]})`);
+                        duplicateCount++;
+                    } else {
+                        console.log(`❌ Error importing row ${i}:`, error.message);
+                        console.log(`❌ Dealer data:`, dealerData || 'Not defined');
+                        console.log(`❌ Full error:`, error);
+                        errorCount++;
+                    }
                 }
             }
-        }
-
-        // Commit transaction
-        await db.promise().commit();
+        });
 
         console.log(`✅ Import completed: ${importedCount} imported, ${duplicateCount} duplicates, ${errorCount} errors`);
 
+        // Commit transaction
         // Clean up uploaded file
         if (fs.existsSync(req.file.path)) {
             fs.unlinkSync(req.file.path);
@@ -1993,56 +1979,45 @@ app.post('/api/orders', async (req, res) => {
         }
 
         const order_id = uuidv4().substring(0, 8).toUpperCase();
-        
-        // Start transaction
-        await db.promise().beginTransaction();
-        
-        try {
-            // Get user_id from request body (sent from frontend)
+
+        await withTransaction(async (connection) => {
             const user_id = req.body.user_id || null;
-            
-            // Create the main order
-            await db.promise().query(`
+
+            await connection.query(`
                 INSERT INTO orders (order_id, order_type_id, dealer_id, warehouse_id, transport_id, user_id) 
                 VALUES (?, ?, ?, ?, ?, ?)
             `, [order_id, order_type_id, dealer_id, warehouse_id, transport_id, user_id]);
 
             // Get dealer's territory for quota tracking
-            const [dealerRows] = await db.promise().query(`
+            const [dealerRows] = await connection.query(`
                 SELECT territory_name FROM dealers WHERE id = ?
             `, [dealer_id]);
-            
+
             const territory_name = dealerRows[0]?.territory_name;
-            
+            if (!territory_name) {
+                console.warn('⚠️ Territory not found for dealer:', dealer_id);
+            }
+
             // Add order items
             for (const item of order_items) {
-                await db.promise().query(`
+                await connection.query(`
                     INSERT INTO order_items (order_id, product_id, quantity) 
                     VALUES (?, ?, ?)
                 `, [order_id, item.product_id, item.quantity]);
-                
+
                 console.log('✅ Added order item:', { product_id: item.product_id, quantity: item.quantity });
             }
+        });
 
-            // Commit transaction
-            await db.promise().commit();
+        // Broadcast quota change to notify all connected clients
+        broadcastQuotaChange();
 
-            // Broadcast quota change to notify all connected clients
-            broadcastQuotaChange();
-
-            res.json({ 
-                success: true, 
-                order_id: order_id,
-                message: `Order created successfully with ${order_items.length} product(s)`,
-                item_count: order_items.length
-            });
-
-        } catch (error) {
-            // Rollback transaction on error
-            await db.promise().rollback();
-            console.error('❌ Transaction error:', error);
-            throw error;
-        }
+        res.json({ 
+            success: true, 
+            order_id: order_id,
+            message: `Order created successfully with ${order_items.length} product(s)`,
+            item_count: order_items.length
+        });
 
     } catch (error) {
         console.error('❌ Order creation error:', error);
@@ -2206,7 +2181,7 @@ app.get('/api/orders/date/:date', async (req, res) => {
             ORDER BY o.created_at DESC
         `;
         
-        const orders = await db.promise().query(ordersQuery, [date]);
+        const orders = await dbPromise.query(ordersQuery, [date]);
         
         if (orders[0].length === 0) {
             return res.json({ 
@@ -2226,7 +2201,7 @@ app.get('/api/orders/date/:date', async (req, res) => {
                 ORDER BY oi.id
             `;
             
-            const items = await db.promise().query(itemsQuery, [order.order_id]);
+            const items = await dbPromise.query(itemsQuery, [order.order_id]);
             order.items = items[0];
             ordersWithItems.push(order);
         }
@@ -2277,7 +2252,7 @@ app.get('/api/orders/tso-report/:date', async (req, res) => {
             ORDER BY o.created_at ASC
         `;
         
-        const orders = await db.promise().query(ordersQuery, [date]);
+        const orders = await dbPromise.query(ordersQuery, [date]);
         
         if (orders[0].length === 0) {
             return res.status(404).json({ 
@@ -2296,7 +2271,7 @@ app.get('/api/orders/tso-report/:date', async (req, res) => {
                 ORDER BY oi.id
             `;
             
-            const items = await db.promise().query(itemsQuery, [order.order_id]);
+            const items = await dbPromise.query(itemsQuery, [order.order_id]);
             order.items = items[0];
             ordersWithItems.push(order);
         }
@@ -2434,7 +2409,7 @@ app.get('/api/orders/mr-report/:date', async (req, res) => {
             ORDER BY o.created_at ASC
         `;
         
-        const orders = await db.promise().query(ordersQuery, [date]);
+        const orders = await dbPromise.query(ordersQuery, [date]);
         
         if (orders[0].length === 0) {
             return res.status(404).json({ error: 'No orders found for the specified date' });
@@ -2447,7 +2422,7 @@ app.get('/api/orders/mr-report/:date', async (req, res) => {
             LEFT JOIN products p ON oi.product_id = p.id
             WHERE oi.order_id IN (${orders[0].map(() => '?').join(',')})
         `;
-        const orderItems = await db.promise().query(orderItemsQuery, orders[0].map(order => order.order_id));
+        const orderItems = await dbPromise.query(orderItemsQuery, orders[0].map(order => order.order_id));
         
         // Get only products that are actually ordered (distinct products from order_items)
         const orderedProducts = [...new Set(orderItems[0].map(item => item.product_name))].sort();
@@ -2677,7 +2652,7 @@ app.post('/api/transports/import', upload.single('file'), async (req, res) => {
             ];
 
             try {
-                await db.promise().query(insertQuery, values);
+                await dbPromise.query(insertQuery, values);
                 importedCount++;
             } catch (error) {
                 console.error('Error importing transport:', error);
@@ -2706,57 +2681,48 @@ app.delete('/api/orders/:id', async (req, res) => {
     const orderId = req.params.id;
 
     try {
-        // Start transaction
-        await db.promise().beginTransaction();
-
-        try {
-            // First, get the order_id (UUID) to delete related order_items
-            const [orderRows] = await db.promise().query(
+        await withTransaction(async (connection) => {
+            const [orderRows] = await connection.query(
                 'SELECT order_id FROM orders WHERE id = ?',
                 [orderId]
             );
 
             if (!orderRows || orderRows.length === 0) {
-                await db.promise().rollback();
-                return res.status(404).json({ error: 'Order not found' });
+                const error = new Error('Order not found');
+                error.status = 404;
+                throw error;
             }
 
             const orderUUID = orderRows[0].order_id;
 
-            // Delete all order_items associated with this order
-            await db.promise().query(
+            await connection.query(
                 'DELETE FROM order_items WHERE order_id = ?',
                 [orderUUID]
             );
 
-            // Delete the order itself
-            const [deleteResult] = await db.promise().query(
+            const [deleteResult] = await connection.query(
                 'DELETE FROM orders WHERE id = ?',
                 [orderId]
             );
 
-            if (deleteResult.affectedRows === 0) {
-                await db.promise().rollback();
-                return res.status(404).json({ error: 'Order not found' });
+            if (!deleteResult || deleteResult.affectedRows === 0) {
+                const error = new Error('Order not found');
+                error.status = 404;
+                throw error;
             }
+        });
 
-            // Commit transaction
-            await db.promise().commit();
+        broadcastQuotaChange();
 
-            // Broadcast quota change to notify all connected clients
-            // This will trigger quota recalculation for TSO dashboards
-            broadcastQuotaChange();
-
-            res.json({
-                success: true,
-                message: 'Order and associated items deleted successfully'
-            });
-        } catch (error) {
-            // Rollback transaction on error
-            await db.promise().rollback();
-            throw error;
-        }
+        res.json({
+            success: true,
+            message: 'Order and associated items deleted successfully'
+        });
     } catch (error) {
+        if (error?.status === 404) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+
         console.error('Error deleting order:', error);
         res.status(500).json({ error: error.message });
     }
