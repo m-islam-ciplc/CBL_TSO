@@ -841,14 +841,17 @@ try {
     }
 }
 
-// MySQL connection
-const db = mysql.createConnection({
+// MySQL connection pool
+const db = mysql.createPool({
     host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '#lme11@@',
     database: process.env.DB_NAME || 'cbl_so',
-    port: process.env.DB_PORT || 3306,
-    dateStrings: true  // Return dates as strings instead of Date objects to preserve timezone
+    port: parseInt(process.env.DB_PORT || '3306', 10),
+    waitForConnections: true,
+    connectionLimit: parseInt(process.env.DB_CONNECTION_LIMIT || '10', 10),
+    queueLimit: 0,
+    dateStrings: true // Return dates as strings instead of Date objects to preserve timezone
 });
 
 // Create transport table if it doesn't exist
@@ -890,21 +893,22 @@ const createTransportTable = () => {
 };
 
 // Connect to database first, then start server
-db.connect((err) => {
+db.getConnection((err, connection) => {
     if (err) {
         console.error('Database connection failed:', err);
         process.exit(1); // Exit if database connection fails
-    } else {
-        console.log('Connected to MySQL database');
-
-        // Create transport table
-        createTransportTable();
-
-        // Start server only after database connection is established
-        app.listen(PORT, () => {
-            console.log(`CBL Sales Orders server running on port ${PORT}`);
-        });
     }
+
+    console.log('Connected to MySQL database');
+    connection.release();
+
+    // Create transport table
+    createTransportTable();
+
+    // Start server only after database connection is established
+    app.listen(PORT, () => {
+        console.log(`CBL Sales Orders server running on port ${PORT}`);
+    });
 });
 
 // Routes
