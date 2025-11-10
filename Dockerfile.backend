@@ -18,7 +18,6 @@ RUN npm ci --only=production
 
 # Copy application code from backend folder
 COPY backend/server.js ./
-COPY backend/Book1.xlsx ./
 # Copy database.sql from root
 COPY database.sql ./
 
