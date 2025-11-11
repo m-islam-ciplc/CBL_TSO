@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
   Card,
@@ -20,7 +20,6 @@ import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
-  UserOutlined,
 } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
@@ -45,7 +44,8 @@ function UserManagement() {
     try {
       const response = await axios.get('/api/users');
       setUsers(response.data);
-    } catch (error) {
+    } catch (_error) {
+      console.error('Failed to load users:', _error);
       message.error('Failed to load users');
     } finally {
       setLoading(false);
@@ -56,8 +56,8 @@ function UserManagement() {
     try {
       const response = await axios.get('/api/dealers/territories');
       setTerritories(response.data);
-    } catch (error) {
-      console.error('Failed to load territories:', error);
+    } catch (_error) {
+      console.error('Failed to load territories:', _error);
     }
   };
 
@@ -83,7 +83,8 @@ function UserManagement() {
       await axios.delete(`/api/users/${id}`);
       message.success('User deleted successfully');
       loadUsers();
-    } catch (error) {
+    } catch (_error) {
+      console.error('Failed to delete user:', _error);
       message.error('Failed to delete user');
     }
   };
@@ -95,7 +96,8 @@ function UserManagement() {
       });
       message.success(`User ${user.is_active ? 'deactivated' : 'activated'} successfully`);
       loadUsers();
-    } catch (error) {
+    } catch (_error) {
+      console.error('Failed to update user status:', _error);
       message.error('Failed to update user status');
     }
   };
@@ -118,9 +120,9 @@ function UserManagement() {
       setModalVisible(false);
       form.resetFields();
       loadUsers();
-    } catch (error) {
-      const errorMsg = error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to save user';
-      console.error('Error saving user:', error);
+    } catch (_error) {
+      const errorMsg = _error.response?.data?.message || _error.response?.data?.error || _error.message || 'Failed to save user';
+      console.error('Error saving user:', _error);
       message.error(errorMsg);
     }
   };

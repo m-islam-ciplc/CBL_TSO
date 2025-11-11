@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useUser } from '../contexts/UserContext';
 import './NewOrdersTablet.css';
@@ -34,7 +34,7 @@ const removeMSPrefix = (name) => {
   return name.replace(/^M\/S[.\s]*/i, '').trim();
 };
 
-function NewOrdersTablet({ onOrderCreated }) {
+function NewOrdersTablet({ onOrderCreated: _onOrderCreated }) {
   const { territoryName, isTSO, quotaRefreshTrigger } = useUser();
   const [form] = Form.useForm();
   const [dropdownData, setDropdownData] = useState({
@@ -57,6 +57,133 @@ function NewOrdersTablet({ onOrderCreated }) {
   const [isAddingMore, setIsAddingMore] = useState(false); // Track if user is adding more items
   const [productQuotas, setProductQuotas] = useState({}); // Store product quotas for today: { product_id: max_quantity }
 
+  function filterDealersByTerritory(territoryCode, territoryName) {
+    let filtered = dropdownData.dealers;
+
+    console.log('🔍 Filtering dealers by territory:', { territoryCode, territoryName });
+    console.log('📊 Total dealers before filtering:', filtered.length);
+
+    if (territoryCode) {
+      filtered = filtered.filter(dealer => dealer.territory_code === territoryCode);
+      console.log('✅ Filtered by territory code:', territoryCode, 'Result:', filtered.length, 'dealers');
+    } else if (territoryName) {
+      // Compare with cleaned territory name
+      filtered = filtered.filter(dealer => {
+        const cleanDealerTerritory = dealer.territory_name.replace(/\s+Territory$/i, '');
+        return cleanDealerTerritory === territoryName;
+      });
+      console.log('✅ Filtered by territory name:', territoryName, 'Result:', filtered.length, 'dealers');
+    }
+
+    console.log('📋 Filtered dealers:', filtered.map(d => ({ name: d.name, territory_code: d.territory_code })));
+    setFilteredDealers(filtered);
+  }
+
+  function initializeFormDefaults(orderTypes, warehouses) {
+    if (orderTypes.length > 0 && warehouses.length > 0) {
+      const initialValues = {
+        orderType: orderTypes[0].id,
+        warehouse: warehouses[0].id,
+        territoryCode: undefined,
+        territoryName: undefined,
+        dealer: undefined
+      };
+      form.setFieldsValue(initialValues);
+      setFormValues(initialValues); // Store in state
+    }
+  }
+
+  async function loadDropdownData() {
+    try {
+      const [orderTypesRes, dealersRes, warehousesRes, productsRes, transportsRes] = await Promise.all([
+        axios.get('/api/order-types'),
+        axios.get('/api/dealers'),
+        axios.get('/api/warehouses'),
+        axios.get('/api/products'),
+        axios.get('/api/transports')
+      ]);
+
+      setDropdownData({
+        orderTypes: orderTypesRes.data,
+        dealers: dealersRes.data,
+        warehouses: warehousesRes.data,
+        products: productsRes.data,
+        territories: [],
+        transports: transportsRes.data
+      });
+
+      // Build territory list from dealers
+      const territoriesMap = new Map();
+      dealersRes.data.forEach(dealer => {
+        if (dealer.territory_code && dealer.territory_name) {
+          const cleanTerritoryName = dealer.territory_name.replace(/\s+Territory$/i, '');
+          territoriesMap.set(dealer.territory_code, {
+            code: dealer.territory_code,
+            name: cleanTerritoryName
+          });
+        }
+      });
+      const territoriesArray = Array.from(territoriesMap.values());
+      setDropdownData(prev => ({
+        ...prev,
+        territories: territoriesArray
+      }));
+
+      // Initialize filtered collections
+      setFilteredDealers([]);
+      setFilteredProducts(productsRes.data);
+
+      // Initialize form with default values if not already set
+      const savedFormData = sessionStorage.getItem('tsoFormData');
+      if (savedFormData) {
+        try {
+          const formData = JSON.parse(savedFormData);
+          console.log('📁 Loaded saved form data:', formData);
+
+          // Filter dealers synchronously first to check if dealer ID exists
+          if (formData.territoryCode) {
+            setTimeout(() => {
+              const territory = territoriesArray.find(t => t.code === formData.territoryCode);
+              if (territory) {
+                const filtered = dealersRes.data.filter(dealer => dealer.territory_code === territory.code);
+                setFilteredDealers(filtered);
+
+                const dealerExists = formData.dealer && filtered.some(d => d.id === formData.dealer);
+                const valuesToSet = { ...formData };
+                if (!dealerExists) {
+                  valuesToSet.dealer = undefined;
+                }
+
+                form.setFieldsValue(valuesToSet);
+                setFormValues(valuesToSet);
+              } else {
+                const { dealer: _ignoredDealer, ...formDataWithoutDealer } = formData;
+                form.setFieldsValue(formDataWithoutDealer);
+                setFormValues(formDataWithoutDealer);
+              }
+            }, 100);
+          } else {
+            // No territory, set form values but clear dealer
+            const { dealer: _ignoredDealer, ...formDataWithoutDealer } = formData;
+            form.setFieldsValue(formDataWithoutDealer);
+            setFormValues(formDataWithoutDealer);
+          }
+        } catch (_error) {
+          console.error('Error parsing saved form data:', _error);
+          // Fall back to defaults
+          initializeFormDefaults(orderTypesRes.data, warehousesRes.data);
+        }
+      } else {
+        // Initialize form with default values when data is loaded
+        initializeFormDefaults(orderTypesRes.data, warehousesRes.data);
+      }
+
+    } catch (_error) {
+      console.error('Error loading dropdown data:', _error);
+      message.error('Failed to load form data');
+    }
+  }
+
   useEffect(() => {
     loadDropdownData();
     // Load existing order items from localStorage
@@ -66,8 +193,8 @@ function NewOrdersTablet({ onOrderCreated }) {
         const parsedItems = JSON.parse(savedOrderItems);
         setOrderItems(parsedItems);
         console.log('Loaded existing order items:', parsedItems);
-      } catch (error) {
-        console.error('Error parsing saved order items:', error);
+      } catch (_error) {
+        console.error('Error parsing saved order items:', _error);
       }
     }
     
@@ -132,15 +259,14 @@ function NewOrdersTablet({ onOrderCreated }) {
         });
         
         setProductQuotas(quotasObj);
-      } catch (error) {
-        console.error('Failed to load product quotas:', error);
+      } catch (_error) {
+        console.error('Failed to load product quotas:', _error);
       }
     }
   }, [isTSO, territoryName]);
 
   useEffect(() => {
     loadProductQuotas();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isTSO, territoryName, quotaRefreshTrigger]);
 
   // SSE for quota updates (for TSO users to see admin changes on different machines)
@@ -169,8 +295,7 @@ function NewOrdersTablet({ onOrderCreated }) {
     return () => {
       eventSource.close();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isTSO, territoryName]);
+  }, [isTSO, territoryName, loadProductQuotas]);
 
   useEffect(() => {
     // Filter products based on search term AND quota (for TSO users)
@@ -179,10 +304,10 @@ function NewOrdersTablet({ onOrderCreated }) {
     // For TSO users, only show products that have quotas allocated
     // If there are no quotas allocated, show no products
     if (isTSO) {
-      if (Object.keys(productQuotas).length > 0) {
-        baseProducts = dropdownData.products.filter(product => 
-          productQuotas.hasOwnProperty(product.id)
-        );
+        if (Object.keys(productQuotas).length > 0) {
+          baseProducts = dropdownData.products.filter(product =>
+            Object.prototype.hasOwnProperty.call(productQuotas, product.id)
+          );
       } else {
         // No quotas allocated, show no products
         baseProducts = [];
@@ -199,136 +324,6 @@ function NewOrdersTablet({ onOrderCreated }) {
       setFilteredProducts(baseProducts);
     }
   }, [searchTerm, dropdownData.products, isTSO, productQuotas]);
-
-  const loadDropdownData = async () => {
-    try {
-      const [orderTypesRes, dealersRes, warehousesRes, productsRes, transportsRes] = await Promise.all([
-        axios.get('/api/order-types'),
-        axios.get('/api/dealers'),
-        axios.get('/api/warehouses'),
-        axios.get('/api/products'),
-        axios.get('/api/transports')
-      ]);
-
-      setDropdownData({
-        orderTypes: orderTypesRes.data,
-        dealers: dealersRes.data,
-        warehouses: warehousesRes.data,
-        products: productsRes.data,
-        territories: [],
-        transports: transportsRes.data
-      });
-
-      // Extract unique territories from dealers
-      const territoriesMap = new Map();
-      dealersRes.data.forEach(dealer => {
-        if (dealer.territory_code && dealer.territory_name) {
-          // Clean territory name by removing " Territory" suffix if it exists
-          const cleanTerritoryName = dealer.territory_name.replace(/\s+Territory$/i, '');
-          territoriesMap.set(dealer.territory_code, {
-            code: dealer.territory_code,
-            name: cleanTerritoryName
-          });
-        }
-      });
-      const territories = Array.from(territoriesMap.values());
-      setDropdownData(prev => ({ ...prev, territories }));
-      setFilteredDealers([]); // Start with empty dealers - only show when territory is selected
-      setFilteredProducts(productsRes.data); // Initialize filtered products
-
-      // Try to restore saved form data, otherwise use defaults
-      const savedFormData = sessionStorage.getItem('tsoFormData');
-      if (savedFormData) {
-        try {
-          const formData = JSON.parse(savedFormData);
-          console.log('Loading saved form data in loadDropdownData:', formData);
-          
-          // Set form values in steps to ensure dealers are filtered before dealer value is set
-          setTimeout(() => {
-            // First, set territory and filter dealers if territory exists
-            if (formData.territoryCode) {
-              const territory = territories.find(t => t.code === formData.territoryCode);
-              if (territory) {
-                // Filter dealers synchronously first to check if dealer ID exists
-                let filtered = dealersRes.data.filter(dealer => dealer.territory_code === territory.code);
-                setFilteredDealers(filtered); // Update state
-                
-                // Check if saved dealer ID exists in filtered dealers
-                const dealerExists = formData.dealer && filtered.some(d => d.id === formData.dealer);
-                
-                // Set form values - include dealer only if it exists in filtered list
-                const valuesToSet = { ...formData };
-                if (!dealerExists) {
-                  // Clear dealer if it doesn't exist in filtered list
-                  valuesToSet.dealer = undefined;
-                }
-                
-                form.setFieldsValue(valuesToSet);
-                setFormValues(valuesToSet); // Store in state for validation
-              } else {
-                // Territory not found, set form values without dealer
-                const { dealer, ...formDataWithoutDealer } = formData;
-                form.setFieldsValue(formDataWithoutDealer);
-                setFormValues(formDataWithoutDealer);
-              }
-            } else {
-              // No territory, set form values but clear dealer
-              const { dealer, ...formDataWithoutDealer } = formData;
-              form.setFieldsValue(formDataWithoutDealer);
-              setFormValues(formDataWithoutDealer);
-            }
-          }, 100);
-        } catch (error) {
-          console.error('Error parsing saved form data:', error);
-          // Fall back to defaults
-          initializeFormDefaults(orderTypesRes.data, warehousesRes.data);
-        }
-      } else {
-        // Initialize form with default values when data is loaded
-        initializeFormDefaults(orderTypesRes.data, warehousesRes.data);
-      }
-
-    } catch (error) {
-      console.error('Error loading dropdown data:', error);
-      message.error('Failed to load form data');
-    }
-  };
-
-  const initializeFormDefaults = (orderTypes, warehouses) => {
-    if (orderTypes.length > 0 && warehouses.length > 0) {
-      const initialValues = {
-        orderType: orderTypes[0].id,
-        warehouse: warehouses[0].id,
-        territoryCode: undefined,
-        territoryName: undefined,
-        dealer: undefined
-      };
-      form.setFieldsValue(initialValues);
-      setFormValues(initialValues); // Store in state
-    }
-  };
-
-  const filterDealersByTerritory = (territoryCode, territoryName) => {
-    let filtered = dropdownData.dealers;
-    
-    console.log('🔍 Filtering dealers by territory:', { territoryCode, territoryName });
-    console.log('📊 Total dealers before filtering:', filtered.length);
-    
-    if (territoryCode) {
-      filtered = filtered.filter(dealer => dealer.territory_code === territoryCode);
-      console.log('✅ Filtered by territory code:', territoryCode, 'Result:', filtered.length, 'dealers');
-    } else if (territoryName) {
-      // Compare with cleaned territory name
-      filtered = filtered.filter(dealer => {
-        const cleanDealerTerritory = dealer.territory_name.replace(/\s+Territory$/i, '');
-        return cleanDealerTerritory === territoryName;
-      });
-      console.log('✅ Filtered by territory name:', territoryName, 'Result:', filtered.length, 'dealers');
-    }
-    
-    console.log('📋 Filtered dealers:', filtered.map(d => ({ name: d.name, territory_code: d.territory_code })));
-    setFilteredDealers(filtered);
-  };
 
   const handleTerritoryChange = (field, value) => {
     console.log('🔄 Territory change:', { field, value });
@@ -377,7 +372,7 @@ function NewOrdersTablet({ onOrderCreated }) {
     }
   };
 
-  const handleTransportChange = (value) => {
+  const handleTransportChange = (_value) => {
     // Transport selection handler - no auto-collapse
   };
 

@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { UserProvider, useUser } from './contexts/UserContext';
 import { Layout, Typography, Button, FloatButton, Drawer } from 'antd';
 import './App.css';
-  import {
+import {
   DashboardOutlined,
   PlusOutlined,
   OrderedListOutlined,
@@ -12,7 +12,6 @@ import './App.css';
   CheckOutlined,
   FileExcelOutlined,
   TruckOutlined,
-  TabletOutlined,
   TeamOutlined,
   BarChartOutlined,
   LogoutOutlined,
@@ -36,7 +35,7 @@ const { Title } = Typography;
 
 function AppContent() {
   const { userRole, isTSO, setUserRole, setUserName } = useUser();
-  const [stats, setStats] = useState({
+  const [, setStats] = useState({
     dealers: 0,
     warehouses: 0,
     products: 0,
@@ -49,7 +48,7 @@ function AppContent() {
   const location = useLocation();
 
   // Redirect to login if not authenticated
-  React.useEffect(() => {
+  useEffect(() => {
     const savedUser = sessionStorage.getItem('user');
     if (!savedUser && location.pathname !== '/login') {
       navigate('/login');

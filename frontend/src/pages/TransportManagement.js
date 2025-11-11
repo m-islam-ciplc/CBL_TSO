@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 import {
@@ -12,7 +12,6 @@ import {
   message,
   Row,
   Col,
-  Tag,
   Statistic
 } from 'antd';
 import {
@@ -56,9 +55,9 @@ function TransportManagement() {
     try {
       const response = await axios.get('/api/transports');
       setTransports(response.data);
-    } catch (error) {
+    } catch (_error) {
       message.error('Failed to fetch transports');
-      console.error('Error fetching transports:', error);
+      console.error('Error fetching transports:', _error);
     } finally {
       setLoading(false);
     }
@@ -102,9 +101,9 @@ function TransportManagement() {
       
       message.success(response.data.message || 'Imported transports successfully');
       fetchTransports();
-    } catch (error) {
+    } catch (_error) {
       message.error('Failed to import transports');
-      console.error('Import error:', error);
+      console.error('Import error:', _error);
     } finally {
       setImportLoading(false);
     }
@@ -134,15 +133,6 @@ function TransportManagement() {
     XLSX.writeFile(wb, fileName);
 
     message.success(`Template downloaded: ${fileName}`);
-  };
-
-  const getStatusTag = (status) => {
-    if (status === 'A') {
-      return <Tag color="green">Active</Tag>;
-    } else if (status === 'I' || status === 'inactive') {
-      return <Tag color="red">Inactive</Tag>;
-    }
-    return <Tag color="default">{status || 'Unknown'}</Tag>;
   };
 
   const columns = [

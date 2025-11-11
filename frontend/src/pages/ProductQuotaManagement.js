@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useUser } from '../contexts/UserContext';
 import {
@@ -33,7 +33,7 @@ function ProductQuotaManagement() {
   const [territories, setTerritories] = useState([]);
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [quotas, setQuotas] = useState({}); // { productId_territory: quantity }
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const [editingQuota, setEditingQuota] = useState(null); // Track which quota is being edited
   const [pendingQuotaValue, setPendingQuotaValue] = useState(null); // Track pending edit value
   
@@ -127,7 +127,8 @@ useEffect(() => {
     try {
       const response = await axios.get('/api/products');
       setProducts(response.data);
-    } catch (error) {
+    } catch (_error) {
+      console.error('Failed to load products:', _error);
       message.error('Failed to load products');
     } finally {
       setLoading(false);
@@ -138,8 +139,8 @@ useEffect(() => {
     try {
       const response = await axios.get('/api/dealers/territories');
       setTerritories(response.data);
-    } catch (error) {
-      console.error('Failed to load territories:', error);
+    } catch (_error) {
+      console.error('Failed to load territories:', _error);
     }
   };
 
@@ -162,7 +163,8 @@ useEffect(() => {
       });
       
       setQuotas(quotasObj);
-    } catch (error) {
+    } catch (_error) {
+      console.error('Failed to load quotas:', _error);
       // No quotas for this date is normal
       setQuotas({});
     }
@@ -189,20 +191,12 @@ useEffect(() => {
         remaining: Number(cap.remaining_quantity) || 0,
       }));
       setHistoryAllocations(rows);
-    } catch (error) {
-      console.error('Failed to load historical quotas:', error);
+    } catch (_error) {
+      console.error('Failed to load historical quotas:', _error);
       setHistoryAllocations([]);
     } finally {
       setHistoryLoading(false);
     }
-  };
-
-  const handleQuotaChange = (productId, territoryName, value) => {
-    const key = `${productId}_${territoryName}`;
-    setQuotas(prev => ({
-      ...prev,
-      [key]: value || 0
-    }));
   };
 
   const handleAddProduct = (product) => {
@@ -283,8 +277,8 @@ useEffect(() => {
       
       // Trigger refresh in all TSO pages
       triggerQuotaRefresh();
-    } catch (error) {
-      console.error('Error adding quotas:', error);
+    } catch (_error) {
+      console.error('Error adding quotas:', _error);
       message.error('Failed to save quotas to database');
       // Revert local state on error
       loadQuotas();
@@ -311,8 +305,8 @@ useEffect(() => {
         setQuotas(newQuotas);
         message.success('Quota deleted from database');
       }
-    } catch (error) {
-      console.error('Error deleting quota:', error);
+    } catch (_error) {
+      console.error('Error deleting quota:', _error);
       message.error('Failed to delete quota from database');
     }
   };
@@ -391,8 +385,8 @@ useEffect(() => {
         
         // Trigger refresh in all TSO pages
         triggerQuotaRefresh();
-      } catch (error) {
-        console.error('Error deleting quota:', error);
+      } catch (_error) {
+        console.error('Error deleting quota:', _error);
         message.error('Failed to delete quota from database');
         // Revert local state on error
         loadQuotas();
@@ -402,8 +396,6 @@ useEffect(() => {
     
     // Otherwise, update the quota
     const currentQuota = quotas[key];
-    const currentRemaining = typeof currentQuota === 'number' ? currentQuota : (currentQuota?.remaining_quantity || 0);
-    const currentMax = typeof currentQuota === 'number' ? currentQuota : (currentQuota?.max_quantity || 0);
     const soldQuantity = typeof currentQuota === 'object' && currentQuota.sold_quantity !== undefined 
       ? parseInt(currentQuota.sold_quantity) || 0 
       : 0;
@@ -437,8 +429,8 @@ useEffect(() => {
       
       // Trigger refresh in all TSO pages
       triggerQuotaRefresh();
-    } catch (error) {
-      console.error('Error updating quota:', error);
+    } catch (_error) {
+      console.error('Error updating quota:', _error);
       message.error('Failed to update quota in database');
       // Revert local state on error
       loadQuotas();

@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, cloneElement } from 'react';
 import axios from 'axios';
-import { useUser } from '../contexts/UserContext';
 import * as XLSX from 'xlsx';
 import {
   Card,
@@ -8,30 +7,20 @@ import {
   Button,
   Upload,
   Table,
-  Tag,
-  Space,
   Input,
-  Select,
   message,
   Statistic,
   Row,
   Col,
-  Divider,
-  Alert,
 } from 'antd';
 import {
   UploadOutlined,
   DownloadOutlined,
   ShopOutlined,
-  DollarOutlined,
-  TagOutlined,
 } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
-const { Option } = Select;
-
 function ProductManagement() {
-  const { isTSO } = useUser();
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -60,9 +49,9 @@ function ProductManagement() {
     try {
       const response = await axios.get('/api/products');
       setProducts(response.data);
-    } catch (error) {
+    } catch (_error) {
       message.error('Failed to load products');
-      console.error('Error loading products:', error);
+      console.error('Error loading products:', _error);
     } finally {
       setLoading(false);
     }
@@ -112,9 +101,9 @@ function ProductManagement() {
       } else {
         message.error('Import failed');
       }
-    } catch (error) {
-      message.error('Import failed: ' + (error.response?.data?.error || error.message));
-      console.error('Import error:', error);
+    } catch (_error) {
+      message.error('Import failed: ' + (_error.response?.data?.error || _error.message));
+      console.error('Import error:', _error);
     } finally {
       setImportLoading(false);
     }
@@ -344,7 +333,7 @@ function ProductManagement() {
                 <Statistic
                   title={<span style={{ color: 'white' }}>{stat.title}</span>}
                   value={stat.value}
-                  prefix={React.cloneElement(stat.icon, { style: { color: 'white' } })}
+                  prefix={cloneElement(stat.icon, { style: { color: 'white' } })}
                   valueStyle={{ color: 'white', fontSize: '20px' }}
                 />
               </Card>

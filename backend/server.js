@@ -450,7 +450,6 @@ async function buildWorksheetStructure(worksheet, orders, options = {}) {
     const { dateLabel } = options;
 
     const defaultFont = { name: 'Calibri', size: 8 };
-    const headerFont = { ...defaultFont, bold: true };
     const thinBorder = {
         top: { style: 'thin' },
         left: { style: 'thin' },
@@ -903,7 +902,7 @@ const createTransportTable = () => {
         )
     `;
     
-    db.query(createTransportTableQuery, (err, result) => {
+    db.query(createTransportTableQuery, (err) => {
         if (err) {
             console.error('Error creating transport table:', err);
         } else {
@@ -1010,7 +1009,8 @@ app.post('/api/auth/login', (req, res) => {
     }
     
     // Return user data without password
-    const { password_hash, ...userData } = user;
+    const userData = { ...user };
+    delete userData.password_hash;
     
     res.json({
       success: true,
@@ -2580,6 +2580,9 @@ app.put('/api/transports/:id', (req, res) => {
         if (err) {
             res.status(500).json({ error: err.message });
         } else {
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ error: 'Transport not found' });
+            }
             res.json({ 
                 success: true, 
                 message: 'Transport updated successfully' 
@@ -2597,7 +2600,10 @@ app.delete('/api/transports/:id', (req, res) => {
         if (err) {
             res.status(500).json({ error: err.message });
         } else {
-            res.json({ message: 'Transport deleted successfully' });
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ error: 'Transport not found' });
+            }
+            res.json({ success: true, message: 'Transport deleted successfully' });
         }
     });
 });

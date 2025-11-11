@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
   Card,
@@ -7,8 +7,6 @@ import {
   Form,
   Row,
   Col,
-  Space,
-  InputNumber,
   message,
   Empty,
   Spin,
@@ -17,10 +15,8 @@ import {
 import {
   CheckOutlined,
   DeleteOutlined,
-  EditOutlined,
   ArrowLeftOutlined,
   PlusOutlined,
-  CloseCircleOutlined,
 } from '@ant-design/icons';
 import { useUser } from '../contexts/UserContext';
 
@@ -35,7 +31,7 @@ const removeMSPrefix = (name) => {
 };
 
 function ReviewOrdersTablet({ onOrderCreated }) {
-  const { isTSO, userId } = useUser();
+const { userId } = useUser();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
@@ -78,8 +74,8 @@ function ReviewOrdersTablet({ onOrderCreated }) {
               console.log('✅ Form values auto-set after dropdown loaded');
             }, 100);
           }
-        } catch (error) {
-          console.error('Error auto-loading form data:', error);
+        } catch (_error) {
+          console.error('Error auto-loading form data:', _error);
         }
       }
     }
@@ -167,8 +163,8 @@ function ReviewOrdersTablet({ onOrderCreated }) {
               }
             }
           }, 200);
-        } catch (error) {
-          console.error('Error parsing saved form data:', error);
+        } catch (_error) {
+          console.error('Error parsing saved form data:', _error);
         }
       } else if (orderTypesRes.data.length > 0 && warehousesRes.data.length > 0) {
         // Initialize form with default values only if no saved form data exists
@@ -182,41 +178,12 @@ function ReviewOrdersTablet({ onOrderCreated }) {
         }, 200);
       }
 
-    } catch (error) {
-      console.error('Error loading dropdown data:', error);
-      console.error('Error details:', error.response?.data || error.message);
-      message.error(`Failed to load form data: ${error.response?.data?.error || error.message}`);
+    } catch (_error) {
+      console.error('Error loading dropdown data:', _error);
+      console.error('Error details:', _error.response?.data || _error.message);
+      message.error(`Failed to load form data: ${_error.response?.data?.error || _error.message}`);
     } finally {
       setDataLoading(false);
-    }
-  };
-
-  const handleTerritoryChange = (field, value) => {
-    if (field === 'territoryCode') {
-      const territory = dropdownData.territories.find(t => t.code === value);
-      if (territory) {
-        form.setFieldsValue({ 
-          territoryName: territory.name,
-          dealer: '' // Clear dealer when territory changes
-        });
-        // Filter dealers by territory
-        const filtered = dropdownData.dealers.filter(dealer => 
-          dealer.territory_code === territory.code
-        );
-        setDropdownData(prev => ({
-          ...prev,
-          filteredDealers: filtered
-        }));
-      } else {
-        form.setFieldsValue({ 
-          territoryName: '',
-          dealer: '' // Clear dealer when territory is cleared
-        });
-        setDropdownData(prev => ({
-          ...prev,
-          filteredDealers: dropdownData.dealers
-        }));
-      }
     }
   };
 
@@ -303,8 +270,8 @@ function ReviewOrdersTablet({ onOrderCreated }) {
           window.location.href = '/new-orders';
         }, 1000);
       }
-    } catch (error) {
-      message.error(`Failed to create order: ${error.response?.data?.error || error.message}`);
+    } catch (_error) {
+      message.error(`Failed to create order: ${_error.response?.data?.error || _error.message}`);
     } finally {
       setLoading(false);
     }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '../contexts/UserContext';
 import axios from 'axios';
 import {
@@ -39,8 +39,8 @@ function TSODashboard() {
         params: { territory_name: territoryName }
       });
       setQuotas(response.data);
-    } catch (error) {
-      console.error('Failed to load quotas:', error);
+    } catch (_error) {
+      console.error('Failed to load quotas:', _error);
     } finally {
       setLoading(false);
     }
@@ -50,8 +50,7 @@ function TSODashboard() {
     if (territoryName) {
       loadQuotas();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [territoryName, quotaRefreshTrigger]);
+  }, [territoryName, quotaRefreshTrigger, loadQuotas]);
 
   // SSE for quota updates (for TSO users to see admin changes on different machines)
   useEffect(() => {
@@ -77,8 +76,7 @@ function TSODashboard() {
     return () => {
       eventSource.close();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [territoryName]);
+  }, [territoryName, loadQuotas]);
 
   const columns = [
     {

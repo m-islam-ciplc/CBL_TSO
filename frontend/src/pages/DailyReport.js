@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Card, DatePicker, Button, message, Typography, Row, Col, Space, Spin, Table, Tag, Tooltip, Input, Select } from 'antd';
-import { DownloadOutlined, FileExcelOutlined, EyeOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons';
+import { useState, useEffect } from 'react';
+import { Card, DatePicker, Button, message, Typography, Row, Col, Space, Spin, Table, Tag, Input, Select } from 'antd';
+import { DownloadOutlined, FileExcelOutlined, EyeOutlined, SearchOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import dayjs from 'dayjs';
 
@@ -514,7 +514,7 @@ function DailyReport() {
       key: 'status',
       width: 100,
       align: 'center',
-      render: (status) => <Tag color="default">New</Tag>,
+      render: () => <Tag color="default">New</Tag>,
       sorter: (a, b) => {
         const statusA = a.status || 'new';
         const statusB = b.status || 'new';

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useUser } from '../contexts/UserContext';
 import {
@@ -21,12 +21,10 @@ import {
 import {
   ReloadOutlined,
   SearchOutlined,
-  FilterOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
   CarOutlined,
   DeleteOutlined,
-  DownOutlined,
   ClearOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -76,8 +74,8 @@ function PlacedOrders({ refreshTrigger }) {
       setProductsList(productsRes.data || []);
       setDealersList(dealersRes.data || []);
       setTransportsList(transportsRes.data || []);
-    } catch (error) {
-      console.error('Failed to load dropdown data:', error);
+    } catch (_error) {
+      console.error('Failed to load dropdown data:', _error);
     }
   };
 
@@ -97,8 +95,8 @@ function PlacedOrders({ refreshTrigger }) {
             orderId: order.order_id,
             products: productResponse.data.items || []
           };
-        } catch (error) {
-          console.error(`Error loading products for order ${order.order_id}:`, error);
+        } catch (_error) {
+          console.error(`Error loading products for order ${order.order_id}:`, _error);
           return {
             orderId: order.order_id,
             products: []
@@ -112,7 +110,8 @@ function PlacedOrders({ refreshTrigger }) {
         productsMap[result.orderId] = result.products;
       });
       setOrderProducts(productsMap);
-    } catch (error) {
+    } catch (_error) {
+      console.error('Failed to load orders:', _error);
       message.error('Failed to load orders');
     } finally {
       setLoading(false);
@@ -234,8 +233,8 @@ function PlacedOrders({ refreshTrigger }) {
       const response = await axios.delete(`/api/orders/${orderId}`);
       message.success(response.data.message || 'Order deleted successfully');
       loadOrders(); // Refresh the orders list
-    } catch (error) {
-      const errorMessage = error.response?.data?.error || error.message || 'Failed to delete order';
+    } catch (_error) {
+      const errorMessage = _error.response?.data?.error || _error.message || 'Failed to delete order';
       message.error(errorMessage);
     }
   };

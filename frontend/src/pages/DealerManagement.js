@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 import {
@@ -8,15 +8,12 @@ import {
   Upload,
   Table,
   Tag,
-  Space,
   Input,
   Select,
   message,
   Statistic,
   Row,
   Col,
-  Divider,
-  Alert,
 } from 'antd';
 import {
   UploadOutlined,
@@ -226,7 +223,8 @@ function DealerManagement() {
         }
       });
       setTerritories(Array.from(territoryMap.entries()).map(([code, name]) => ({ code, name })));
-    } catch (error) {
+    } catch (_error) {
+      console.error('Failed to load dealers:', _error);
       message.error('Failed to load dealers');
     } finally {
       setLoading(false);
@@ -277,8 +275,9 @@ function DealerManagement() {
       } else {
         message.error('Import failed');
       }
-    } catch (error) {
-      message.error('Import failed: ' + (error.response?.data?.error || error.message));
+    } catch (_error) {
+      const errorMessage = _error.response?.data?.error || _error.message || 'Import failed';
+      message.error('Import failed: ' + errorMessage);
     } finally {
       setImportLoading(false);
     }

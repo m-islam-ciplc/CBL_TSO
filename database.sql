@@ -1,5 +1,8 @@
 -- CBL Sales Orders Database Schema
--- Note: Database is automatically created by Docker via MYSQL_DATABASE environment variable
+-- The database is automatically created in Docker, but include guard for local usage
+
+CREATE DATABASE IF NOT EXISTS cbl_so;
+USE cbl_so;
 
 -- Users table for authentication
 CREATE TABLE IF NOT EXISTS users (
@@ -159,6 +162,32 @@ CREATE TABLE IF NOT EXISTS order_items (
     FOREIGN KEY (product_id) REFERENCES products(id),
     INDEX idx_order_id (order_id),
     INDEX idx_product_id (product_id)
+);
+
+-- Transports table
+CREATE TABLE IF NOT EXISTS transports (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    truck_slno INT,
+    truck_no VARCHAR(50),
+    engine_no VARCHAR(100),
+    truck_details VARCHAR(255),
+    driver_name VARCHAR(100),
+    route_no VARCHAR(50),
+    load_size VARCHAR(50),
+    load_weight VARCHAR(50),
+    remarks TEXT,
+    truck_type VARCHAR(50),
+    entered_by VARCHAR(100),
+    entered_date DATE,
+    entered_terminal VARCHAR(100),
+    updated_by VARCHAR(100),
+    updated_date DATE,
+    updated_terminal VARCHAR(100),
+    license_no VARCHAR(100),
+    transport_status VARCHAR(10) DEFAULT 'A',
+    vehicle_no VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- Maintain denormalized name columns, sold quantities, and totals
@@ -425,6 +454,8 @@ END//
 
 DELIMITER ;
 
+DELIMITER //
+
 CREATE TRIGGER trg_daily_quotas_bi
 BEFORE INSERT ON daily_quotas
 FOR EACH ROW
@@ -511,6 +542,8 @@ BEGIN
     END IF;
 END//
 
+DELIMITER ;
+
 -- Summarized view of daily quotas with sold and remaining quantities
 CREATE OR REPLACE VIEW daily_quota_summary AS
 SELECT
@@ -527,32 +560,6 @@ LEFT JOIN orders o ON DATE(o.created_at) = d.date
 LEFT JOIN dealers de ON de.id = o.dealer_id AND de.territory_name = d.territory_name
 LEFT JOIN order_items oi ON oi.order_id = o.order_id AND oi.product_id = d.product_id
 GROUP BY d.id, d.date, d.product_id, d.product_name, d.territory_name, d.max_quantity;
-
--- Transports table
-CREATE TABLE IF NOT EXISTS transports (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    truck_slno INT,
-    truck_no VARCHAR(50),
-    engine_no VARCHAR(100),
-    truck_details VARCHAR(255),
-    driver_name VARCHAR(100),
-    route_no VARCHAR(50),
-    load_size VARCHAR(50),
-    load_weight VARCHAR(50),
-    remarks TEXT,
-    truck_type VARCHAR(50),
-    entered_by VARCHAR(100),
-    entered_date DATE,
-    entered_terminal VARCHAR(100),
-    updated_by VARCHAR(100),
-    updated_date DATE,
-    updated_terminal VARCHAR(100),
-    license_no VARCHAR(100),
-    transport_status VARCHAR(10) DEFAULT 'A',
-    vehicle_no VARCHAR(50),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
 
 -- Readable views for manual inspection
 CREATE OR REPLACE VIEW orders_readable AS
