@@ -113,6 +113,7 @@ CREATE TABLE IF NOT EXISTS daily_quotas (
     date DATE NOT NULL,
     product_id INT NOT NULL,
     product_name VARCHAR(255),
+    product_code VARCHAR(50),
     territory_id VARCHAR(50),
     territory_name VARCHAR(100) NOT NULL,
     max_quantity INT NOT NULL,
@@ -123,7 +124,8 @@ CREATE TABLE IF NOT EXISTS daily_quotas (
     FOREIGN KEY (product_id) REFERENCES products(id),
     UNIQUE KEY unique_territory_product_date (date, product_id, territory_name),
     INDEX idx_date_territory (date, territory_name),
-    INDEX idx_date_product (date, product_id)
+    INDEX idx_date_product (date, product_id),
+    INDEX idx_product_code (product_code)
 );
 
 -- Orders table
@@ -461,12 +463,13 @@ BEFORE INSERT ON daily_quotas
 FOR EACH ROW
 BEGIN
     DECLARE v_product_name VARCHAR(255);
+    DECLARE v_product_code VARCHAR(50);
     DECLARE v_territory_name VARCHAR(100);
     DECLARE v_territory_code VARCHAR(50);
 
     IF NEW.product_id IS NOT NULL THEN
-        SELECT name
-          INTO v_product_name
+        SELECT name, product_code
+          INTO v_product_name, v_product_code
           FROM products
          WHERE id = NEW.product_id
          LIMIT 1;
@@ -492,6 +495,10 @@ BEGIN
 
     IF v_product_name IS NOT NULL THEN
         SET NEW.product_name = v_product_name;
+    END IF;
+
+    IF v_product_code IS NOT NULL THEN
+        SET NEW.product_code = v_product_code;
     END IF;
 
     IF v_territory_name IS NOT NULL THEN
@@ -504,12 +511,13 @@ BEFORE UPDATE ON daily_quotas
 FOR EACH ROW
 BEGIN
     DECLARE v_product_name VARCHAR(255);
+    DECLARE v_product_code VARCHAR(50);
     DECLARE v_territory_name VARCHAR(100);
     DECLARE v_territory_code VARCHAR(50);
 
     IF NEW.product_id IS NOT NULL THEN
-        SELECT name
-          INTO v_product_name
+        SELECT name, product_code
+          INTO v_product_name, v_product_code
           FROM products
          WHERE id = NEW.product_id
          LIMIT 1;
@@ -535,6 +543,10 @@ BEGIN
 
     IF v_product_name IS NOT NULL THEN
         SET NEW.product_name = v_product_name;
+    END IF;
+
+    IF v_product_code IS NOT NULL THEN
+        SET NEW.product_code = v_product_code;
     END IF;
 
     IF v_territory_name IS NOT NULL THEN
@@ -550,6 +562,7 @@ SELECT
     d.id,
     d.date,
     d.product_id,
+    d.product_code,
     d.product_name,
     d.territory_name,
     d.max_quantity,
