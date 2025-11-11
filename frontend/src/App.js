@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { UserProvider, useUser } from './contexts/UserContext';
-import { Layout, Typography, Button, FloatButton, Drawer } from 'antd';
+import { Layout, Typography, Button, FloatButton, Drawer, Alert } from 'antd';
 import './App.css';
 import {
   DashboardOutlined,
@@ -224,6 +224,14 @@ function AppContent() {
         background: '#f0f2f5',
         minHeight: userRole ? 'calc(100vh - 40px)' : '100vh',
       }}>
+        <Alert
+          type="warning"
+          showIcon
+          banner
+          message="UAT Environment Only"
+          description="This software version is for User Acceptance Testing. Orders and related data may be wiped or become corrupt. Enter data here only for testing; use the established production methods for real order placement."
+          style={{ marginBottom: '12px' }}
+        />
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/" element={
