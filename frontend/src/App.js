@@ -26,6 +26,7 @@ import DealerManagement from './pages/DealerManagement';
 import ProductManagement from './pages/ProductManagement';
 import TransportManagement from './pages/TransportManagement';
 import DailyReport from './pages/DailyReport';
+import TSOReport from './pages/TSOReport';
 import TSODashboard from './pages/TSODashboard';
 import UserManagement from './pages/UserManagement';
 import ProductQuotaManagement from './pages/ProductQuotaManagement';
@@ -93,6 +94,7 @@ function AppContent() {
     if (path === '/manage-quotas') return 'manage-quotas';
     if (path === '/user-management') return 'user-management';
     if (path === '/daily-report') return 'daily-report';
+    if (path === '/tso-report') return 'tso-report';
     return 'dashboard';
   };
 
@@ -116,6 +118,11 @@ function AppContent() {
       key: 'placed-orders',
       icon: <OrderedListOutlined />,
       label: 'Placed Orders',
+    },
+    {
+      key: 'tso-report',
+      icon: <FileExcelOutlined />,
+      label: 'My Reports',
     },
   ] : [
     {
@@ -266,6 +273,11 @@ function AppContent() {
             isTSO ? 
             <NewOrdersTablet onOrderCreated={refreshOrders} /> : 
             <DailyReport />
+          } />
+          <Route path="/tso-report" element={
+            isTSO ? 
+            <TSOReport /> : 
+            <Dashboard setStats={setStats} />
           } />
           <Route path="/user-management" element={
             userRole === 'admin' ? 

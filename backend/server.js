@@ -213,8 +213,8 @@ async function generateExcelReport(orders, options = {}) {
     }
 }
 
-async function fetchOrdersWithItemsBetween(startDate, endDate) {
-    const ordersQuery = `
+async function fetchOrdersWithItemsBetween(startDate, endDate, user_id = null) {
+    let ordersQuery = `
         SELECT 
             o.*, 
             ot.name AS order_type,
@@ -233,10 +233,16 @@ async function fetchOrdersWithItemsBetween(startDate, endDate) {
         LEFT JOIN warehouses w ON o.warehouse_id = w.id
         LEFT JOIN transports t ON o.transport_id = t.id
         WHERE DATE(o.created_at) BETWEEN ? AND ?
-        ORDER BY o.created_at ASC
     `;
+    
+    const params = [startDate, endDate];
+    if (user_id) {
+        ordersQuery += ' AND o.user_id = ?';
+        params.push(user_id);
+    }
+    ordersQuery += ' ORDER BY o.created_at ASC';
 
-    const [orders] = await dbPromise.query(ordersQuery, [startDate, endDate]);
+    const [orders] = await dbPromise.query(ordersQuery, params);
     if (!orders.length) {
         return [];
     }
@@ -443,6 +449,541 @@ function convertDealerSummariesToOrders(summaries, dateLabel) {
             order_date: dateLabel,
         };
     });
+}
+
+// TSO report helper functions (no prices)
+function buildDealerRangeSummaryNoPrices(orders) {
+    const dealerMap = new Map();
+    let totalQuantity = 0;
+
+    orders.forEach((order) => {
+        const dealerId = order.dealer_id || order.dealer_name || 'unknown';
+        if (!dealerMap.has(dealerId)) {
+            dealerMap.set(dealerId, {
+                id: dealerId,
+                dealer_name: order.dealer_name || '',
+                dealer_territory: order.dealer_territory || '',
+                dealer_address: order.dealer_address || '',
+                dealer_contact: order.dealer_contact || '',
+                order_count: 0,
+                total_quantity: 0,
+                product_map: new Map(),
+                warehouse_names: new Set(),
+                transport_names: new Set(),
+            });
+        }
+
+        const entry = dealerMap.get(dealerId);
+        entry.order_count += 1;
+
+        (order.items || []).forEach((item) => {
+            const qty = Number(item.quantity) || 0;
+            entry.total_quantity += qty;
+            totalQuantity += qty;
+
+            const productCode = item.product_code || '';
+            if (productCode) {
+                if (!entry.product_map.has(productCode)) {
+                    entry.product_map.set(productCode, {
+                        product_code: productCode,
+                        product_name: item.product_name || '',
+                        quantity: 0,
+                    });
+                }
+                const productEntry = entry.product_map.get(productCode);
+                productEntry.quantity += qty;
+            }
+        });
+
+        if (order.warehouse_name) {
+            entry.warehouse_names.add(order.warehouse_name);
+        }
+        if (order.transport_name) {
+            entry.transport_names.add(order.transport_name);
+        }
+    });
+
+    const summaries = Array.from(dealerMap.values())
+        .map((entry) => {
+            const productSummaries = Array.from(entry.product_map.values());
+            const warehouseNames = Array.from(entry.warehouse_names);
+            const transportNames = Array.from(entry.transport_names);
+
+            const orderDates = orders
+                .filter(o => (o.dealer_id || o.dealer_name || 'unknown') === entry.id)
+                .map(o => o.order_date)
+                .filter(Boolean)
+                .sort();
+
+            const dateSpan = orderDates.length > 0
+                ? orderDates.length === 1
+                    ? orderDates[0]
+                    : `${orderDates[0]} to ${orderDates[orderDates.length - 1]}`
+                : '';
+
+            return {
+                id: entry.id,
+                dealer_name: entry.dealer_name,
+                dealer_territory: entry.dealer_territory,
+                dealer_address: entry.dealer_address,
+                dealer_contact: entry.dealer_contact,
+                order_count: entry.order_count,
+                distinct_products: productSummaries.length,
+                total_quantity: entry.total_quantity,
+                date_span: dateSpan,
+                product_summaries: productSummaries,
+                warehouse_names: warehouseNames,
+                transport_names: transportNames,
+            };
+        })
+        .sort((a, b) => (a.dealer_name || '').localeCompare(b.dealer_name || ''));
+
+    return {
+        summaries,
+        total_dealers: summaries.length,
+        total_quantity: totalQuantity,
+    };
+}
+
+function convertDealerSummariesToOrdersNoPrices(summaries, dateLabel) {
+    return summaries.map((summary) => {
+        const warehouseName = summary.warehouse_names && summary.warehouse_names.length
+            ? summary.warehouse_names.join(', ')
+            : '';
+        const transportNamesArray = summary.transport_names || [];
+        const transportValue = transportNamesArray.length > 1
+            ? 'Different Transport Providers'
+            : (transportNamesArray[0] || '');
+
+        return {
+            order_id: `RANGE-${summary.id}`,
+            order_type: 'Range',
+            dealer_name: summary.dealer_name || '',
+            dealer_territory: summary.dealer_territory || '',
+            dealer_address: summary.dealer_address || '',
+            dealer_contact: summary.dealer_contact || '',
+            warehouse_name: warehouseName,
+            transport_name: transportValue,
+            transport_names: transportNamesArray,
+            items: (summary.product_summaries || []).map(product => ({
+                product_code: product.product_code || '',
+                product_name: product.product_name || '',
+                quantity: product.quantity || 0,
+            })),
+            order_date: dateLabel,
+        };
+    });
+}
+
+// Excel report generation function without prices
+async function generateExcelReportNoPrices(orders, options = {}) {
+    try {
+        const {
+            date = '',
+            sheetTitle,
+            dateLabel,
+        } = options;
+
+        // Create new workbook
+        const workbook = new ExcelJS.Workbook();
+        const worksheetName = sheetTitle
+            || (date ? `Invoice ${date.replace(/-/g, '.')}` : 'Invoice Report');
+        const worksheet = workbook.addWorksheet(worksheetName);
+        
+        // Build worksheet contents programmatically (without prices)
+        await buildWorksheetStructureNoPrices(worksheet, orders, { date, dateLabel, sheetTitle });
+
+        const excelDisplayOffset = 0.78;
+        const desiredColumnWidths = {
+            A: 5.78,
+            B: 16.22,
+            C: 26.22,
+            D: 29.22,
+            E: 19.44,
+            F: 17.55,
+            G: 11.55,
+            H: 13.88,
+            I: 15.11,
+            J: 13.88,
+            K: 14.33,
+            L: 15.33,
+            M: 17.77,
+            N: 13.22,
+            O: 15.55,
+            P: 14,
+            Q: 11.77,
+            R: 18.55,
+            S: 14.88,
+            T: 13.66,
+            U: 18.55,
+            V: 16.66,
+            W: 16.44,
+            X: 14.44,
+            Y: 19.44,
+            Z: 14.66,
+        };
+
+        worksheet.columns.forEach((column, colNumber) => {
+            const columnNumber = colNumber + 1;
+            const columnLetter = column.letter;
+            let maxLength = 0;
+
+            const headerCell = worksheet.getRow(1).getCell(columnNumber);
+            if (headerCell.value) {
+                maxLength = Math.max(maxLength, String(headerCell.value).trim().length);
+            }
+
+            worksheet.eachRow({ includeEmpty: false }, (row) => {
+                const cell = row.getCell(columnNumber);
+                if (cell.value == null) {
+                    return;
+                }
+
+                let cellLength = 0;
+                if (typeof cell.value === 'string') {
+                    const trimmed = cell.value.trim();
+                    cellLength = trimmed.length;
+                } else if (typeof cell.value === 'number') {
+                    cellLength = cell.value.toString().trim().length;
+                } else if (cell.value instanceof Date) {
+                    cellLength = cell.value.toLocaleDateString().trim().length;
+                } else {
+                    cellLength = String(cell.value).trim().length;
+                }
+
+                maxLength = Math.max(maxLength, cellLength);
+            });
+
+        const desiredWidth = desiredColumnWidths[columnLetter];
+        const isTransportColumn = column.key === 'transport';
+        if (desiredWidth != null) {
+            column.width = desiredWidth + excelDisplayOffset;
+        } else if (isTransportColumn) {
+            column.width = 18.11 + excelDisplayOffset;
+        } else {
+            column.width = Math.max(3.5, Math.min(maxLength + 0.05, 30));
+        }
+            column.hidden = false;
+
+            if (columnNumber >= 6) {
+                worksheet.getColumn(columnNumber).eachCell({ includeEmpty: false }, (cell) => {
+                    if (cell.value && String(cell.value).trim().length > 20) {
+                        cell.alignment = { ...(cell.alignment || {}), wrapText: true };
+                    }
+                });
+            }
+        });
+        
+        // Generate Excel buffer
+        const buffer = await workbook.xlsx.writeBuffer();
+        return buffer;
+        
+    } catch (error) {
+        console.error('Error generating Excel report:', error);
+        throw error;
+    }
+}
+
+// Function to build worksheet structure programmatically without prices
+async function buildWorksheetStructureNoPrices(worksheet, orders, options = {}) {
+    const { dateLabel } = options;
+
+    const defaultFont = { name: 'Calibri', size: 8 };
+    const thinBorder = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' },
+    };
+
+    const styleCell = (cell, {
+        bold = false,
+        alignment = { horizontal: 'center', vertical: 'middle' },
+        fill,
+        numFmt,
+        font = {},
+        border = thinBorder,
+    } = {}) => {
+        cell.font = { ...defaultFont, ...font, bold };
+        cell.alignment = alignment;
+        if (border) {
+            cell.border = border;
+        }
+        if (fill) {
+            cell.fill = fill;
+        }
+        if (numFmt) {
+            cell.numFmt = numFmt;
+        }
+    };
+
+    // Fetch complete product catalogue (excluding dummy application)
+    const allProductsQuery = `
+        SELECT product_code, name as product_name, application_name
+        FROM products
+        WHERE status = 'A' AND application_name != 'Dummy'
+        ORDER BY application_name, product_name
+    `;
+
+    const [allProductsResult] = await dbPromise.query(allProductsQuery);
+    const allProducts = allProductsResult;
+
+    // Group products by application and prepare lookup maps
+    const productsByApplication = {};
+    const productInfoMap = new Map();
+
+    allProducts.forEach((product) => {
+        const appName = product.application_name || 'Other';
+        if (!productsByApplication[appName]) {
+            productsByApplication[appName] = [];
+        }
+        productsByApplication[appName].push(product);
+        productInfoMap.set(product.product_code, {
+            application: appName,
+            product_name: product.product_name || '',
+            product_code: product.product_code,
+        });
+    });
+
+    const applicationNames = Object.keys(productsByApplication).sort((a, b) =>
+        a.localeCompare(b),
+    );
+
+    const applicationTotals = {};
+    applicationNames.forEach((appName) => {
+        applicationTotals[appName] = { qty: 0 };
+        productsByApplication[appName].sort((a, b) => (a.product_name || '').localeCompare(b.product_name || ''));
+    });
+
+    let grandTotalQty = 0;
+
+    orders.forEach((order) => {
+        (order.items || []).forEach((item) => {
+            const qty = Number(item.quantity) || 0;
+            const productInfo = productInfoMap.get(item.product_code);
+            const appName = productInfo?.application || 'Other';
+
+            if (!applicationTotals[appName]) {
+                applicationTotals[appName] = { qty: 0 };
+            }
+
+            applicationTotals[appName].qty += qty;
+            grandTotalQty += qty;
+        });
+    });
+    
+    // Summary header
+    const dateRow = worksheet.getRow(1);
+    if (dateLabel) {
+        styleCell(dateRow.getCell(1), {
+            alignment: { horizontal: 'left', vertical: 'middle' },
+            border: null,
+            bold: false,
+        });
+        dateRow.getCell(1).value = 'Date:';
+
+        styleCell(dateRow.getCell(2), {
+            alignment: { horizontal: 'left', vertical: 'middle' },
+            border: null,
+            bold: false,
+        });
+        dateRow.getCell(2).value = dateLabel;
+    }
+
+    const summaryHeaderRow = worksheet.getRow(2);
+    styleCell(summaryHeaderRow.getCell(1), { bold: true });
+    summaryHeaderRow.getCell(1).value = 'Seg';
+    styleCell(summaryHeaderRow.getCell(2), { bold: true });
+    summaryHeaderRow.getCell(2).value = 'Qty';
+
+    let summaryRowIndex = 3;
+
+    // Summary rows per application (no value column)
+    applicationNames.forEach((appName) => {
+        const row = worksheet.getRow(summaryRowIndex);
+        const totals = applicationTotals[appName] || { qty: 0 };
+
+        styleCell(row.getCell(1), {
+            alignment: { horizontal: 'left', vertical: 'middle' },
+        });
+        row.getCell(1).value = appName;
+
+        styleCell(row.getCell(2), {});
+        row.getCell(2).value = totals.qty;
+
+        summaryRowIndex += 1;
+    });
+
+    // Total row (no value column)
+    const totalRow = worksheet.getRow(summaryRowIndex);
+    styleCell(totalRow.getCell(1), { bold: true, alignment: { horizontal: 'left', vertical: 'middle' } });
+    totalRow.getCell(1).value = 'Total';
+
+    styleCell(totalRow.getCell(2), { bold: true });
+    totalRow.getCell(2).value = grandTotalQty;
+
+    const headerRowIndex = summaryRowIndex + 1;
+
+    // Column headers for dealer information
+    const headers = [
+        'Sl. No.',
+        'Territory',
+        'Name of Dealer',
+        'Address',
+        'Contact Person & Number',
+    ];
+
+    headers.forEach((title, index) => {
+        const cell = worksheet.getRow(headerRowIndex).getCell(index + 1);
+        styleCell(cell, {
+            bold: true,
+            alignment: { horizontal: index === 0 ? 'center' : 'left', vertical: 'middle' },
+        });
+        cell.value = title;
+    });
+
+    // Product columns (no price row)
+    const productColumnMap = {};
+    const productColumns = [];
+    let currentCol = 6;
+
+    applicationNames.forEach((appName) => {
+        const products = productsByApplication[appName];
+        if (!products || !products.length) {
+            return;
+        }
+
+        const appStartCol = currentCol;
+        const appEndCol = currentCol + products.length - 1;
+        worksheet.mergeCells(headerRowIndex, appStartCol, headerRowIndex, appEndCol);
+
+        const headerCell = worksheet.getRow(headerRowIndex).getCell(appStartCol);
+        styleCell(headerCell, { bold: true });
+        headerCell.value = appName;
+
+        products.forEach((product) => {
+            const column = currentCol;
+            const nameRow = worksheet.getRow(headerRowIndex + 1).getCell(column);
+            styleCell(nameRow, {
+                bold: true,
+                alignment: { horizontal: 'left', vertical: 'middle' },
+            });
+            nameRow.value = product.product_name || product.product_code;
+
+            productColumnMap[product.product_code] = column;
+            productColumns.push(column);
+            currentCol += 1;
+        });
+    });
+
+    // Freeze panes below product header rows
+    worksheet.views = [
+        { state: 'frozen', xSplit: 5, ySplit: headerRowIndex + 1 },
+    ];
+
+    const transportColumnIndex = currentCol;
+    const transportColumn = worksheet.getColumn(transportColumnIndex);
+    transportColumn.key = 'transport';
+
+    styleCell(worksheet.getRow(headerRowIndex).getCell(transportColumnIndex), {
+        bold: true,
+        alignment: { horizontal: 'left', vertical: 'middle' },
+    });
+    worksheet.getRow(headerRowIndex).getCell(transportColumnIndex).value = 'Transport';
+
+    styleCell(worksheet.getRow(headerRowIndex + 1).getCell(transportColumnIndex), {
+        alignment: { horizontal: 'center', vertical: 'middle' },
+    });
+    worksheet.getRow(headerRowIndex + 1).getCell(transportColumnIndex).value = '';
+
+    let dataRowIndex = headerRowIndex + 2;
+    let serial = 1;
+
+    if (!orders.length) {
+        const row = worksheet.getRow(dataRowIndex);
+        styleCell(row.getCell(1), {});
+        row.getCell(1).value = 1;
+        styleCell(row.getCell(2), { alignment: { horizontal: 'left', vertical: 'middle' } });
+        row.getCell(2).value = 'No Orders';
+        styleCell(row.getCell(3), { alignment: { horizontal: 'left', vertical: 'middle' } });
+        row.getCell(3).value = 'No Orders Found';
+        for (let col = 4; col <= 5; col++) {
+            styleCell(row.getCell(col), { alignment: { horizontal: 'left', vertical: 'middle' } });
+            row.getCell(col).value = '';
+        }
+
+        productColumns.forEach((column) => {
+            const cell = row.getCell(column);
+            styleCell(cell, {});
+            cell.value = 0;
+        });
+
+        styleCell(row.getCell(transportColumnIndex), { alignment: { horizontal: 'left', vertical: 'middle' } });
+        row.getCell(transportColumnIndex).value = '';
+        dataRowIndex += 1;
+    } else {
+        orders.forEach((order) => {
+            const row = worksheet.getRow(dataRowIndex);
+
+            styleCell(row.getCell(1), {});
+            row.getCell(1).value = serial++;
+
+            styleCell(row.getCell(2), { alignment: { horizontal: 'left', vertical: 'middle' } });
+            row.getCell(2).value = order.dealer_territory || '';
+
+        styleCell(row.getCell(3), { alignment: { horizontal: 'left', vertical: 'middle' } });
+        row.getCell(3).value = order.dealer_name || '';
+
+        styleCell(row.getCell(4), { alignment: { horizontal: 'left', vertical: 'middle' } });
+        row.getCell(4).value = order.dealer_address || '';
+
+        styleCell(row.getCell(5), { alignment: { horizontal: 'left', vertical: 'middle' } });
+        row.getCell(5).value = order.dealer_contact || '';
+
+        productColumns.forEach((column) => {
+            const cell = row.getCell(column);
+                styleCell(cell, {});
+                cell.value = 0;
+            });
+
+            const quantityByProduct = {};
+            (order.items || []).forEach((item) => {
+                const code = item.product_code;
+                if (!code) {
+                    return;
+                }
+                quantityByProduct[code] = (quantityByProduct[code] || 0) + (Number(item.quantity) || 0);
+            });
+
+            Object.entries(quantityByProduct).forEach(([productCode, quantity]) => {
+                const column = productColumnMap[productCode];
+                if (!column) {
+                    return;
+                }
+            const cell = row.getCell(column);
+                cell.value = quantity;
+                if (quantity > 0) {
+                    cell.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: 'FFD8E4BC' },
+                    };
+                }
+            });
+
+            styleCell(row.getCell(transportColumnIndex), { alignment: { horizontal: 'left', vertical: 'middle' } });
+            const transportValue =
+                order.transport_name ||
+                (Array.isArray(order.transport_names) && order.transport_names.length > 1
+                    ? 'Different Transport Providers'
+                    : Array.isArray(order.transport_names) && order.transport_names.length === 1
+                        ? order.transport_names[0]
+                        : order.transport || order.warehouse_name || '');
+            row.getCell(transportColumnIndex).value = transportValue;
+
+            dataRowIndex += 1;
+        });
+    }
 }
 
 // Function to build worksheet structure programmatically
@@ -2331,6 +2872,331 @@ app.get('/api/orders/tso-report-range', async (req, res) => {
         res.send(reportData);
     } catch (error) {
         console.error('Error generating range Excel report:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Generate TSO Excel report for TSO's own orders on a specific date (no prices)
+app.get('/api/orders/tso/my-report/:date', async (req, res) => {
+    try {
+        const { date } = req.params;
+        const { user_id } = req.query;
+        
+        if (!user_id) {
+            return res.status(400).json({ error: 'user_id is required' });
+        }
+        
+        // Validate date format (YYYY-MM-DD)
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(date)) {
+            return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+        }
+        
+        // Get orders for the specific date filtered by user_id
+        const ordersQuery = `
+            SELECT 
+                o.*, 
+                ot.name as order_type, 
+                d.name as dealer_name, 
+                d.territory_name as dealer_territory,
+                d.address as dealer_address,
+                d.contact as dealer_contact,
+                w.name as warehouse_name,
+                w.alias as warehouse_alias,
+                t.truck_details as transport_name,
+                DATE(o.created_at) as order_date
+            FROM orders o
+            LEFT JOIN order_types ot ON o.order_type_id = ot.id
+            LEFT JOIN dealers d ON o.dealer_id = d.id
+            LEFT JOIN warehouses w ON o.warehouse_id = w.id
+            LEFT JOIN transports t ON o.transport_id = t.id
+            WHERE DATE(o.created_at) = ? AND o.user_id = ?
+            ORDER BY o.created_at ASC
+        `;
+        
+        const orders = await dbPromise.query(ordersQuery, [date, user_id]);
+        
+        if (orders[0].length === 0) {
+            return res.status(404).json({ 
+                error: `No orders found for date: ${date}` 
+            });
+        }
+        
+        // Get order items for each order (without prices)
+        const ordersWithItems = [];
+        for (const order of orders[0]) {
+            const itemsQuery = `
+                SELECT oi.*, p.name as product_name, p.product_code
+                FROM order_items oi
+                LEFT JOIN products p ON oi.product_id = p.id
+                WHERE oi.order_id = ?
+                ORDER BY oi.id
+            `;
+            
+            const items = await dbPromise.query(itemsQuery, [order.order_id]);
+            order.items = items[0];
+            ordersWithItems.push(order);
+        }
+        
+        // Generate Excel report without prices
+        const reportData = await generateExcelReportNoPrices(ordersWithItems, {
+            date,
+            dateLabel: date,
+        });
+        
+        // Set headers for file download
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="TSO_My_Order_Report_${date}.xlsx"`);
+        
+        res.send(reportData);
+        
+    } catch (error) {
+        console.error('Error generating TSO Excel report:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Generate TSO Excel report for TSO's own orders within a date range (no prices)
+app.get('/api/orders/tso/my-report-range', async (req, res) => {
+    try {
+        const { startDate, endDate, user_id } = req.query;
+
+        if (!startDate || !endDate) {
+            return res.status(400).json({ error: 'startDate and endDate are required' });
+        }
+
+        if (!user_id) {
+            return res.status(400).json({ error: 'user_id is required' });
+        }
+
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+            return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+        }
+
+        if (startDate > endDate) {
+            return res.status(400).json({ error: 'startDate cannot be after endDate' });
+        }
+
+        // Fetch orders filtered by user_id
+        const ordersQuery = `
+            SELECT 
+                o.*, 
+                ot.name AS order_type,
+                d.id AS dealer_id,
+                d.name AS dealer_name, 
+                d.territory_name AS dealer_territory,
+                d.address AS dealer_address,
+                d.contact AS dealer_contact,
+                w.name AS warehouse_name,
+                w.alias AS warehouse_alias,
+                t.truck_details AS transport_name,
+                DATE(o.created_at) AS order_date
+            FROM orders o
+            LEFT JOIN order_types ot ON o.order_type_id = ot.id
+            LEFT JOIN dealers d ON o.dealer_id = d.id
+            LEFT JOIN warehouses w ON o.warehouse_id = w.id
+            LEFT JOIN transports t ON o.transport_id = t.id
+            WHERE DATE(o.created_at) BETWEEN ? AND ? AND o.user_id = ?
+            ORDER BY o.created_at ASC
+        `;
+
+        const [orders] = await dbPromise.query(ordersQuery, [startDate, endDate, user_id]);
+        if (!orders.length) {
+            return res.status(404).json({ error: `No orders found between ${startDate} and ${endDate}` });
+        }
+
+        const orderIds = orders.map(order => order.order_id);
+        const [items] = await dbPromise.query(`
+            SELECT 
+                oi.*, 
+                p.name AS product_name, 
+                p.product_code
+            FROM order_items oi
+            LEFT JOIN products p ON oi.product_id = p.id
+            WHERE oi.order_id IN (?)
+            ORDER BY oi.order_id, oi.id
+        `, [orderIds]);
+
+        const itemsByOrder = {};
+        orderIds.forEach(id => {
+            itemsByOrder[id] = [];
+        });
+        items.forEach(item => {
+            if (itemsByOrder[item.order_id]) {
+                itemsByOrder[item.order_id].push(item);
+            }
+        });
+
+        const ordersWithItems = orders.map(order => ({
+            ...order,
+            items: itemsByOrder[order.order_id] || []
+        }));
+
+        const dateLabel = `${startDate} to ${endDate}`;
+        const { summaries } = buildDealerRangeSummaryNoPrices(ordersWithItems);
+        const aggregatedOrders = convertDealerSummariesToOrdersNoPrices(summaries, dateLabel);
+        const reportData = await generateExcelReportNoPrices(aggregatedOrders, {
+            date: startDate,
+            dateLabel,
+        });
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="TSO_My_Order_Report_${startDate}_${endDate}.xlsx"`);
+        res.send(reportData);
+    } catch (error) {
+        console.error('Error generating TSO range Excel report:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get TSO's available dates (dates where TSO has orders)
+app.get('/api/orders/tso/available-dates', async (req, res) => {
+    try {
+        const { user_id } = req.query;
+        
+        if (!user_id) {
+            return res.status(400).json({ error: 'user_id is required' });
+        }
+        
+        const query = `
+            SELECT DISTINCT DATE(created_at) as order_date
+            FROM orders
+            WHERE user_id = ?
+            ORDER BY order_date DESC
+        `;
+        
+        const result = await dbPromise.query(query, [user_id]);
+        const dates = result[0].map(row => row.order_date);
+        
+        res.json({ dates });
+    } catch (error) {
+        console.error('Error fetching TSO available dates:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get TSO's orders for a specific date
+app.get('/api/orders/tso/date/:date', async (req, res) => {
+    try {
+        const { date } = req.params;
+        const { user_id } = req.query;
+        
+        if (!user_id) {
+            return res.status(400).json({ error: 'user_id is required' });
+        }
+        
+        // Validate date format (YYYY-MM-DD)
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(date)) {
+            return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+        }
+        
+        // Get orders for the specific date filtered by user_id
+        const ordersQuery = `
+            SELECT 
+                o.*, 
+                ot.name as order_type, 
+                d.name as dealer_name, 
+                d.territory_name as dealer_territory,
+                d.address as dealer_address,
+                d.contact as dealer_contact,
+                w.name as warehouse_name,
+                w.alias as warehouse_alias,
+                t.truck_details as transport_name,
+                DATE(o.created_at) as order_date,
+                COUNT(oi.id) as item_count,
+                COALESCE(SUM(oi.quantity), 0) as quantity
+            FROM orders o
+            LEFT JOIN order_types ot ON o.order_type_id = ot.id
+            LEFT JOIN dealers d ON o.dealer_id = d.id
+            LEFT JOIN warehouses w ON o.warehouse_id = w.id
+            LEFT JOIN transports t ON o.transport_id = t.id
+            LEFT JOIN order_items oi ON o.order_id = oi.order_id
+            WHERE DATE(o.created_at) = ? AND o.user_id = ?
+            GROUP BY o.id, o.order_id, o.order_type_id, o.dealer_id, o.warehouse_id, o.created_at, o.user_id, ot.name, d.name, d.territory_name, d.address, d.contact, w.name, w.alias
+            ORDER BY o.created_at DESC
+        `;
+        
+        const orders = await dbPromise.query(ordersQuery, [date, user_id]);
+        
+        if (orders[0].length === 0) {
+            return res.json({ 
+                orders: [], 
+                message: `No orders found for date: ${date}` 
+            });
+        }
+        
+        // Get order items for each order (without prices)
+        const ordersWithItems = [];
+        for (const order of orders[0]) {
+            const itemsQuery = `
+                SELECT oi.*, p.name as product_name, p.product_code
+                FROM order_items oi
+                LEFT JOIN products p ON oi.product_id = p.id
+                WHERE oi.order_id = ?
+                ORDER BY oi.id
+            `;
+            
+            const items = await dbPromise.query(itemsQuery, [order.order_id]);
+            order.items = items[0];
+            ordersWithItems.push(order);
+        }
+        
+        res.json({ 
+            orders: ordersWithItems,
+            date: date,
+            total_orders: ordersWithItems.length,
+            total_items: ordersWithItems.reduce((sum, order) => sum + order.items.length, 0)
+        });
+        
+    } catch (error) {
+        console.error('Error fetching TSO orders by date:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get TSO's orders for a date range
+app.get('/api/orders/tso/range', async (req, res) => {
+    try {
+        const { startDate, endDate, user_id } = req.query;
+
+        if (!startDate || !endDate) {
+            return res.status(400).json({ error: 'startDate and endDate are required' });
+        }
+
+        if (!user_id) {
+            return res.status(400).json({ error: 'user_id is required' });
+        }
+
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+            return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+        }
+
+        if (startDate > endDate) {
+            return res.status(400).json({ error: 'startDate cannot be after endDate' });
+        }
+
+        const ordersWithItems = await fetchOrdersWithItemsBetween(startDate, endDate, user_id);
+        if (!ordersWithItems.length) {
+            return res.json({
+                orders: [],
+                total_dealers: 0,
+                total_quantity: 0,
+                total_original_orders: 0,
+            });
+        }
+
+        const { summaries } = buildDealerRangeSummaryNoPrices(ordersWithItems);
+        res.json({
+            orders: summaries,
+            total_dealers: summaries.length,
+            total_quantity: summaries.reduce((sum, s) => sum + (s.total_quantity || 0), 0),
+            total_original_orders: ordersWithItems.length,
+        });
+    } catch (error) {
+        console.error('Error fetching TSO range orders:', error);
         res.status(500).json({ error: error.message });
     }
 });
