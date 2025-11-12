@@ -228,8 +228,8 @@ function AppContent() {
           type="warning"
           showIcon
           banner
-          message="UAT Environment Only"
-          description="This software version is for User Acceptance Testing. Orders and related data may be wiped or become corrupt. Enter data here only for testing; use the established production methods for real order placement."
+          message="WARNING: UAT Environment Only"
+          description="This software is for testing only. Sales orders may be deleted without notice. Do NOT use this software for real orders—use production systems instead."
           style={{ marginBottom: '12px' }}
         />
         <Routes>

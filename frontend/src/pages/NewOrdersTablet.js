@@ -325,53 +325,6 @@ function NewOrdersTablet({ onOrderCreated: _onOrderCreated }) {
     }
   }, [searchTerm, dropdownData.products, isTSO, productQuotas]);
 
-  const handleTerritoryChange = (field, value) => {
-    console.log('🔄 Territory change:', { field, value });
-    if (field === 'territoryCode') {
-      const territory = dropdownData.territories.find(t => t.code === value);
-      console.log('🔍 Found territory:', territory);
-      if (territory) {
-        form.setFieldsValue({ 
-          territoryName: territory.name,
-          dealer: undefined, // Clear dealer when territory changes
-          transport: undefined // Clear transport when territory changes
-        });
-        filterDealersByTerritory(territory.code, territory.name);
-      } else {
-        // Clear both territory, dealer and transport when territory is cleared
-        form.setFieldsValue({ 
-          territoryName: undefined,
-          dealer: undefined, // Clear dealer when territory is cleared
-          transport: undefined // Clear transport when territory is cleared
-        });
-        filterDealersByTerritory(null, null);
-      }
-    } else if (field === 'territoryName') {
-      const territory = dropdownData.territories.find(t => t.name === value);
-      console.log('🔍 Found territory:', territory);
-      if (territory) {
-        form.setFieldsValue({ 
-          territoryCode: territory.code,
-          dealer: undefined, // Clear dealer when territory changes
-          transport: undefined // Clear transport when territory changes
-        });
-        filterDealersByTerritory(territory.code, territory.name);
-      } else {
-        // Clear both territory, dealer and transport when territory is cleared
-        form.setFieldsValue({ 
-          territoryCode: undefined,
-          dealer: undefined, // Clear dealer when territory is cleared
-          transport: undefined // Clear transport when territory is cleared
-        });
-        filterDealersByTerritory(null, null);
-      }
-    }
-    // Auto-expand dropdown section when user makes a selection
-    if (isDropdownCollapsed) {
-      setIsDropdownCollapsed(false);
-    }
-  };
-
   const handleTransportChange = (_value) => {
     // Transport selection handler - no auto-collapse
   };
@@ -595,85 +548,13 @@ function NewOrdersTablet({ onOrderCreated: _onOrderCreated }) {
               }
             }}
           >
-            <Row gutter={[4, 6]} align="middle">
-              <Col xs={12} sm={12} md={3} lg={3}>
-                <Form.Item
-                  name="orderType"
-                  label={<Text strong style={{ fontSize: '12px' }}>Order Type</Text>}
-                  rules={[{ required: true, message: 'Required' }]}
-                  style={{ marginBottom: '8px' }}
-                >
-                    <Select
-                     placeholder="Type" 
-                     size="small"
-                     style={{ fontSize: '12px' }}
-                     allowClear
-                     showSearch
-                     filterOption={(input, option) => {
-                       const optionText = option?.children?.toString() || '';
-                       return optionText.toLowerCase().includes(input.toLowerCase());
-                     }}
-                   >
-                    {dropdownData.orderTypes.map(type => (
-                      <Option key={type.id} value={type.id}>{type.name}</Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              </Col>
+            <Form.Item name="orderType" hidden><Input /></Form.Item>
+            <Form.Item name="warehouse" hidden><Input /></Form.Item>
+            <Form.Item name="territoryCode" hidden><Input /></Form.Item>
+            <Form.Item name="territoryName" hidden><Input /></Form.Item>
 
-              <Col xs={12} sm={12} md={4} lg={4}>
-                <Form.Item
-                  name="warehouse"
-                  label={<Text strong style={{ fontSize: '12px' }}>Warehouse</Text>}
-                  rules={[{ required: true, message: 'Required' }]}
-                  style={{ marginBottom: '8px' }}
-                >
-                    <Select
-                     placeholder="Warehouse" 
-                     size="small"
-                     style={{ fontSize: '12px' }}
-                     allowClear
-                     showSearch
-                     filterOption={(input, option) => {
-                       const optionText = option?.children?.toString() || '';
-                       return optionText.toLowerCase().includes(input.toLowerCase());
-                     }}
-                   >
-                    {dropdownData.warehouses.map(warehouse => (
-                      <Option key={warehouse.id} value={warehouse.id}>{warehouse.name}</Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              </Col>
-
-              <Col xs={24} sm={24} md={4} lg={4}>
-              <Form.Item
-                name="territoryCode"
-                label={<Text strong style={{ fontSize: '12px' }}>Territory</Text>}
-                rules={[{ required: true, message: 'Required' }]}
-                style={{ marginBottom: '8px' }}
-              >
-                    <Select
-                     placeholder="Territory"
-                     size="small"
-                     style={{ fontSize: '12px' }}
-                     allowClear={!isTSO}
-                     disabled={isTSO}
-                     showSearch
-                     filterOption={(input, option) => {
-                       const optionText = option?.children?.toString() || '';
-                       return optionText.toLowerCase().includes(input.toLowerCase());
-                     }}
-                     onChange={(value) => handleTerritoryChange('territoryCode', value || '')}
-                   >
-                    {dropdownData.territories.map(territory => (
-                      <Option key={territory.code} value={territory.code}>{territory.name}</Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              </Col>
-
-              <Col xs={24} sm={24} md={7} lg={7}>
+            <Row gutter={[8, 8]} align="middle">
+              <Col xs={24} md={12}>
                 <Form.Item
                   name="dealer"
                   label={<Text strong style={{ fontSize: '12px' }}>Dealer</Text>}
@@ -700,7 +581,7 @@ function NewOrdersTablet({ onOrderCreated: _onOrderCreated }) {
                 </Form.Item>
               </Col>
 
-              <Col xs={24} sm={24} md={6} lg={6}>
+              <Col xs={24} md={12}>
                 <Form.Item
                   name="transport"
                   label={<Text strong style={{ fontSize: '12px' }}>Transport</Text>}
