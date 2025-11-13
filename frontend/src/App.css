@@ -40,6 +40,10 @@
   background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%) !important;
 }
 
+.custom-menu-item-ellipsis {
+  /* Same styling as other menu items - no extra background or effects */
+}
+
 .custom-menu-icon {
   margin-right: 4px;
   display: inline-flex;
@@ -56,32 +60,29 @@
   padding: 12px !important;
 }
 
-/* Floating Menu Button - Hidden by default, shows on narrow screens */
-.floating-menu-button {
-  display: none !important;
-  transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.3s ease;
-}
-
-.floating-menu-button.ant-float-btn {
-  transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.3s ease;
-}
 
 /* Drawer Menu Items */
 .drawer-menu-items {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 4px;
+  width: 100%;
 }
 
 .drawer-menu-item {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  padding: 12px 16px;
+  padding: 0 8px;
+  height: 40px;
+  line-height: 40px;
   cursor: pointer;
   color: #333;
-  border-radius: 6px;
+  border-radius: 4px;
   transition: all 0.2s;
   user-select: none;
+  width: auto;
+  min-width: fit-content;
 }
 
 .drawer-menu-item:hover {
@@ -98,21 +99,25 @@
 }
 
 .drawer-menu-item-icon {
-  margin-right: 12px;
-  font-size: 18px;
+  margin-right: 4px;
+  font-size: 14px;
   display: inline-flex;
   align-items: center;
 }
 
 .drawer-menu-item-label {
-  font-size: 15px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: normal;
 }
 
 /* Drawer Title Styling */
 .navigation-drawer .ant-drawer-header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-bottom: none;
+  height: 40px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
 }
 
 .navigation-drawer .ant-drawer-header-title {
@@ -121,7 +126,10 @@
 
 .navigation-drawer .ant-drawer-title {
   color: white;
-  font-weight: 600;
+  font-weight: normal;
+  font-size: 14px;
+  line-height: 40px;
+  margin: 0;
 }
 
 .navigation-drawer .ant-drawer-close {
@@ -132,21 +140,15 @@
   color: rgba(255, 255, 255, 0.8);
 }
 
-/* Mobile devices (phones) - Show floating button, hide menu bar */
-@media (max-width: 600px) {
-  .custom-menu-bar {
-    display: none !important;
-    opacity: 0;
-    visibility: hidden;
-  }
-  
-  .floating-menu-button {
-    display: block !important;
-    opacity: 1;
-    visibility: visible;
-    transition: opacity 0.3s ease, visibility 0.3s ease;
-  }
+.navigation-drawer .ant-drawer-body {
+  padding: 8px 16px !important;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
 
+/* Mobile devices (<600px) - Show menu bar with ellipsis for overflow */
+@media (max-width: 599px) {
   .header-logo {
     margin-right: 8px !important;
     font-size: 14px !important;
@@ -166,20 +168,8 @@
   }
 }
 
-/* 7-inch Tablets - Show menu bar, hide floating button */
-@media (min-width: 601px) and (max-width: 1024px) {
-  .custom-menu-bar {
-    display: flex !important;
-    opacity: 1;
-    visibility: visible;
-  }
-  
-  .floating-menu-button {
-    display: none !important;
-    opacity: 0;
-    visibility: hidden;
-  }
-
+/* Tablets and Desktop (≥600px) - Use inline ellipsis for overflow */
+@media (min-width: 600px) {
   .header-logo {
     margin-right: 12px !important;
     font-size: 15px !important;
@@ -191,21 +181,6 @@
   
   .ant-layout-header {
     padding: 0 12px !important;
-  }
-}
-
-/* Desktop - Show menu bar, hide floating button */
-@media (min-width: 1025px) {
-  .custom-menu-bar {
-    display: flex !important;
-    opacity: 1;
-    visibility: visible;
-  }
-  
-  .floating-menu-button {
-    display: none !important;
-    opacity: 0;
-    visibility: hidden;
   }
 }
 
