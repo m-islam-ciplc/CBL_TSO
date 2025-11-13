@@ -17,6 +17,7 @@ import {
   UploadOutlined,
   DownloadOutlined,
   ShopOutlined,
+  AppstoreOutlined,
 } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
@@ -283,7 +284,7 @@ function ProductManagement() {
   return (
     <div>
       <Title level={3} style={{ marginBottom: '8px' }}>
-        Manage Products
+        <AppstoreOutlined /> Manage Products
       </Title>
       <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
         Import and manage product database

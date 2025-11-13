@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Card, DatePicker, Button, message, Typography, Row, Col, Space, Spin, Table, Tag, Input, Select, Tabs } from 'antd';
-import { DownloadOutlined, FileExcelOutlined, EyeOutlined, SearchOutlined } from '@ant-design/icons';
+import { DownloadOutlined, FileExcelOutlined, EyeOutlined, SearchOutlined, BarChartOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import dayjs from 'dayjs';
 
@@ -693,7 +693,7 @@ function DailyReport() {
   return (
     <div>
       <Title level={3} style={{ marginBottom: '8px' }}>
-        Daily Order Report Generator
+        <BarChartOutlined /> Daily Order Report Generator
       </Title>
       <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
         Generate Excel reports for orders placed on a specific date or across a date range
@@ -717,7 +717,7 @@ function DailyReport() {
                   />
                 </Space>
               </Col>
-              <Col xs={24} sm={12} md={6}>
+              <Col xs={24} sm={24} md={6}>
                 <Button
                   type="default"
                   icon={<EyeOutlined />}
@@ -728,7 +728,7 @@ function DailyReport() {
                   Preview Orders
                 </Button>
               </Col>
-              <Col xs={24} sm={12} md={6}>
+              <Col xs={24} sm={24} md={6}>
                 <Button
                   type="primary"
                   icon={<DownloadOutlined />}
@@ -739,7 +739,7 @@ function DailyReport() {
                   Download Daily Order Report Excel
                 </Button>
               </Col>
-              <Col xs={24} sm={12} md={6}>
+              <Col xs={24} sm={24} md={6}>
                 <Button
                   icon={<DownloadOutlined />}
                   onClick={handleGenerateMRReport}
@@ -782,7 +782,7 @@ function DailyReport() {
                   />
                 </Space>
               </Col>
-              <Col xs={24} sm={12} md={6}>
+              <Col xs={24} sm={24} md={6}>
                 <Button
                   type="default"
                   icon={<EyeOutlined />}
@@ -793,7 +793,7 @@ function DailyReport() {
                   Preview Range Orders
                 </Button>
               </Col>
-              <Col xs={24} sm={12} md={6}>
+              <Col xs={24} sm={24} md={6}>
                 <Button
                   type="primary"
                   icon={<FileExcelOutlined />}

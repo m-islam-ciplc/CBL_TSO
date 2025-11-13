@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Row, Col, Card, Statistic, Typography, Spin, Space, DatePicker, Radio } from 'antd';
+import { useUser } from '../contexts/UserContext';
 import dayjs from 'dayjs';
 import {
   AppstoreOutlined,
@@ -9,6 +10,7 @@ import {
   DatabaseOutlined,
   BarChartOutlined,
   FileTextOutlined,
+  DashboardOutlined,
 } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
@@ -21,6 +23,7 @@ const removeMSPrefix = (name) => {
 };
 
 function Dashboard({ setStats }) {
+  const { userName } = useUser();
   const [data, setData] = useState({
     orderTypes: [],
     products: [],
@@ -115,7 +118,7 @@ function Dashboard({ setStats }) {
   return (
     <div>
       <Title level={3} style={{ marginBottom: '8px' }}>
-        Dashboard
+        <DashboardOutlined /> Welcome, {userName}!
       </Title>
       <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
         Overview of products, users, dealers, transports, and recent orders

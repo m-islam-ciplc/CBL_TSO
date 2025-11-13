@@ -17,6 +17,8 @@ import {
   DeleteOutlined,
   ArrowLeftOutlined,
   PlusOutlined,
+  EyeOutlined,
+  EditOutlined,
 } from '@ant-design/icons';
 import { useUser } from '../contexts/UserContext';
 
@@ -281,7 +283,7 @@ const { userId } = useUser();
     return (
       <div>
         <Title level={3} style={{ marginBottom: '8px' }}>
-          📋 Review Orders
+          <EyeOutlined /> Review Orders
         </Title>
         <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
           Review and submit your orders
@@ -314,7 +316,7 @@ const { userId } = useUser();
   return (
     <div>
       <Title level={3} style={{ marginBottom: '8px' }}>
-        📋 Review & Edit Order
+        <EditOutlined /> Review & Edit Order
       </Title>
       <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
         Review your order before submitting

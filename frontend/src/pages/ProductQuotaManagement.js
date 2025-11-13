@@ -22,6 +22,7 @@ import {
   DeleteOutlined,
   ReloadOutlined,
   CheckOutlined,
+  BarChartOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
@@ -619,7 +620,7 @@ useEffect(() => {
   return (
     <div>
       <Title level={3} style={{ marginBottom: '8px' }}>
-        Daily Quota Management
+        <BarChartOutlined /> Daily Quota Management
       </Title>
       <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
         Allocate daily sales quotas by territory and monitor consumption in real time.

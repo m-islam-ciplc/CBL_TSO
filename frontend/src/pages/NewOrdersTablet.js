@@ -22,6 +22,7 @@ import {
   DownOutlined,
   UpOutlined,
   CloseOutlined,
+  ShoppingCartOutlined,
 } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
@@ -479,7 +480,7 @@ function NewOrdersTablet({ onOrderCreated: _onOrderCreated }) {
   return (
     <div>
       <Title level={3} style={{ marginBottom: '8px' }}>
-        📱 TSO Order Entry
+        <ShoppingCartOutlined /> Place New Orders
       </Title>
       <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
         Create new sales orders

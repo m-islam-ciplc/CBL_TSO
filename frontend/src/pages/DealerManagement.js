@@ -390,7 +390,7 @@ function DealerManagement() {
   return (
     <div>
       <Title level={3} style={{ marginBottom: '8px' }}>
-        Manage Dealers
+        <ShopOutlined /> Manage Dealers
       </Title>
       <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
         Import and manage dealer database

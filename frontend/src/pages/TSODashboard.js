@@ -20,6 +20,7 @@ import {
   InfoCircleOutlined,
   ReloadOutlined,
   ShoppingCartOutlined,
+  DashboardOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
@@ -152,7 +153,7 @@ function TSODashboard() {
 
   return (
     <div>
-      <Title level={3} style={{ marginBottom: '8px' }}>Welcome, {userName}!</Title>
+      <Title level={3} style={{ marginBottom: '8px' }}><DashboardOutlined /> Welcome, {userName}!</Title>
       <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
         Territory: <Text strong>{territoryName}</Text>
       </Text>

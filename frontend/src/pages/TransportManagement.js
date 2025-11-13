@@ -194,7 +194,7 @@ function TransportManagement() {
   return (
     <div>
       <Title level={3} style={{ marginBottom: '8px' }}>
-        Manage Transports
+        <TruckOutlined /> Manage Transports
       </Title>
       <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
         Import and manage transport database

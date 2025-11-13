@@ -26,6 +26,7 @@ import {
   CarOutlined,
   DeleteOutlined,
   ClearOutlined,
+  OrderedListOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
@@ -411,7 +412,7 @@ function PlacedOrders({ refreshTrigger }) {
   return (
     <div>
       <Title level={3} style={{ marginBottom: '8px' }}>
-        Placed Orders
+        <OrderedListOutlined /> Placed Orders
       </Title>
       <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
         {isTSO ? "View orders you've placed and filter by date, product, dealer, or transport." : 'View and manage all orders placed by TSOs.'}

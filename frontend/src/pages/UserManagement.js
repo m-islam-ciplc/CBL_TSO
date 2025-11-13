@@ -20,6 +20,7 @@ import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
+  UserOutlined,
 } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
@@ -239,7 +240,7 @@ function UserManagement() {
   return (
     <div>
       <Title level={3} style={{ marginBottom: '8px' }}>
-        Manage Users
+        <UserOutlined /> Manage Users
       </Title>
       <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
         Manage user accounts and permissions
