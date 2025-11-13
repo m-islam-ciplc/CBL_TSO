@@ -717,16 +717,29 @@ async function buildWorksheetStructureNoPrices(worksheet, orders, options = {}) 
         }
     };
 
-    // Fetch complete product catalogue (excluding dummy application)
-    const allProductsQuery = `
-        SELECT product_code, name as product_name, application_name
-        FROM products
-        WHERE status = 'A' AND application_name != 'Dummy'
-        ORDER BY application_name, product_name
-    `;
+    // Collect unique product codes from orders
+    const orderedProductCodes = new Set();
+    orders.forEach((order) => {
+        (order.items || []).forEach((item) => {
+            if (item.product_code) {
+                orderedProductCodes.add(item.product_code);
+            }
+        });
+    });
 
-    const [allProductsResult] = await dbPromise.query(allProductsQuery);
-    const allProducts = allProductsResult;
+    // Fetch only products that were actually ordered (excluding dummy application)
+    let allProducts = [];
+    if (orderedProductCodes.size > 0) {
+        const productCodesArray = Array.from(orderedProductCodes);
+        const allProductsQuery = `
+            SELECT product_code, name as product_name, application_name
+            FROM products
+            WHERE status = 'A' AND application_name != 'Dummy' AND product_code IN (?)
+            ORDER BY application_name, product_name
+        `;
+        const [allProductsResult] = await dbPromise.query(allProductsQuery, [productCodesArray]);
+        allProducts = allProductsResult;
+    }
 
     // Group products by application and prepare lookup maps
     const productsByApplication = {};
