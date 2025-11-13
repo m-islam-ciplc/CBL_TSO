@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, DatePicker, Button, message, Typography, Row, Col, Space, Spin, Table, Tag, Input, Select } from 'antd';
+import { Card, DatePicker, Button, message, Typography, Row, Col, Space, Spin, Table, Tag, Input, Select, Tabs } from 'antd';
 import { DownloadOutlined, FileExcelOutlined, EyeOutlined, SearchOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import dayjs from 'dayjs';
@@ -27,6 +27,7 @@ function DailyReport() {
   const [rangeEnd, setRangeEnd] = useState(null);
   const [previewInfo, setPreviewInfo] = useState('');
   const [previewMode, setPreviewMode] = useState('single');
+  const [activeTab, setActiveTab] = useState('single');
 
   // Load available dates on component mount
   useEffect(() => {
@@ -667,109 +668,115 @@ function DailyReport() {
         Generate Excel reports for orders placed on a specific date or across a date range
       </Text>
 
-      <Card title="Daily Report (Single Date)" style={{ marginBottom: 16 }}>
-        <Row gutter={[16, 16]} align="bottom">
-          <Col xs={24} sm={12} md={6}>
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Text strong>Select Date</Text>
-              <DatePicker
-                value={selectedDate}
-                onChange={setSelectedDate}
-                format="YYYY-MM-DD"
-                style={{ width: '100%' }}
-                placeholder="Select date for report"
-                disabledDate={disabledDate}
-                dateRender={dateCellRender}
-              />
-            </Space>
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <Button
-              type="default"
-              icon={<EyeOutlined />}
-              onClick={handlePreviewData}
-              loading={loading}
-              style={{ width: '100%' }}
-            >
-              Preview Orders
-            </Button>
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <Button
-              type="primary"
-              icon={<DownloadOutlined />}
-              onClick={handleGenerateReport}
-              loading={loading}
-              style={{ width: '100%' }}
-            >
-              Download Daily Order Report Excel
-            </Button>
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <Button
-              icon={<DownloadOutlined />}
-              onClick={handleGenerateMRReport}
-              loading={loading}
-              style={{ width: '100%' }}
-            >
-              Download MR CSV
-            </Button>
-          </Col>
-        </Row>
-      </Card>
+      <Tabs activeKey={activeTab} onChange={setActiveTab}>
+        <Tabs.TabPane tab="Daily Report (Single Date)" key="single">
+          <Card title="Daily Report (Single Date)" style={{ marginBottom: 16 }}>
+            <Row gutter={[16, 16]} align="bottom">
+              <Col xs={24} sm={12} md={6}>
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  <Text strong>Select Date</Text>
+                  <DatePicker
+                    value={selectedDate}
+                    onChange={setSelectedDate}
+                    format="YYYY-MM-DD"
+                    style={{ width: '100%' }}
+                    placeholder="Select date for report"
+                    disabledDate={disabledDate}
+                    dateRender={dateCellRender}
+                  />
+                </Space>
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Button
+                  type="default"
+                  icon={<EyeOutlined />}
+                  onClick={handlePreviewData}
+                  loading={loading}
+                  style={{ width: '100%' }}
+                >
+                  Preview Orders
+                </Button>
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Button
+                  type="primary"
+                  icon={<DownloadOutlined />}
+                  onClick={handleGenerateReport}
+                  loading={loading}
+                  style={{ width: '100%' }}
+                >
+                  Download Daily Order Report Excel
+                </Button>
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Button
+                  icon={<DownloadOutlined />}
+                  onClick={handleGenerateMRReport}
+                  loading={loading}
+                  style={{ width: '100%' }}
+                >
+                  Download MR CSV
+                </Button>
+              </Col>
+            </Row>
+          </Card>
+        </Tabs.TabPane>
 
-      <Card title="Order Summary (Date Range)" style={{ marginBottom: 24 }}>
-        <Row gutter={[16, 16]} align="bottom">
-          <Col xs={24} sm={12} md={6}>
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Text strong>Start Date</Text>
-              <DatePicker
-                value={rangeStart}
-                onChange={setRangeStart}
-                format="YYYY-MM-DD"
-                style={{ width: '100%' }}
-                placeholder="Start date"
-                dateRender={dateCellRender}
-              />
-            </Space>
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Text strong>End Date</Text>
-              <DatePicker
-                value={rangeEnd}
-                onChange={setRangeEnd}
-                format="YYYY-MM-DD"
-                style={{ width: '100%' }}
-                placeholder="End date"
-                dateRender={dateCellRender}
-              />
-            </Space>
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <Button
-              type="default"
-              icon={<EyeOutlined />}
-              onClick={handlePreviewRange}
-              loading={loading}
-              style={{ width: '100%' }}
-            >
-              Preview Range Orders
-            </Button>
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <Button
-              type="primary"
-              icon={<FileExcelOutlined />}
-              onClick={handleGenerateRangeReport}
-              loading={loading}
-              style={{ width: '100%' }}
-            >
-              Download Order Summary Excel
-            </Button>
-          </Col>
-        </Row>
-      </Card>
+        <Tabs.TabPane tab="Order Summary (Date Range)" key="range">
+          <Card title="Order Summary (Date Range)" style={{ marginBottom: 24 }}>
+            <Row gutter={[16, 16]} align="bottom">
+              <Col xs={24} sm={12} md={6}>
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  <Text strong>Start Date</Text>
+                  <DatePicker
+                    value={rangeStart}
+                    onChange={setRangeStart}
+                    format="YYYY-MM-DD"
+                    style={{ width: '100%' }}
+                    placeholder="Start date"
+                    dateRender={dateCellRender}
+                  />
+                </Space>
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  <Text strong>End Date</Text>
+                  <DatePicker
+                    value={rangeEnd}
+                    onChange={setRangeEnd}
+                    format="YYYY-MM-DD"
+                    style={{ width: '100%' }}
+                    placeholder="End date"
+                    dateRender={dateCellRender}
+                  />
+                </Space>
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Button
+                  type="default"
+                  icon={<EyeOutlined />}
+                  onClick={handlePreviewRange}
+                  loading={loading}
+                  style={{ width: '100%' }}
+                >
+                  Preview Range Orders
+                </Button>
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Button
+                  type="primary"
+                  icon={<FileExcelOutlined />}
+                  onClick={handleGenerateRangeReport}
+                  loading={loading}
+                  style={{ width: '100%' }}
+                >
+                  Download Order Summary Excel
+                </Button>
+              </Col>
+            </Row>
+          </Card>
+        </Tabs.TabPane>
+      </Tabs>
 
       {/* Preview Table */}
       {showPreview && previewData.length > 0 && (
