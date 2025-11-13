@@ -455,18 +455,21 @@ useEffect(() => {
       dataIndex: 'territoryName',
       key: 'territoryName',
       ellipsis: true,
+      sorter: (a, b) => (a.territoryName || '').localeCompare(b.territoryName || ''),
     },
     {
       title: 'Date',
       dataIndex: 'date',
       key: 'date',
       ellipsis: true,
+      sorter: (a, b) => (a.date || '').localeCompare(b.date || ''),
     },
     {
       title: 'Product Code',
       dataIndex: 'productCode',
       key: 'productCode',
       ellipsis: true,
+      sorter: (a, b) => (a.productCode || '').localeCompare(b.productCode || ''),
     },
     {
       title: 'Product Name',
@@ -475,6 +478,7 @@ useEffect(() => {
       ellipsis: {
         showTitle: true,
       },
+      sorter: (a, b) => (a.productName || '').localeCompare(b.productName || ''),
     },
     {
       title: 'Quota',
@@ -482,6 +486,7 @@ useEffect(() => {
       key: 'quantity',
       align: 'right',
       ellipsis: true,
+      sorter: (a, b) => (a.quantity || 0) - (b.quantity || 0),
       render: (quantity, record) => {
         const key = `${record.productId}_${record.territoryName}`;
         const isEditing = editingQuota === key;
@@ -528,6 +533,7 @@ useEffect(() => {
       key: 'sold',
       align: 'right',
       ellipsis: true,
+      sorter: (a, b) => (a.sold || 0) - (b.sold || 0),
       render: (sold) => (
         <Tag color="orange" style={{ fontSize: '12px', padding: '2px 8px' }}>
           {sold || 0}
@@ -557,18 +563,21 @@ useEffect(() => {
       dataIndex: 'date',
       key: 'date',
       ellipsis: true,
+      sorter: (a, b) => (a.date || '').localeCompare(b.date || ''),
     },
     {
       title: 'Territory',
       dataIndex: 'territoryName',
       key: 'territoryName',
       ellipsis: true,
+      sorter: (a, b) => (a.territoryName || '').localeCompare(b.territoryName || ''),
     },
     {
       title: 'Product Code',
       dataIndex: 'productCode',
       key: 'productCode',
       ellipsis: true,
+      sorter: (a, b) => (a.productCode || '').localeCompare(b.productCode || ''),
     },
     {
       title: 'Product Name',
@@ -577,6 +586,7 @@ useEffect(() => {
       ellipsis: {
         showTitle: true,
       },
+      sorter: (a, b) => (a.productName || '').localeCompare(b.productName || ''),
     },
     {
       title: 'Quota',
@@ -584,6 +594,7 @@ useEffect(() => {
       key: 'quantity',
       align: 'right',
       ellipsis: true,
+      sorter: (a, b) => (a.quantity || 0) - (b.quantity || 0),
     },
     {
       title: 'Sold',
@@ -591,6 +602,7 @@ useEffect(() => {
       key: 'sold',
       align: 'right',
       ellipsis: true,
+      sorter: (a, b) => (a.sold || 0) - (b.sold || 0),
     },
     {
       title: 'Remaining',
@@ -598,6 +610,7 @@ useEffect(() => {
       key: 'remaining',
       align: 'right',
       ellipsis: true,
+      sorter: (a, b) => (a.remaining || 0) - (b.remaining || 0),
     },
   ];
 

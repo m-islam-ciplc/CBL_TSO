@@ -133,6 +133,7 @@ function UserManagement() {
       dataIndex: 'id',
       key: 'id',
       ellipsis: true,
+      sorter: (a, b) => (a.id || 0) - (b.id || 0),
     },
     {
       title: 'Username',
@@ -175,6 +176,11 @@ function UserManagement() {
       dataIndex: 'territory_name',
       key: 'territory_name',
       ellipsis: true,
+      sorter: (a, b) => {
+        const territoryA = a.territory_name || '';
+        const territoryB = b.territory_name || '';
+        return territoryA.localeCompare(territoryB);
+      },
     },
     {
       title: 'Status',
@@ -187,6 +193,10 @@ function UserManagement() {
           {isActive ? 'Active' : 'Inactive'}
         </Tag>
       ),
+      sorter: (a, b) => {
+        // Sort by active status: true (1) comes before false (0)
+        return (b.is_active ? 1 : 0) - (a.is_active ? 1 : 0);
+      },
     },
     {
       title: 'Actions',

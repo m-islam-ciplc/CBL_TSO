@@ -435,6 +435,19 @@ function TSOReport() {
       dataIndex: 'transport_name',
       key: 'transport_name',
       ellipsis: true,
+      sorter: (a, b) => {
+        const getTransportValue = (record) => {
+          const names = record.transport_name
+            ? [record.transport_name]
+            : record.transport_names || [];
+          if (Array.isArray(names) && names.length > 1) {
+            return 'Different Transport Providers';
+          }
+          const value = Array.isArray(names) ? names[0] : record.transport_name;
+          return value || 'N/A';
+        };
+        return getTransportValue(a).localeCompare(getTransportValue(b));
+      },
       render: (_, record) => {
         const names = record.transport_name
           ? [record.transport_name]
@@ -552,6 +565,19 @@ function TSOReport() {
       dataIndex: 'transport_names',
       key: 'transport_names',
       ellipsis: true,
+      sorter: (a, b) => {
+        const getTransportValue = (record) => {
+          const names = record.transport_names || [];
+          if (!names || names.length === 0) {
+            return 'N/A';
+          }
+          if (names.length === 1) {
+            return names[0];
+          }
+          return 'Different Transport Providers';
+        };
+        return getTransportValue(a).localeCompare(getTransportValue(b));
+      },
       render: (names = []) => {
         if (!names || names.length === 0) {
           return 'N/A';
@@ -575,6 +601,11 @@ function TSOReport() {
       dataIndex: 'date_span',
       key: 'date_span',
       ellipsis: true,
+      sorter: (a, b) => {
+        const spanA = a.date_span || 'N/A';
+        const spanB = b.date_span || 'N/A';
+        return spanA.localeCompare(spanB);
+      },
       render: (span) => span || 'N/A',
     },
   ];

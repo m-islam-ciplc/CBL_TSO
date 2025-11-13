@@ -84,6 +84,7 @@ function TSODashboard() {
       dataIndex: 'product_code',
       key: 'product_code',
       ellipsis: true,
+      sorter: (a, b) => ((a.product_code || '') + '').localeCompare((b.product_code || '') + ''),
     },
     {
       title: 'Product Name',
@@ -92,6 +93,7 @@ function TSODashboard() {
       ellipsis: {
         showTitle: true,
       },
+      sorter: (a, b) => ((a.product_name || '') + '').localeCompare((b.product_name || '') + ''),
     },
     {
       title: 'Allocated',
@@ -99,6 +101,7 @@ function TSODashboard() {
       key: 'max_quantity',
       align: 'right',
       ellipsis: true,
+      sorter: (a, b) => (a.max_quantity || 0) - (b.max_quantity || 0),
       render: (quantity) => (
         <Tag color="default" style={{ fontSize: '12px', padding: '2px 8px' }}>
           {quantity}
@@ -111,6 +114,7 @@ function TSODashboard() {
       key: 'sold_quantity',
       align: 'right',
       ellipsis: true,
+      sorter: (a, b) => (a.sold_quantity || 0) - (b.sold_quantity || 0),
       render: (sold) => (
         <Tag color="orange" style={{ fontSize: '12px', padding: '2px 8px' }}>
           {sold || 0}
@@ -123,6 +127,7 @@ function TSODashboard() {
       key: 'remaining_quantity',
       align: 'right',
       ellipsis: true,
+      sorter: (a, b) => (a.remaining_quantity || 0) - (b.remaining_quantity || 0),
       render: (quantity) => {
         const remaining = quantity !== undefined && quantity !== null ? quantity : 0;
         const isLow = remaining === 0;

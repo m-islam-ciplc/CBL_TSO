@@ -273,12 +273,13 @@ function NewOrdersTablet({ onOrderCreated: _onOrderCreated }) {
   useEffect(() => {
     if (!isTSO || !territoryName) return;
 
-    // Use /api/quota-stream for Docker (Nginx proxy) or direct localhost for local dev
+    // Use /api/quota-stream for Docker (Nginx proxy) or dynamic URL for local dev
     // In Docker: /api/ proxies to backend:3001
     // In local dev: react-scripts proxy doesn't support SSE, so we bypass it
+    // Use window.location to get the current hostname, but connect to backend port 3001
     const sseUrl = process.env.NODE_ENV === 'production' 
       ? '/api/quota-stream' 
-      : 'http://localhost:3001/api/quota-stream';
+      : `${window.location.protocol}//${window.location.hostname}:3001/api/quota-stream`;
     const eventSource = new EventSource(sseUrl);
 
     eventSource.onmessage = (event) => {

@@ -240,6 +240,7 @@ function ProductManagement() {
       key: 'brand_code',
       ellipsis: true,
       render: (text) => text || '-',
+      sorter: (a, b) => ((a.brand_code || '-') + '').localeCompare((b.brand_code || '-') + ''),
     },
     {
       title: 'Brand Name',
@@ -249,6 +250,7 @@ function ProductManagement() {
         showTitle: true,
       },
       render: (text) => text || '-',
+      sorter: (a, b) => ((a.brand_name || '-') + '').localeCompare((b.brand_name || '-') + ''),
     },
     {
       title: 'Application Name',
@@ -258,6 +260,7 @@ function ProductManagement() {
         showTitle: true,
       },
       render: (text) => text || '-',
+      sorter: (a, b) => ((a.application_name || '-') + '').localeCompare((b.application_name || '-') + ''),
     },
     {
       title: 'Unit TP',
