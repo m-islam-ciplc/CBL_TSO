@@ -701,7 +701,7 @@ function DailyReport() {
 
       <Tabs activeKey={activeTab} onChange={setActiveTab}>
         <Tabs.TabPane tab="Daily Report (Single Date)" key="single">
-          <Card title="Daily Report (Single Date)" style={{ marginBottom: 16 }}>
+          <Card title="Daily Report (Single Date)" style={{ marginBottom: '16px', borderRadius: '8px' }} bodyStyle={{ padding: '12px' }}>
             <Row gutter={[16, 16]} align="bottom">
               <Col xs={24} sm={12} md={6}>
                 <Space direction="vertical" style={{ width: '100%' }}>
@@ -754,7 +754,7 @@ function DailyReport() {
         </Tabs.TabPane>
 
         <Tabs.TabPane tab="Order Summary (Date Range)" key="range">
-          <Card title="Order Summary (Date Range)" style={{ marginBottom: 24 }}>
+          <Card title="Order Summary (Date Range)" style={{ marginBottom: '16px', borderRadius: '8px' }} bodyStyle={{ padding: '12px' }}>
             <Row gutter={[16, 16]} align="bottom">
               <Col xs={24} sm={12} md={6}>
                 <Space direction="vertical" style={{ width: '100%' }}>
@@ -819,7 +819,7 @@ function DailyReport() {
           </div>
           
           {/* Filters */}
-          <Card size="small" style={{ marginBottom: '16px' }}>
+          <Card size="small" style={{ marginBottom: '16px', borderRadius: '8px' }}>
             <Row gutter={[16, 16]} align="middle">
               <Col xs={24} sm={12} md={8}>
                 <Input

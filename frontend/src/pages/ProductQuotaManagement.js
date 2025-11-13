@@ -628,7 +628,7 @@ useEffect(() => {
       <Tabs activeKey={activeTab} onChange={setActiveTab}>
         <TabPane tab="Allocate Daily Quotas" key="allocate">
           {/* Allocation Form */}
-          <Card title="Allocate Daily Quotas" style={{ marginBottom: '16px' }} bodyStyle={{ padding: '12px' }}>
+          <Card title="Allocate Daily Quotas" style={{ marginBottom: '16px', borderRadius: '8px' }} bodyStyle={{ padding: '12px' }}>
             <Row gutter={[16, 16]} align="top">
             <Col flex="none" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
               <Space direction="vertical">
@@ -769,7 +769,7 @@ useEffect(() => {
           </Card>
 
           {/* Current Allocations Table */}
-          <Card title="Allocated Daily Quotas" bodyStyle={{ padding: '12px' }}>
+          <Card title="Allocated Daily Quotas" style={{ marginBottom: '16px', borderRadius: '8px' }} bodyStyle={{ padding: '12px' }}>
             <Table
               dataSource={getAllocations()}
               columns={allocationColumns}
@@ -783,7 +783,7 @@ useEffect(() => {
         </TabPane>
 
         <TabPane tab="Previously Allocated Quotas" key="history">
-          <Card title="Previously Allocated Quotas" bodyStyle={{ padding: '12px' }}>
+          <Card title="Previously Allocated Quotas" style={{ marginBottom: '16px', borderRadius: '8px' }} bodyStyle={{ padding: '12px' }}>
             <Row gutter={[16, 16]} align="middle">
               <Col xs={24} sm={12} md={8}>
                 <Space direction="vertical" style={{ width: '100%' }}>

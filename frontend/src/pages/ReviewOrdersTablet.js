@@ -279,17 +279,15 @@ const { userId } = useUser();
 
   if (orderItems.length === 0) {
     return (
-      <div style={{ padding: '16px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <Title level={3} style={{ color: '#1890ff', marginBottom: '8px' }}>
-            📋 Review Orders
-          </Title>
-          <Text type="secondary" style={{ fontSize: '16px' }}>
-            No items to review yet
-          </Text>
-        </div>
+      <div>
+        <Title level={3} style={{ marginBottom: '8px' }}>
+          📋 Review Orders
+        </Title>
+        <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
+          Review and submit your orders
+        </Text>
 
-        <Card style={{ textAlign: 'center', borderRadius: '12px' }}>
+        <Card style={{ textAlign: 'center', marginBottom: '16px', borderRadius: '8px' }}>
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
             description="No items in your order"
@@ -314,19 +312,16 @@ const { userId } = useUser();
   }
 
   return (
-    <div style={{ padding: '4px 8px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
-      {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-        <Title level={4} style={{ marginBottom: '4px', color: '#1890ff' }}>
-          📋 Review & Edit Order
-        </Title>
-        <Text type="secondary" style={{ fontSize: '14px' }}>
-          Review your order before submitting
-        </Text>
-      </div>
+    <div>
+      <Title level={3} style={{ marginBottom: '8px' }}>
+        📋 Review & Edit Order
+      </Title>
+      <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
+        Review your order before submitting
+      </Text>
 
       {/* Order Form */}
-      <Card style={{ marginBottom: '12px', borderRadius: '8px' }}>
+      <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
         {dataLoading ? (
           <div style={{ textAlign: 'center', padding: '20px' }}>
             <Spin size="large" />
@@ -453,9 +448,9 @@ const { userId } = useUser();
       </Card>
 
       {/* Order Items Review */}
-      <Card style={{ marginBottom: '12px', borderRadius: '8px' }}>
+      <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <Title level={5} style={{ margin: 0, color: '#1890ff' }}>
+          <Title level={5} style={{ margin: 0 }}>
             📦 Order Items ({orderItems.length})
           </Title>
           <Button
@@ -569,7 +564,7 @@ const { userId } = useUser();
       </Card>
 
              {/* Order Summary */}
-       <Card style={{ marginBottom: '20px', borderRadius: '8px' }}>
+       <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
          <Row gutter={[8, 12]} align="middle">
            <Col xs={24} sm={12}>
              <div>

@@ -201,7 +201,7 @@ function TransportManagement() {
       </Text>
 
       {/* Import Section */}
-      <Card style={{ marginBottom: '16px' }}>
+      <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
         <Row gutter={[16, 16]} align="middle">
           <Col>
             <Upload
@@ -286,7 +286,7 @@ function TransportManagement() {
       </Row>
 
       {/* Filters */}
-      <Card style={{ marginBottom: '16px' }}>
+      <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
         <Row gutter={[16, 16]}>
           <Col xs={24} sm={12} md={8}>
             <Input

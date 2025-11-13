@@ -418,7 +418,7 @@ function PlacedOrders({ refreshTrigger }) {
       </Text>
 
       {/* Filters */}
-      <Card title="Filter Orders" style={{ marginBottom: '16px' }} bodyStyle={{ padding: '12px' }}>
+      <Card title="Filter Orders" style={{ marginBottom: '16px', borderRadius: '8px' }} bodyStyle={{ padding: '12px' }}>
         <Row gutter={[12, 12]}>
           <Col xs={24} sm={12} md={6}>
             <Space direction="vertical" style={{ width: '100%' }} size="small">

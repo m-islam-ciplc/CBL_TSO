@@ -477,26 +477,17 @@ function NewOrdersTablet({ onOrderCreated: _onOrderCreated }) {
   };
 
   return (
-    <div style={{ 
-      padding: '4px 8px', 
-      backgroundColor: '#f5f5f5', 
-      minHeight: '100vh' 
-    }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <Title level={4} style={{ margin: 0, color: '#1890ff' }}>
-          📱 TSO Order Entry
-        </Title>
-        <div>
-          <Text strong style={{ fontSize: '12px', color: '#1890ff' }}>
-            Items: {orderItems.length} | Qty: {orderItems.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)}
-          </Text>
-        </div>
-      </div>
+    <div>
+      <Title level={3} style={{ marginBottom: '8px' }}>
+        📱 TSO Order Entry
+      </Title>
+      <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
+        Create new sales orders
+      </Text>
 
       {/* Collapsible Order Details - Hide when adding more items to existing order */}
       {!isAddingMore && (
-        <Card style={{ marginBottom: '8px', borderRadius: '8px' }}>
+        <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
           <div 
             style={{ 
               cursor: 'pointer', 
@@ -615,7 +606,7 @@ function NewOrdersTablet({ onOrderCreated: _onOrderCreated }) {
       )}
 
       {/* Compact Product Search */}
-      <Card style={{ marginBottom: '12px', borderRadius: '8px' }}>
+      <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
         <Input
           size="small"
           placeholder="Search products by name or code..."

@@ -246,7 +246,7 @@ function UserManagement() {
       </Text>
 
       {/* Add User Button */}
-      <Card style={{ marginBottom: '16px' }}>
+      <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
         <Row gutter={[16, 16]} align="middle">
           <Col>
             <Button

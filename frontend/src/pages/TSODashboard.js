@@ -152,13 +152,11 @@ function TSODashboard() {
 
   return (
     <div>
+      <Title level={3} style={{ marginBottom: '8px' }}>Welcome, {userName}!</Title>
+      <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
+        Territory: <Text strong>{territoryName}</Text>
+      </Text>
       <Space direction="vertical" style={{ width: '100%' }} size="large">
-        <div>
-          <Title level={2}>Welcome, {userName}!</Title>
-          <Text type="secondary">
-            Territory: <Text strong>{territoryName}</Text>
-          </Text>
-        </div>
 
         <Alert
           message={<span style={{ color: 'white', fontSize: '14px' }}>{`Your quota allocations for ${dayjs().format('MMMM D, YYYY')}`}</span>}
@@ -313,17 +311,7 @@ function TSODashboard() {
           </Col>
         </Row>
 
-        <div>
-          <Button
-            icon={<ReloadOutlined />}
-            onClick={loadQuotas}
-            loading={loading}
-          >
-            Refresh
-          </Button>
-        </div>
-
-        <Card title="Product Allocations" bodyStyle={{ padding: '12px' }}>
+        <Card title="Product Allocations" style={{ marginBottom: '16px', borderRadius: '8px' }} bodyStyle={{ padding: '12px' }}>
           {quotas.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 0' }}>
               <InfoCircleOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />

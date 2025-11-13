@@ -114,10 +114,13 @@ function Dashboard({ setStats }) {
 
   return (
     <div>
+      <Title level={3} style={{ marginBottom: '8px' }}>
+        Dashboard
+      </Title>
+      <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
+        Overview of products, users, dealers, transports, and recent orders
+      </Text>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <Title level={3} style={{ margin: 0 }}>
-          Dashboard
-        </Title>
         <Space>
           <Radio.Group 
             value={dateFilter} 
@@ -141,7 +144,7 @@ function Dashboard({ setStats }) {
       {/* Statistics Cards */}
       <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
         <Col xs={24} sm={12} md={6}>
-          <Card style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', color: 'white' }}>
+          <Card style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', color: 'white', borderRadius: '8px' }}>
             <Statistic
               title={<span style={{ color: 'white' }}>Products</span>}
               value={data.products.length}
@@ -151,7 +154,7 @@ function Dashboard({ setStats }) {
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
-          <Card style={{ background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', color: 'white' }}>
+          <Card style={{ background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', color: 'white', borderRadius: '8px' }}>
             <Statistic
               title={<span style={{ color: 'white' }}>Total Orders</span>}
               value={data.orders.length}
@@ -161,7 +164,7 @@ function Dashboard({ setStats }) {
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
-          <Card style={{ background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', color: 'white' }}>
+          <Card style={{ background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', color: 'white', borderRadius: '8px' }}>
             <Statistic
               title={<span style={{ color: 'white' }}>Total Quantity</span>}
               value={stats.totalQuantity}
@@ -171,7 +174,7 @@ function Dashboard({ setStats }) {
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
-          <Card style={{ background: 'linear-gradient(135deg, #30cfd0 0%, #330867 100%)', color: 'white' }}>
+          <Card style={{ background: 'linear-gradient(135deg, #30cfd0 0%, #330867 100%)', color: 'white', borderRadius: '8px' }}>
             <Statistic
               title={<span style={{ color: 'white' }}>Total Value</span>}
               value={stats.totalValue.toLocaleString('en-BD', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
