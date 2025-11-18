@@ -202,15 +202,17 @@ CREATE TABLE IF NOT EXISTS dealer_monthly_demand (
     product_id INT NOT NULL,
     period_start DATE NOT NULL,
     period_end DATE NOT NULL,
+    demand_date DATE NOT NULL,
     quantity INT NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (dealer_id) REFERENCES dealers(id) ON DELETE CASCADE,
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
-    UNIQUE KEY unique_dealer_product_period (dealer_id, product_id, period_start, period_end),
+    UNIQUE KEY unique_dealer_product_date (dealer_id, product_id, demand_date),
     INDEX idx_dealer_id (dealer_id),
     INDEX idx_product_id (product_id),
-    INDEX idx_period (period_start, period_end)
+    INDEX idx_period (period_start, period_end),
+    INDEX idx_demand_date (demand_date)
 );
 
 -- Settings table for application configuration

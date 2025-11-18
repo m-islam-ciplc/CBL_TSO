@@ -3729,9 +3729,17 @@ function calculateMonthlyPeriod(startDay) {
         periodEnd = new Date(currentYear, currentMonth, startDay - 1);
     }
     
+    // Format dates as YYYY-MM-DD without timezone conversion issues
+    const formatDate = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+    
     return {
-        start: periodStart.toISOString().split('T')[0],
-        end: periodEnd.toISOString().split('T')[0]
+        start: formatDate(periodStart),
+        end: formatDate(periodEnd)
     };
 }
 
@@ -3817,7 +3825,7 @@ app.get('/api/monthly-demand/dealer/:dealerId', (req, res) => {
             const startDay = results.length > 0 ? parseInt(results[0].setting_value) : 18;
             const period = calculateMonthlyPeriod(startDay);
             
-            // Get demand for this period
+            // Get demand for this period (day-wise)
             const demandQuery = `
                 SELECT 
                     dmd.*,
@@ -3828,7 +3836,7 @@ app.get('/api/monthly-demand/dealer/:dealerId', (req, res) => {
                 WHERE dmd.dealer_id = ? 
                 AND dmd.period_start = ? 
                 AND dmd.period_end = ?
-                ORDER BY p.product_code
+                ORDER BY p.product_code, dmd.demand_date
             `;
             
             db.query(demandQuery, [dealerId, period.start, period.end], (err, demand) => {
@@ -3849,8 +3857,9 @@ app.get('/api/monthly-demand/dealer/:dealerId', (req, res) => {
 // Create or update dealer monthly demand
 // NOTE: Only dealers should access this endpoint (frontend enforces this via routing)
 // This endpoint allows dealers to submit their monthly battery demand
+// Create or update dealer monthly demand (single entry - for backward compatibility)
 app.post('/api/monthly-demand', (req, res) => {
-    const { dealer_id, product_id, quantity } = req.body;
+    const { dealer_id, product_id, quantity, demand_date } = req.body;
     
     if (!dealer_id || !product_id || quantity === undefined) {
         return res.status(400).json({ error: 'dealer_id, product_id, and quantity are required' });
@@ -3908,10 +3917,13 @@ app.post('/api/monthly-demand', (req, res) => {
                 const startDay = results.length > 0 ? parseInt(results[0].setting_value) : 18;
                 const period = calculateMonthlyPeriod(startDay);
                 
-                // Insert or update demand
+                // Use provided demand_date or default to period.start for backward compatibility
+                const finalDemandDate = demand_date || period.start;
+                
+                // Insert or update demand (day-wise)
                 const upsertQuery = `
-                    INSERT INTO dealer_monthly_demand (dealer_id, product_id, period_start, period_end, quantity)
-                    VALUES (?, ?, ?, ?, ?)
+                    INSERT INTO dealer_monthly_demand (dealer_id, product_id, period_start, period_end, demand_date, quantity)
+                    VALUES (?, ?, ?, ?, ?, ?)
                     ON DUPLICATE KEY UPDATE
                         quantity = ?,
                         updated_at = CURRENT_TIMESTAMP
@@ -3922,6 +3934,7 @@ app.post('/api/monthly-demand', (req, res) => {
                     product_id,
                     period.start,
                     period.end,
+                    finalDemandDate,
                     quantity,
                     quantity
                 ], (err, result) => {
@@ -3934,6 +3947,162 @@ app.post('/api/monthly-demand', (req, res) => {
                         id: result.insertId || 'updated',
                         period_start: period.start,
                         period_end: period.end
+                    });
+                });
+            });
+        });
+    });
+});
+
+// Bulk save day-wise monthly demand
+app.post('/api/monthly-demand/bulk', (req, res) => {
+    const { dealer_id, demands } = req.body; // demands: [{ product_id, demand_date, quantity }, ...]
+    
+    if (!dealer_id || !Array.isArray(demands) || demands.length === 0) {
+        return res.status(400).json({ error: 'dealer_id and demands array are required' });
+    }
+    
+    // Validate dealer exists
+    db.query('SELECT id FROM dealers WHERE id = ?', [dealer_id], (err, dealerCheck) => {
+        if (err) {
+            console.error('Error checking dealer:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        if (dealerCheck.length === 0) {
+            return res.status(404).json({ error: 'Dealer not found' });
+        }
+        
+        // Get current period
+        const query = 'SELECT setting_value FROM settings WHERE setting_key = ?';
+        db.query(query, ['monthly_demand_start_day'], (err, results) => {
+            if (err) {
+                console.error('Error fetching setting:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            const startDay = results.length > 0 ? parseInt(results[0].setting_value) : 18;
+            const period = calculateMonthlyPeriod(startDay);
+            
+            // Validate all demands
+            const validDemands = [];
+            const errors = [];
+            
+            demands.forEach((demand, index) => {
+                if (!demand.product_id || !demand.demand_date || demand.quantity === undefined) {
+                    errors.push(`Demand ${index + 1}: product_id, demand_date, and quantity are required`);
+                    return;
+                }
+                if (demand.quantity < 0) {
+                    errors.push(`Demand ${index + 1}: quantity must be 0 or greater`);
+                    return;
+                }
+                // Validate demand_date is within period
+                const demandDate = new Date(demand.demand_date);
+                const periodStart = new Date(period.start);
+                const periodEnd = new Date(period.end);
+                if (demandDate < periodStart || demandDate > periodEnd) {
+                    errors.push(`Demand ${index + 1}: demand_date must be within the current period`);
+                    return;
+                }
+                validDemands.push(demand);
+            });
+            
+            if (errors.length > 0) {
+                return res.status(400).json({ error: 'Validation errors', details: errors });
+            }
+            
+            // Get unique product IDs
+            const productIds = [...new Set(validDemands.map(d => d.product_id))];
+            
+            // Validate all products are assigned to dealer
+            const productAssignmentQuery = `
+                SELECT DISTINCT p.id 
+                FROM products p
+                WHERE p.id IN (${productIds.map(() => '?').join(',')})
+                AND (
+                    p.id IN (
+                        SELECT product_id 
+                        FROM dealer_product_assignments 
+                        WHERE dealer_id = ? AND assignment_type = 'product' AND product_id IS NOT NULL
+                    )
+                    OR p.application_name IN (
+                        SELECT product_category 
+                        FROM dealer_product_assignments 
+                        WHERE dealer_id = ? AND assignment_type = 'category' AND product_category IS NOT NULL
+                    )
+                )
+            `;
+            
+            db.query(productAssignmentQuery, [...productIds, dealer_id, dealer_id], (err, productCheck) => {
+                if (err) {
+                    console.error('Error checking product assignments:', err);
+                    return res.status(500).json({ error: 'Database error' });
+                }
+                
+                const assignedProductIds = productCheck.map(p => p.id);
+                const unassignedProducts = productIds.filter(id => !assignedProductIds.includes(id));
+                
+                if (unassignedProducts.length > 0) {
+                    return res.status(403).json({ 
+                        error: 'Some products are not assigned to you', 
+                        unassigned_product_ids: unassignedProducts 
+                    });
+                }
+                
+                // Bulk insert/update using transaction
+                db.beginTransaction((err) => {
+                    if (err) {
+                        console.error('Error starting transaction:', err);
+                        return res.status(500).json({ error: 'Database error' });
+                    }
+                    
+                    const upsertQuery = `
+                        INSERT INTO dealer_monthly_demand (dealer_id, product_id, period_start, period_end, demand_date, quantity)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                        ON DUPLICATE KEY UPDATE
+                            quantity = VALUES(quantity),
+                            updated_at = CURRENT_TIMESTAMP
+                    `;
+                    
+                    let completed = 0;
+                    let hasError = false;
+                    
+                    validDemands.forEach((demand) => {
+                        db.query(upsertQuery, [
+                            dealer_id,
+                            demand.product_id,
+                            period.start,
+                            period.end,
+                            demand.demand_date,
+                            demand.quantity
+                        ], (err) => {
+                            if (err && !hasError) {
+                                hasError = true;
+                                console.error('Error saving demand:', err);
+                                db.rollback(() => {
+                                    res.status(500).json({ error: 'Database error' });
+                                });
+                                return;
+                            }
+                            
+                            completed++;
+                            if (completed === validDemands.length && !hasError) {
+                                db.commit((err) => {
+                                    if (err) {
+                                        console.error('Error committing transaction:', err);
+                                        db.rollback(() => {
+                                            res.status(500).json({ error: 'Database error' });
+                                        });
+                                        return;
+                                    }
+                                    res.json({ 
+                                        success: true, 
+                                        saved_count: validDemands.length,
+                                        period_start: period.start,
+                                        period_end: period.end
+                                    });
+                                });
+                            }
+                        });
                     });
                 });
             });

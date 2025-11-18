@@ -23,10 +23,12 @@ function AdminSettings() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [startDay, setStartDay] = useState(18);
+  const [currentPeriod, setCurrentPeriod] = useState({ start: '', end: '' });
   const [form] = Form.useForm();
 
   useEffect(() => {
     loadSettings();
+    loadCurrentPeriod();
   }, []);
 
   const loadSettings = async () => {
@@ -43,6 +45,15 @@ function AdminSettings() {
     }
   };
 
+  const loadCurrentPeriod = async () => {
+    try {
+      const response = await axios.get('/api/monthly-demand/current-period');
+      setCurrentPeriod(response.data);
+    } catch (error) {
+      console.error('Error loading current period:', error);
+    }
+  };
+
   const handleSave = async (values) => {
     setSaving(true);
     try {
@@ -50,6 +61,8 @@ function AdminSettings() {
         start_day: values.start_day
       });
       setStartDay(values.start_day);
+      // Reload current period after saving
+      await loadCurrentPeriod();
       message.success('Monthly demand start day updated successfully');
     } catch (error) {
       console.error('Error saving settings:', error);
@@ -58,31 +71,6 @@ function AdminSettings() {
       setSaving(false);
     }
   };
-
-  // Calculate current period for preview
-  const calculatePeriod = (day) => {
-    const today = new Date();
-    const currentDay = today.getDate();
-    const currentMonth = today.getMonth();
-    const currentYear = today.getFullYear();
-    
-    let periodStart, periodEnd;
-    
-    if (currentDay >= day) {
-      periodStart = new Date(currentYear, currentMonth, day);
-      periodEnd = new Date(currentYear, currentMonth + 1, day - 1);
-    } else {
-      periodStart = new Date(currentYear, currentMonth - 1, day);
-      periodEnd = new Date(currentYear, currentMonth, day - 1);
-    }
-    
-    return {
-      start: periodStart.toISOString().split('T')[0],
-      end: periodEnd.toISOString().split('T')[0]
-    };
-  };
-
-  const currentPeriod = calculatePeriod(startDay);
 
   return (
     <div>
