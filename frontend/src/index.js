@@ -4,6 +4,8 @@ import { ConfigProvider, message } from 'antd';
 import App from './App';
 import { antTheme } from './ant-theme';
 import './tablet.css';
+// Import axios config to set up global interceptors
+import './utils/axiosConfig';
 
 // Configure message (toast) notifications to appear below navbar (40px + 8px spacing)
 message.config({

@@ -11,6 +11,7 @@ import {
   Empty,
   Spin,
   Select,
+  Input,
 } from 'antd';
 import {
   CheckOutlined,
@@ -254,7 +255,22 @@ const { userId } = useUser();
         }))
       };
 
+      // Log order submission attempt
+      console.log('📦 Submitting order:', {
+        orderData,
+        orderItems: orderItems.map(item => ({
+          product_id: item.product_id,
+          product_code: dropdownData.products.find(p => p.id === item.product_id)?.product_code,
+          product_name: item.product_name,
+          quantity: item.quantity
+        })),
+        territory: values.territoryCode,
+        dealer: values.dealer
+      });
+
       const response = await axios.post('/api/orders', orderData);
+      
+      console.log('✅ Order submitted successfully:', response.data);
 
       if (response.data.success) {
         message.success(`Order created successfully! Order ID: ${response.data.order_id} with ${response.data.item_count} product(s)`, 2);
@@ -273,7 +289,40 @@ const { userId } = useUser();
         }, 1000);
       }
     } catch (_error) {
-      message.error(`Failed to create order: ${_error.response?.data?.error || _error.message}`);
+      const errorData = _error.response?.data;
+      
+      // Log full error details to console for debugging
+      console.error('❌ Order submission error:', {
+        error: _error,
+        response: _error.response,
+        data: errorData,
+        request: {
+          url: _error.config?.url,
+          method: _error.config?.method,
+          data: _error.config?.data
+        }
+      });
+      
+      if (errorData?.details && Array.isArray(errorData.details)) {
+        // Log validation details to console
+        console.error('⚠️ Validation errors:', errorData.details);
+        
+        // Show detailed validation errors
+        message.error({
+          content: (
+            <div>
+              <div style={{ marginBottom: '8px', fontWeight: 'bold' }}>{errorData.error || 'Order validation failed'}:</div>
+              {errorData.details.map((error, index) => (
+                <div key={index} style={{ marginBottom: '4px' }}>• {error}</div>
+              ))}
+            </div>
+          ),
+          duration: 5
+        });
+      } else {
+        console.error('❌ Order submission failed:', errorData?.error || _error.message);
+        message.error(`Failed to create order: ${errorData?.error || _error.message}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -297,13 +346,8 @@ const { userId } = useUser();
           >
             <Button
               type="primary"
-              size="small"
               icon={<ArrowLeftOutlined />}
               onClick={() => window.location.href = '/new-orders'}
-              style={{
-                fontSize: '13px',
-                borderRadius: '8px'
-              }}
             >
               Go to New Orders
             </Button>
@@ -338,69 +382,11 @@ const { userId } = useUser();
           size="small"
         >
           <Row gutter={[4, 6]} align="middle">
-            <Col xs={12} sm={12} md={3} lg={3}>
-              <Form.Item
-                name="orderType"
-                label={<Text strong style={{ fontSize: '12px' }}>Order Type</Text>}
-                rules={[{ required: true, message: 'Required' }]}
-                style={{ marginBottom: '8px' }}
-              >
-                  <Select
-                  placeholder="Type" 
-                  size="small"
-                  style={{ fontSize: '12px' }}
-                  disabled
-                >
-                  {dropdownData.orderTypes.map(type => (
-                    <Option key={type.id} value={type.id}>{type.name}</Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
+            <Form.Item name="orderType" hidden><Input /></Form.Item>
+            <Form.Item name="warehouse" hidden><Input /></Form.Item>
+            <Form.Item name="territoryCode" hidden><Input /></Form.Item>
 
-            <Col xs={12} sm={12} md={4} lg={4}>
-              <Form.Item
-                name="warehouse"
-                label={<Text strong style={{ fontSize: '12px' }}>Warehouse</Text>}
-                rules={[{ required: true, message: 'Required' }]}
-                style={{ marginBottom: '8px' }}
-              >
-                  <Select
-                  placeholder="Warehouse" 
-                  size="small"
-                  style={{ fontSize: '12px' }}
-                  disabled
-                >
-                  {dropdownData.warehouses.map(warehouse => (
-                    <Option key={warehouse.id} value={warehouse.id}>{warehouse.name}</Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-
-            <Col xs={24} sm={24} md={4} lg={4}>
-              <Form.Item
-                name="territoryCode"
-                label={<Text strong style={{ fontSize: '12px' }}>Territory</Text>}
-                rules={[{ required: true, message: 'Required' }]}
-                style={{ marginBottom: '8px' }}
-              >
-                  <Select
-                  placeholder="Territory"
-                  size="small"
-                  style={{ fontSize: '12px' }}
-                  disabled
-                >
-                  {dropdownData.territories && dropdownData.territories.length > 0 ? dropdownData.territories.map(territory => (
-                    <Option key={territory.code} value={territory.code}>{territory.name}</Option>
-                  )) : (
-                    <Option disabled>No territories loaded</Option>
-                  )}
-                </Select>
-              </Form.Item>
-            </Col>
-
-            <Col xs={24} sm={24} md={7} lg={7}>
+            <Col xs={24} sm={24} md={12} lg={12}>
               <Form.Item
                 name="dealer"
                 label={<Text strong style={{ fontSize: '12px' }}>Dealer</Text>}
@@ -422,7 +408,7 @@ const { userId } = useUser();
               </Form.Item>
             </Col>
 
-            <Col xs={24} sm={24} md={6} lg={6}>
+            <Col xs={24} sm={24} md={12} lg={12}>
               <Form.Item
                 name="transport"
                 label={<Text strong style={{ fontSize: '12px' }}>Transport</Text>}
@@ -457,9 +443,8 @@ const { userId } = useUser();
           </Title>
           <Button
             type="link"
-            size="small"
             onClick={clearAllItems}
-            style={{ color: '#ff4d4f', fontSize: '13px' }}
+            style={{ color: '#ff4d4f' }}
           >
             Clear All
           </Button>
@@ -490,18 +475,20 @@ const { userId } = useUser();
                     #{index + 1}
                   </div>
                 </Col>
-                <Col xs={7} sm={9}>
-                  <div>
-                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1890ff' }}>
-                      {item.product_name}
-                    </div>
-                    <div style={{ fontSize: '12px', color: '#666', lineHeight: '1.3' }}>
-                      {item.product_code}
-                    </div>
+                <Col xs={10} sm={9}>
+                  <div style={{ 
+                    fontSize: '14px', 
+                    fontWeight: 'bold', 
+                    color: '#1890ff',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}>
+                    {item.product_name}
                   </div>
                 </Col>
-                <Col xs={9} sm={6}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'center' }}>
+                <Col xs={12} sm={12} style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <Button
                       type="primary"
                       shape="circle"
@@ -516,12 +503,12 @@ const { userId } = useUser();
                       }}
                     />
                     <div style={{
-                      minWidth: '45px',
+                      minWidth: '35px',
                       textAlign: 'center',
                       fontSize: '14px',
                       fontWeight: 'bold',
                       color: '#52c41a',
-                      padding: '4px 6px',
+                      padding: '4px 4px',
                       backgroundColor: 'white',
                       borderRadius: '4px',
                       border: '1px solid #f0f0f0'
@@ -542,22 +529,12 @@ const { userId } = useUser();
                       }}
                     />
                   </div>
-                </Col>
-                <Col xs={6} sm={6}>
                   <Button
                     type="primary"
                     danger
-                    size="small"
                     icon={<DeleteOutlined />}
                     onClick={() => removeOrderItem(item.id)}
-                    style={{ 
-                      fontSize: '13px',
-                      width: '100%',
-                      height: '28px'
-                    }}
-                  >
-                    Remove
-                  </Button>
+                  />
                 </Col>
               </Row>
             </Card>
@@ -582,7 +559,6 @@ const { userId } = useUser();
            <Col xs={8} sm={4}>
              <Button
                danger
-               size="small"
                onClick={() => {
                  // Clear all order data
                  setOrderItems([]);
@@ -592,50 +568,42 @@ const { userId } = useUser();
                  message.info('Order cancelled');
                  window.location.href = '/new-orders';
                }}
-               style={{ 
-                 width: '100%',
-                 fontSize: '13px',
-                 borderRadius: '8px'
-               }}
-             >
-               Cancel Order
-             </Button>
-           </Col>
-           <Col xs={8} sm={4}>
-             <Button
-               type="default"
-               size="small"
-               icon={<PlusOutlined />}
-               onClick={() => {
-                 // Save current form data before navigating
-                 const formValues = form.getFieldsValue();
-                 sessionStorage.setItem('tsoFormData', JSON.stringify(formValues));
-                 window.location.href = '/new-orders';
-               }}
-               style={{ 
-                 width: '100%',
-                 fontSize: '13px',
-                 borderRadius: '8px'
-               }}
-             >
-               Add More
-             </Button>
-           </Col>
-           <Col xs={8} sm={4}>
-             <Button
-               type="primary"
-               size="small"
-               loading={loading}
-               icon={<CheckOutlined />}
-               onClick={handleSubmit}
-               style={{ 
-                 width: '100%',
-                 fontSize: '13px',
-                 borderRadius: '8px'
-               }}
-             >
-               {loading ? 'Submitting...' : 'Submit'}
-             </Button>
+              style={{ 
+                width: '100%'
+              }}
+            >
+              Cancel Order
+            </Button>
+          </Col>
+          <Col xs={8} sm={4}>
+            <Button
+              type="default"
+              icon={<PlusOutlined />}
+              onClick={() => {
+                // Save current form data before navigating
+                const formValues = form.getFieldsValue();
+                sessionStorage.setItem('tsoFormData', JSON.stringify(formValues));
+                window.location.href = '/new-orders';
+              }}
+              style={{ 
+                width: '100%'
+              }}
+            >
+              Add More
+            </Button>
+          </Col>
+          <Col xs={8} sm={4}>
+            <Button
+              type="primary"
+              loading={loading}
+              icon={<CheckOutlined />}
+              onClick={handleSubmit}
+              style={{ 
+                width: '100%'
+              }}
+            >
+              {loading ? 'Submitting...' : 'Submit'}
+            </Button>
            </Col>
          </Row>
        </Card>

@@ -2537,12 +2537,7 @@ app.post('/api/orders', async (req, res) => {
         await withTransaction(async (connection) => {
             const user_id = req.body.user_id || null;
             
-            await connection.query(`
-                INSERT INTO orders (order_id, order_type_id, dealer_id, warehouse_id, transport_id, user_id) 
-                VALUES (?, ?, ?, ?, ?, ?)
-            `, [order_id, order_type_id, dealer_id, warehouse_id, transport_id, user_id]);
-
-            // Get dealer's territory for quota tracking
+            // Get dealer's territory for quota tracking and validation
             const [dealerRows] = await connection.query(`
                 SELECT territory_name FROM dealers WHERE id = ?
             `, [dealer_id]);
@@ -2551,6 +2546,100 @@ app.post('/api/orders', async (req, res) => {
             if (!territory_name) {
                 console.warn('⚠️ Territory not found for dealer:', dealer_id);
             }
+
+            // Validate quotas before creating order
+            if (territory_name) {
+                const validationErrors = [];
+
+                for (const item of order_items) {
+                    // Get current quota and sold quantity for this product/territory/date
+                    // Use CURDATE() to match today's date, same as TSO quota endpoint
+                    const [quotaRows] = await connection.query(`
+                        SELECT 
+                            pc.max_quantity,
+                            pc.date,
+                            pc.territory_name as quota_territory,
+                            COALESCE((
+                                SELECT SUM(oi.quantity)
+                                FROM order_items oi
+                                JOIN orders o ON o.order_id = oi.order_id
+                                JOIN dealers d ON d.id = o.dealer_id
+                                WHERE oi.product_id = pc.product_id
+                                  AND d.territory_name = pc.territory_name
+                                  AND DATE(o.created_at) = pc.date
+                            ), 0) as sold_quantity
+                        FROM daily_quotas pc
+                        WHERE pc.product_id = ? 
+                          AND pc.territory_name = ? 
+                          AND DATE(pc.date) = CURDATE()
+                    `, [item.product_id, territory_name]);
+
+                    if (quotaRows.length === 0) {
+                        // Debug: Check if product exists and what territories it's allocated to
+                        const [productRows] = await connection.query(`
+                            SELECT product_code, name FROM products WHERE id = ?
+                        `, [item.product_id]);
+                        const product = productRows[0];
+                        
+                        // Check if quota exists for this product/territory on any date
+                        const [anyQuotaRows] = await connection.query(`
+                            SELECT DATE(date) as quota_date, territory_name 
+                            FROM daily_quotas 
+                            WHERE product_id = ? AND territory_name = ?
+                            ORDER BY date DESC
+                            LIMIT 5
+                        `, [item.product_id, territory_name]);
+                        
+                        // Check if quota exists for this product today in any territory
+                        const [todayQuotaRows] = await connection.query(`
+                            SELECT territory_name 
+                            FROM daily_quotas 
+                            WHERE product_id = ? AND DATE(date) = CURDATE()
+                            LIMIT 5
+                        `, [item.product_id]);
+                        
+                        console.log(`⚠️ Quota validation failed for product_id=${item.product_id}, product_code=${product?.product_code}`);
+                        console.log(`   Territory searched: "${territory_name}"`);
+                        console.log(`   Quotas for this product/territory (any date):`, anyQuotaRows);
+                        console.log(`   Quotas for this product today (any territory):`, todayQuotaRows);
+                        
+                        validationErrors.push(`Product ${product?.product_code || item.product_id} is not allocated to territory ${territory_name} for today.`);
+                        continue;
+                    }
+
+                    const quota = quotaRows[0];
+                    const maxQuantity = parseInt(quota.max_quantity) || 0;
+                    const soldQuantity = parseInt(quota.sold_quantity) || 0;
+                    const remainingQuantity = maxQuantity - soldQuantity;
+                    const orderedQuantity = parseInt(item.quantity) || 0;
+
+                    if (remainingQuantity <= 0) {
+                        const [productRows] = await connection.query(`
+                            SELECT product_code, name FROM products WHERE id = ?
+                        `, [item.product_id]);
+                        const product = productRows[0];
+                        validationErrors.push(`Product ${product?.product_code || item.product_id} has no remaining units available (quota exhausted).`);
+                    } else if (orderedQuantity > remainingQuantity) {
+                        const [productRows] = await connection.query(`
+                            SELECT product_code, name FROM products WHERE id = ?
+                        `, [item.product_id]);
+                        const product = productRows[0];
+                        validationErrors.push(`Product ${product?.product_code || item.product_id}: Ordered ${orderedQuantity} units, but only ${remainingQuantity} units remaining.`);
+                    }
+                }
+
+                if (validationErrors.length > 0) {
+                    const validationError = new Error('Order validation failed');
+                    validationError.status = 400;
+                    validationError.details = validationErrors;
+                    throw validationError;
+                }
+            }
+            
+            await connection.query(`
+                INSERT INTO orders (order_id, order_type_id, dealer_id, warehouse_id, transport_id, user_id) 
+                VALUES (?, ?, ?, ?, ?, ?)
+            `, [order_id, order_type_id, dealer_id, warehouse_id, transport_id, user_id]);
             
             // Add order items
             for (const item of order_items) {
@@ -2577,7 +2666,16 @@ app.post('/api/orders', async (req, res) => {
         console.error('❌ Order creation error:', error);
         console.error('❌ Error details:', error.message);
         console.error('❌ Stack trace:', error.stack);
-        res.status(500).json({ error: error.message });
+        
+        // Handle validation errors with details
+        if (error.status === 400 && error.details) {
+            return res.status(400).json({ 
+                error: error.message,
+                details: error.details
+            });
+        }
+        
+        res.status(error.status || 500).json({ error: error.message });
     }
 });
 

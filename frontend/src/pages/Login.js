@@ -103,7 +103,6 @@ function Login() {
               loading={loading}
               block
               icon={<LoginOutlined />}
-              style={{ height: '44px' }}
             >
               Login
             </Button>

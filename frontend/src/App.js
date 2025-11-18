@@ -30,6 +30,7 @@ import TSOReport from './pages/TSOReport';
 import TSODashboard from './pages/TSODashboard';
 import UserManagement from './pages/UserManagement';
 import ProductQuotaManagement from './pages/ProductQuotaManagement';
+import DebugPanel from './components/DebugPanel';
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
@@ -562,6 +563,7 @@ function App() {
       <Router>
         <AppContent />
       </Router>
+      <DebugPanel />
     </UserProvider>
   );
 }

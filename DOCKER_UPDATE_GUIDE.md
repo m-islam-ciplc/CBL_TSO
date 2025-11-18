@@ -18,8 +18,8 @@ docker-compose up -d --build
 docker-compose down --rmi all --volumes
 
 # rebuild the full stack from local Dockerfiles
-docker-compose up -d --build
-```
+   docker-compose up -d --build
+   ```
 
 ---
 

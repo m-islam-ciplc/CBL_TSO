@@ -746,10 +746,9 @@ function NewOrdersTablet({ onOrderCreated: _onOrderCreated }) {
                 </Text>
               </div>
             </Col>
-            <Col xs={10} sm={8}>
+            <Col xs={10} sm={8} style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <Button
                 type="primary"
-                size="small"
                 icon={<CheckOutlined />}
                 onClick={() => {
                   // Save form data to localStorage before navigating
@@ -783,11 +782,6 @@ function NewOrdersTablet({ onOrderCreated: _onOrderCreated }) {
                   
                   window.location.href = '/review-orders';
                 }}
-                style={{ 
-                  width: '100%',
-                  fontSize: '13px',
-                  borderRadius: '8px'
-                }}
               >
                 Review Order
               </Button>
@@ -799,51 +793,31 @@ function NewOrdersTablet({ onOrderCreated: _onOrderCreated }) {
       {/* Product Configuration Popup Modal */}
       <Modal
         title={
-          <div style={{ textAlign: 'center', fontSize: '16px', fontWeight: 'bold' }}>
+          <div style={{ textAlign: 'center', fontSize: '26px', fontWeight: 'bold' }}>
             {selectedProductForPopup?.product_code} - {selectedProductForPopup?.name}
           </div>
         }
         open={isPopupVisible}
         onCancel={hideProductPopup}
         footer={null}
-        width={400}
+        width={600}
         centered
         style={{ top: 20 }}
       >
         {selectedProductForPopup && (
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
-            {/* Product Info */}
-            <div style={{ marginBottom: '20px' }}>
+            {/* Show remaining quota for TSO users */}
+            {isTSO && productQuotas[selectedProductForPopup.id] && (
               <div style={{ 
-                fontSize: '18px', 
-                fontWeight: 'bold', 
-                color: '#1890ff',
-                marginBottom: '8px'
+                marginBottom: '20px'
               }}>
-                {selectedProductForPopup.product_code}
+                <Tag color={productQuotas[selectedProductForPopup.id].remaining > 0 ? 'green' : 'red'} style={{ fontSize: '23px', padding: '8px 16px', borderRadius: '6px', fontWeight: 'bold' }}>
+                  {productQuotas[selectedProductForPopup.id].remaining > 0 
+                    ? `Remaining: ${productQuotas[selectedProductForPopup.id].remaining} units` 
+                    : 'Out of stock'}
+                </Tag>
               </div>
-              <div style={{ 
-                fontSize: '14px', 
-                color: '#333',
-                marginBottom: '16px'
-              }}>
-                {selectedProductForPopup.name}
-              </div>
-              
-              {/* Show remaining quota for TSO users */}
-              {isTSO && productQuotas[selectedProductForPopup.id] && (
-                <div style={{ 
-                  fontSize: '12px', 
-                  marginBottom: '16px'
-                }}>
-                  <Tag color={productQuotas[selectedProductForPopup.id].remaining > 0 ? 'green' : 'red'} style={{ fontSize: '12px', padding: '4px 12px' }}>
-                    {productQuotas[selectedProductForPopup.id].remaining > 0 
-                      ? `Remaining: ${productQuotas[selectedProductForPopup.id].remaining} units` 
-                      : 'Out of stock'}
-                  </Tag>
-                </div>
-              )}
-            </div>
+            )}
 
             {/* Quantity Controls */}
             <div style={{ 
@@ -856,15 +830,14 @@ function NewOrdersTablet({ onOrderCreated: _onOrderCreated }) {
               <Button
                 type="primary"
                 shape="circle"
-                size="large"
-                icon={<span style={{ fontSize: '18px', fontWeight: 'bold' }}>-</span>}
+                icon={<span style={{ fontSize: '28px', fontWeight: 'bold' }}>-</span>}
                 onClick={() => updateProductQuantity(selectedProductForPopup.id, -1)}
                 disabled={productQuantities[selectedProductForPopup.id] === 0}
                 style={{ 
-                  width: '40px', 
-                  height: '40px',
-                  backgroundColor: productQuantities[selectedProductForPopup.id] > 0 ? '#ff4d4f' : '#d9d9d9',
-                  borderColor: productQuantities[selectedProductForPopup.id] > 0 ? '#ff4d4f' : '#d9d9d9'
+                  width: '50px', 
+                  height: '50px',
+                  minWidth: '50px',
+                  padding: '0'
                 }}
               />
               
@@ -880,28 +853,28 @@ function NewOrdersTablet({ onOrderCreated: _onOrderCreated }) {
                   }));
                 }}
                 style={{
-                  width: '100px',
-                  textAlign: 'center',
-                  fontSize: '18px',
-                  height: '40px'
+                  width: '120px',
+                  fontSize: '23px',
+                  height: '50px',
+                  fontWeight: 'bold'
                 }}
                 controls={false}
                 placeholder=""
+                className="quantity-input-center"
               />
               
               <Button
                 type="primary"
                 shape="circle"
-                size="large"
-                icon={<span style={{ fontSize: '18px', fontWeight: 'bold' }}>+</span>}
+                icon={<span style={{ fontSize: '28px', fontWeight: 'bold' }}>+</span>}
                 onClick={() => {
                   updateProductQuantity(selectedProductForPopup.id, 1);
                 }}
                 style={{ 
-                  width: '40px', 
-                  height: '40px',
-                  backgroundColor: '#52c41a',
-                  borderColor: '#52c41a'
+                  width: '50px', 
+                  height: '50px',
+                  minWidth: '50px',
+                  padding: '0'
                 }}
               />
             </div>
@@ -914,10 +887,9 @@ function NewOrdersTablet({ onOrderCreated: _onOrderCreated }) {
               justifyContent: 'center',
               flexWrap: 'wrap'
             }}>
-              {[2, 3, 5, 10].map(quickQty => (
+              {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].map(quickQty => (
                 <Button
                   key={quickQty}
-                  size="large"
                   type={productQuantities[selectedProductForPopup.id] === quickQty ? 'primary' : 'default'}
                   onClick={() => {
                     setProductQuantities(prev => ({
@@ -925,13 +897,7 @@ function NewOrdersTablet({ onOrderCreated: _onOrderCreated }) {
                       [selectedProductForPopup.id]: quickQty
                     }));
                   }}
-                  style={{
-                    fontSize: '14px',
-                    height: '40px',
-                    minWidth: '60px',
-                    fontWeight: 'bold',
-                    padding: '0 16px'
-                  }}
+                  style={{ fontSize: '23px', height: '50px', padding: '0 24px', fontWeight: 'bold' }}
                 >
                   {quickQty}
                 </Button>
@@ -941,7 +907,6 @@ function NewOrdersTablet({ onOrderCreated: _onOrderCreated }) {
             {/* Add Button */}
             <Button
               type="primary"
-              size="large"
               onClick={() => {
                 const success = addProductToOrder(selectedProductForPopup);
                 if (success) {
@@ -951,10 +916,9 @@ function NewOrdersTablet({ onOrderCreated: _onOrderCreated }) {
               disabled={productQuantities[selectedProductForPopup.id] === 0}
               style={{
                 width: '100%',
+                fontSize: '23px',
                 height: '50px',
-                fontSize: '16px',
                 fontWeight: 'bold',
-                borderRadius: '8px',
                 backgroundColor: productQuantities[selectedProductForPopup.id] > 0 ? '#52c41a' : '#d9d9d9',
                 borderColor: productQuantities[selectedProductForPopup.id] > 0 ? '#52c41a' : '#d9d9d9'
               }}

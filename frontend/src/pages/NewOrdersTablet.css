@@ -90,4 +90,9 @@
   }
 }
 
+/* Center align InputNumber text in popup modal */
+.quantity-input-center .ant-input-number-input {
+  text-align: center !important;
+  font-weight: bold !important;
+}
 

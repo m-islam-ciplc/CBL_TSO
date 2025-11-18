@@ -16,7 +16,13 @@
     "lint:deadcode:frontend": "cd frontend && npx eslint \"src/**/*.{js,jsx}\"",
     "lint:deadcode:all": "npm run lint:deadcode:backend && npm run lint:deadcode:frontend",
     "depcheck:backend": "cd backend && npx depcheck",
-    "depcheck:frontend": "cd frontend && npx depcheck"
+    "depcheck:frontend": "cd frontend && npx depcheck",
+    "test:workflow": "node workflow/test-cumilla-workflow.js",
+    "test:workflow:docker": "$env:API_URL=\"http://localhost:3002\"; node workflow/test-cumilla-workflow.js",
+    "test:workflow:1": "node workflow/test-cumilla-workflow.js 1",
+    "test:workflow:2": "node workflow/test-cumilla-workflow.js 2",
+    "test:workflow:3": "node workflow/test-cumilla-workflow.js 3",
+    "test:workflow:all": "node workflow/test-cumilla-workflow.js all"
   },
   "devDependencies": {
     "concurrently": "^7.6.0"

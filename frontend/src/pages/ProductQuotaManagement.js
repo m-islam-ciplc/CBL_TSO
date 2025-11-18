@@ -235,6 +235,10 @@ useEffect(() => {
       message.error('Please enter a valid quota amount');
       return;
     }
+    if (!selectedDate) {
+      message.error('Please select a date');
+      return;
+    }
 
     // Prepare quotas to save
     const dateStr = selectedDate.format('YYYY-MM-DD');
@@ -636,7 +640,7 @@ useEffect(() => {
                 <Text strong>Date:</Text>
                 <DatePicker
                   value={selectedDate}
-                  onChange={setSelectedDate}
+                  onChange={(date) => setSelectedDate(date || dayjs())}
                   format="YYYY-MM-DD"
                   disabledDate={disabledDate}
                 />
