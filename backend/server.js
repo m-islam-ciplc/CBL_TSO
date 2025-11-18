@@ -3804,45 +3804,20 @@ app.get('/api/monthly-demand/current-period', (req, res) => {
 });
 
 // Get dealer's monthly demand for current period
+// NOTE: Only dealers should access this endpoint (frontend enforces this via routing)
 app.get('/api/monthly-demand/dealer/:dealerId', (req, res) => {
     const { dealerId } = req.params;
-    const { user_id } = req.query;
     
-    // Authorization: Verify user is a dealer and dealer_id matches
-    if (user_id) {
-        const authQuery = 'SELECT role, dealer_id FROM users WHERE id = ?';
-        db.query(authQuery, [user_id], (err, userResults) => {
-            if (err) {
-                console.error('Error verifying user:', err);
-                return res.status(500).json({ error: 'Database error' });
-            }
-            
-            if (userResults.length === 0) {
-                return res.status(401).json({ error: 'User not found' });
-            }
-            
-            const user = userResults[0];
-            
-            // Only dealers can access monthly demand
-            if (user.role !== 'dealer') {
-                return res.status(403).json({ error: 'Only dealers can access monthly demand' });
-            }
-            
-            // Dealers can only access their own demand
-            if (user.dealer_id !== parseInt(dealerId)) {
-                return res.status(403).json({ error: 'You can only access your own monthly demand' });
-            }
-            
-            // Proceed with fetching demand
-            fetchDealerDemand(dealerId, res);
-        });
-    } else {
-        // If no user_id provided, allow access (for admin/backward compatibility)
-        // But in production, you should require authentication
-        fetchDealerDemand(dealerId, res);
-    }
-    
-    function fetchDealerDemand(dealerId, res) {
+    // Validate dealer exists
+    db.query('SELECT id FROM dealers WHERE id = ?', [dealerId], (err, dealerCheck) => {
+        if (err) {
+            console.error('Error checking dealer:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        if (dealerCheck.length === 0) {
+            return res.status(404).json({ error: 'Dealer not found' });
+        }
+        
         // Get current period
         const query = 'SELECT setting_value FROM settings WHERE setting_key = ?';
         db.query(query, ['monthly_demand_start_day'], (err, results) => {
@@ -3879,150 +3854,103 @@ app.get('/api/monthly-demand/dealer/:dealerId', (req, res) => {
                 });
             });
         });
-    }
+    });
 });
 
 // Create or update dealer monthly demand
+// NOTE: Only dealers should access this endpoint (frontend enforces this via routing)
+// This endpoint allows dealers to submit their monthly battery demand
 app.post('/api/monthly-demand', (req, res) => {
-    const { dealer_id, product_id, quantity, user_id } = req.body;
+    const { dealer_id, product_id, quantity } = req.body;
     
     if (!dealer_id || !product_id || quantity === undefined) {
         return res.status(400).json({ error: 'dealer_id, product_id, and quantity are required' });
     }
     
-    // Authorization: Verify user is a dealer and dealer_id matches
-    if (user_id) {
-        const authQuery = 'SELECT role, dealer_id FROM users WHERE id = ?';
-        db.query(authQuery, [user_id], (err, userResults) => {
-            if (err) {
-                console.error('Error verifying user:', err);
-                return res.status(500).json({ error: 'Database error' });
-            }
-            
-            if (userResults.length === 0) {
-                return res.status(401).json({ error: 'User not found' });
-            }
-            
-            const user = userResults[0];
-            
-            // Only dealers can submit monthly demand
-            if (user.role !== 'dealer') {
-                return res.status(403).json({ error: 'Only dealers can submit monthly demand' });
-            }
-            
-            // Dealers can only submit demand for themselves
-            if (user.dealer_id !== parseInt(dealer_id)) {
-                return res.status(403).json({ error: 'You can only submit monthly demand for yourself' });
-            }
-            
-            // Proceed with saving demand
-            saveDealerDemand(dealer_id, product_id, quantity, res);
-        });
-    } else {
-        // If no user_id provided, allow access (for admin/backward compatibility)
-        // But in production, you should require authentication
-        saveDealerDemand(dealer_id, product_id, quantity, res);
+    if (quantity < 0) {
+        return res.status(400).json({ error: 'Quantity must be 0 or greater' });
     }
     
-    function saveDealerDemand(dealer_id, product_id, quantity, res) {
-        // Get current period
-        const query = 'SELECT setting_value FROM settings WHERE setting_key = ?';
-        db.query(query, ['monthly_demand_start_day'], (err, results) => {
+    // Validate dealer exists
+    db.query('SELECT id FROM dealers WHERE id = ?', [dealer_id], (err, dealerCheck) => {
+        if (err) {
+            console.error('Error checking dealer:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        if (dealerCheck.length === 0) {
+            return res.status(404).json({ error: 'Dealer not found' });
+        }
+        
+        // Validate product exists
+        db.query('SELECT id FROM products WHERE id = ?', [product_id], (err, productCheck) => {
             if (err) {
-                console.error('Error fetching setting:', err);
+                console.error('Error checking product:', err);
                 return res.status(500).json({ error: 'Database error' });
             }
-            const startDay = results.length > 0 ? parseInt(results[0].setting_value) : 18;
-            const period = calculateMonthlyPeriod(startDay);
+            if (productCheck.length === 0) {
+                return res.status(404).json({ error: 'Product not found' });
+            }
             
-            // Insert or update demand
-            const upsertQuery = `
-                INSERT INTO dealer_monthly_demand (dealer_id, product_id, period_start, period_end, quantity)
-                VALUES (?, ?, ?, ?, ?)
-                ON DUPLICATE KEY UPDATE
-                    quantity = ?,
-                    updated_at = CURRENT_TIMESTAMP
-            `;
-            
-            db.query(upsertQuery, [
-                dealer_id,
-                product_id,
-                period.start,
-                period.end,
-                quantity,
-                quantity
-            ], (err, result) => {
+            // Get current period
+            const query = 'SELECT setting_value FROM settings WHERE setting_key = ?';
+            db.query(query, ['monthly_demand_start_day'], (err, results) => {
                 if (err) {
-                    console.error('Error saving monthly demand:', err);
+                    console.error('Error fetching setting:', err);
                     return res.status(500).json({ error: 'Database error' });
                 }
-                res.json({ 
-                    success: true, 
-                    id: result.insertId || 'updated',
-                    period_start: period.start,
-                    period_end: period.end
+                const startDay = results.length > 0 ? parseInt(results[0].setting_value) : 18;
+                const period = calculateMonthlyPeriod(startDay);
+                
+                // Insert or update demand
+                const upsertQuery = `
+                    INSERT INTO dealer_monthly_demand (dealer_id, product_id, period_start, period_end, quantity)
+                    VALUES (?, ?, ?, ?, ?)
+                    ON DUPLICATE KEY UPDATE
+                        quantity = ?,
+                        updated_at = CURRENT_TIMESTAMP
+                `;
+                
+                db.query(upsertQuery, [
+                    dealer_id,
+                    product_id,
+                    period.start,
+                    period.end,
+                    quantity,
+                    quantity
+                ], (err, result) => {
+                    if (err) {
+                        console.error('Error saving monthly demand:', err);
+                        return res.status(500).json({ error: 'Database error' });
+                    }
+                    res.json({ 
+                        success: true, 
+                        id: result.insertId || 'updated',
+                        period_start: period.start,
+                        period_end: period.end
+                    });
                 });
             });
         });
-    }
+    });
 });
 
 // Delete dealer monthly demand
+// NOTE: Only dealers should access this endpoint (frontend enforces this via routing)
+// Dealers can only delete their own monthly demand entries
 app.delete('/api/monthly-demand/:id', (req, res) => {
     const { id } = req.params;
-    const { user_id } = req.query;
     
-    // Authorization: Verify user is a dealer and owns the demand entry
-    if (user_id) {
-        // First, get the demand entry to check dealer_id
-        const getDemandQuery = 'SELECT dealer_id FROM dealer_monthly_demand WHERE id = ?';
-        db.query(getDemandQuery, [id], (err, demandResults) => {
-            if (err) {
-                console.error('Error fetching demand:', err);
-                return res.status(500).json({ error: 'Database error' });
-            }
-            
-            if (demandResults.length === 0) {
-                return res.status(404).json({ error: 'Monthly demand entry not found' });
-            }
-            
-            const demandDealerId = demandResults[0].dealer_id;
-            
-            // Verify user is a dealer and owns this demand
-            const authQuery = 'SELECT role, dealer_id FROM users WHERE id = ?';
-            db.query(authQuery, [user_id], (err, userResults) => {
-                if (err) {
-                    console.error('Error verifying user:', err);
-                    return res.status(500).json({ error: 'Database error' });
-                }
-                
-                if (userResults.length === 0) {
-                    return res.status(401).json({ error: 'User not found' });
-                }
-                
-                const user = userResults[0];
-                
-                // Only dealers can delete monthly demand
-                if (user.role !== 'dealer') {
-                    return res.status(403).json({ error: 'Only dealers can delete monthly demand' });
-                }
-                
-                // Dealers can only delete their own demand
-                if (user.dealer_id !== demandDealerId) {
-                    return res.status(403).json({ error: 'You can only delete your own monthly demand' });
-                }
-                
-                // Proceed with deletion
-                deleteDealerDemand(id, res);
-            });
-        });
-    } else {
-        // If no user_id provided, allow access (for admin/backward compatibility)
-        // But in production, you should require authentication
-        deleteDealerDemand(id, res);
-    }
-    
-    function deleteDealerDemand(id, res) {
+    // First check if the demand entry exists and get its dealer_id
+    db.query('SELECT dealer_id FROM dealer_monthly_demand WHERE id = ?', [id], (err, results) => {
+        if (err) {
+            console.error('Error checking monthly demand:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        if (results.length === 0) {
+            return res.status(404).json({ error: 'Monthly demand entry not found' });
+        }
+        
+        // Delete the demand entry
         const query = 'DELETE FROM dealer_monthly_demand WHERE id = ?';
         db.query(query, [id], (err) => {
             if (err) {
@@ -4031,7 +3959,7 @@ app.delete('/api/monthly-demand/:id', (req, res) => {
             }
             res.json({ success: true });
         });
-    }
+    });
 });
 
 // Get all products for dealer monthly demand selection (filtered by dealer assignments if dealer_id provided)

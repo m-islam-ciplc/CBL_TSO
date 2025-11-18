@@ -309,22 +309,6 @@ function UserManagement() {
           onFinish={handleSubmit}
         >
           <Form.Item
-            name="username"
-            label="Username"
-            rules={[{ required: true, message: 'Please enter username' }]}
-          >
-            <Input placeholder="Enter username" />
-          </Form.Item>
-
-          <Form.Item
-            name="full_name"
-            label="Full Name"
-            rules={[{ required: true, message: 'Please enter full name' }]}
-          >
-            <Input placeholder="Enter full name" />
-          </Form.Item>
-
-          <Form.Item
             name="role"
             label="Role"
             rules={[{ required: true, message: 'Please select role' }]}
@@ -372,10 +356,20 @@ function UserManagement() {
               <Select 
                 placeholder="Select dealer" 
                 showSearch 
-                optionFilterProp="children"
-                filterOption={(input, option) =>
-                  option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
-                }
+                onChange={(dealerId) => {
+                  const selectedDealer = dealers.find(d => d.id === dealerId);
+                  if (selectedDealer && selectedDealer.name) {
+                    form.setFieldsValue({ full_name: selectedDealer.name });
+                  }
+                }}
+                filterOption={(input, option) => {
+                  const dealer = dealers.find(d => d.id === option.value);
+                  if (!dealer) return false;
+                  const searchText = input.toLowerCase();
+                  const dealerCode = (dealer.dealer_code || '').toLowerCase();
+                  const dealerName = (dealer.name || '').toLowerCase();
+                  return dealerCode.includes(searchText) || dealerName.includes(searchText);
+                }}
               >
                 {dealers.map(dealer => (
                   <Option key={dealer.id} value={dealer.id}>
@@ -385,6 +379,22 @@ function UserManagement() {
               </Select>
             </Form.Item>
           )}
+
+          <Form.Item
+            name="username"
+            label="Username"
+            rules={[{ required: true, message: 'Please enter username' }]}
+          >
+            <Input placeholder="Enter username" />
+          </Form.Item>
+
+          <Form.Item
+            name="full_name"
+            label="Full Name"
+            rules={[{ required: true, message: 'Please enter full name' }]}
+          >
+            <Input placeholder="Enter full name" />
+          </Form.Item>
 
           <Form.Item
             name="password"

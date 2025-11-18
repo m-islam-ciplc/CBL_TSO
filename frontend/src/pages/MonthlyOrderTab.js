@@ -23,15 +23,13 @@ import {
 } from '@ant-design/icons';
 import axios from 'axios';
 import { useUser } from '../contexts/UserContext';
-import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 
 function MonthlyOrderTab() {
-  const { dealerId, userId, isDealer } = useUser();
-  const navigate = useNavigate();
+  const { dealerId } = useUser();
   const [demand, setDemand] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -40,20 +38,13 @@ function MonthlyOrderTab() {
   const [periodInfo, setPeriodInfo] = useState({ start: '', end: '' });
   const [form] = Form.useForm();
 
-  // Redirect non-dealers away from this page
   useEffect(() => {
-    if (!isDealer) {
-      navigate('/dashboard');
-    }
-  }, [isDealer, navigate]);
-
-  useEffect(() => {
-    if (dealerId && isDealer) {
+    if (dealerId) {
       loadPeriodInfo();
       loadProducts();
       loadDemand();
     }
-  }, [dealerId, isDealer]);
+  }, [dealerId]);
 
   const loadPeriodInfo = async () => {
     try {
@@ -81,9 +72,7 @@ function MonthlyOrderTab() {
     
     setLoading(true);
     try {
-      const response = await axios.get(`/api/monthly-demand/dealer/${dealerId}`, {
-        params: { user_id: userId }
-      });
+      const response = await axios.get(`/api/monthly-demand/dealer/${dealerId}`);
       setDemand(response.data.demand || []);
       setPeriodInfo({
         start: response.data.period_start,
@@ -91,7 +80,7 @@ function MonthlyOrderTab() {
       });
     } catch (error) {
       console.error('Error loading demand:', error);
-      message.error(error.response?.data?.error || 'Failed to load monthly demand');
+      message.error('Failed to load monthly demand');
     } finally {
       setLoading(false);
     }
@@ -114,14 +103,12 @@ function MonthlyOrderTab() {
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`/api/monthly-demand/${id}`, {
-        params: { user_id: userId }
-      });
+      await axios.delete(`/api/monthly-demand/${id}`);
       message.success('Monthly demand deleted successfully');
       loadDemand();
     } catch (error) {
       console.error('Error deleting demand:', error);
-      message.error(error.response?.data?.error || 'Failed to delete monthly demand');
+      message.error('Failed to delete monthly demand');
     }
   };
 
@@ -130,8 +117,7 @@ function MonthlyOrderTab() {
       await axios.post('/api/monthly-demand', {
         dealer_id: dealerId,
         product_id: values.product_id,
-        quantity: values.quantity,
-        user_id: userId
+        quantity: values.quantity
       });
       
       message.success(editingDemand ? 'Monthly demand updated successfully' : 'Monthly demand submitted successfully');
