@@ -247,6 +247,7 @@ function DealerProductAssignment() {
                 loading={loading}
                 rowKey="id"
                 pagination={{ pageSize: 20 }}
+                size="small"
               />
             </Card>
           </>

@@ -329,7 +329,7 @@ function TSODashboard() {
               columns={columns}
               rowKey="id"
               pagination={{ pageSize: 20 }}
-              size="middle"
+              size="small"
             />
           )}
         </Card>

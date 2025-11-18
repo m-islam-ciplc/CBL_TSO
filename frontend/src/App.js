@@ -33,6 +33,7 @@ import TSODashboard from './pages/TSODashboard';
 import UserManagement from './pages/UserManagement';
 import ProductQuotaManagement from './pages/ProductQuotaManagement';
 import MonthlyOrderTab from './pages/MonthlyOrderTab';
+import MonthlyDemandTabularSample from './pages/MonthlyDemandTabularSample';
 import AdminSettings from './pages/AdminSettings';
 import DealerProductAssignment from './pages/DealerProductAssignment';
 import DebugPanel from './components/DebugPanel';
@@ -509,6 +510,7 @@ function AppContent() {
             <MonthlyOrderTab /> :
             <Dashboard setStats={setStats} />
           } />
+          <Route path="/monthly-demand-sample" element={<MonthlyDemandTabularSample />} />
           <Route path="/new-orders" element={<NewOrdersTablet onOrderCreated={refreshOrders} />} />
           <Route path="/review-orders" element={<ReviewOrdersTablet onOrderCreated={refreshOrders} />} />
           <Route path="/placed-orders" element={<PlacedOrders refreshTrigger={refreshTrigger} />} />

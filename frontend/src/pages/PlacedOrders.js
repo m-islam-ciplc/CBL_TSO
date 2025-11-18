@@ -316,10 +316,10 @@ function PlacedOrders({ refreshTrigger }) {
                 <span style={{ fontWeight: 'bold', color: '#1890ff' }}>
                   #{index + 1}
                 </span>{' '}
-                <span style={{ fontWeight: 'bold' }}>
+                <span style={{ color: '#666' }}>
                   {product.product_code}
                 </span>{' '}
-                <span style={{ color: '#666' }}>
+                <span style={{ fontWeight: 'bold' }}>
                   {product.product_name}
                 </span>
                 <span style={{ color: '#52c41a', marginLeft: '8px' }}>
