@@ -13,8 +13,6 @@ import {
   Space,
   Tag,
   Popconfirm,
-  Tabs,
-  Checkbox,
   Divider,
 } from 'antd';
 import {
@@ -27,7 +25,6 @@ import axios from 'axios';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
-const { TabPane } = Tabs;
 
 function DealerProductAssignment() {
   const [dealers, setDealers] = useState([]);
@@ -38,7 +35,6 @@ function DealerProductAssignment() {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedDealer, setSelectedDealer] = useState(null);
   const [form] = Form.useForm();
-  const [activeTab, setActiveTab] = useState('assignments');
 
   useEffect(() => {
     loadDealers();
@@ -99,7 +95,6 @@ function DealerProductAssignment() {
 
   const handleDealerSelect = (dealerId) => {
     setSelectedDealer(dealerId);
-    setActiveTab('assignments');
   };
 
   const handleAddAssignment = () => {
@@ -124,37 +119,23 @@ function DealerProductAssignment() {
 
   const handleSubmit = async (values) => {
     try {
-      await axios.post('/api/dealer-assignments', {
-        dealer_id: selectedDealer,
-        assignment_type: values.assignment_type,
-        product_id: values.assignment_type === 'product' ? values.product_id : null,
-        product_category: values.assignment_type === 'category' ? values.product_category : null,
-      });
-      
-      message.success('Assignment added successfully');
-      setModalVisible(false);
-      form.resetFields();
-      loadAssignments();
-    } catch (error) {
-      console.error('Error saving assignment:', error);
-      message.error(error.response?.data?.error || 'Failed to save assignment');
-    }
-  };
-
-  const handleBulkAssign = async (values) => {
-    try {
       await axios.post('/api/dealer-assignments/bulk', {
         dealer_id: selectedDealer,
         product_ids: values.product_ids || [],
         product_categories: values.product_categories || [],
       });
       
-      message.success('Bulk assignment completed successfully');
+      const productCount = (values.product_ids || []).length;
+      const categoryCount = (values.product_categories || []).length;
+      const totalCount = productCount + categoryCount;
+      
+      message.success(`Successfully assigned ${totalCount} item${totalCount !== 1 ? 's' : ''}`);
+      setModalVisible(false);
       form.resetFields();
       loadAssignments();
     } catch (error) {
-      console.error('Error bulk assigning:', error);
-      message.error(error.response?.data?.error || 'Failed to bulk assign');
+      console.error('Error saving assignment:', error);
+      message.error(error.response?.data?.error || 'Failed to save assignment');
     }
   };
 
@@ -181,7 +162,7 @@ function DealerProductAssignment() {
       },
     },
     {
-      title: 'Category',
+      title: 'Application Name',
       dataIndex: 'product_category',
       key: 'product_category',
       render: (category) => category || '-',
@@ -196,13 +177,10 @@ function DealerProductAssignment() {
           onConfirm={() => handleDelete(record.id)}
         >
           <Button
-            type="primary"
-            danger
             icon={<DeleteOutlined />}
             size="small"
-          >
-            Delete
-          </Button>
+            danger
+          />
         </Popconfirm>
       ),
     },
@@ -224,16 +202,15 @@ function DealerProductAssignment() {
               style={{ width: '100%', marginTop: 8 }}
               placeholder="Select a dealer"
               showSearch
-              optionFilterProp="children"
+              optionFilterProp="label"
               filterOption={(input, option) =>
-                (option?.children?.[1]?.props?.children || '').toLowerCase().includes(input.toLowerCase()) ||
-                (option?.children?.[0]?.props?.children || '').toLowerCase().includes(input.toLowerCase())
+                option.label.toLowerCase().indexOf(input.toLowerCase()) >= 0
               }
               value={selectedDealer}
               onChange={handleDealerSelect}
             >
               {dealers.map(dealer => (
-                <Option key={dealer.id} value={dealer.id}>
+                <Option key={dealer.id} value={dealer.id} label={`${dealer.dealer_code} - ${dealer.name}`}>
                   {dealer.dealer_code} - {dealer.name}
                 </Option>
               ))}
@@ -264,78 +241,13 @@ function DealerProductAssignment() {
                 </Col>
               </Row>
 
-              <Tabs activeKey={activeTab} onChange={setActiveTab}>
-                <TabPane tab="Current Assignments" key="assignments">
-                  <Table
-                    columns={assignmentColumns}
-                    dataSource={assignments}
-                    loading={loading}
-                    rowKey="id"
-                    pagination={{ pageSize: 20 }}
-                  />
-                </TabPane>
-
-                <TabPane tab="Bulk Assign" key="bulk">
-                  <Card>
-                    <Form
-                      form={form}
-                      layout="vertical"
-                      onFinish={handleBulkAssign}
-                    >
-                      <Form.Item
-                        name="product_ids"
-                        label="Select Products"
-                      >
-                        <Select
-                          mode="multiple"
-                          placeholder="Select products"
-                          showSearch
-                          filterOption={(input, option) =>
-                            (option?.children?.[1]?.props?.children || '').toLowerCase().includes(input.toLowerCase()) ||
-                            (option?.children?.[0]?.props?.children || '').toLowerCase().includes(input.toLowerCase())
-                          }
-                          style={{ width: '100%' }}
-                        >
-                          {products.map(product => (
-                            <Option key={product.id} value={product.id}>
-                              {product.product_code} - {product.name}
-                            </Option>
-                          ))}
-                        </Select>
-                      </Form.Item>
-
-                      <Divider>OR</Divider>
-
-                      <Form.Item
-                        name="product_categories"
-                        label="Select Categories"
-                      >
-                        <Select
-                          mode="multiple"
-                          placeholder="Select categories"
-                          showSearch
-                          filterOption={(input, option) =>
-                            option.children.toLowerCase().includes(input.toLowerCase())
-                          }
-                          style={{ width: '100%' }}
-                        >
-                          {categories.map(category => (
-                            <Option key={category} value={category}>
-                              {category}
-                            </Option>
-                          ))}
-                        </Select>
-                      </Form.Item>
-
-                      <Form.Item>
-                        <Button type="primary" htmlType="submit">
-                          Bulk Assign
-                        </Button>
-                      </Form.Item>
-                    </Form>
-                  </Card>
-                </TabPane>
-              </Tabs>
+              <Table
+                columns={assignmentColumns}
+                dataSource={assignments}
+                loading={loading}
+                rowKey="id"
+                pagination={{ pageSize: 20 }}
+              />
             </Card>
           </>
         )}
@@ -357,82 +269,53 @@ function DealerProductAssignment() {
           onFinish={handleSubmit}
         >
           <Form.Item
-            name="assignment_type"
-            label="Assignment Type"
-            rules={[{ required: true, message: 'Please select assignment type' }]}
+            name="product_ids"
+            label="Select Products (Brand Name)"
           >
-            <Select placeholder="Select type">
-              <Option value="product">Specific Product</Option>
-              <Option value="category">Product Category</Option>
+            <Select
+              mode="multiple"
+              placeholder="Select products"
+              showSearch
+              optionFilterProp="label"
+              filterOption={(input, option) =>
+                option.label.toLowerCase().indexOf(input.toLowerCase()) >= 0
+              }
+            >
+              {products.map(product => (
+                <Option key={product.id} value={product.id} label={`${product.product_code} - ${product.name}`}>
+                  {product.product_code} - {product.name}
+                </Option>
+              ))}
             </Select>
           </Form.Item>
 
+          <Divider>OR</Divider>
+
           <Form.Item
-            noStyle
-            shouldUpdate={(prevValues, currentValues) =>
-              prevValues.assignment_type !== currentValues.assignment_type
-            }
+            name="product_categories"
+            label="Select Application Names"
           >
-            {({ getFieldValue }) => {
-              const assignmentType = getFieldValue('assignment_type');
-              
-              if (assignmentType === 'product') {
-                return (
-                  <Form.Item
-                    name="product_id"
-                    label="Product"
-                    rules={[{ required: true, message: 'Please select a product' }]}
-                  >
-                    <Select
-                      placeholder="Select product"
-                      showSearch
-                      filterOption={(input, option) =>
-                        (option?.children?.[1]?.props?.children || '').toLowerCase().includes(input.toLowerCase()) ||
-                        (option?.children?.[0]?.props?.children || '').toLowerCase().includes(input.toLowerCase())
-                      }
-                    >
-                      {products.map(product => (
-                        <Option key={product.id} value={product.id}>
-                          {product.product_code} - {product.name}
-                        </Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-                );
+            <Select
+              mode="multiple"
+              placeholder="Select application names"
+              showSearch
+              optionFilterProp="label"
+              filterOption={(input, option) =>
+                option.label.toLowerCase().indexOf(input.toLowerCase()) >= 0
               }
-              
-              if (assignmentType === 'category') {
-                return (
-                  <Form.Item
-                    name="product_category"
-                    label="Product Category"
-                    rules={[{ required: true, message: 'Please select a category' }]}
-                  >
-                    <Select
-                      placeholder="Select category"
-                      showSearch
-                      filterOption={(input, option) =>
-                        option.children.toLowerCase().includes(input.toLowerCase())
-                      }
-                    >
-                      {categories.map(category => (
-                        <Option key={category} value={category}>
-                          {category}
-                        </Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-                );
-              }
-              
-              return null;
-            }}
+            >
+              {categories.map(category => (
+                <Option key={category} value={category} label={category}>
+                  {category}
+                </Option>
+              ))}
+            </Select>
           </Form.Item>
 
           <Form.Item>
             <Space>
               <Button type="primary" htmlType="submit">
-                Add
+                Add Assignment
               </Button>
               <Button onClick={() => {
                 setModalVisible(false);

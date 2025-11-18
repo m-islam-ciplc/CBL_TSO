@@ -356,23 +356,19 @@ function UserManagement() {
               <Select 
                 placeholder="Select dealer" 
                 showSearch 
+                optionFilterProp="label"
                 onChange={(dealerId) => {
                   const selectedDealer = dealers.find(d => d.id === dealerId);
                   if (selectedDealer && selectedDealer.name) {
                     form.setFieldsValue({ full_name: selectedDealer.name });
                   }
                 }}
-                filterOption={(input, option) => {
-                  const dealer = dealers.find(d => d.id === option.value);
-                  if (!dealer) return false;
-                  const searchText = input.toLowerCase();
-                  const dealerCode = (dealer.dealer_code || '').toLowerCase();
-                  const dealerName = (dealer.name || '').toLowerCase();
-                  return dealerCode.includes(searchText) || dealerName.includes(searchText);
-                }}
+                filterOption={(input, option) =>
+                  option.label.toLowerCase().indexOf(input.toLowerCase()) >= 0
+                }
               >
                 {dealers.map(dealer => (
-                  <Option key={dealer.id} value={dealer.id}>
+                  <Option key={dealer.id} value={dealer.id} label={`${dealer.dealer_code} - ${dealer.name}`}>
                     {dealer.dealer_code} - {dealer.name}
                   </Option>
                 ))}

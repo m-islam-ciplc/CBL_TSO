@@ -2504,17 +2504,6 @@ app.get('/api/dealers/filter', (req, res) => {
     });
 });
 
-// Get all products
-app.get('/api/products', (req, res) => {
-    db.query('SELECT id, product_code, name, brand_code, brand_name, application_name, unit_tp FROM products', (err, results) => {
-        if (err) {
-            res.status(500).json({ error: err.message });
-        } else {
-            res.json(results);
-        }
-    });
-});
-
 // Create new order with multiple products
 app.post('/api/orders', async (req, res) => {
     try {
@@ -3881,14 +3870,32 @@ app.post('/api/monthly-demand', (req, res) => {
             return res.status(404).json({ error: 'Dealer not found' });
         }
         
-        // Validate product exists
-        db.query('SELECT id FROM products WHERE id = ?', [product_id], (err, productCheck) => {
+        // Validate product exists and is assigned to this dealer
+        const productAssignmentQuery = `
+            SELECT p.id 
+            FROM products p
+            WHERE p.id = ? 
+            AND (
+                p.id IN (
+                    SELECT product_id 
+                    FROM dealer_product_assignments 
+                    WHERE dealer_id = ? AND assignment_type = 'product' AND product_id IS NOT NULL
+                )
+                OR p.application_name IN (
+                    SELECT product_category 
+                    FROM dealer_product_assignments 
+                    WHERE dealer_id = ? AND assignment_type = 'category' AND product_category IS NOT NULL
+                )
+            )
+        `;
+        
+        db.query(productAssignmentQuery, [product_id, dealer_id, dealer_id], (err, productCheck) => {
             if (err) {
-                console.error('Error checking product:', err);
+                console.error('Error checking product assignment:', err);
                 return res.status(500).json({ error: 'Database error' });
             }
             if (productCheck.length === 0) {
-                return res.status(404).json({ error: 'Product not found' });
+                return res.status(403).json({ error: 'This product is not assigned to you. Please contact admin to assign products.' });
             }
             
             // Get current period
@@ -3981,7 +3988,7 @@ app.get('/api/products', (req, res) => {
                 UNION
                 SELECT id 
                 FROM products 
-                WHERE product_category IN (
+                WHERE application_name IN (
                     SELECT product_category 
                     FROM dealer_product_assignments 
                     WHERE dealer_id = ? AND assignment_type = 'category' AND product_category IS NOT NULL
@@ -3992,7 +3999,7 @@ app.get('/api/products', (req, res) => {
         params = [dealer_id, dealer_id];
     } else {
         // Admin or no filter - return all products
-        query = 'SELECT id, product_code, name, product_category FROM products ORDER BY product_code';
+        query = 'SELECT id, product_code, name, brand_code, brand_name, application_name, unit_tp, product_category FROM products ORDER BY product_code';
     }
     
     db.query(query, params, (err, results) => {
@@ -4010,13 +4017,13 @@ app.get('/api/products', (req, res) => {
 
 // Get all product categories
 app.get('/api/products/categories', (req, res) => {
-    const query = 'SELECT DISTINCT product_category FROM products WHERE product_category IS NOT NULL AND product_category != "" ORDER BY product_category';
+    const query = 'SELECT DISTINCT application_name FROM products WHERE application_name IS NOT NULL AND application_name != "" AND application_name != "Dummy" ORDER BY application_name';
     db.query(query, (err, results) => {
         if (err) {
             console.error('Error fetching categories:', err);
             return res.status(500).json({ error: 'Database error' });
         }
-        res.json(results.map(r => r.product_category));
+        res.json(results.map(r => r.application_name));
     });
 });
 

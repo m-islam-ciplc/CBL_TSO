@@ -169,13 +169,10 @@ function MonthlyOrderTab() {
             cancelText="No"
           >
             <Button
-              type="primary"
-              danger
               icon={<DeleteOutlined />}
               size="small"
-            >
-              Delete
-            </Button>
+              danger
+            />
           </Popconfirm>
         </Space>
       ),
@@ -239,14 +236,14 @@ function MonthlyOrderTab() {
             <Select
               placeholder="Select a product"
               showSearch
+              optionFilterProp="label"
               filterOption={(input, option) =>
-                (option?.children?.[1]?.props?.children || '').toLowerCase().includes(input.toLowerCase()) ||
-                (option?.children?.[0]?.props?.children || '').toLowerCase().includes(input.toLowerCase())
+                option.label.toLowerCase().indexOf(input.toLowerCase()) >= 0
               }
               disabled={!!editingDemand}
             >
               {products.map(product => (
-                <Option key={product.id} value={product.id}>
+                <Option key={product.id} value={product.id} label={`${product.product_code} - ${product.name}`}>
                   {product.product_code} - {product.name}
                 </Option>
               ))}
