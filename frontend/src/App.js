@@ -16,6 +16,8 @@ import {
   BarChartOutlined,
   LogoutOutlined,
   MoreOutlined,
+  CalendarOutlined,
+  SettingOutlined,
 } from '@ant-design/icons';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -30,13 +32,16 @@ import TSOReport from './pages/TSOReport';
 import TSODashboard from './pages/TSODashboard';
 import UserManagement from './pages/UserManagement';
 import ProductQuotaManagement from './pages/ProductQuotaManagement';
+import MonthlyOrderTab from './pages/MonthlyOrderTab';
+import AdminSettings from './pages/AdminSettings';
+import DealerProductAssignment from './pages/DealerProductAssignment';
 import DebugPanel from './components/DebugPanel';
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
 
 function AppContent() {
-  const { userRole, isTSO, setUserRole, setUserName } = useUser();
+  const { userRole, isTSO, isDealer, setUserRole, setUserName } = useUser();
   const [, setStats] = useState({
     dealers: 0,
     warehouses: 0,
@@ -218,7 +223,7 @@ function AppContent() {
     setMenuOverflow(hasOverflow);
     setVisibleMenuItems(visibleItemKeys);
     setHiddenMenuItems(hiddenItemKeys);
-  }, [isTSO, userRole]);
+  }, [isTSO, isDealer, userRole]);
 
   // Check overflow on mount, resize, and when menu items change
   useEffect(() => {
@@ -262,7 +267,7 @@ function AppContent() {
       resizeObserver.disconnect();
       window.removeEventListener('resize', handleResize);
     };
-  }, [userRole, isTSO, checkMenuOverflow]);
+  }, [userRole, isTSO, isDealer, checkMenuOverflow]);
 
   const menuItems = isTSO ? [
     {
@@ -289,6 +294,12 @@ function AppContent() {
       key: 'tso-report',
       icon: <FileExcelOutlined />,
       label: 'My Reports',
+    },
+  ] : isDealer ? [
+    {
+      key: 'monthly-orders',
+      icon: <CalendarOutlined />,
+      label: 'Monthly Demand',
     },
   ] : [
     {
@@ -330,6 +341,14 @@ function AppContent() {
       key: 'user-management',
       icon: <TeamOutlined />,
       label: 'Manage Users',
+    }, {
+      key: 'dealer-product-assignment',
+      icon: <ShoppingCartOutlined />,
+      label: 'Dealer Products',
+    }, {
+      key: 'admin-settings',
+      icon: <SettingOutlined />,
+      label: 'Settings',
     }] : []),
   ];
   
@@ -450,7 +469,7 @@ function AppContent() {
                 borderRadius: '4px'
               }}
             >
-              {userRole === 'admin' ? 'Admin Logout' : userRole === 'tso' ? 'TSO Logout' : `${userRole.charAt(0).toUpperCase() + userRole.slice(1)} Logout`}
+              {userRole === 'admin' ? 'Admin Logout' : userRole === 'tso' ? 'TSO Logout' : userRole === 'dealer' ? 'Dealer Logout' : `${userRole ? userRole.charAt(0).toUpperCase() + userRole.slice(1) : ''} Logout`}
             </Button>
           </div>
         </Header>
@@ -474,11 +493,20 @@ function AppContent() {
           <Route path="/" element={
             isTSO ? 
             <TSODashboard /> : 
+            isDealer ?
+            <MonthlyOrderTab /> :
             <Dashboard setStats={setStats} />
           } />
           <Route path="/dashboard" element={
             isTSO ? 
             <TSODashboard /> : 
+            isDealer ?
+            <MonthlyOrderTab /> :
+            <Dashboard setStats={setStats} />
+          } />
+          <Route path="/monthly-orders" element={
+            isDealer ?
+            <MonthlyOrderTab /> :
             <Dashboard setStats={setStats} />
           } />
           <Route path="/new-orders" element={<NewOrdersTablet onOrderCreated={refreshOrders} />} />
@@ -512,6 +540,16 @@ function AppContent() {
           <Route path="/user-management" element={
             userRole === 'admin' ? 
             <UserManagement /> : 
+            <Dashboard setStats={setStats} />
+          } />
+          <Route path="/admin-settings" element={
+            userRole === 'admin' ? 
+            <AdminSettings /> : 
+            <Dashboard setStats={setStats} />
+          } />
+          <Route path="/dealer-product-assignment" element={
+            userRole === 'admin' ? 
+            <DealerProductAssignment /> : 
             <Dashboard setStats={setStats} />
           } />
           <Route path="/manage-quotas" element={

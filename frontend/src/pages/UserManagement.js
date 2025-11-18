@@ -29,6 +29,7 @@ const { Option } = Select;
 function UserManagement() {
   const [users, setUsers] = useState([]);
   const [territories, setTerritories] = useState([]);
+  const [dealers, setDealers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -38,6 +39,7 @@ function UserManagement() {
   useEffect(() => {
     loadUsers();
     loadTerritories();
+    loadDealers();
   }, []);
 
   const loadUsers = async () => {
@@ -59,6 +61,15 @@ function UserManagement() {
       setTerritories(response.data);
     } catch (_error) {
       console.error('Failed to load territories:', _error);
+    }
+  };
+
+  const loadDealers = async () => {
+    try {
+      const response = await axios.get('/api/dealers');
+      setDealers(response.data || []);
+    } catch (_error) {
+      console.error('Failed to load dealers:', _error);
     }
   };
 
@@ -162,13 +173,15 @@ function UserManagement() {
           admin: 'red',
           sales_manager: 'blue',
           tso: 'green',
+          dealer: 'orange',
         };
-        return <Tag color={colors[role]}>{role.toUpperCase()}</Tag>;
+        return <Tag color={colors[role] || 'default'}>{role.toUpperCase()}</Tag>;
       },
       filters: [
         { text: 'Admin', value: 'admin' },
         { text: 'Sales Manager', value: 'sales_manager' },
         { text: 'TSO', value: 'tso' },
+        { text: 'Dealer', value: 'dealer' },
       ],
       onFilter: (value, record) => record.role === value,
     },
@@ -322,10 +335,15 @@ function UserManagement() {
               if (value !== 'tso') {
                 form.setFieldsValue({ territory_name: null });
               }
+              // Clear dealer if not dealer
+              if (value !== 'dealer') {
+                form.setFieldsValue({ dealer_id: null });
+              }
             }}>
               <Option value="admin">Admin</Option>
               <Option value="sales_manager">Sales Manager</Option>
               <Option value="tso">TSO</Option>
+              <Option value="dealer">Dealer</Option>
             </Select>
           </Form.Item>
 
@@ -340,6 +358,29 @@ function UserManagement() {
                 }>
                 {territories.map(territory => (
                   <Option key={territory} value={territory}>{territory}</Option>
+                ))}
+              </Select>
+            </Form.Item>
+          )}
+
+          {(selectedRole === 'dealer' || editingUser?.role === 'dealer') && (
+            <Form.Item
+              name="dealer_id"
+              label="Dealer"
+              rules={[{ required: true, message: 'Please select dealer for dealer users' }]}
+            >
+              <Select 
+                placeholder="Select dealer" 
+                showSearch 
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
+                }
+              >
+                {dealers.map(dealer => (
+                  <Option key={dealer.id} value={dealer.id}>
+                    {dealer.dealer_code} - {dealer.name}
+                  </Option>
                 ))}
               </Select>
             </Form.Item>

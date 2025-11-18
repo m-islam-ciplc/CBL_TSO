@@ -14,10 +14,11 @@ export const UserProvider = ({ children }) => {
   // Initialize from sessionStorage if available
   const savedUser = sessionStorage.getItem('user') ? JSON.parse(sessionStorage.getItem('user')) : null;
   
-  const [userRole, setUserRole] = useState(savedUser?.role || null); // 'tso', 'sales_manager', or 'admin'
+  const [userRole, setUserRole] = useState(savedUser?.role || null); // 'tso', 'sales_manager', 'admin', or 'dealer'
   const [userName, setUserName] = useState(savedUser?.full_name || null);
   const [territoryName, setTerritoryName] = useState(savedUser?.territory_name || null);
   const [userId, setUserId] = useState(savedUser?.id || null);
+  const [dealerId, setDealerId] = useState(savedUser?.dealer_id || null);
   const [quotaRefreshTrigger, setQuotaRefreshTrigger] = useState(0); // Trigger for quota refresh
 
   const triggerQuotaRefresh = useCallback(() => {
@@ -30,15 +31,18 @@ export const UserProvider = ({ children }) => {
     isAdmin: userRole === 'admin',
     isTSO: userRole === 'tso',
     isSalesManager: userRole === 'sales_manager',
+    isDealer: userRole === 'dealer',
     setUserRole,
     setUserName,
     setTerritoryName,
     setUserId,
+    setDealerId,
     territoryName,
     userId,
+    dealerId,
     quotaRefreshTrigger,
     triggerQuotaRefresh
-  }), [userRole, userName, territoryName, userId, quotaRefreshTrigger, triggerQuotaRefresh]);
+  }), [userRole, userName, territoryName, userId, dealerId, quotaRefreshTrigger, triggerQuotaRefresh]);
 
   return (
     <UserContext.Provider value={value}>

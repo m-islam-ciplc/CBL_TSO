@@ -1529,7 +1529,12 @@ function broadcastQuotaChange() {
 app.post('/api/auth/login', (req, res) => {
   const { username, password } = req.body;
   
-  const query = 'SELECT * FROM users WHERE username = ? AND is_active = TRUE';
+  const query = `
+    SELECT u.*, d.name AS dealer_name, d.dealer_code 
+    FROM users u 
+    LEFT JOIN dealers d ON u.dealer_id = d.id 
+    WHERE u.username = ? AND u.is_active = TRUE
+  `;
   
   db.query(query, [username], async (err, results) => {
     if (err) {
@@ -1580,7 +1585,7 @@ app.post('/api/auth/logout', (req, res) => {
 
 // Manage Users routes
 app.get('/api/users', (req, res) => {
-  const query = 'SELECT id, username, full_name, role, territory_name, is_active, created_at, updated_at FROM users ORDER BY id';
+  const query = 'SELECT id, username, full_name, role, territory_name, dealer_id, is_active, created_at, updated_at FROM users ORDER BY id';
   
   db.query(query, (err, results) => {
     if (err) {
@@ -1592,7 +1597,7 @@ app.get('/api/users', (req, res) => {
 });
 
 app.post('/api/users', async (req, res) => {
-  const { username, password, password_hash, full_name, role, territory_name } = req.body;
+  const { username, password, password_hash, full_name, role, territory_name, dealer_id } = req.body;
   
   // Get password from either field
   const plainPassword = password_hash || password;
@@ -1605,11 +1610,11 @@ app.post('/api/users', async (req, res) => {
     // Hash the password
     const hashedPassword = await bcrypt.hash(plainPassword, 10);
     
-    console.log('Creating user with data:', { username, full_name, role, territory_name, hasPassword: !!plainPassword });
+    console.log('Creating user with data:', { username, full_name, role, territory_name, dealer_id, hasPassword: !!plainPassword });
     
-    const query = 'INSERT INTO users (username, password_hash, full_name, role, territory_name) VALUES (?, ?, ?, ?, ?)';
+    const query = 'INSERT INTO users (username, password_hash, full_name, role, territory_name, dealer_id) VALUES (?, ?, ?, ?, ?, ?)';
     
-    db.query(query, [username, hashedPassword, full_name, role, territory_name || null], (err, result) => {
+    db.query(query, [username, hashedPassword, full_name, role, territory_name || null, dealer_id || null], (err, result) => {
       if (err) {
         console.error('Error creating user:', err);
         if (err.code === 'ER_DUP_ENTRY') {
@@ -1627,11 +1632,11 @@ app.post('/api/users', async (req, res) => {
 
 app.put('/api/users/:id', async (req, res) => {
   const { id } = req.params;
-  const { username, password, password_hash, full_name, role, territory_name, is_active } = req.body;
+  const { username, password, password_hash, full_name, role, territory_name, dealer_id, is_active } = req.body;
   
   try {
-    let query = 'UPDATE users SET username = ?, full_name = ?, role = ?, territory_name = ?';
-    const params = [username, full_name, role, territory_name || null];
+    let query = 'UPDATE users SET username = ?, full_name = ?, role = ?, territory_name = ?, dealer_id = ?';
+    const params = [username, full_name, role, territory_name || null, dealer_id || null];
     
     // Update password if provided (from either password or password_hash field)
     const newPassword = password_hash || password;
@@ -3709,5 +3714,496 @@ app.delete('/api/orders/:id', async (req, res) => {
         console.error('Error deleting order:', error);
         res.status(500).json({ error: error.message });
     }
+});
+
+// ============================================================================
+// Dealer Monthly Demand Management API
+// Dealers submit their monthly battery demand/needs
+// ============================================================================
+
+// Helper function to calculate monthly period dates based on start day
+function calculateMonthlyPeriod(startDay) {
+    const today = new Date();
+    const currentDay = today.getDate();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    
+    let periodStart, periodEnd;
+    
+    if (currentDay >= startDay) {
+        // Current period started this month
+        periodStart = new Date(currentYear, currentMonth, startDay);
+        periodEnd = new Date(currentYear, currentMonth + 1, startDay - 1);
+    } else {
+        // Current period started last month
+        periodStart = new Date(currentYear, currentMonth - 1, startDay);
+        periodEnd = new Date(currentYear, currentMonth, startDay - 1);
+    }
+    
+    return {
+        start: periodStart.toISOString().split('T')[0],
+        end: periodEnd.toISOString().split('T')[0]
+    };
+}
+
+// Get monthly demand period start day setting
+app.get('/api/settings/monthly-demand-start-day', (req, res) => {
+    const query = 'SELECT setting_value FROM settings WHERE setting_key = ?';
+    db.query(query, ['monthly_demand_start_day'], (err, results) => {
+        if (err) {
+            console.error('Error fetching setting:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        const startDay = results.length > 0 ? parseInt(results[0].setting_value) : 18;
+        res.json({ start_day: startDay });
+    });
+});
+
+// Update monthly demand period start day setting (Admin only)
+app.put('/api/settings/monthly-demand-start-day', (req, res) => {
+    const { start_day } = req.body;
+    
+    if (!start_day || start_day < 1 || start_day > 31) {
+        return res.status(400).json({ error: 'Start day must be between 1 and 31' });
+    }
+    
+    const query = `
+        INSERT INTO settings (setting_key, setting_value, description) 
+        VALUES (?, ?, ?)
+        ON DUPLICATE KEY UPDATE 
+            setting_value = ?,
+            updated_at = CURRENT_TIMESTAMP
+    `;
+    
+    db.query(query, [
+        'monthly_demand_start_day',
+        start_day.toString(),
+        'Day of month when monthly demand period starts (1-31)',
+        start_day.toString()
+    ], (err) => {
+        if (err) {
+            console.error('Error updating setting:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        res.json({ success: true, start_day: parseInt(start_day) });
+    });
+});
+
+// Get current monthly period dates
+app.get('/api/monthly-demand/current-period', (req, res) => {
+    const query = 'SELECT setting_value FROM settings WHERE setting_key = ?';
+    db.query(query, ['monthly_demand_start_day'], (err, results) => {
+        if (err) {
+            console.error('Error fetching setting:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        const startDay = results.length > 0 ? parseInt(results[0].setting_value) : 18;
+        const period = calculateMonthlyPeriod(startDay);
+        res.json(period);
+    });
+});
+
+// Get dealer's monthly demand for current period
+app.get('/api/monthly-demand/dealer/:dealerId', (req, res) => {
+    const { dealerId } = req.params;
+    const { user_id } = req.query;
+    
+    // Authorization: Verify user is a dealer and dealer_id matches
+    if (user_id) {
+        const authQuery = 'SELECT role, dealer_id FROM users WHERE id = ?';
+        db.query(authQuery, [user_id], (err, userResults) => {
+            if (err) {
+                console.error('Error verifying user:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            
+            if (userResults.length === 0) {
+                return res.status(401).json({ error: 'User not found' });
+            }
+            
+            const user = userResults[0];
+            
+            // Only dealers can access monthly demand
+            if (user.role !== 'dealer') {
+                return res.status(403).json({ error: 'Only dealers can access monthly demand' });
+            }
+            
+            // Dealers can only access their own demand
+            if (user.dealer_id !== parseInt(dealerId)) {
+                return res.status(403).json({ error: 'You can only access your own monthly demand' });
+            }
+            
+            // Proceed with fetching demand
+            fetchDealerDemand(dealerId, res);
+        });
+    } else {
+        // If no user_id provided, allow access (for admin/backward compatibility)
+        // But in production, you should require authentication
+        fetchDealerDemand(dealerId, res);
+    }
+    
+    function fetchDealerDemand(dealerId, res) {
+        // Get current period
+        const query = 'SELECT setting_value FROM settings WHERE setting_key = ?';
+        db.query(query, ['monthly_demand_start_day'], (err, results) => {
+            if (err) {
+                console.error('Error fetching setting:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            const startDay = results.length > 0 ? parseInt(results[0].setting_value) : 18;
+            const period = calculateMonthlyPeriod(startDay);
+            
+            // Get demand for this period
+            const demandQuery = `
+                SELECT 
+                    dmd.*,
+                    p.name AS product_name,
+                    p.product_code
+                FROM dealer_monthly_demand dmd
+                LEFT JOIN products p ON dmd.product_id = p.id
+                WHERE dmd.dealer_id = ? 
+                AND dmd.period_start = ? 
+                AND dmd.period_end = ?
+                ORDER BY p.product_code
+            `;
+            
+            db.query(demandQuery, [dealerId, period.start, period.end], (err, demand) => {
+                if (err) {
+                    console.error('Error fetching monthly demand:', err);
+                    return res.status(500).json({ error: 'Database error' });
+                }
+                res.json({
+                    period_start: period.start,
+                    period_end: period.end,
+                    demand: demand
+                });
+            });
+        });
+    }
+});
+
+// Create or update dealer monthly demand
+app.post('/api/monthly-demand', (req, res) => {
+    const { dealer_id, product_id, quantity, user_id } = req.body;
+    
+    if (!dealer_id || !product_id || quantity === undefined) {
+        return res.status(400).json({ error: 'dealer_id, product_id, and quantity are required' });
+    }
+    
+    // Authorization: Verify user is a dealer and dealer_id matches
+    if (user_id) {
+        const authQuery = 'SELECT role, dealer_id FROM users WHERE id = ?';
+        db.query(authQuery, [user_id], (err, userResults) => {
+            if (err) {
+                console.error('Error verifying user:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            
+            if (userResults.length === 0) {
+                return res.status(401).json({ error: 'User not found' });
+            }
+            
+            const user = userResults[0];
+            
+            // Only dealers can submit monthly demand
+            if (user.role !== 'dealer') {
+                return res.status(403).json({ error: 'Only dealers can submit monthly demand' });
+            }
+            
+            // Dealers can only submit demand for themselves
+            if (user.dealer_id !== parseInt(dealer_id)) {
+                return res.status(403).json({ error: 'You can only submit monthly demand for yourself' });
+            }
+            
+            // Proceed with saving demand
+            saveDealerDemand(dealer_id, product_id, quantity, res);
+        });
+    } else {
+        // If no user_id provided, allow access (for admin/backward compatibility)
+        // But in production, you should require authentication
+        saveDealerDemand(dealer_id, product_id, quantity, res);
+    }
+    
+    function saveDealerDemand(dealer_id, product_id, quantity, res) {
+        // Get current period
+        const query = 'SELECT setting_value FROM settings WHERE setting_key = ?';
+        db.query(query, ['monthly_demand_start_day'], (err, results) => {
+            if (err) {
+                console.error('Error fetching setting:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            const startDay = results.length > 0 ? parseInt(results[0].setting_value) : 18;
+            const period = calculateMonthlyPeriod(startDay);
+            
+            // Insert or update demand
+            const upsertQuery = `
+                INSERT INTO dealer_monthly_demand (dealer_id, product_id, period_start, period_end, quantity)
+                VALUES (?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                    quantity = ?,
+                    updated_at = CURRENT_TIMESTAMP
+            `;
+            
+            db.query(upsertQuery, [
+                dealer_id,
+                product_id,
+                period.start,
+                period.end,
+                quantity,
+                quantity
+            ], (err, result) => {
+                if (err) {
+                    console.error('Error saving monthly demand:', err);
+                    return res.status(500).json({ error: 'Database error' });
+                }
+                res.json({ 
+                    success: true, 
+                    id: result.insertId || 'updated',
+                    period_start: period.start,
+                    period_end: period.end
+                });
+            });
+        });
+    }
+});
+
+// Delete dealer monthly demand
+app.delete('/api/monthly-demand/:id', (req, res) => {
+    const { id } = req.params;
+    const { user_id } = req.query;
+    
+    // Authorization: Verify user is a dealer and owns the demand entry
+    if (user_id) {
+        // First, get the demand entry to check dealer_id
+        const getDemandQuery = 'SELECT dealer_id FROM dealer_monthly_demand WHERE id = ?';
+        db.query(getDemandQuery, [id], (err, demandResults) => {
+            if (err) {
+                console.error('Error fetching demand:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            
+            if (demandResults.length === 0) {
+                return res.status(404).json({ error: 'Monthly demand entry not found' });
+            }
+            
+            const demandDealerId = demandResults[0].dealer_id;
+            
+            // Verify user is a dealer and owns this demand
+            const authQuery = 'SELECT role, dealer_id FROM users WHERE id = ?';
+            db.query(authQuery, [user_id], (err, userResults) => {
+                if (err) {
+                    console.error('Error verifying user:', err);
+                    return res.status(500).json({ error: 'Database error' });
+                }
+                
+                if (userResults.length === 0) {
+                    return res.status(401).json({ error: 'User not found' });
+                }
+                
+                const user = userResults[0];
+                
+                // Only dealers can delete monthly demand
+                if (user.role !== 'dealer') {
+                    return res.status(403).json({ error: 'Only dealers can delete monthly demand' });
+                }
+                
+                // Dealers can only delete their own demand
+                if (user.dealer_id !== demandDealerId) {
+                    return res.status(403).json({ error: 'You can only delete your own monthly demand' });
+                }
+                
+                // Proceed with deletion
+                deleteDealerDemand(id, res);
+            });
+        });
+    } else {
+        // If no user_id provided, allow access (for admin/backward compatibility)
+        // But in production, you should require authentication
+        deleteDealerDemand(id, res);
+    }
+    
+    function deleteDealerDemand(id, res) {
+        const query = 'DELETE FROM dealer_monthly_demand WHERE id = ?';
+        db.query(query, [id], (err) => {
+            if (err) {
+                console.error('Error deleting monthly demand:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            res.json({ success: true });
+        });
+    }
+});
+
+// Get all products for dealer monthly demand selection (filtered by dealer assignments if dealer_id provided)
+app.get('/api/products', (req, res) => {
+    const { dealer_id } = req.query;
+    
+    let query;
+    let params = [];
+    
+    if (dealer_id) {
+        // Get products assigned to this dealer (by product_id or category)
+        query = `
+            SELECT DISTINCT p.id, p.product_code, p.name, p.product_category
+            FROM products p
+            WHERE p.id IN (
+                SELECT product_id 
+                FROM dealer_product_assignments 
+                WHERE dealer_id = ? AND assignment_type = 'product' AND product_id IS NOT NULL
+                UNION
+                SELECT id 
+                FROM products 
+                WHERE product_category IN (
+                    SELECT product_category 
+                    FROM dealer_product_assignments 
+                    WHERE dealer_id = ? AND assignment_type = 'category' AND product_category IS NOT NULL
+                )
+            )
+            ORDER BY p.product_code
+        `;
+        params = [dealer_id, dealer_id];
+    } else {
+        // Admin or no filter - return all products
+        query = 'SELECT id, product_code, name, product_category FROM products ORDER BY product_code';
+    }
+    
+    db.query(query, params, (err, results) => {
+        if (err) {
+            console.error('Error fetching products:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        res.json(results);
+    });
+});
+
+// ============================================================================
+// Dealer Product Assignment Management API (Admin)
+// ============================================================================
+
+// Get all product categories
+app.get('/api/products/categories', (req, res) => {
+    const query = 'SELECT DISTINCT product_category FROM products WHERE product_category IS NOT NULL AND product_category != "" ORDER BY product_category';
+    db.query(query, (err, results) => {
+        if (err) {
+            console.error('Error fetching categories:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        res.json(results.map(r => r.product_category));
+    });
+});
+
+// Get dealer's assigned products and categories
+app.get('/api/dealer-assignments/:dealerId', (req, res) => {
+    const { dealerId } = req.params;
+    
+    const query = `
+        SELECT 
+            id,
+            assignment_type,
+            product_id,
+            product_category,
+            created_at
+        FROM dealer_product_assignments
+        WHERE dealer_id = ?
+        ORDER BY assignment_type, product_id, product_category
+    `;
+    
+    db.query(query, [dealerId], (err, results) => {
+        if (err) {
+            console.error('Error fetching dealer assignments:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        res.json(results);
+    });
+});
+
+// Add product assignment to dealer
+app.post('/api/dealer-assignments', (req, res) => {
+    const { dealer_id, assignment_type, product_id, product_category } = req.body;
+    
+    if (!dealer_id || !assignment_type) {
+        return res.status(400).json({ error: 'dealer_id and assignment_type are required' });
+    }
+    
+    if (assignment_type === 'product' && !product_id) {
+        return res.status(400).json({ error: 'product_id is required for product assignment' });
+    }
+    
+    if (assignment_type === 'category' && !product_category) {
+        return res.status(400).json({ error: 'product_category is required for category assignment' });
+    }
+    
+    const query = `
+        INSERT INTO dealer_product_assignments (dealer_id, assignment_type, product_id, product_category)
+        VALUES (?, ?, ?, ?)
+    `;
+    
+    db.query(query, [dealer_id, assignment_type, product_id || null, product_category || null], (err, result) => {
+        if (err) {
+            console.error('Error adding dealer assignment:', err);
+            if (err.code === 'ER_DUP_ENTRY') {
+                return res.status(400).json({ error: 'This product/category is already assigned to this dealer' });
+            }
+            return res.status(500).json({ error: 'Database error' });
+        }
+        res.json({ success: true, id: result.insertId });
+    });
+});
+
+// Delete dealer assignment
+app.delete('/api/dealer-assignments/:id', (req, res) => {
+    const { id } = req.params;
+    
+    const query = 'DELETE FROM dealer_product_assignments WHERE id = ?';
+    db.query(query, [id], (err) => {
+        if (err) {
+            console.error('Error deleting dealer assignment:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        res.json({ success: true });
+    });
+});
+
+// Bulk assign products/categories to dealer
+app.post('/api/dealer-assignments/bulk', (req, res) => {
+    const { dealer_id, product_ids, product_categories } = req.body;
+    
+    if (!dealer_id) {
+        return res.status(400).json({ error: 'dealer_id is required' });
+    }
+    
+    const assignments = [];
+    
+    // Add product assignments
+    if (Array.isArray(product_ids) && product_ids.length > 0) {
+        product_ids.forEach(product_id => {
+            assignments.push([dealer_id, 'product', product_id, null]);
+        });
+    }
+    
+    // Add category assignments
+    if (Array.isArray(product_categories) && product_categories.length > 0) {
+        product_categories.forEach(category => {
+            assignments.push([dealer_id, 'category', null, category]);
+        });
+    }
+    
+    if (assignments.length === 0) {
+        return res.status(400).json({ error: 'At least one product_id or product_category is required' });
+    }
+    
+    const query = `
+        INSERT INTO dealer_product_assignments (dealer_id, assignment_type, product_id, product_category)
+        VALUES ?
+        ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP
+    `;
+    
+    db.query(query, [assignments], (err, result) => {
+        if (err) {
+            console.error('Error bulk adding dealer assignments:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        res.json({ success: true, inserted: result.affectedRows });
+    });
 });
 

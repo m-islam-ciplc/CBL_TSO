@@ -10,13 +10,16 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(50) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     full_name VARCHAR(100) NOT NULL,
-    role ENUM('tso', 'sales_manager', 'admin') NOT NULL,
+    role ENUM('tso', 'sales_manager', 'admin', 'dealer') NOT NULL,
     territory_name VARCHAR(100) DEFAULT NULL,
+    dealer_id INT DEFAULT NULL,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_username (username),
-    INDEX idx_territory_name (territory_name)
+    INDEX idx_territory_name (territory_name),
+    INDEX idx_dealer_id (dealer_id),
+    FOREIGN KEY (dealer_id) REFERENCES dealers(id) ON DELETE SET NULL
 );
 
 -- Order Types table
@@ -190,6 +193,63 @@ CREATE TABLE IF NOT EXISTS transports (
     vehicle_no VARCHAR(50),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Dealer Monthly Demand table (dealers submit their monthly battery demand/needs)
+CREATE TABLE IF NOT EXISTS dealer_monthly_demand (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    dealer_id INT NOT NULL,
+    product_id INT NOT NULL,
+    period_start DATE NOT NULL,
+    period_end DATE NOT NULL,
+    quantity INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (dealer_id) REFERENCES dealers(id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_dealer_product_period (dealer_id, product_id, period_start, period_end),
+    INDEX idx_dealer_id (dealer_id),
+    INDEX idx_product_id (product_id),
+    INDEX idx_period (period_start, period_end)
+);
+
+-- Settings table for application configuration
+CREATE TABLE IF NOT EXISTS settings (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    setting_key VARCHAR(100) NOT NULL UNIQUE,
+    setting_value TEXT NOT NULL,
+    description VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_setting_key (setting_key)
+);
+
+-- Insert default monthly demand period start day setting (18th to 18th)
+INSERT INTO settings (setting_key, setting_value, description) 
+VALUES ('monthly_demand_start_day', '18', 'Day of month when monthly demand period starts (1-31)')
+ON DUPLICATE KEY UPDATE setting_value = setting_value;
+
+-- Dealer Product Assignments table (assigns products or categories to dealers)
+CREATE TABLE IF NOT EXISTS dealer_product_assignments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    dealer_id INT NOT NULL,
+    assignment_type ENUM('product', 'category') NOT NULL,
+    product_id INT DEFAULT NULL,
+    product_category VARCHAR(50) DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (dealer_id) REFERENCES dealers(id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_dealer_product (dealer_id, product_id),
+    UNIQUE KEY unique_dealer_category (dealer_id, product_category),
+    INDEX idx_dealer_id (dealer_id),
+    INDEX idx_product_id (product_id),
+    INDEX idx_product_category (product_category),
+    INDEX idx_assignment_type (assignment_type),
+    CHECK (
+        (assignment_type = 'product' AND product_id IS NOT NULL AND product_category IS NULL) OR
+        (assignment_type = 'category' AND product_category IS NOT NULL AND product_id IS NULL)
+    )
 );
 
 -- Maintain denormalized name columns, sold quantities, and totals

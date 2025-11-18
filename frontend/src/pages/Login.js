@@ -11,7 +11,7 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
   const navigate = useNavigate();
-  const { setUserRole, setUserName, setTerritoryName, setUserId } = useUser();
+  const { setUserRole, setUserName, setTerritoryName, setUserId, setDealerId } = useUser();
 
   const handleSubmit = async (values) => {
     setLoading(true);
@@ -26,6 +26,9 @@ function Login() {
         setTerritoryName(user.territory_name);
         setUserRole(user.role);
         setUserId(user.id);
+        if (user.dealer_id) {
+          setDealerId(user.dealer_id);
+        }
         
         // Store in sessionStorage
         sessionStorage.setItem('user', JSON.stringify(user));
@@ -36,6 +39,8 @@ function Login() {
         // Navigate based on role
         if (user.role === 'tso') {
           navigate('/dashboard');
+        } else if (user.role === 'dealer') {
+          navigate('/monthly-orders');
         } else {
           navigate('/dashboard');
         }
