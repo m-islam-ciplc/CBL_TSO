@@ -40,7 +40,7 @@ function Login() {
         if (user.role === 'tso') {
           navigate('/dashboard');
         } else if (user.role === 'dealer') {
-          navigate('/monthly-orders');
+          navigate('/monthly-forecast');
         } else {
           navigate('/dashboard');
         }

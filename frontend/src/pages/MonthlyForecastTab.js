@@ -22,11 +22,11 @@ import './NewOrdersTablet.css';
 
 const { Title, Text } = Typography;
 
-function MonthlyOrderTab() {
+function MonthlyForecastTab() {
   const { dealerId } = useUser();
   const [periodInfo, setPeriodInfo] = useState({ start: '', end: '' });
   const [products, setProducts] = useState([]);
-  const [demandData, setDemandData] = useState({}); // { productId: quantity }
+  const [forecastData, setForecastData] = useState({}); // { productId: quantity }
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const previousProductIdsRef = useRef(new Set());
@@ -35,13 +35,13 @@ function MonthlyOrderTab() {
     if (dealerId) {
       loadPeriodInfo();
       loadProducts();
-      loadDemand();
+      loadForecast();
     }
   }, [dealerId]);
 
   const loadPeriodInfo = async () => {
     try {
-      const response = await axios.get('/api/monthly-demand/current-period');
+      const response = await axios.get('/api/monthly-forecast/current-period');
       setPeriodInfo(response.data);
     } catch (error) {
       console.error('Error loading period info:', error);
@@ -62,8 +62,8 @@ function MonthlyOrderTab() {
       const newProductIds = new Set([...currentProductIds].filter(id => !previousIds.has(id)));
       
       if (newProductIds.size > 0) {
-        // New products were added - preserve existing demand data and initialize new products
-        setDemandData(prev => {
+        // New products were added - preserve existing forecast data and initialize new products
+        setForecastData(prev => {
           const updated = { ...prev };
           newProductIds.forEach(productId => {
             if (updated[productId] === undefined) {
@@ -83,41 +83,41 @@ function MonthlyOrderTab() {
     }
   }, [dealerId]);
 
-  const loadDemand = async () => {
+  const loadForecast = async () => {
     if (!dealerId || !periodInfo.start) return;
     
     setLoading(true);
     try {
-      const response = await axios.get(`/api/monthly-demand/dealer/${dealerId}`);
-      const demand = response.data.demand || [];
+      const response = await axios.get(`/api/monthly-forecast/dealer/${dealerId}`);
+      const forecast = response.data.forecast || [];
       
-      // Initialize demand data structure: { productId: quantity }
+      // Initialize forecast data structure: { productId: quantity }
       const initialData = {};
       products.forEach(product => {
         initialData[product.id] = null;
       });
       
-      // Populate with existing demand data - sum all quantities for the period
-      demand.forEach(item => {
+      // Populate with existing forecast data - sum all quantities for the period
+      forecast.forEach(item => {
         if (initialData[item.product_id] === null || initialData[item.product_id] === undefined) {
           initialData[item.product_id] = 0;
         }
         initialData[item.product_id] += item.quantity || 0;
       });
       
-      setDemandData(initialData);
+      setForecastData(initialData);
     } catch (error) {
-      console.error('Error loading demand:', error);
-      message.error('Failed to load monthly demand');
+      console.error('Error loading forecast:', error);
+      message.error('Failed to load monthly forecast');
     } finally {
       setLoading(false);
     }
   };
 
-  // Reload demand when products or period changes
+  // Reload forecast when products or period changes
   useEffect(() => {
     if (products.length > 0 && periodInfo.start) {
-      loadDemand();
+      loadForecast();
     }
   }, [products.length, periodInfo.start]);
 
@@ -150,22 +150,22 @@ function MonthlyOrderTab() {
 
   // Handle quantity change for a product
   const handleQuantityChange = (productId, value) => {
-    setDemandData(prev => ({
+    setForecastData(prev => ({
       ...prev,
       [productId]: value || null,
     }));
   };
 
-  // Clear demand for a product
+  // Clear forecast for a product
   const handleClearProduct = (productId) => {
-    setDemandData(prev => ({
+    setForecastData(prev => ({
       ...prev,
       [productId]: null,
     }));
-    message.success('Demand cleared');
+    message.success('Forecast cleared');
   };
 
-  // Save all demand data
+  // Save all forecast data
   const handleSaveAll = async () => {
     if (!dealerId) {
       message.error('Dealer ID not found');
@@ -175,40 +175,40 @@ function MonthlyOrderTab() {
     setSaving(true);
     try {
       // Prepare bulk data: only include non-null quantities
-      const demands = [];
+      const forecasts = [];
       products.forEach(product => {
-        const quantity = demandData[product.id];
+        const quantity = forecastData[product.id];
         if (quantity !== null && quantity !== undefined && quantity > 0) {
-          demands.push({
+          forecasts.push({
             product_id: product.id,
             quantity: quantity,
           });
         }
       });
 
-      if (demands.length === 0) {
+      if (forecasts.length === 0) {
         message.warning('No data to save. Please enter quantities first.');
         setSaving(false);
         return;
       }
 
-      // Save each product's demand
-      const savePromises = demands.map(demand =>
-        axios.post('/api/monthly-demand', {
+      // Save each product's forecast
+      const savePromises = forecasts.map(forecast =>
+        axios.post('/api/monthly-forecast', {
           dealer_id: dealerId,
-          product_id: demand.product_id,
-          quantity: demand.quantity,
+          product_id: forecast.product_id,
+          quantity: forecast.quantity,
         })
       );
 
       await Promise.all(savePromises);
 
-      message.success(`Successfully saved ${demands.length} product demand(s)!`);
+      message.success(`Successfully saved ${forecasts.length} product forecast(s)!`);
       // Reload to get updated data
-      loadDemand();
+      loadForecast();
     } catch (error) {
-      console.error('Error saving demand:', error);
-      message.error(error.response?.data?.error || 'Failed to save monthly demand');
+      console.error('Error saving forecast:', error);
+      message.error(error.response?.data?.error || 'Failed to save monthly forecast');
     } finally {
       setSaving(false);
     }
@@ -221,7 +221,7 @@ function MonthlyOrderTab() {
         <Row justify="space-between" align="middle">
           <Col>
             <Title level={3} style={{ margin: 0, fontSize: '20px' }}>
-              <CalendarOutlined /> Monthly Demand
+              <CalendarOutlined /> Monthly Forecast
             </Title>
             <Tag color="blue" style={{ marginTop: '8px' }}>
               Period: {periodInfo.start ? dayjs(periodInfo.start).format('DD MMM YYYY') : ''} - {periodInfo.end ? dayjs(periodInfo.end).format('DD MMM YYYY') : ''}
@@ -254,12 +254,12 @@ function MonthlyOrderTab() {
                 
                 <div style={{ marginBottom: '12px' }}>
                   <Text style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>
-                    Monthly Demand Quantity:
+                    Monthly Forecast Quantity:
                   </Text>
                   <InputNumber
                     size="large"
                     min={0}
-                    value={demandData[product.id] || null}
+                    value={forecastData[product.id] || null}
                     onChange={(value) => handleQuantityChange(product.id, value)}
                     placeholder="Enter quantity"
                     style={{ width: '100%' }}
@@ -296,7 +296,7 @@ function MonthlyOrderTab() {
                 products.forEach(product => {
                   updated[product.id] = null;
                 });
-                setDemandData(updated);
+                setForecastData(updated);
                 message.success('All data reset');
               }}>
                 Reset All
@@ -312,4 +312,5 @@ function MonthlyOrderTab() {
   );
 }
 
-export default MonthlyOrderTab;
+export default MonthlyForecastTab;
+

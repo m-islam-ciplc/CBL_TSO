@@ -104,93 +104,49 @@ async function updateDatabase() {
       console.log('   ✓ Foreign key constraint already exists');
     }
 
-    // 2. Create/Update dealer_monthly_demand table
-    console.log('\n2. Creating/updating dealer_monthly_demand table...');
+    // 2. Create/Update monthly_forecast table
+    console.log('\n2. Creating/updating monthly_forecast table...');
     
-    // Check if table exists
+    // Drop old table if exists (user doesn't need old data)
+    try {
+      await connection.query(`DROP TABLE IF EXISTS dealer_monthly_demand`);
+      console.log('   ✓ Dropped old dealer_monthly_demand table');
+    } catch (e) {
+      // Ignore if doesn't exist
+    }
+    
+    // Check if new table exists
     const [tableCheck] = await connection.query(`
       SELECT COUNT(*) as count 
       FROM information_schema.TABLES 
-      WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'dealer_monthly_demand'
+      WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'monthly_forecast'
     `, [config.database]);
     
     if (tableCheck[0].count === 0) {
-      // Create new table with demand_date
+      // Create new table with forecast_date
       await connection.query(`
-        CREATE TABLE dealer_monthly_demand (
+        CREATE TABLE monthly_forecast (
           id INT AUTO_INCREMENT PRIMARY KEY,
           dealer_id INT NOT NULL,
           product_id INT NOT NULL,
           period_start DATE NOT NULL,
           period_end DATE NOT NULL,
-          demand_date DATE NOT NULL,
+          forecast_date DATE NOT NULL,
           quantity INT NOT NULL DEFAULT 0,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
           FOREIGN KEY (dealer_id) REFERENCES dealers(id) ON DELETE CASCADE,
           FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
-          UNIQUE KEY unique_dealer_product_date (dealer_id, product_id, demand_date),
+          UNIQUE KEY unique_dealer_product_date (dealer_id, product_id, forecast_date),
           INDEX idx_dealer_id (dealer_id),
           INDEX idx_product_id (product_id),
           INDEX idx_period (period_start, period_end),
-          INDEX idx_demand_date (demand_date)
+          INDEX idx_forecast_date (forecast_date)
         )
       `);
-      console.log('   ✓ Created dealer_monthly_demand table with demand_date');
+      console.log('   ✓ Created monthly_forecast table');
     } else {
-      // Check if demand_date column exists
-      const [colCheck] = await connection.query(`
-        SELECT COUNT(*) as count 
-        FROM information_schema.COLUMNS 
-        WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'dealer_monthly_demand' AND COLUMN_NAME = 'demand_date'
-      `, [config.database]);
-      
-      if (colCheck[0].count === 0) {
-        // Delete all old demand data (user doesn't need it)
-        await connection.query(`DELETE FROM dealer_monthly_demand`);
-        console.log('   ✓ Deleted old demand data');
-        
-        // Add demand_date column
-        await connection.query(`
-          ALTER TABLE dealer_monthly_demand 
-          ADD COLUMN demand_date DATE NOT NULL AFTER period_end
-        `);
-        console.log('   ✓ Added demand_date column');
-        
-        // Drop old unique constraint if exists
-        try {
-          await connection.query(`
-            ALTER TABLE dealer_monthly_demand 
-            DROP INDEX unique_dealer_product_period
-          `);
-        } catch (e) {
-          // Ignore if doesn't exist
-        }
-        
-        // Add new unique constraint
-        try {
-          await connection.query(`
-            ALTER TABLE dealer_monthly_demand 
-            ADD UNIQUE KEY unique_dealer_product_date (dealer_id, product_id, demand_date)
-          `);
-          console.log('   ✓ Updated unique constraint');
-        } catch (e) {
-          // May already exist
-        }
-        
-        // Add index on demand_date if not exists
-        try {
-          await connection.query(`
-            ALTER TABLE dealer_monthly_demand 
-            ADD INDEX idx_demand_date (demand_date)
-          `);
-          console.log('   ✓ Added demand_date index');
-        } catch (e) {
-          // May already exist
-        }
-      } else {
-        console.log('   ✓ dealer_monthly_demand table already has demand_date');
-      }
+      console.log('   ✓ monthly_forecast table already exists');
     }
 
     // 3. Create settings table
@@ -208,10 +164,10 @@ async function updateDatabase() {
     `);
     console.log('   ✓ settings table ready');
 
-    // Insert default monthly demand start day setting
+    // Insert default monthly forecast start day setting
     await connection.query(`
       INSERT INTO settings (setting_key, setting_value, description) 
-      VALUES ('monthly_demand_start_day', '18', 'Day of month when monthly demand period starts (1-31)')
+      VALUES ('monthly_forecast_start_day', '18', 'Day of month when monthly forecast period starts (1-31)')
       ON DUPLICATE KEY UPDATE setting_value = setting_value
     `);
     console.log('   ✓ Default setting inserted');
@@ -242,7 +198,7 @@ async function updateDatabase() {
     console.log('\n✅ Database updated successfully!');
     console.log('\nChanges applied:');
     console.log('  ✓ Users table: Added dealer role and dealer_id');
-    console.log('  ✓ Created dealer_monthly_demand table');
+    console.log('  ✓ Created monthly_forecast table');
     console.log('  ✓ Created settings table');
     console.log('  ✓ Created dealer_product_assignments table');
 

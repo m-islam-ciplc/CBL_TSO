@@ -3706,8 +3706,8 @@ app.delete('/api/orders/:id', async (req, res) => {
 });
 
 // ============================================================================
-// Dealer Monthly Demand Management API
-// Dealers submit their monthly battery demand/needs
+// Monthly Forecast Management API
+// Dealers submit their monthly battery forecast/needs
 // ============================================================================
 
 // Helper function to calculate monthly period dates based on start day
@@ -3743,10 +3743,10 @@ function calculateMonthlyPeriod(startDay) {
     };
 }
 
-// Get monthly demand period start day setting
-app.get('/api/settings/monthly-demand-start-day', (req, res) => {
+// Get monthly forecast period start day setting
+app.get('/api/settings/monthly-forecast-start-day', (req, res) => {
     const query = 'SELECT setting_value FROM settings WHERE setting_key = ?';
-    db.query(query, ['monthly_demand_start_day'], (err, results) => {
+    db.query(query, ['monthly_forecast_start_day'], (err, results) => {
         if (err) {
             console.error('Error fetching setting:', err);
             return res.status(500).json({ error: 'Database error' });
@@ -3756,8 +3756,8 @@ app.get('/api/settings/monthly-demand-start-day', (req, res) => {
     });
 });
 
-// Update monthly demand period start day setting (Admin only)
-app.put('/api/settings/monthly-demand-start-day', (req, res) => {
+// Update monthly forecast period start day setting (Admin only)
+app.put('/api/settings/monthly-forecast-start-day', (req, res) => {
     const { start_day } = req.body;
     
     if (!start_day || start_day < 1 || start_day > 31) {
@@ -3773,9 +3773,9 @@ app.put('/api/settings/monthly-demand-start-day', (req, res) => {
     `;
     
     db.query(query, [
-        'monthly_demand_start_day',
+        'monthly_forecast_start_day',
         start_day.toString(),
-        'Day of month when monthly demand period starts (1-31)',
+        'Day of month when monthly forecast period starts (1-31)',
         start_day.toString()
     ], (err) => {
         if (err) {
@@ -3787,9 +3787,9 @@ app.put('/api/settings/monthly-demand-start-day', (req, res) => {
 });
 
 // Get current monthly period dates
-app.get('/api/monthly-demand/current-period', (req, res) => {
+app.get('/api/monthly-forecast/current-period', (req, res) => {
     const query = 'SELECT setting_value FROM settings WHERE setting_key = ?';
-    db.query(query, ['monthly_demand_start_day'], (err, results) => {
+    db.query(query, ['monthly_forecast_start_day'], (err, results) => {
         if (err) {
             console.error('Error fetching setting:', err);
             return res.status(500).json({ error: 'Database error' });
@@ -3800,9 +3800,9 @@ app.get('/api/monthly-demand/current-period', (req, res) => {
     });
 });
 
-// Get dealer's monthly demand for current period
+// Get dealer's monthly forecast for current period
 // NOTE: Only dealers should access this endpoint (frontend enforces this via routing)
-app.get('/api/monthly-demand/dealer/:dealerId', (req, res) => {
+app.get('/api/monthly-forecast/dealer/:dealerId', (req, res) => {
     const { dealerId } = req.params;
     
     // Validate dealer exists
@@ -3817,7 +3817,7 @@ app.get('/api/monthly-demand/dealer/:dealerId', (req, res) => {
         
         // Get current period
         const query = 'SELECT setting_value FROM settings WHERE setting_key = ?';
-        db.query(query, ['monthly_demand_start_day'], (err, results) => {
+        db.query(query, ['monthly_forecast_start_day'], (err, results) => {
             if (err) {
                 console.error('Error fetching setting:', err);
                 return res.status(500).json({ error: 'Database error' });
@@ -3825,42 +3825,42 @@ app.get('/api/monthly-demand/dealer/:dealerId', (req, res) => {
             const startDay = results.length > 0 ? parseInt(results[0].setting_value) : 18;
             const period = calculateMonthlyPeriod(startDay);
             
-            // Get demand for this period (bulk - sum all quantities per product)
-            const demandQuery = `
+            // Get forecast for this period (bulk - sum all quantities per product)
+            const forecastQuery = `
                 SELECT 
-                    dmd.product_id,
-                    SUM(dmd.quantity) AS quantity,
+                    mf.product_id,
+                    SUM(mf.quantity) AS quantity,
                     p.name AS product_name,
                     p.product_code
-                FROM dealer_monthly_demand dmd
-                LEFT JOIN products p ON dmd.product_id = p.id
-                WHERE dmd.dealer_id = ? 
-                AND dmd.period_start = ? 
-                AND dmd.period_end = ?
-                GROUP BY dmd.product_id, p.name, p.product_code
+                FROM monthly_forecast mf
+                LEFT JOIN products p ON mf.product_id = p.id
+                WHERE mf.dealer_id = ? 
+                AND mf.period_start = ? 
+                AND mf.period_end = ?
+                GROUP BY mf.product_id, p.name, p.product_code
                 ORDER BY p.product_code
             `;
             
-            db.query(demandQuery, [dealerId, period.start, period.end], (err, demand) => {
+            db.query(forecastQuery, [dealerId, period.start, period.end], (err, forecast) => {
                 if (err) {
-                    console.error('Error fetching monthly demand:', err);
+                    console.error('Error fetching monthly forecast:', err);
                     return res.status(500).json({ error: 'Database error' });
                 }
                 res.json({
                     period_start: period.start,
                     period_end: period.end,
-                    demand: demand
+                    forecast: forecast
                 });
             });
         });
     });
 });
 
-// Create or update dealer monthly demand
+// Create or update dealer monthly forecast
 // NOTE: Only dealers should access this endpoint (frontend enforces this via routing)
-// This endpoint allows dealers to submit their monthly battery demand
-// Create or update dealer monthly demand (bulk - one quantity per product per period)
-app.post('/api/monthly-demand', (req, res) => {
+// This endpoint allows dealers to submit their monthly battery forecast
+// Create or update dealer monthly forecast (bulk - one quantity per product per period)
+app.post('/api/monthly-forecast', (req, res) => {
     const { dealer_id, product_id, quantity } = req.body;
     
     if (!dealer_id || !product_id || quantity === undefined) {
@@ -3911,7 +3911,7 @@ app.post('/api/monthly-demand', (req, res) => {
             
             // Get current period
             const query = 'SELECT setting_value FROM settings WHERE setting_key = ?';
-            db.query(query, ['monthly_demand_start_day'], (err, results) => {
+            db.query(query, ['monthly_forecast_start_day'], (err, results) => {
                 if (err) {
                     console.error('Error fetching setting:', err);
                     return res.status(500).json({ error: 'Database error' });
@@ -3919,18 +3919,18 @@ app.post('/api/monthly-demand', (req, res) => {
                 const startDay = results.length > 0 ? parseInt(results[0].setting_value) : 18;
                 const period = calculateMonthlyPeriod(startDay);
                 
-                // For bulk demand: delete all existing day-wise entries for this product/period, then insert one entry
-                // Use period.start as demand_date for the bulk entry
-                db.query('DELETE FROM dealer_monthly_demand WHERE dealer_id = ? AND product_id = ? AND period_start = ? AND period_end = ?', 
+                // For bulk forecast: delete all existing day-wise entries for this product/period, then insert one entry
+                // Use period.start as forecast_date for the bulk entry
+                db.query('DELETE FROM monthly_forecast WHERE dealer_id = ? AND product_id = ? AND period_start = ? AND period_end = ?', 
                     [dealer_id, product_id, period.start, period.end], (err) => {
                     if (err) {
-                        console.error('Error deleting old demand entries:', err);
+                        console.error('Error deleting old forecast entries:', err);
                         return res.status(500).json({ error: 'Database error' });
                     }
                     
-                    // Insert bulk demand entry
+                    // Insert bulk forecast entry
                     const insertQuery = `
-                        INSERT INTO dealer_monthly_demand (dealer_id, product_id, period_start, period_end, demand_date, quantity)
+                        INSERT INTO monthly_forecast (dealer_id, product_id, period_start, period_end, forecast_date, quantity)
                         VALUES (?, ?, ?, ?, ?, ?)
                     `;
                     
@@ -3939,11 +3939,11 @@ app.post('/api/monthly-demand', (req, res) => {
                         product_id,
                         period.start,
                         period.end,
-                        period.start, // Use period start as demand_date for bulk entry
+                        period.start, // Use period start as forecast_date for bulk entry
                         quantity
                     ], (err, result) => {
                         if (err) {
-                            console.error('Error saving monthly demand:', err);
+                            console.error('Error saving monthly forecast:', err);
                             return res.status(500).json({ error: 'Database error' });
                         }
                         res.json({ 
@@ -3959,12 +3959,12 @@ app.post('/api/monthly-demand', (req, res) => {
     });
 });
 
-// Bulk save day-wise monthly demand
-app.post('/api/monthly-demand/bulk', (req, res) => {
-    const { dealer_id, demands } = req.body; // demands: [{ product_id, demand_date, quantity }, ...]
+// Bulk save day-wise monthly forecast
+app.post('/api/monthly-forecast/bulk', (req, res) => {
+    const { dealer_id, forecasts } = req.body; // forecasts: [{ product_id, forecast_date, quantity }, ...]
     
-    if (!dealer_id || !Array.isArray(demands) || demands.length === 0) {
-        return res.status(400).json({ error: 'dealer_id and demands array are required' });
+    if (!dealer_id || !Array.isArray(forecasts) || forecasts.length === 0) {
+        return res.status(400).json({ error: 'dealer_id and forecasts array are required' });
     }
     
     // Validate dealer exists
@@ -3979,7 +3979,7 @@ app.post('/api/monthly-demand/bulk', (req, res) => {
         
         // Get current period
         const query = 'SELECT setting_value FROM settings WHERE setting_key = ?';
-        db.query(query, ['monthly_demand_start_day'], (err, results) => {
+        db.query(query, ['monthly_forecast_start_day'], (err, results) => {
             if (err) {
                 console.error('Error fetching setting:', err);
                 return res.status(500).json({ error: 'Database error' });
@@ -3987,28 +3987,28 @@ app.post('/api/monthly-demand/bulk', (req, res) => {
             const startDay = results.length > 0 ? parseInt(results[0].setting_value) : 18;
             const period = calculateMonthlyPeriod(startDay);
             
-            // Validate all demands
-            const validDemands = [];
+            // Validate all forecasts
+            const validForecasts = [];
             const errors = [];
             
-            demands.forEach((demand, index) => {
-                if (!demand.product_id || !demand.demand_date || demand.quantity === undefined) {
-                    errors.push(`Demand ${index + 1}: product_id, demand_date, and quantity are required`);
+            forecasts.forEach((forecast, index) => {
+                if (!forecast.product_id || !forecast.forecast_date || forecast.quantity === undefined) {
+                    errors.push(`Forecast ${index + 1}: product_id, forecast_date, and quantity are required`);
                     return;
                 }
-                if (demand.quantity < 0) {
-                    errors.push(`Demand ${index + 1}: quantity must be 0 or greater`);
+                if (forecast.quantity < 0) {
+                    errors.push(`Forecast ${index + 1}: quantity must be 0 or greater`);
                     return;
                 }
-                // Validate demand_date is within period
-                const demandDate = new Date(demand.demand_date);
+                // Validate forecast_date is within period
+                const forecastDate = new Date(forecast.forecast_date);
                 const periodStart = new Date(period.start);
                 const periodEnd = new Date(period.end);
-                if (demandDate < periodStart || demandDate > periodEnd) {
-                    errors.push(`Demand ${index + 1}: demand_date must be within the current period`);
+                if (forecastDate < periodStart || forecastDate > periodEnd) {
+                    errors.push(`Forecast ${index + 1}: forecast_date must be within the current period`);
                     return;
                 }
-                validDemands.push(demand);
+                validForecasts.push(forecast);
             });
             
             if (errors.length > 0) {
@@ -4016,7 +4016,7 @@ app.post('/api/monthly-demand/bulk', (req, res) => {
             }
             
             // Get unique product IDs
-            const productIds = [...new Set(validDemands.map(d => d.product_id))];
+            const productIds = [...new Set(validForecasts.map(f => f.product_id))];
             
             // Validate all products are assigned to dealer
             const productAssignmentQuery = `
@@ -4061,7 +4061,7 @@ app.post('/api/monthly-demand/bulk', (req, res) => {
                     }
                     
                     const upsertQuery = `
-                        INSERT INTO dealer_monthly_demand (dealer_id, product_id, period_start, period_end, demand_date, quantity)
+                        INSERT INTO monthly_forecast (dealer_id, product_id, period_start, period_end, forecast_date, quantity)
                         VALUES (?, ?, ?, ?, ?, ?)
                         ON DUPLICATE KEY UPDATE
                             quantity = VALUES(quantity),
@@ -4071,18 +4071,18 @@ app.post('/api/monthly-demand/bulk', (req, res) => {
                     let completed = 0;
                     let hasError = false;
                     
-                    validDemands.forEach((demand) => {
+                    validForecasts.forEach((forecast) => {
                         db.query(upsertQuery, [
                             dealer_id,
-                            demand.product_id,
+                            forecast.product_id,
                             period.start,
                             period.end,
-                            demand.demand_date,
-                            demand.quantity
+                            forecast.forecast_date,
+                            forecast.quantity
                         ], (err) => {
                             if (err && !hasError) {
                                 hasError = true;
-                                console.error('Error saving demand:', err);
+                                console.error('Error saving forecast:', err);
                                 db.rollback(() => {
                                     res.status(500).json({ error: 'Database error' });
                                 });
@@ -4090,7 +4090,7 @@ app.post('/api/monthly-demand/bulk', (req, res) => {
                             }
                             
                             completed++;
-                            if (completed === validDemands.length && !hasError) {
+                            if (completed === validForecasts.length && !hasError) {
                                 db.commit((err) => {
                                     if (err) {
                                         console.error('Error committing transaction:', err);
@@ -4101,7 +4101,7 @@ app.post('/api/monthly-demand/bulk', (req, res) => {
                                     }
                                     res.json({ 
                                         success: true, 
-                                        saved_count: validDemands.length,
+                                        saved_count: validForecasts.length,
                                         period_start: period.start,
                                         period_end: period.end
                                     });
@@ -4115,27 +4115,27 @@ app.post('/api/monthly-demand/bulk', (req, res) => {
     });
 });
 
-// Delete dealer monthly demand
+// Delete dealer monthly forecast
 // NOTE: Only dealers should access this endpoint (frontend enforces this via routing)
-// Dealers can only delete their own monthly demand entries
-app.delete('/api/monthly-demand/:id', (req, res) => {
+// Dealers can only delete their own monthly forecast entries
+app.delete('/api/monthly-forecast/:id', (req, res) => {
     const { id } = req.params;
     
-    // First check if the demand entry exists and get its dealer_id
-    db.query('SELECT dealer_id FROM dealer_monthly_demand WHERE id = ?', [id], (err, results) => {
+    // First check if the forecast entry exists and get its dealer_id
+    db.query('SELECT dealer_id FROM monthly_forecast WHERE id = ?', [id], (err, results) => {
         if (err) {
-            console.error('Error checking monthly demand:', err);
+            console.error('Error checking monthly forecast:', err);
             return res.status(500).json({ error: 'Database error' });
         }
         if (results.length === 0) {
-            return res.status(404).json({ error: 'Monthly demand entry not found' });
+            return res.status(404).json({ error: 'Monthly forecast entry not found' });
         }
         
-        // Delete the demand entry
-        const query = 'DELETE FROM dealer_monthly_demand WHERE id = ?';
+        // Delete the forecast entry
+        const query = 'DELETE FROM monthly_forecast WHERE id = ?';
         db.query(query, [id], (err) => {
             if (err) {
-                console.error('Error deleting monthly demand:', err);
+                console.error('Error deleting monthly forecast:', err);
                 return res.status(500).json({ error: 'Database error' });
             }
             res.json({ success: true });
@@ -4143,7 +4143,7 @@ app.delete('/api/monthly-demand/:id', (req, res) => {
     });
 });
 
-// Get all products for dealer monthly demand selection (filtered by dealer assignments if dealer_id provided)
+// Get all products for dealer monthly forecast selection (filtered by dealer assignments if dealer_id provided)
 app.get('/api/products', (req, res) => {
     const { dealer_id } = req.query;
     

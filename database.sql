@@ -195,24 +195,24 @@ CREATE TABLE IF NOT EXISTS transports (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- Dealer Monthly Demand table (dealers submit their monthly battery demand/needs)
-CREATE TABLE IF NOT EXISTS dealer_monthly_demand (
+-- Monthly Forecast table (dealers submit their monthly battery forecast/needs)
+CREATE TABLE IF NOT EXISTS monthly_forecast (
     id INT AUTO_INCREMENT PRIMARY KEY,
     dealer_id INT NOT NULL,
     product_id INT NOT NULL,
     period_start DATE NOT NULL,
     period_end DATE NOT NULL,
-    demand_date DATE NOT NULL,
+    forecast_date DATE NOT NULL,
     quantity INT NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (dealer_id) REFERENCES dealers(id) ON DELETE CASCADE,
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
-    UNIQUE KEY unique_dealer_product_date (dealer_id, product_id, demand_date),
+    UNIQUE KEY unique_dealer_product_date (dealer_id, product_id, forecast_date),
     INDEX idx_dealer_id (dealer_id),
     INDEX idx_product_id (product_id),
     INDEX idx_period (period_start, period_end),
-    INDEX idx_demand_date (demand_date)
+    INDEX idx_forecast_date (forecast_date)
 );
 
 -- Settings table for application configuration
@@ -226,9 +226,9 @@ CREATE TABLE IF NOT EXISTS settings (
     INDEX idx_setting_key (setting_key)
 );
 
--- Insert default monthly demand period start day setting (18th to 18th)
+-- Insert default monthly forecast period start day setting (18th to 18th)
 INSERT INTO settings (setting_key, setting_value, description) 
-VALUES ('monthly_demand_start_day', '18', 'Day of month when monthly demand period starts (1-31)')
+VALUES ('monthly_forecast_start_day', '18', 'Day of month when monthly forecast period starts (1-31)')
 ON DUPLICATE KEY UPDATE setting_value = setting_value;
 
 -- Dealer Product Assignments table (assigns products or categories to dealers)

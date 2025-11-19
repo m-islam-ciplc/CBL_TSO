@@ -32,7 +32,7 @@ import TSOReport from './pages/TSOReport';
 import TSODashboard from './pages/TSODashboard';
 import UserManagement from './pages/UserManagement';
 import ProductQuotaManagement from './pages/ProductQuotaManagement';
-import MonthlyOrderTab from './pages/MonthlyOrderTab';
+import MonthlyForecastTab from './pages/MonthlyForecastTab';
 import MonthlyDemandTabularSample from './pages/MonthlyDemandTabularSample';
 import AdminSettings from './pages/AdminSettings';
 import DealerProductAssignment from './pages/DealerProductAssignment';
@@ -298,9 +298,9 @@ function AppContent() {
     },
   ] : isDealer ? [
     {
-      key: 'monthly-orders',
+      key: 'monthly-forecast',
       icon: <CalendarOutlined />,
-      label: 'Monthly Demand',
+      label: 'Monthly Forecast',
     },
   ] : [
     {
@@ -495,19 +495,19 @@ function AppContent() {
             isTSO ? 
             <TSODashboard /> : 
             isDealer ?
-            <MonthlyOrderTab /> :
+            <MonthlyForecastTab /> :
             <Dashboard setStats={setStats} />
           } />
           <Route path="/dashboard" element={
             isTSO ? 
             <TSODashboard /> : 
             isDealer ?
-            <MonthlyOrderTab /> :
+            <MonthlyForecastTab /> :
             <Dashboard setStats={setStats} />
           } />
-          <Route path="/monthly-orders" element={
+          <Route path="/monthly-forecast" element={
             isDealer ?
-            <MonthlyOrderTab /> :
+            <MonthlyForecastTab /> :
             <Dashboard setStats={setStats} />
           } />
           <Route path="/monthly-demand-sample" element={<MonthlyDemandTabularSample />} />
