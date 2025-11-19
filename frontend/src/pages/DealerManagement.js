@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 import {
@@ -14,6 +14,11 @@ import {
   Statistic,
   Row,
   Col,
+  Form,
+  Space,
+  Popconfirm,
+  Divider,
+  Badge,
 } from 'antd';
 import {
   UploadOutlined,
@@ -22,17 +27,183 @@ import {
   ShopOutlined,
   EnvironmentOutlined,
   PhoneOutlined,
+  AppstoreOutlined,
+  PlusOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
+const { Option } = Select;
 
 // Helper function to remove M/S prefix from dealer names
 const removeMSPrefix = (name) => {
   if (!name) return name;
-  // Remove "M/S", "M/S.", "M/S " prefix (case insensitive, with or without space/period)
   return name.replace(/^M\/S[.\s]*/i, '').trim();
 };
-const { Option } = Select;
+
+// Expanded Row Component (separate component that uses hooks)
+const ExpandedRowContent = ({ 
+  dealerId, 
+  assignments, 
+  assignmentsLoading, 
+  showForm, 
+  products, 
+  categories,
+  onToggleForm,
+  onSubmitAssignment,
+  onDeleteAssignment
+}) => {
+  const [form] = Form.useForm();
+  return (
+    <div style={{ padding: '16px', background: '#fafafa' }}>
+      <Card size="small" style={{ marginBottom: '16px' }}>
+        <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
+          <Col>
+            <Text strong>
+              <AppstoreOutlined /> Product Assignments
+            </Text>
+          </Col>
+          <Col>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              size="small"
+              onClick={onToggleForm}
+            >
+              {showForm ? 'Cancel' : 'Add Assignment'}
+            </Button>
+          </Col>
+        </Row>
+
+        {showForm && (
+          <Card size="small" style={{ marginBottom: '16px', background: '#fff' }}>
+            <Form
+              form={form}
+              layout="vertical"
+              onFinish={(values) => {
+                onSubmitAssignment(dealerId, values);
+                form.resetFields();
+              }}
+            >
+              <Form.Item
+                name="product_ids"
+                label="Select Products (Brand Name)"
+              >
+                <Select
+                  mode="multiple"
+                  placeholder="Select products"
+                  showSearch
+                  optionFilterProp="label"
+                  filterOption={(input, option) =>
+                    option.label.toLowerCase().indexOf(input.toLowerCase()) >= 0
+                  }
+                >
+                  {products.map(product => (
+                    <Option key={product.id} value={product.id} label={`${product.product_code} - ${product.name}`}>
+                      {product.product_code} - {product.name}
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+
+              <Divider style={{ margin: '12px 0' }}>OR</Divider>
+
+              <Form.Item
+                name="product_categories"
+                label="Select Application Names"
+              >
+                <Select
+                  mode="multiple"
+                  placeholder="Select application names"
+                  showSearch
+                  optionFilterProp="label"
+                  filterOption={(input, option) =>
+                    option.label.toLowerCase().indexOf(input.toLowerCase()) >= 0
+                  }
+                >
+                  {categories.map(category => (
+                    <Option key={category} value={category} label={category}>
+                      {category}
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+
+              <Form.Item>
+                <Space>
+                  <Button type="primary" htmlType="submit" size="small">
+                    Add Assignment
+                  </Button>
+                  <Button size="small" onClick={() => {
+                    form.resetFields();
+                    onToggleForm();
+                  }}>
+                    Cancel
+                  </Button>
+                </Space>
+              </Form.Item>
+            </Form>
+          </Card>
+        )}
+
+        <Table
+          columns={[
+            {
+              title: 'Type',
+              dataIndex: 'assignment_type',
+              key: 'assignment_type',
+              render: (type) => (
+                <Tag color={type === 'product' ? 'blue' : 'green'}>
+                  {type === 'product' ? 'Product' : 'Application Name'}
+                </Tag>
+              ),
+            },
+            {
+              title: 'Product',
+              key: 'product',
+              render: (_, record) => {
+                if (record.assignment_type === 'product') {
+                  const product = products.find(p => p.id === record.product_id);
+                  return product ? `${product.product_code} - ${product.name}` : `Product ID: ${record.product_id}`;
+                }
+                return '-';
+              },
+            },
+            {
+              title: 'Application Name',
+              dataIndex: 'product_category',
+              key: 'product_category',
+              render: (category) => category || '-',
+            },
+            {
+              title: 'Actions',
+              key: 'actions',
+              align: 'center',
+              width: 80,
+              render: (_, record) => (
+                <Popconfirm
+                  title="Are you sure you want to delete this assignment?"
+                  onConfirm={() => onDeleteAssignment(dealerId, record.id)}
+                >
+                  <Button
+                    icon={<DeleteOutlined />}
+                    size="small"
+                    danger
+                  />
+                </Popconfirm>
+              ),
+            },
+          ]}
+          dataSource={assignments}
+          loading={assignmentsLoading}
+          rowKey="id"
+          pagination={{ pageSize: 10 }}
+          size="small"
+        />
+      </Card>
+    </div>
+  );
+};
 
 function DealerManagement() {
   const [dealers, setDealers] = useState([]);
@@ -43,6 +214,16 @@ function DealerManagement() {
   const [territoryFilter, setTerritoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [territories, setTerritories] = useState([]);
+  const [expandedRowKeys, setExpandedRowKeys] = useState([]);
+  
+  // Product assignment state per dealer
+  const [assignmentsData, setAssignmentsData] = useState({}); // { dealerId: { assignments, loading } }
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [showAddForm, setShowAddForm] = useState({}); // { dealerId: boolean }
+  const [productCounts, setProductCounts] = useState({}); // { dealerId: count }
+  const countsLoadedForLengthRef = useRef(0);
+
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 20,
@@ -55,11 +236,56 @@ function DealerManagement() {
 
   useEffect(() => {
     loadDealers();
+    loadProducts();
+    loadCategories();
   }, []);
 
   useEffect(() => {
     filterDealers();
   }, [dealers, searchTerm, territoryFilter, statusFilter]);
+
+  // Load product counts for all dealers (batched loading)
+  useEffect(() => {
+    // Only load if dealers are available and we haven't loaded for this length yet
+    if (dealers.length === 0 || countsLoadedForLengthRef.current === dealers.length) {
+      return;
+    }
+    
+    countsLoadedForLengthRef.current = dealers.length;
+    
+    const loadAllCounts = async () => {
+      // Process 50 dealers at a time to avoid overwhelming browser/network
+      const BATCH_SIZE = 50;
+      const counts = {};
+      
+      // Process dealers in batches
+      for (let i = 0; i < dealers.length; i += BATCH_SIZE) {
+        const batch = dealers.slice(i, i + BATCH_SIZE);
+        
+        // Process this batch in parallel
+        const batchPromises = batch.map(async (dealer) => {
+          try {
+            const response = await axios.get(`/api/dealer-assignments/${dealer.id}`);
+            counts[dealer.id] = (response.data || []).length;
+            return { dealerId: dealer.id, success: true };
+          } catch (error) {
+            counts[dealer.id] = 0;
+            return { dealerId: dealer.id, success: false };
+          }
+        });
+        
+        // Wait for this batch to complete before starting the next
+        await Promise.all(batchPromises);
+        
+        // Update counts incrementally so UI shows progress
+        setProductCounts({ ...counts });
+      }
+      
+      setProductCounts(counts);
+    };
+    
+    loadAllCounts();
+  }, [dealers.length]);
 
   const downloadTemplate = () => {
     // Create template data matching VW_ALL_CUSTOMER_INFO format
@@ -231,6 +457,84 @@ function DealerManagement() {
     }
   };
 
+  const loadProducts = async () => {
+    try {
+      const response = await axios.get('/api/products');
+      setProducts(response.data || []);
+    } catch (error) {
+      console.error('Failed to load products:', error);
+    }
+  };
+
+  const loadCategories = async () => {
+    try {
+      const response = await axios.get('/api/products/categories');
+      setCategories(response.data || []);
+    } catch (error) {
+      console.error('Failed to load categories:', error);
+    }
+  };
+
+  const loadAssignments = async (dealerId) => {
+    if (!dealerId) return;
+    
+    setAssignmentsData(prev => ({
+      ...prev,
+      [dealerId]: { ...prev[dealerId], loading: true }
+    }));
+
+    try {
+      const response = await axios.get(`/api/dealer-assignments/${dealerId}`);
+      const assignments = response.data || [];
+      setAssignmentsData(prev => ({
+        ...prev,
+        [dealerId]: { assignments, loading: false }
+      }));
+      // Update product count
+      setProductCounts(prev => ({
+        ...prev,
+        [dealerId]: assignments.length
+      }));
+    } catch (error) {
+      console.error('Error loading assignments:', error);
+      message.error('Failed to load assignments');
+      setAssignmentsData(prev => ({
+        ...prev,
+        [dealerId]: { ...prev[dealerId], loading: false }
+      }));
+    }
+  };
+
+  const handleDeleteAssignment = async (dealerId, assignmentId) => {
+    try {
+      await axios.delete(`/api/dealer-assignments/${assignmentId}`);
+      message.success('Assignment deleted successfully');
+      loadAssignments(dealerId); // This will update the count automatically
+    } catch (error) {
+      console.error('Error deleting assignment:', error);
+      message.error('Failed to delete assignment');
+    }
+  };
+
+  const handleSubmitAssignment = async (dealerId, values) => {
+    try {
+      await axios.post('/api/dealer-assignments/bulk', {
+        dealer_id: dealerId,
+        product_ids: values.product_ids || [],
+        product_categories: values.product_categories || [],
+      });
+      const productCount = (values.product_ids || []).length;
+      const categoryCount = (values.product_categories || []).length;
+      const totalCount = productCount + categoryCount;
+      message.success(`Successfully assigned ${totalCount} item${totalCount !== 1 ? 's' : ''}`);
+      setShowAddForm(prev => ({ ...prev, [dealerId]: false }));
+      loadAssignments(dealerId);
+    } catch (error) {
+      console.error('Error saving assignment:', error);
+      message.error(error.response?.data?.error || 'Failed to save assignment');
+    }
+  };
+
   const filterDealers = () => {
     let filtered = dealers;
 
@@ -255,7 +559,6 @@ function DealerManagement() {
   };
 
   const handleTableChange = (newPagination) => {
-    console.log('Table pagination changed:', newPagination);
     setPagination(newPagination);
   };
 
@@ -303,7 +606,6 @@ function DealerManagement() {
       title: 'Dealer Code',
       dataIndex: 'dealer_code',
       key: 'dealer_code',
-      // Auto-size based on content
       ellipsis: true,
       sorter: (a, b) => a.dealer_code.localeCompare(b.dealer_code),
     },
@@ -311,9 +613,8 @@ function DealerManagement() {
       title: 'Name',
       dataIndex: 'name',
       key: 'name',
-      // Auto-size based on content with ellipsis for long names
       ellipsis: {
-        showTitle: true, // Show full text on hover
+        showTitle: true,
       },
       render: (text) => removeMSPrefix(text),
       sorter: (a, b) => a.name.localeCompare(b.name),
@@ -322,7 +623,6 @@ function DealerManagement() {
       title: 'Territory',
       dataIndex: 'territory_name',
       key: 'territory_name',
-      // Auto-size based on content
       ellipsis: true,
       render: (territory) => territory || 'N/A',
       sorter: (a, b) => {
@@ -335,7 +635,6 @@ function DealerManagement() {
       title: 'Status',
       dataIndex: 'active_status',
       key: 'active_status',
-      // Fixed width for status tags (they're small)
       width: 100,
       align: 'center',
       render: (status) => getStatusTag(status),
@@ -349,7 +648,6 @@ function DealerManagement() {
       title: 'Type',
       dataIndex: 'dealer_type',
       key: 'dealer_type',
-      // Auto-size based on content
       ellipsis: true,
       sorter: (a, b) => {
         const typeA = a.dealer_type || '';
@@ -361,7 +659,6 @@ function DealerManagement() {
       title: 'Contact',
       dataIndex: 'contact',
       key: 'contact',
-      // Auto-size based on content
       ellipsis: true,
       render: (contact) => contact || 'N/A',
       sorter: (a, b) => {
@@ -374,9 +671,8 @@ function DealerManagement() {
       title: 'Address',
       dataIndex: 'address',
       key: 'address',
-      // Auto-size based on content with ellipsis for long addresses
       ellipsis: {
-        showTitle: true, // Show full address on hover
+        showTitle: true,
       },
       render: (address) => address || 'N/A',
       sorter: (a, b) => {
@@ -385,7 +681,66 @@ function DealerManagement() {
         return addressA.localeCompare(addressB);
       },
     },
+    {
+      title: 'Actions',
+      key: 'actions',
+      width: 180,
+      align: 'center',
+      fixed: 'right',
+      render: (_, record) => {
+        const isExpanded = expandedRowKeys.includes(record.id);
+        const count = productCounts[record.id] || 0;
+        
+        return (
+          <Badge 
+            count={count} 
+            showZero={true}
+            overflowCount={999}
+          >
+            <Button
+              type="primary"
+              icon={<AppstoreOutlined />}
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent row click
+                if (isExpanded) {
+                  setExpandedRowKeys(expandedRowKeys.filter(key => key !== record.id));
+                } else {
+                  setExpandedRowKeys([...expandedRowKeys, record.id]);
+                  loadAssignments(record.id);
+                }
+              }}
+            >
+              {isExpanded ? 'Hide Products' : 'Manage Products'}
+            </Button>
+          </Badge>
+        );
+      },
+    },
   ];
+
+  const renderExpandedRow = (record) => {
+    const dealerId = record.id;
+    const assignments = assignmentsData[dealerId]?.assignments || [];
+    const assignmentsLoading = assignmentsData[dealerId]?.loading || false;
+    const showForm = showAddForm[dealerId] || false;
+
+    return (
+      <ExpandedRowContent
+        dealerId={dealerId}
+        assignments={assignments}
+        assignmentsLoading={assignmentsLoading}
+        showForm={showForm}
+        products={products}
+        categories={categories}
+        onToggleForm={() => {
+          setShowAddForm(prev => ({ ...prev, [dealerId]: !prev[dealerId] }));
+        }}
+        onSubmitAssignment={handleSubmitAssignment}
+        onDeleteAssignment={handleDeleteAssignment}
+      />
+    );
+  };
 
   return (
     <div>
@@ -393,7 +748,7 @@ function DealerManagement() {
         <ShopOutlined /> Manage Dealers
       </Title>
       <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
-        Import and manage dealer database
+        Import and manage dealer database. Click &quot;Manage Products&quot; to assign products to dealers.
       </Text>
 
       {/* Import Section */}
@@ -475,7 +830,6 @@ function DealerManagement() {
               title={<span style={{ color: 'white' }}>With Contact</span>}
               value={dealers.filter(d => d.contact).length}
               prefix={<PhoneOutlined style={{ color: 'white' }} />}
-              suffix={<span style={{ color: 'rgba(255,255,255,0.8)' }}>/1580</span>}
               valueStyle={{ color: 'white', fontSize: '20px' }}
             />
           </Card>
@@ -548,6 +902,15 @@ function DealerManagement() {
           onChange={handleTableChange}
           scroll={{ x: 'max-content' }}
           size="small"
+          expandable={{
+            expandedRowKeys,
+            onExpand: (_expanded, _record) => {
+              // Only expand/collapse when triggered by the Actions button
+            },
+            expandedRowRender: renderExpandedRow,
+            expandRowByClick: false, // Disable row click expansion
+            expandIcon: () => null, // Hide the plus/minus icon on the left
+          }}
         />
       </Card>
     </div>
@@ -555,4 +918,3 @@ function DealerManagement() {
 }
 
 export default DealerManagement;
-

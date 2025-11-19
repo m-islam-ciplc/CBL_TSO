@@ -10,13 +10,17 @@ function DebugPanel() {
 
   useEffect(() => {
     // Check for logs every second
+    // eslint-disable-next-line no-undef
     const interval = setInterval(() => {
       if (window.apiLogs && window.apiLogs.length > 0) {
         setLogs([...window.apiLogs]);
       }
     }, 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      // eslint-disable-next-line no-undef
+      clearInterval(interval);
+    };
   }, []);
 
   const clearLogs = () => {

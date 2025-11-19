@@ -12,13 +12,11 @@ import {
   Space,
   Spin,
   Tag,
-  Button,
 } from 'antd';
 import {
   GiftOutlined,
   CheckCircleOutlined,
   InfoCircleOutlined,
-  ReloadOutlined,
   ShoppingCartOutlined,
   DashboardOutlined,
 } from '@ant-design/icons';

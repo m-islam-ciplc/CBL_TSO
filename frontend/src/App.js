@@ -33,9 +33,7 @@ import TSODashboard from './pages/TSODashboard';
 import UserManagement from './pages/UserManagement';
 import ProductQuotaManagement from './pages/ProductQuotaManagement';
 import MonthlyForecastTab from './pages/MonthlyForecastTab';
-import MonthlyDemandTabularSample from './pages/MonthlyDemandTabularSample';
 import AdminSettings from './pages/AdminSettings';
-import DealerProductAssignment from './pages/DealerProductAssignment';
 import DebugPanel from './components/DebugPanel';
 
 const { Header, Content } = Layout;
@@ -109,6 +107,7 @@ function AppContent() {
     if (path === '/user-management') return 'user-management';
     if (path === '/daily-report') return 'daily-report';
     if (path === '/tso-report') return 'tso-report';
+    if (path === '/admin-settings') return 'admin-settings';
     return 'dashboard';
   };
 
@@ -119,7 +118,6 @@ function AppContent() {
     }
 
     const container = menuContainerRef.current;
-    const menuBar = menuBarRef.current;
     
     // Get container width (available space)
     const containerWidth = container.offsetWidth;
@@ -238,7 +236,9 @@ function AppContent() {
     ];
 
     // Set up resize observer and window resize listener
+    // eslint-disable-next-line no-undef
     const resizeObserver = new ResizeObserver(() => {
+      // eslint-disable-next-line no-undef
       requestAnimationFrame(() => {
         checkMenuOverflow();
       });
@@ -253,6 +253,7 @@ function AppContent() {
       const check = () => {
         clearTimeout(timeoutId);
         timeoutId = setTimeout(() => {
+          // eslint-disable-next-line no-undef
           requestAnimationFrame(() => {
             checkMenuOverflow();
           });
@@ -342,10 +343,6 @@ function AppContent() {
       key: 'user-management',
       icon: <TeamOutlined />,
       label: 'Manage Users',
-    }, {
-      key: 'dealer-product-assignment',
-      icon: <ShoppingCartOutlined />,
-      label: 'Dealer Products',
     }, {
       key: 'admin-settings',
       icon: <SettingOutlined />,
@@ -481,14 +478,16 @@ function AppContent() {
         background: '#f0f2f5',
         minHeight: userRole ? 'calc(100vh - 40px)' : '100vh',
       }}>
-        <Alert
-          type="warning"
-          showIcon
-          banner
-          message="WARNING: UAT Environment Only"
-          description="This software is for testing only. Sales orders may be deleted without notice. Do NOT use this software for real orders—use production systems instead."
-          style={{ marginBottom: '12px' }}
-        />
+        {userRole && (
+          <Alert
+            type="warning"
+            showIcon
+            banner
+            message="WARNING: UAT Environment Only"
+            description="This software is for testing only. Sales orders may be deleted without notice. Do NOT use this software for real orders—use production systems instead."
+            style={{ marginBottom: '12px' }}
+          />
+        )}
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/" element={
@@ -510,7 +509,6 @@ function AppContent() {
             <MonthlyForecastTab /> :
             <Dashboard setStats={setStats} />
           } />
-          <Route path="/monthly-demand-sample" element={<MonthlyDemandTabularSample />} />
           <Route path="/new-orders" element={<NewOrdersTablet onOrderCreated={refreshOrders} />} />
           <Route path="/review-orders" element={<ReviewOrdersTablet onOrderCreated={refreshOrders} />} />
           <Route path="/placed-orders" element={<PlacedOrders refreshTrigger={refreshTrigger} />} />
@@ -547,11 +545,6 @@ function AppContent() {
           <Route path="/admin-settings" element={
             userRole === 'admin' ? 
             <AdminSettings /> : 
-            <Dashboard setStats={setStats} />
-          } />
-          <Route path="/dealer-product-assignment" element={
-            userRole === 'admin' ? 
-            <DealerProductAssignment /> : 
             <Dashboard setStats={setStats} />
           } />
           <Route path="/manage-quotas" element={

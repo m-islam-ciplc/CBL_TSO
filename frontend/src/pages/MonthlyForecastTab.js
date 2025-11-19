@@ -133,6 +133,7 @@ function MonthlyForecastTab() {
     };
 
     // Poll every 5 seconds
+    // eslint-disable-next-line no-undef
     const pollInterval = setInterval(() => {
       if (document.visibilityState === 'visible') {
         loadProducts();
@@ -143,6 +144,7 @@ function MonthlyForecastTab() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
+      // eslint-disable-next-line no-undef
       clearInterval(pollInterval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
