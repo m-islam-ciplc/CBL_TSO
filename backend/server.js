@@ -3825,10 +3825,11 @@ app.get('/api/monthly-demand/dealer/:dealerId', (req, res) => {
             const startDay = results.length > 0 ? parseInt(results[0].setting_value) : 18;
             const period = calculateMonthlyPeriod(startDay);
             
-            // Get demand for this period (day-wise)
+            // Get demand for this period (bulk - sum all quantities per product)
             const demandQuery = `
                 SELECT 
-                    dmd.*,
+                    dmd.product_id,
+                    SUM(dmd.quantity) AS quantity,
                     p.name AS product_name,
                     p.product_code
                 FROM dealer_monthly_demand dmd
@@ -3836,7 +3837,8 @@ app.get('/api/monthly-demand/dealer/:dealerId', (req, res) => {
                 WHERE dmd.dealer_id = ? 
                 AND dmd.period_start = ? 
                 AND dmd.period_end = ?
-                ORDER BY p.product_code, dmd.demand_date
+                GROUP BY dmd.product_id, p.name, p.product_code
+                ORDER BY p.product_code
             `;
             
             db.query(demandQuery, [dealerId, period.start, period.end], (err, demand) => {
@@ -3857,9 +3859,9 @@ app.get('/api/monthly-demand/dealer/:dealerId', (req, res) => {
 // Create or update dealer monthly demand
 // NOTE: Only dealers should access this endpoint (frontend enforces this via routing)
 // This endpoint allows dealers to submit their monthly battery demand
-// Create or update dealer monthly demand (single entry - for backward compatibility)
+// Create or update dealer monthly demand (bulk - one quantity per product per period)
 app.post('/api/monthly-demand', (req, res) => {
-    const { dealer_id, product_id, quantity, demand_date } = req.body;
+    const { dealer_id, product_id, quantity } = req.body;
     
     if (!dealer_id || !product_id || quantity === undefined) {
         return res.status(400).json({ error: 'dealer_id, product_id, and quantity are required' });
@@ -3917,36 +3919,39 @@ app.post('/api/monthly-demand', (req, res) => {
                 const startDay = results.length > 0 ? parseInt(results[0].setting_value) : 18;
                 const period = calculateMonthlyPeriod(startDay);
                 
-                // Use provided demand_date or default to period.start for backward compatibility
-                const finalDemandDate = demand_date || period.start;
-                
-                // Insert or update demand (day-wise)
-                const upsertQuery = `
-                    INSERT INTO dealer_monthly_demand (dealer_id, product_id, period_start, period_end, demand_date, quantity)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                    ON DUPLICATE KEY UPDATE
-                        quantity = ?,
-                        updated_at = CURRENT_TIMESTAMP
-                `;
-                
-                db.query(upsertQuery, [
-                    dealer_id,
-                    product_id,
-                    period.start,
-                    period.end,
-                    finalDemandDate,
-                    quantity,
-                    quantity
-                ], (err, result) => {
+                // For bulk demand: delete all existing day-wise entries for this product/period, then insert one entry
+                // Use period.start as demand_date for the bulk entry
+                db.query('DELETE FROM dealer_monthly_demand WHERE dealer_id = ? AND product_id = ? AND period_start = ? AND period_end = ?', 
+                    [dealer_id, product_id, period.start, period.end], (err) => {
                     if (err) {
-                        console.error('Error saving monthly demand:', err);
+                        console.error('Error deleting old demand entries:', err);
                         return res.status(500).json({ error: 'Database error' });
                     }
-                    res.json({ 
-                        success: true, 
-                        id: result.insertId || 'updated',
-                        period_start: period.start,
-                        period_end: period.end
+                    
+                    // Insert bulk demand entry
+                    const insertQuery = `
+                        INSERT INTO dealer_monthly_demand (dealer_id, product_id, period_start, period_end, demand_date, quantity)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    `;
+                    
+                    db.query(insertQuery, [
+                        dealer_id,
+                        product_id,
+                        period.start,
+                        period.end,
+                        period.start, // Use period start as demand_date for bulk entry
+                        quantity
+                    ], (err, result) => {
+                        if (err) {
+                            console.error('Error saving monthly demand:', err);
+                            return res.status(500).json({ error: 'Database error' });
+                        }
+                        res.json({ 
+                            success: true, 
+                            id: result.insertId,
+                            period_start: period.start,
+                            period_end: period.end
+                        });
                     });
                 });
             });

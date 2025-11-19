@@ -1,7 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Card,
-  Table,
   Button,
   InputNumber,
   Typography,
@@ -13,13 +12,13 @@ import {
 } from 'antd';
 import {
   CalendarOutlined,
-  CopyOutlined,
   ClearOutlined,
   SaveOutlined,
 } from '@ant-design/icons';
 import axios from 'axios';
 import { useUser } from '../contexts/UserContext';
 import dayjs from 'dayjs';
+import './NewOrdersTablet.css';
 
 const { Title, Text } = Typography;
 
@@ -27,9 +26,10 @@ function MonthlyOrderTab() {
   const { dealerId } = useUser();
   const [periodInfo, setPeriodInfo] = useState({ start: '', end: '' });
   const [products, setProducts] = useState([]);
-  const [demandData, setDemandData] = useState({});
+  const [demandData, setDemandData] = useState({}); // { productId: quantity }
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const previousProductIdsRef = useRef(new Set());
 
   useEffect(() => {
     if (dealerId) {
@@ -49,17 +49,39 @@ function MonthlyOrderTab() {
     }
   };
 
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async () => {
     if (!dealerId) return;
     
     try {
       const response = await axios.get(`/api/products?dealer_id=${dealerId}`);
-      setProducts(response.data);
+      const newProducts = response.data;
+      
+      // Check if new products were added
+      const currentProductIds = new Set(newProducts.map(p => p.id));
+      const previousIds = previousProductIdsRef.current;
+      const newProductIds = new Set([...currentProductIds].filter(id => !previousIds.has(id)));
+      
+      if (newProductIds.size > 0) {
+        // New products were added - preserve existing demand data and initialize new products
+        setDemandData(prev => {
+          const updated = { ...prev };
+          newProductIds.forEach(productId => {
+            if (updated[productId] === undefined) {
+              updated[productId] = null;
+            }
+          });
+          return updated;
+        });
+        message.success(`${newProductIds.size} new product(s) added!`);
+      }
+      
+      setProducts(newProducts);
+      previousProductIdsRef.current = currentProductIds;
     } catch (error) {
       console.error('Error loading products:', error);
       message.error('Failed to load products');
     }
-  };
+  }, [dealerId]);
 
   const loadDemand = async () => {
     if (!dealerId || !periodInfo.start) return;
@@ -69,20 +91,18 @@ function MonthlyOrderTab() {
       const response = await axios.get(`/api/monthly-demand/dealer/${dealerId}`);
       const demand = response.data.demand || [];
       
-      // Initialize demand data structure: { productId: { date: quantity } }
+      // Initialize demand data structure: { productId: quantity }
       const initialData = {};
       products.forEach(product => {
-        initialData[product.id] = {};
+        initialData[product.id] = null;
       });
       
-      // Populate with existing demand data
+      // Populate with existing demand data - sum all quantities for the period
       demand.forEach(item => {
-        if (!initialData[item.product_id]) {
-          initialData[item.product_id] = {};
+        if (initialData[item.product_id] === null || initialData[item.product_id] === undefined) {
+          initialData[item.product_id] = 0;
         }
-        if (item.demand_date) {
-          initialData[item.product_id][item.demand_date] = item.quantity;
-        }
+        initialData[item.product_id] += item.quantity || 0;
       });
       
       setDemandData(initialData);
@@ -101,151 +121,48 @@ function MonthlyOrderTab() {
     }
   }, [products.length, periodInfo.start]);
 
-  // Generate dates for the period
-  const generateDates = () => {
-    if (!periodInfo.start || !periodInfo.end) return [];
-    
-    const dates = [];
-    const start = dayjs(periodInfo.start);
-    const end = dayjs(periodInfo.end);
-    let current = start;
-    
-    while (current.isBefore(end) || current.isSame(end, 'day')) {
-      dates.push({
-        date: current.format('YYYY-MM-DD'),
-        label: current.format('D MMM'),
-        dayLabel: current.format('D'),
-        monthLabel: current.format('MMM'),
-      });
-      current = current.add(1, 'day');
-    }
-    
-    return dates;
-  };
-
-  const dates = generateDates();
-
-  // Initialize demand data for all products and dates
+  // Auto-refresh products when dealer assignments change (polling every 5 seconds)
   useEffect(() => {
-    if (products.length > 0 && dates.length > 0) {
-      const initial = {};
-      products.forEach(product => {
-        if (!initial[product.id]) {
-          initial[product.id] = {};
-        }
-        dates.forEach(date => {
-          if (initial[product.id][date.date] === undefined) {
-            initial[product.id][date.date] = demandData[product.id]?.[date.date] || null;
-          }
-        });
-      });
-      setDemandData(prev => ({ ...prev, ...initial }));
-    }
-  }, [products.length, dates.length]);
+    if (!dealerId) return;
 
-  // Calculate total for a product
-  const calculateTotal = (productId) => {
-    const productDemand = demandData[productId] || {};
-    return Object.values(productDemand).reduce((sum, qty) => sum + (qty || 0), 0);
-  };
+    // Only poll when page is visible
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadProducts();
+      }
+    };
 
-  // Handle quantity change
-  const handleQuantityChange = (productId, date, value) => {
+    // Poll every 5 seconds
+    const pollInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        loadProducts();
+      }
+    }, 5000);
+
+    // Also reload when page becomes visible
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(pollInterval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [dealerId, loadProducts]);
+
+  // Handle quantity change for a product
+  const handleQuantityChange = (productId, value) => {
     setDemandData(prev => ({
       ...prev,
-      [productId]: {
-        ...prev[productId],
-        [date]: value || null,
-      },
+      [productId]: value || null,
     }));
   };
 
-  // Copy first value to all empty cells in row
-  const handleCopyRow = (productId) => {
-    const productDemand = demandData[productId] || {};
-    const firstValue = Object.values(productDemand).find(qty => qty !== null && qty !== undefined);
-    
-    if (firstValue === undefined) {
-      message.warning('No value to copy. Please enter a value first.');
-      return;
-    }
-
-    const updated = { ...demandData };
-    dates.forEach(date => {
-      if (!updated[productId][date.date]) {
-        updated[productId][date.date] = firstValue;
-      }
-    });
-    setDemandData(updated);
-    message.success('Copied value to empty cells');
-  };
-
-  // Clear entire row
-  const handleClearRow = (productId) => {
-    const updated = { ...demandData };
-    dates.forEach(date => {
-      updated[productId][date.date] = null;
-    });
-    setDemandData(updated);
-    message.success('Row cleared');
-  };
-
-  // Fill weekdays
-  const handleFillWeekdays = () => {
-    const updated = { ...demandData };
-    let filledCount = 0;
-    
-    products.forEach(product => {
-      const productDemand = demandData[product.id] || {};
-      const firstValue = Object.values(productDemand).find(qty => qty !== null && qty !== undefined);
-      
-      if (firstValue !== undefined) {
-        dates.forEach(date => {
-          const dayOfWeek = dayjs(date.date).day();
-          // 0 = Sunday, 6 = Saturday, so weekdays are 1-5
-          if (dayOfWeek >= 1 && dayOfWeek <= 5 && !updated[product.id][date.date]) {
-            updated[product.id][date.date] = firstValue;
-            filledCount++;
-          }
-        });
-      }
-    });
-    
-    setDemandData(updated);
-    if (filledCount > 0) {
-      message.success(`Filled ${filledCount} weekday cells`);
-    } else {
-      message.warning('No empty weekday cells to fill. Enter a value first.');
-    }
-  };
-
-  // Fill weekends
-  const handleFillWeekends = () => {
-    const updated = { ...demandData };
-    let filledCount = 0;
-    
-    products.forEach(product => {
-      const productDemand = demandData[product.id] || {};
-      const firstValue = Object.values(productDemand).find(qty => qty !== null && qty !== undefined);
-      
-      if (firstValue !== undefined) {
-        dates.forEach(date => {
-          const dayOfWeek = dayjs(date.date).day();
-          // 0 = Sunday, 6 = Saturday
-          if ((dayOfWeek === 0 || dayOfWeek === 6) && !updated[product.id][date.date]) {
-            updated[product.id][date.date] = firstValue;
-            filledCount++;
-          }
-        });
-      }
-    });
-    
-    setDemandData(updated);
-    if (filledCount > 0) {
-      message.success(`Filled ${filledCount} weekend cells`);
-    } else {
-      message.warning('No empty weekend cells to fill. Enter a value first.');
-    }
+  // Clear demand for a product
+  const handleClearProduct = (productId) => {
+    setDemandData(prev => ({
+      ...prev,
+      [productId]: null,
+    }));
+    message.success('Demand cleared');
   };
 
   // Save all demand data
@@ -260,17 +177,13 @@ function MonthlyOrderTab() {
       // Prepare bulk data: only include non-null quantities
       const demands = [];
       products.forEach(product => {
-        const productDemand = demandData[product.id] || {};
-        dates.forEach(date => {
-          const quantity = productDemand[date.date];
-          if (quantity !== null && quantity !== undefined && quantity > 0) {
-            demands.push({
-              product_id: product.id,
-              demand_date: date.date,
-              quantity: quantity,
-            });
-          }
-        });
+        const quantity = demandData[product.id];
+        if (quantity !== null && quantity !== undefined && quantity > 0) {
+          demands.push({
+            product_id: product.id,
+            quantity: quantity,
+          });
+        }
       });
 
       if (demands.length === 0) {
@@ -279,12 +192,18 @@ function MonthlyOrderTab() {
         return;
       }
 
-      await axios.post('/api/monthly-demand/bulk', {
-        dealer_id: dealerId,
-        demands: demands,
-      });
+      // Save each product's demand
+      const savePromises = demands.map(demand =>
+        axios.post('/api/monthly-demand', {
+          dealer_id: dealerId,
+          product_id: demand.product_id,
+          quantity: demand.quantity,
+        })
+      );
 
-      message.success(`Successfully saved ${demands.length} demand entries!`);
+      await Promise.all(savePromises);
+
+      message.success(`Successfully saved ${demands.length} product demand(s)!`);
       // Reload to get updated data
       loadDemand();
     } catch (error) {
@@ -293,100 +212,6 @@ function MonthlyOrderTab() {
     } finally {
       setSaving(false);
     }
-  };
-
-  // Build table columns
-  const buildColumns = () => {
-    const columns = [
-      {
-        title: 'Product',
-        key: 'product',
-        fixed: 'left',
-        width: 180,
-        render: (_, record) => (
-          <div>
-            <div style={{ fontWeight: 'bold', fontSize: '12px' }}>
-              {record.name}
-            </div>
-            <div style={{ fontSize: '12px', color: '#666' }}>
-              {record.product_code}
-            </div>
-          </div>
-        ),
-      },
-    ];
-
-    // Add date columns
-    dates.forEach(date => {
-      columns.push({
-        title: (
-          <div style={{ textAlign: 'center', fontSize: '12px', lineHeight: '1.2' }}>
-            <div style={{ fontWeight: 'bold' }}>{date.dayLabel}</div>
-            <div style={{ fontSize: '12px', color: '#666' }}>{date.monthLabel}</div>
-          </div>
-        ),
-        key: date.date,
-        width: 55,
-        align: 'center',
-        render: (_, record) => (
-          <InputNumber
-            size="small"
-            min={0}
-            value={demandData[record.id]?.[date.date] || null}
-            onChange={(value) => handleQuantityChange(record.id, date.date, value)}
-            placeholder="0"
-            style={{ width: '100%', maxWidth: '50px', fontSize: '12px' }}
-            controls={false}
-          />
-        ),
-      });
-    });
-
-    // Add total column
-    columns.push({
-      title: 'Total',
-      key: 'total',
-      width: 80,
-      align: 'center',
-      fixed: 'right',
-      render: (_, record) => (
-        <Text strong style={{ color: '#1890ff', fontSize: '14px' }}>
-          {calculateTotal(record.id)}
-        </Text>
-      ),
-    });
-
-    // Add actions column
-    columns.push({
-      title: 'Actions',
-      key: 'actions',
-      width: 60,
-      fixed: 'right',
-      align: 'center',
-      render: (_, record) => (
-        <Space size={0}>
-          <Button
-            type="text"
-            size="small"
-            icon={<CopyOutlined />}
-            onClick={() => handleCopyRow(record.id)}
-            title="Copy first value to empty cells"
-            style={{ padding: '2px', minWidth: 'auto' }}
-          />
-          <Button
-            type="text"
-            size="small"
-            danger
-            icon={<ClearOutlined />}
-            onClick={() => handleClearRow(record.id)}
-            title="Clear row"
-            style={{ padding: '2px', minWidth: 'auto' }}
-          />
-        </Space>
-      ),
-    });
-
-    return columns;
   };
 
   return (
@@ -405,47 +230,76 @@ function MonthlyOrderTab() {
         </Row>
       </Card>
 
-      {/* Table Card */}
-      <Card style={{ borderRadius: '8px' }}>
-        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          <Table
-            columns={buildColumns()}
-            dataSource={products}
-            rowKey="id"
-            pagination={false}
-            scroll={{ x: 'max-content', y: 400 }}
-            size="small"
-            style={{ minWidth: 800 }}
-            loading={loading}
-          />
-        </div>
+      {/* Products Card Grid */}
+      <Card style={{ borderRadius: '8px', marginBottom: '16px' }}>
+        {products.length > 0 ? (
+          <div className="responsive-product-grid">
+            {products.map(product => (
+              <Card
+                key={product.id}
+                style={{
+                  borderRadius: '8px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                }}
+                bodyStyle={{ padding: '16px' }}
+              >
+                <div style={{ marginBottom: '12px' }}>
+                  <Text strong style={{ fontSize: '14px', display: 'block', marginBottom: '4px' }}>
+                    {product.name}
+                  </Text>
+                  <Text type="secondary" style={{ fontSize: '12px' }}>
+                    {product.product_code}
+                  </Text>
+                </div>
+                
+                <div style={{ marginBottom: '12px' }}>
+                  <Text style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>
+                    Monthly Demand Quantity:
+                  </Text>
+                  <InputNumber
+                    size="large"
+                    min={0}
+                    value={demandData[product.id] || null}
+                    onChange={(value) => handleQuantityChange(product.id, value)}
+                    placeholder="Enter quantity"
+                    style={{ width: '100%' }}
+                    controls={true}
+                  />
+                </div>
 
-        {/* Footer Actions */}
-        <Row style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #f0f0f0' }}>
-          <Col xs={24} sm={12}>
-            <Space wrap>
-              <Button size="small" onClick={handleFillWeekdays}>
-                Fill Weekdays
-              </Button>
-              <Button size="small" onClick={handleFillWeekends}>
-                Fill Weekends
-              </Button>
-            </Space>
-          </Col>
-          <Col xs={24} sm={12} style={{ textAlign: 'right', marginTop: '8px' }}>
+                <Button
+                  danger
+                  icon={<ClearOutlined />}
+                  onClick={() => handleClearProduct(product.id)}
+                  style={{ width: '100%' }}
+                  size="small"
+                >
+                  Clear
+                </Button>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+            {loading ? 'Loading products...' : 'No products assigned to this dealer'}
+          </div>
+        )}
+      </Card>
+
+      {/* Footer Actions */}
+      <Card style={{ borderRadius: '8px' }}>
+        <Row justify="end">
+          <Col>
             <Space>
               <Button onClick={() => {
                 const updated = {};
                 products.forEach(product => {
-                  updated[product.id] = {};
-                  dates.forEach(date => {
-                    updated[product.id][date.date] = null;
-                  });
+                  updated[product.id] = null;
                 });
                 setDemandData(updated);
                 message.success('All data reset');
               }}>
-                Reset
+                Reset All
               </Button>
               <Button type="primary" icon={<SaveOutlined />} onClick={handleSaveAll} loading={saving}>
                 Save All
