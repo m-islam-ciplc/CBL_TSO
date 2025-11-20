@@ -1,0 +1,158 @@
+import { useState, useEffect } from 'react';
+import { Tabs, Typography } from 'antd';
+import { useLocation, useNavigate } from 'react-router-dom';
+import {
+  UserOutlined,
+  ShoppingCartOutlined,
+  TruckOutlined,
+  BarChartOutlined,
+  SettingOutlined,
+  TeamOutlined,
+} from '@ant-design/icons';
+import DealerManagement from './DealerManagement';
+import ProductManagement from './ProductManagement';
+import TransportManagement from './TransportManagement';
+import ProductQuotaManagement from './ProductQuotaManagement';
+import AdminSettings from './AdminSettings';
+import UserManagement from './UserManagement';
+import { useUser } from '../contexts/UserContext';
+
+const { Title, Text } = Typography;
+
+function Settings() {
+  const { userRole } = useUser();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('dealers');
+
+  // Handle legacy routes - redirect to /settings with appropriate tab
+  useEffect(() => {
+    const path = location.pathname;
+    if (path === '/manage-dealers') {
+      navigate('/settings?tab=dealers', { replace: true });
+      setActiveTab('dealers');
+    } else if (path === '/manage-products') {
+      navigate('/settings?tab=products', { replace: true });
+      setActiveTab('products');
+    } else if (path === '/manage-transports') {
+      navigate('/settings?tab=transports', { replace: true });
+      setActiveTab('transports');
+    } else if (path === '/manage-quotas') {
+      navigate('/settings?tab=quotas', { replace: true });
+      setActiveTab('quotas');
+    } else if (path === '/admin-settings') {
+      navigate('/settings?tab=admin-settings', { replace: true });
+      setActiveTab('admin-settings');
+    } else if (path === '/user-management') {
+      navigate('/settings?tab=users', { replace: true });
+      setActiveTab('users');
+    } else {
+      // Check URL params for tab
+      const params = new URLSearchParams(location.search);
+      const tab = params.get('tab');
+      if (tab && ['users', 'dealers', 'products', 'transports', 'quotas', 'admin-settings'].includes(tab)) {
+        setActiveTab(tab);
+      }
+    }
+  }, [location.pathname, location.search, navigate]);
+
+  return (
+    <div>
+      <Title level={3} style={{ marginBottom: '8px' }}>
+        <SettingOutlined /> Settings
+      </Title>
+      <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
+        Manage users, dealers, products, transports, quotas, and application settings
+      </Text>
+
+      <Tabs 
+        activeKey={activeTab} 
+        onChange={(key) => {
+          setActiveTab(key);
+          navigate(`/settings?tab=${key}`, { replace: true });
+        }}
+      >
+        {userRole === 'admin' && (
+          <Tabs.TabPane
+            tab={
+              <span>
+                <TeamOutlined />
+                Manage Users
+              </span>
+            }
+            key="users"
+          >
+            <UserManagement />
+          </Tabs.TabPane>
+        )}
+
+        <Tabs.TabPane
+          tab={
+            <span>
+              <UserOutlined />
+              Manage Dealers
+            </span>
+          }
+          key="dealers"
+        >
+          <DealerManagement />
+        </Tabs.TabPane>
+
+        <Tabs.TabPane
+          tab={
+            <span>
+              <ShoppingCartOutlined />
+              Manage Products
+            </span>
+          }
+          key="products"
+        >
+          <ProductManagement />
+        </Tabs.TabPane>
+
+        <Tabs.TabPane
+          tab={
+            <span>
+              <TruckOutlined />
+              Manage Transports
+            </span>
+          }
+          key="transports"
+        >
+          <TransportManagement />
+        </Tabs.TabPane>
+
+        {userRole === 'admin' && (
+          <Tabs.TabPane
+            tab={
+              <span>
+                <BarChartOutlined />
+                Manage Quotas
+              </span>
+            }
+            key="quotas"
+          >
+            <ProductQuotaManagement />
+          </Tabs.TabPane>
+        )}
+
+        {userRole === 'admin' && (
+          <Tabs.TabPane
+            tab={
+              <span>
+                <SettingOutlined />
+                Admin Settings
+              </span>
+            }
+            key="admin-settings"
+          >
+            <AdminSettings />
+          </Tabs.TabPane>
+        )}
+      </Tabs>
+    </div>
+  );
+}
+
+export default Settings;
+

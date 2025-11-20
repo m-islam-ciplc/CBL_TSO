@@ -24,16 +24,12 @@ import Dashboard from './pages/Dashboard';
 import NewOrdersTablet from './pages/NewOrdersTablet';
 import ReviewOrdersTablet from './pages/ReviewOrdersTablet';
 import PlacedOrders from './pages/PlacedOrders';
-import DealerManagement from './pages/DealerManagement';
-import ProductManagement from './pages/ProductManagement';
-import TransportManagement from './pages/TransportManagement';
+import Settings from './pages/Settings';
 import DailyReport from './pages/DailyReport';
 import TSOReport from './pages/TSOReport';
 import TSODashboard from './pages/TSODashboard';
 import UserManagement from './pages/UserManagement';
-import ProductQuotaManagement from './pages/ProductQuotaManagement';
 import MonthlyForecastTab from './pages/MonthlyForecastTab';
-import AdminSettings from './pages/AdminSettings';
 import DebugPanel from './components/DebugPanel';
 import DealerForecasts_Option1_Table from './pages/demos/DealerForecasts_Option1_Table';
 import DealerForecasts_Option2_Cards from './pages/demos/DealerForecasts_Option2_Cards';
@@ -108,14 +104,9 @@ function AppContent() {
     if (path === '/new-orders') return 'new-orders';
     if (path === '/review-orders') return 'review-orders';
     if (path === '/placed-orders') return 'placed-orders';
-    if (path === '/manage-dealers') return 'manage-dealers';
-    if (path === '/manage-products') return 'manage-products';
-    if (path === '/manage-transports') return 'manage-transports';
-    if (path === '/manage-quotas') return 'manage-quotas';
-    if (path === '/user-management') return 'user-management';
-    if (path === '/daily-report') return 'daily-report';
+    if (path === '/settings' || path === '/manage-dealers' || path === '/manage-products' || path === '/manage-transports' || path === '/manage-quotas' || path === '/admin-settings' || path === '/user-management') return 'settings';
+    if (path === '/reports') return 'reports';
     if (path === '/tso-report') return 'tso-report';
-    if (path === '/admin-settings') return 'admin-settings';
     return 'dashboard';
   };
 
@@ -322,40 +313,16 @@ function AppContent() {
       icon: <OrderedListOutlined />,
       label: 'Placed Orders',
     },
-    ...(userRole === 'admin' ? [{
-      key: 'manage-quotas',
-      icon: <BarChartOutlined />,
-      label: 'Manage Quotas',
-    }] : []),
     {
-      key: 'daily-report',
+      key: 'reports',
       icon: <FileExcelOutlined />,
-      label: 'Daily Report',
+      label: 'Reports',
     },
     {
-      key: 'manage-dealers',
-      icon: <UserOutlined />,
-      label: 'Manage Dealers',
-    },
-    {
-      key: 'manage-products',
-      icon: <ShoppingCartOutlined />,
-      label: 'Manage Products',
-    },
-    {
-      key: 'manage-transports',
-      icon: <TruckOutlined />,
-      label: 'Manage Transports',
-    },
-    ...(userRole === 'admin' ? [{
-      key: 'user-management',
-      icon: <TeamOutlined />,
-      label: 'Manage Users',
-    }, {
-      key: 'admin-settings',
+      key: 'settings',
       icon: <SettingOutlined />,
       label: 'Settings',
-    }] : []),
+    },
   ];
   
   // Update ref when menuItems changes so callback can access it
@@ -491,8 +458,7 @@ function AppContent() {
             type="warning"
             showIcon
             banner
-            message="WARNING: UAT Environment Only"
-            description="This software is for testing only. Sales orders may be deleted without notice. Do NOT use this software for real orders—use production systems instead."
+            message="WARNING: UAT Environment Only - This software is for testing only. Sales orders may be deleted without notice. Do NOT use this software for real orders—use production systems instead."
             style={{ marginBottom: '12px' }}
           />
         )}
@@ -520,22 +486,28 @@ function AppContent() {
           <Route path="/new-orders" element={<NewOrdersTablet onOrderCreated={refreshOrders} />} />
           <Route path="/review-orders" element={<ReviewOrdersTablet onOrderCreated={refreshOrders} />} />
           <Route path="/placed-orders" element={<PlacedOrders refreshTrigger={refreshTrigger} />} />
+          <Route path="/settings" element={
+            isTSO ? 
+            <NewOrdersTablet onOrderCreated={refreshOrders} /> : 
+            <Settings />
+          } />
+          {/* Legacy routes - redirect to settings */}
           <Route path="/manage-dealers" element={
             isTSO ? 
             <NewOrdersTablet onOrderCreated={refreshOrders} /> : 
-            <DealerManagement />
+            <Settings />
           } />
           <Route path="/manage-products" element={
             isTSO ? 
             <NewOrdersTablet onOrderCreated={refreshOrders} /> : 
-            <ProductManagement />
+            <Settings />
           } />
           <Route path="/manage-transports" element={
             isTSO ? 
             <NewOrdersTablet onOrderCreated={refreshOrders} /> : 
-            <TransportManagement />
+            <Settings />
           } />
-          <Route path="/daily-report" element={
+          <Route path="/reports" element={
             isTSO ? 
             <NewOrdersTablet onOrderCreated={refreshOrders} /> : 
             <DailyReport />
@@ -547,17 +519,17 @@ function AppContent() {
           } />
           <Route path="/user-management" element={
             userRole === 'admin' ? 
-            <UserManagement /> : 
+            <Settings /> : 
             <Dashboard setStats={setStats} />
           } />
           <Route path="/admin-settings" element={
             userRole === 'admin' ? 
-            <AdminSettings /> : 
+            <Settings /> : 
             <Dashboard setStats={setStats} />
           } />
           <Route path="/manage-quotas" element={
             userRole === 'admin' ? 
-            <ProductQuotaManagement /> : 
+            <Settings /> : 
             <Dashboard setStats={setStats} />
           } />
           {/* Demo routes - accessible without login */}
