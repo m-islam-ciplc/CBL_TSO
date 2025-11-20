@@ -1,0 +1,4 @@
+---
+alwaysApply: true
+---
+Whenever creating demo pages, add them in navbar and make them accessible without login.

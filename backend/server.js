@@ -3711,7 +3711,7 @@ app.delete('/api/orders/:id', async (req, res) => {
 // ============================================================================
 
 // Helper function to calculate monthly period dates based on start day
-function calculateMonthlyPeriod(startDay) {
+function calculateMonthlyPeriod(startDay, monthOffset = 0) {
     const today = new Date();
     const currentDay = today.getDate();
     const currentMonth = today.getMonth();
@@ -3719,14 +3719,46 @@ function calculateMonthlyPeriod(startDay) {
     
     let periodStart, periodEnd;
     
-    if (currentDay >= startDay) {
-        // Current period started this month
-        periodStart = new Date(currentYear, currentMonth, startDay);
-        periodEnd = new Date(currentYear, currentMonth + 1, startDay - 1);
+    if (monthOffset === 0) {
+        // For current period, use current day logic
+        if (currentDay >= startDay) {
+            // Current period started this month
+            periodStart = new Date(currentYear, currentMonth, startDay);
+            periodEnd = new Date(currentYear, currentMonth + 1, startDay - 1);
+        } else {
+            // Current period started last month
+            periodStart = new Date(currentYear, currentMonth - 1, startDay);
+            periodEnd = new Date(currentYear, currentMonth, startDay - 1);
+        }
     } else {
-        // Current period started last month
-        periodStart = new Date(currentYear, currentMonth - 1, startDay);
-        periodEnd = new Date(currentYear, currentMonth, startDay - 1);
+        // For historical periods (monthOffset < 0), calculate based on offset from current period
+        // Calculate the base period first
+        let baseMonth, baseYear;
+        if (currentDay >= startDay) {
+            baseMonth = currentMonth;
+            baseYear = currentYear;
+        } else {
+            baseMonth = currentMonth - 1;
+            baseYear = currentYear;
+        }
+        
+        // Apply offset
+        let targetMonth = baseMonth + monthOffset;
+        let targetYear = baseYear;
+        
+        // Adjust year if month goes out of bounds
+        while (targetMonth < 0) {
+            targetMonth += 12;
+            targetYear -= 1;
+        }
+        while (targetMonth > 11) {
+            targetMonth -= 12;
+            targetYear += 1;
+        }
+        
+        // For historical periods: period starts on startDay of target month, ends on startDay-1 of next month
+        periodStart = new Date(targetYear, targetMonth, startDay);
+        periodEnd = new Date(targetYear, targetMonth + 1, startDay - 1);
     }
     
     // Format dates as YYYY-MM-DD without timezone conversion issues
@@ -3800,9 +3832,8 @@ app.get('/api/monthly-forecast/current-period', (req, res) => {
     });
 });
 
-// Get dealer's monthly forecast for current period
-// NOTE: Only dealers should access this endpoint (frontend enforces this via routing)
-app.get('/api/monthly-forecast/dealer/:dealerId', (req, res) => {
+// Get available forecast periods for a dealer (last 12 months)
+app.get('/api/monthly-forecast/dealer/:dealerId/periods', (req, res) => {
     const { dealerId } = req.params;
     
     // Validate dealer exists
@@ -3815,7 +3846,7 @@ app.get('/api/monthly-forecast/dealer/:dealerId', (req, res) => {
             return res.status(404).json({ error: 'Dealer not found' });
         }
         
-        // Get current period
+        // Get start day setting
         const query = 'SELECT setting_value FROM settings WHERE setting_key = ?';
         db.query(query, ['monthly_forecast_start_day'], (err, results) => {
             if (err) {
@@ -3823,7 +3854,88 @@ app.get('/api/monthly-forecast/dealer/:dealerId', (req, res) => {
                 return res.status(500).json({ error: 'Database error' });
             }
             const startDay = results.length > 0 ? parseInt(results[0].setting_value) : 18;
-            const period = calculateMonthlyPeriod(startDay);
+            
+            // Get current period
+            const currentPeriod = calculateMonthlyPeriod(startDay, 0);
+            
+            // Generate list of periods (current + last 11 months)
+            const periods = [];
+            for (let i = 0; i >= -11; i--) {
+                const period = calculateMonthlyPeriod(startDay, i);
+                periods.push({
+                    period_start: period.start,
+                    period_end: period.end,
+                    is_current: i === 0
+                });
+            }
+            
+            // Check which periods have forecasts
+            const periodStarts = periods.map(p => p.period_start);
+            const periodEnds = periods.map(p => p.period_end);
+            
+            const checkQuery = `
+                SELECT DISTINCT period_start, period_end
+                FROM monthly_forecast
+                WHERE dealer_id = ?
+                AND period_start IN (?)
+                AND period_end IN (?)
+            `;
+            
+            db.query(checkQuery, [dealerId, periodStarts, periodEnds], (err, forecastPeriods) => {
+                if (err) {
+                    console.error('Error checking forecast periods:', err);
+                    return res.status(500).json({ error: 'Database error' });
+                }
+                
+                const hasForecast = new Set();
+                forecastPeriods.forEach(fp => {
+                    hasForecast.add(`${fp.period_start}_${fp.period_end}`);
+                });
+                
+                // Mark periods that have forecasts
+                periods.forEach(period => {
+                    period.has_forecast = hasForecast.has(`${period.period_start}_${period.period_end}`);
+                });
+                
+                res.json({ periods });
+            });
+        });
+    });
+});
+
+// Get dealer's monthly forecast for a specific period
+// NOTE: Only dealers should access this endpoint (frontend enforces this via routing)
+// Query params: period_start, period_end (optional - defaults to current period)
+app.get('/api/monthly-forecast/dealer/:dealerId', (req, res) => {
+    const { dealerId } = req.params;
+    const { period_start, period_end } = req.query;
+    
+    // Validate dealer exists
+    db.query('SELECT id FROM dealers WHERE id = ?', [dealerId], (err, dealerCheck) => {
+        if (err) {
+            console.error('Error checking dealer:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        if (dealerCheck.length === 0) {
+            return res.status(404).json({ error: 'Dealer not found' });
+        }
+        
+        // Get start day setting
+        const query = 'SELECT setting_value FROM settings WHERE setting_key = ?';
+        db.query(query, ['monthly_forecast_start_day'], (err, results) => {
+            if (err) {
+                console.error('Error fetching setting:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            const startDay = results.length > 0 ? parseInt(results[0].setting_value) : 18;
+            
+            // Use provided period or calculate current period
+            let period;
+            if (period_start && period_end) {
+                period = { start: period_start, end: period_end };
+            } else {
+                period = calculateMonthlyPeriod(startDay, 0);
+            }
             
             // Get forecast for this period (bulk - sum all quantities per product)
             const forecastQuery = `
@@ -4110,6 +4222,103 @@ app.post('/api/monthly-forecast/bulk', (req, res) => {
                         });
                     });
                 });
+            });
+        });
+    });
+});
+
+// Get all forecasts for admin/TSO view (with territory filtering)
+app.get('/api/monthly-forecast/all', (req, res) => {
+    const { period_start, period_end, territory_name } = req.query;
+    
+    // Get start day setting
+    const query = 'SELECT setting_value FROM settings WHERE setting_key = ?';
+    db.query(query, ['monthly_forecast_start_day'], (err, results) => {
+        if (err) {
+            console.error('Error fetching setting:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        const startDay = results.length > 0 ? parseInt(results[0].setting_value) : 18;
+        
+        // Use provided period or calculate current period
+        let period;
+        if (period_start && period_end) {
+            period = { start: period_start, end: period_end };
+        } else {
+            period = calculateMonthlyPeriod(startDay, 0);
+        }
+        
+        // Build query with optional territory filter
+        let forecastQuery = `
+            SELECT 
+                d.id AS dealer_id,
+                d.dealer_code,
+                d.dealer_name,
+                d.territory_name,
+                mf.product_id,
+                SUM(mf.quantity) AS quantity,
+                p.name AS product_name,
+                p.product_code
+            FROM monthly_forecast mf
+            INNER JOIN dealers d ON mf.dealer_id = d.id
+            LEFT JOIN products p ON mf.product_id = p.id
+            WHERE mf.period_start = ? 
+            AND mf.period_end = ?
+        `;
+        
+        const queryParams = [period.start, period.end];
+        
+        // Add territory filter if provided (for TSO users)
+        if (territory_name) {
+            forecastQuery += ' AND d.territory_name = ?';
+            queryParams.push(territory_name);
+        }
+        
+        forecastQuery += `
+            GROUP BY d.id, d.dealer_code, d.dealer_name, d.territory_name, mf.product_id, p.name, p.product_code
+            ORDER BY d.territory_name, d.dealer_code, p.product_code
+        `;
+        
+        db.query(forecastQuery, queryParams, (err, forecastRows) => {
+            if (err) {
+                console.error('Error fetching forecasts:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            
+            // Group by dealer
+            const dealerMap = {};
+            forecastRows.forEach(row => {
+                if (!dealerMap[row.dealer_id]) {
+                    dealerMap[row.dealer_id] = {
+                        dealer_id: row.dealer_id,
+                        dealer_code: row.dealer_code,
+                        dealer_name: row.dealer_name,
+                        territory_name: row.territory_name,
+                        products: [],
+                        total_products: 0,
+                        total_quantity: 0,
+                    };
+                }
+                
+                dealerMap[row.dealer_id].products.push({
+                    product_code: row.product_code,
+                    product_name: row.product_name,
+                    quantity: row.quantity,
+                });
+                dealerMap[row.dealer_id].total_quantity += row.quantity;
+            });
+            
+            // Calculate total_products for each dealer
+            Object.values(dealerMap).forEach(dealer => {
+                dealer.total_products = dealer.products.length;
+            });
+            
+            const forecasts = Object.values(dealerMap);
+            
+            res.json({
+                period_start: period.start,
+                period_end: period.end,
+                forecasts: forecasts
             });
         });
     });

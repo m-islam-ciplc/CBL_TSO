@@ -9,11 +9,13 @@ import {
   Space,
   Tag,
   message,
+  Select,
 } from 'antd';
 import {
   CalendarOutlined,
   ClearOutlined,
   SaveOutlined,
+  HistoryOutlined,
 } from '@ant-design/icons';
 import axios from 'axios';
 import { useUser } from '../contexts/UserContext';
@@ -21,23 +23,34 @@ import dayjs from 'dayjs';
 import './NewOrdersTablet.css';
 
 const { Title, Text } = Typography;
+const { Option } = Select;
 
 function MonthlyForecastTab() {
   const { dealerId } = useUser();
   const [periodInfo, setPeriodInfo] = useState({ start: '', end: '' });
+  const [selectedPeriod, setSelectedPeriod] = useState(null); // { period_start, period_end, is_current }
+  const [availablePeriods, setAvailablePeriods] = useState([]);
   const [products, setProducts] = useState([]);
   const [forecastData, setForecastData] = useState({}); // { productId: quantity }
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [loadingPeriods, setLoadingPeriods] = useState(false);
   const previousProductIdsRef = useRef(new Set());
 
   useEffect(() => {
     if (dealerId) {
       loadPeriodInfo();
+      loadAvailablePeriods();
       loadProducts();
-      loadForecast();
     }
   }, [dealerId]);
+
+  // Load forecast when period changes
+  useEffect(() => {
+    if (selectedPeriod && products.length > 0) {
+      loadForecast();
+    }
+  }, [selectedPeriod, products.length]);
 
   const loadPeriodInfo = async () => {
     try {
@@ -46,6 +59,30 @@ function MonthlyForecastTab() {
     } catch (error) {
       console.error('Error loading period info:', error);
       message.error('Failed to load period information');
+    }
+  };
+
+  const loadAvailablePeriods = async () => {
+    if (!dealerId) return;
+    
+    setLoadingPeriods(true);
+    try {
+      const response = await axios.get(`/api/monthly-forecast/dealer/${dealerId}/periods`);
+      const periods = response.data.periods || [];
+      setAvailablePeriods(periods);
+      
+      // Set current period as default selection
+      const currentPeriod = periods.find(p => p.is_current);
+      if (currentPeriod) {
+        setSelectedPeriod(currentPeriod);
+      } else if (periods.length > 0) {
+        setSelectedPeriod(periods[0]);
+      }
+    } catch (error) {
+      console.error('Error loading available periods:', error);
+      message.error('Failed to load available periods');
+    } finally {
+      setLoadingPeriods(false);
     }
   };
 
@@ -84,12 +121,24 @@ function MonthlyForecastTab() {
   }, [dealerId]);
 
   const loadForecast = async () => {
-    if (!dealerId || !periodInfo.start) return;
+    if (!dealerId || !selectedPeriod) return;
     
     setLoading(true);
     try {
-      const response = await axios.get(`/api/monthly-forecast/dealer/${dealerId}`);
+      const params = {
+        period_start: selectedPeriod.period_start,
+        period_end: selectedPeriod.period_end
+      };
+      const response = await axios.get(`/api/monthly-forecast/dealer/${dealerId}`, { params });
       const forecast = response.data.forecast || [];
+      
+      // Update period info from response
+      if (response.data.period_start && response.data.period_end) {
+        setPeriodInfo({
+          start: response.data.period_start,
+          end: response.data.period_end
+        });
+      }
       
       // Initialize forecast data structure: { productId: quantity }
       const initialData = {};
@@ -114,12 +163,14 @@ function MonthlyForecastTab() {
     }
   };
 
-  // Reload forecast when products or period changes
-  useEffect(() => {
-    if (products.length > 0 && periodInfo.start) {
-      loadForecast();
-    }
-  }, [products.length, periodInfo.start]);
+  // Format period for display
+  const formatPeriodLabel = (period) => {
+    if (!period) return '';
+    const start = dayjs(period.period_start);
+    const end = dayjs(period.period_end);
+    const label = `${start.format('MMM YYYY')} - ${end.format('MMM YYYY')}`;
+    return label;
+  };
 
   // Auto-refresh products when dealer assignments change (polling every 5 seconds)
   useEffect(() => {
@@ -174,6 +225,12 @@ function MonthlyForecastTab() {
       return;
     }
 
+    // Only allow saving for current period
+    if (!selectedPeriod || !selectedPeriod.is_current) {
+      message.warning('You can only edit forecasts for the current period');
+      return;
+    }
+
     setSaving(true);
     try {
       // Prepare bulk data: only include non-null quantities
@@ -208,6 +265,7 @@ function MonthlyForecastTab() {
       message.success(`Successfully saved ${forecasts.length} product forecast(s)!`);
       // Reload to get updated data
       loadForecast();
+      loadAvailablePeriods(); // Refresh periods to update has_forecast flags
     } catch (error) {
       console.error('Error saving forecast:', error);
       message.error(error.response?.data?.error || 'Failed to save monthly forecast');
@@ -216,18 +274,56 @@ function MonthlyForecastTab() {
     }
   };
 
+  const isCurrentPeriod = selectedPeriod?.is_current;
+  const hasForecast = selectedPeriod?.has_forecast;
+
   return (
     <div style={{ padding: '16px', background: '#f5f5f5', minHeight: '100vh' }}>
       {/* Header */}
       <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
         <Row justify="space-between" align="middle">
-          <Col>
+          <Col flex="auto">
             <Title level={3} style={{ margin: 0, fontSize: '20px' }}>
               <CalendarOutlined /> Monthly Forecast
             </Title>
-            <Tag color="blue" style={{ marginTop: '8px' }}>
-              Period: {periodInfo.start ? dayjs(periodInfo.start).format('DD MMM YYYY') : ''} - {periodInfo.end ? dayjs(periodInfo.end).format('DD MMM YYYY') : ''}
-            </Tag>
+            <div style={{ marginTop: '12px' }}>
+              <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                <div>
+                  <Text strong style={{ marginRight: '8px' }}>Select Period:</Text>
+                  <Select
+                    style={{ width: 280 }}
+                    value={selectedPeriod ? `${selectedPeriod.period_start}_${selectedPeriod.period_end}` : undefined}
+                    onChange={(value) => {
+                      const period = availablePeriods.find(p => `${p.period_start}_${p.period_end}` === value);
+                      setSelectedPeriod(period);
+                    }}
+                    loading={loadingPeriods}
+                    placeholder="Select forecast period"
+                  >
+                    {availablePeriods.map((period, index) => (
+                      <Option key={`${period.period_start}_${period.period_end}`} value={`${period.period_start}_${period.period_end}`}>
+                        <Space>
+                          {formatPeriodLabel(period)}
+                          {period.is_current && <Tag color="green" size="small">Current</Tag>}
+                          {!period.is_current && period.has_forecast && <Tag color="blue" size="small"><HistoryOutlined /> Historical</Tag>}
+                          {!period.has_forecast && !period.is_current && <Tag color="default" size="small">No Data</Tag>}
+                        </Space>
+                      </Option>
+                    ))}
+                  </Select>
+                </div>
+                {selectedPeriod && (
+                  <div>
+                    <Tag color={isCurrentPeriod ? 'green' : 'blue'} style={{ marginRight: '8px' }}>
+                      {isCurrentPeriod ? 'Current Period' : 'Historical Period'}
+                    </Tag>
+                    <Text type="secondary">
+                      {periodInfo.start ? dayjs(periodInfo.start).format('DD MMM YYYY') : ''} - {periodInfo.end ? dayjs(periodInfo.end).format('DD MMM YYYY') : ''}
+                    </Text>
+                  </div>
+                )}
+              </Space>
+            </div>
           </Col>
         </Row>
       </Card>
@@ -266,6 +362,8 @@ function MonthlyForecastTab() {
                     placeholder="Enter quantity"
                     style={{ width: '100%' }}
                     controls={true}
+                    disabled={!isCurrentPeriod}
+                    readOnly={!isCurrentPeriod}
                   />
                 </div>
 
@@ -275,6 +373,7 @@ function MonthlyForecastTab() {
                   onClick={() => handleClearProduct(product.id)}
                   style={{ width: '100%' }}
                   size="small"
+                  disabled={!isCurrentPeriod}
                 >
                   Clear
                 </Button>
@@ -289,27 +388,40 @@ function MonthlyForecastTab() {
       </Card>
 
       {/* Footer Actions */}
-      <Card style={{ borderRadius: '8px' }}>
-        <Row justify="end">
-          <Col>
-            <Space>
-              <Button onClick={() => {
-                const updated = {};
-                products.forEach(product => {
-                  updated[product.id] = null;
-                });
-                setForecastData(updated);
-                message.success('All data reset');
-              }}>
-                Reset All
-              </Button>
-              <Button type="primary" icon={<SaveOutlined />} onClick={handleSaveAll} loading={saving}>
-                Save All
-              </Button>
-            </Space>
-          </Col>
-        </Row>
-      </Card>
+      {isCurrentPeriod && (
+        <Card style={{ borderRadius: '8px' }}>
+          <Row justify="end">
+            <Col>
+              <Space>
+                <Button onClick={() => {
+                  const updated = {};
+                  products.forEach(product => {
+                    updated[product.id] = null;
+                  });
+                  setForecastData(updated);
+                  message.success('All data reset');
+                }}>
+                  Reset All
+                </Button>
+                <Button type="primary" icon={<SaveOutlined />} onClick={handleSaveAll} loading={saving}>
+                  Save All
+                </Button>
+              </Space>
+            </Col>
+          </Row>
+        </Card>
+      )}
+      {!isCurrentPeriod && (
+        <Card style={{ borderRadius: '8px', background: '#fafafa' }}>
+          <Row justify="center">
+            <Col>
+              <Text type="secondary" italic>
+                <HistoryOutlined /> This is a historical forecast. You can view but not edit past forecasts.
+              </Text>
+            </Col>
+          </Row>
+        </Card>
+      )}
     </div>
   );
 }

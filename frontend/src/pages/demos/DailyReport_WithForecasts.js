@@ -1,10 +1,34 @@
 import { useState, useEffect } from 'react';
-import { Card, DatePicker, Button, message, Typography, Row, Col, Space, Spin, Table, Tag, Input, Select, Tabs, Badge, Statistic } from 'antd';
-import { DownloadOutlined, FileExcelOutlined, EyeOutlined, SearchOutlined, BarChartOutlined, AppstoreOutlined, CalendarOutlined } from '@ant-design/icons';
+import {
+  Card,
+  DatePicker,
+  Button,
+  message,
+  Typography,
+  Row,
+  Col,
+  Space,
+  Spin,
+  Table,
+  Tag,
+  Input,
+  Select,
+  Tabs,
+  Badge,
+  Statistic,
+} from 'antd';
+import {
+  DownloadOutlined,
+  FileExcelOutlined,
+  EyeOutlined,
+  SearchOutlined,
+  BarChartOutlined,
+  AppstoreOutlined,
+  CalendarOutlined,
+} from '@ant-design/icons';
 import axios from 'axios';
 import dayjs from 'dayjs';
 import * as XLSX from 'xlsx';
-import { useUser } from '../contexts/UserContext';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -12,12 +36,51 @@ const { Option } = Select;
 // Helper function to remove M/S prefix from dealer names
 const removeMSPrefix = (name) => {
   if (!name) return name;
-  // Remove "M/S", "M/S.", "M/S " prefix (case insensitive, with or without space/period)
   return name.replace(/^M\/S[.\s]*/i, '').trim();
 };
 
-function DailyReport() {
-  const { territoryName, isTSO } = useUser();
+// Demo forecast data
+const mockForecastData = [
+  {
+    dealer_id: 990,
+    dealer_code: '00990',
+    dealer_name: 'M/S Diba Enterprise',
+    territory_name: 'Cumilla Territory',
+    total_products: 3,
+    total_quantity: 150,
+    products: [
+      { product_code: 'E101GT108', product_name: '6DGA-1400 Gaston', quantity: 50 },
+      { product_code: 'E101MN095', product_name: 'MR-180A/H Maniratna', quantity: 60 },
+      { product_code: 'L101AF032', product_name: 'ET140TL Alpha', quantity: 40 },
+    ],
+  },
+  {
+    dealer_id: 1131,
+    dealer_code: '01131',
+    dealer_name: 'M/S Khalaq Motors-Feni',
+    territory_name: 'Cumilla Territory',
+    total_products: 2,
+    total_quantity: 100,
+    products: [
+      { product_code: 'E101GT108', product_name: '6DGA-1400 Gaston', quantity: 50 },
+      { product_code: 'L101AF032', product_name: 'ET140TL Alpha', quantity: 50 },
+    ],
+  },
+  {
+    dealer_id: 44,
+    dealer_code: '00044',
+    dealer_name: 'M/S Ultimate Tyre & Battery',
+    territory_name: 'Tangail Territory',
+    total_products: 1,
+    total_quantity: 75,
+    products: [
+      { product_code: 'E101GT108', product_name: '6DGA-1400 Gaston', quantity: 75 },
+    ],
+  },
+];
+
+function DailyReport_WithForecasts() {
+  // Daily Report states
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [loading, setLoading] = useState(false);
   const [availableDates, setAvailableDates] = useState([]);
@@ -31,34 +94,33 @@ function DailyReport() {
   const [rangeEnd, setRangeEnd] = useState(null);
   const [previewInfo, setPreviewInfo] = useState('');
   const [previewMode, setPreviewMode] = useState('single');
-  const [activeTab, setActiveTab] = useState('daily-report');
+  const [activeMainTab, setActiveMainTab] = useState('daily-report');
 
   // Forecast states
-  const [forecasts, setForecasts] = useState([]);
-  const [filteredForecasts, setFilteredForecasts] = useState([]);
+  const [forecasts, setForecasts] = useState(mockForecastData);
+  const [filteredForecasts, setFilteredForecasts] = useState(mockForecastData);
   const [forecastLoading, setForecastLoading] = useState(false);
-  const [selectedPeriod, setSelectedPeriod] = useState(null);
-  const [periods, setPeriods] = useState([]);
+  const [selectedPeriod, setSelectedPeriod] = useState('2025-11-18_2025-12-17');
   const [forecastSearchTerm, setForecastSearchTerm] = useState('');
-  const [territoryFilter, setTerritoryFilter] = useState(isTSO ? territoryName : '');
+  const [territoryFilter, setTerritoryFilter] = useState('');
   const [expandedRowKeys, setExpandedRowKeys] = useState({
     byDealer: [],
     byProduct: [],
     byTerritory: [],
   });
 
+  const periods = [
+    { value: '2025-11-18_2025-12-17', label: 'Nov 2025 - Dec 2025', is_current: true },
+    { value: '2025-10-18_2025-11-17', label: 'Oct 2025 - Nov 2025', is_current: false },
+    { value: '2025-09-18_2025-10-17', label: 'Sep 2025 - Oct 2025', is_current: false },
+  ];
+
+  const territories = ['Cumilla Territory', 'Tangail Territory', 'Dhaka Territory'];
+
   // Load available dates on component mount
   useEffect(() => {
     getAvailableDates();
-    loadPeriods();
   }, []);
-
-  // Load forecasts when period changes
-  useEffect(() => {
-    if (selectedPeriod) {
-      loadForecasts();
-    }
-  }, [selectedPeriod, territoryFilter]);
 
   // Filter preview data when search term or status filter changes
   useEffect(() => {
@@ -72,23 +134,35 @@ function DailyReport() {
 
   const getAvailableDates = async () => {
     try {
-      console.log('Fetching available dates...');
       const response = await axios.get('/api/orders/available-dates');
-      console.log('Available dates response:', response.data);
-      
-      // Convert ISO dates to YYYY-MM-DD format
       const formattedDates = response.data.dates.map(date => {
         return new Date(date).toISOString().split('T')[0];
       });
-      
-      console.log('Formatted dates:', formattedDates);
       setAvailableDates(formattedDates);
     } catch (error) {
       console.error('Error fetching available dates:', error);
-      console.error('Error details:', error.response?.data);
     }
   };
 
+  const filterForecasts = () => {
+    let filtered = [...forecasts];
+
+    if (forecastSearchTerm) {
+      filtered = filtered.filter(
+        (f) =>
+          f.dealer_name.toLowerCase().includes(forecastSearchTerm.toLowerCase()) ||
+          f.dealer_code.toLowerCase().includes(forecastSearchTerm.toLowerCase())
+      );
+    }
+
+    if (territoryFilter) {
+      filtered = filtered.filter((f) => f.territory_name === territoryFilter);
+    }
+
+    setFilteredForecasts(filtered);
+  };
+
+  // Daily Report handlers
   const handleGenerateRangeReport = async () => {
     if (!rangeStart || !rangeEnd) {
       message.error('Please select both start and end dates');
@@ -110,10 +184,7 @@ function DailyReport() {
         headers: {
           'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         },
-        params: {
-          startDate,
-          endDate,
-        },
+        params: { startDate, endDate },
       });
 
       const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -130,8 +201,6 @@ function DailyReport() {
       console.error('Error generating range report:', error);
       if (error.response?.status === 404) {
         message.error(`No orders found between ${startDate} and ${endDate}`);
-      } else if (error.response?.data?.error) {
-        message.error(error.response.data.error);
       } else {
         message.error('Failed to generate range report. Please try again.');
       }
@@ -157,19 +226,10 @@ function DailyReport() {
     setLoading(true);
     try {
       const response = await axios.get('/api/orders/range', {
-        params: {
-          startDate,
-          endDate,
-        },
+        params: { startDate, endDate },
       });
 
-      const {
-        orders,
-        total_dealers,
-        total_quantity,
-        total_value,
-        total_original_orders,
-      } = response.data;
+      const { orders, total_dealers, total_quantity, total_value, total_original_orders } = response.data;
 
       if (!orders || orders.length === 0) {
         message.info(`No orders found between ${startDate} and ${endDate}`);
@@ -199,26 +259,17 @@ function DailyReport() {
       );
     } catch (error) {
       console.error('Error fetching range order data:', error);
-      if (error.response?.data?.error) {
-        message.error(error.response.data.error);
-      } else {
-        message.error('Failed to fetch range order data. Please try again.');
-      }
+      message.error('Failed to fetch range order data. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Disable dates without orders
   const disabledDate = (current) => {
     const dateString = current.format('YYYY-MM-DD');
-    console.log('Checking date:', dateString, 'Available dates:', availableDates);
-    const isDisabled = !availableDates.includes(dateString);
-    console.log('Date disabled:', isDisabled);
-    return isDisabled;
+    return !availableDates.includes(dateString);
   };
 
-  // Custom date cell renderer
   const dateCellRender = (current) => {
     const dateString = current.format('YYYY-MM-DD');
     const hasOrders = availableDates.includes(dateString);
@@ -244,21 +295,14 @@ function DailyReport() {
 
     setLoading(true);
     try {
-      const dateString = selectedDate ? selectedDate.format('YYYY-MM-DD') : '';
-      if (!dateString) {
-        message.error('Please select a valid date');
-        return;
-      }
-      
-      // Generate Excel report
+      const dateString = selectedDate.format('YYYY-MM-DD');
       const response = await axios.get(`/api/orders/tso-report/${dateString}`, {
-        responseType: 'blob', // Important for file download
+        responseType: 'blob',
         headers: {
           'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         }
       });
 
-      // Create blob link to download
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -272,7 +316,7 @@ function DailyReport() {
     } catch (error) {
       console.error('Error generating report:', error);
       if (error.response?.status === 404) {
-        message.error(`No orders found for ${selectedDate ? selectedDate.format('YYYY-MM-DD') : 'selected date'}`);
+        message.error(`No orders found for ${selectedDate.format('YYYY-MM-DD')}`);
       } else {
         message.error('Failed to generate report. Please try again.');
       }
@@ -289,21 +333,12 @@ function DailyReport() {
 
     setLoading(true);
     try {
-      const dateString = selectedDate ? selectedDate.format('YYYY-MM-DD') : '';
-      if (!dateString) {
-        message.error('Please select a valid date');
-        return;
-      }
-      
-      // Generate MR CSV report
+      const dateString = selectedDate.format('YYYY-MM-DD');
       const response = await axios.get(`/api/orders/mr-report/${dateString}`, {
-        responseType: 'blob', // Important for file download
-        headers: {
-          'Accept': 'text/csv'
-        }
+        responseType: 'blob',
+        headers: { 'Accept': 'text/csv' }
       });
 
-      // Create blob link to download
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -317,7 +352,7 @@ function DailyReport() {
     } catch (error) {
       console.error('Error generating MR report:', error);
       if (error.response?.status === 404) {
-        message.error(`No orders found for ${selectedDate ? selectedDate.format('YYYY-MM-DD') : 'selected date'}`);
+        message.error(`No orders found for ${selectedDate.format('YYYY-MM-DD')}`);
       } else {
         message.error('Failed to generate MR report. Please try again.');
       }
@@ -334,11 +369,7 @@ function DailyReport() {
 
     setLoading(true);
     try {
-      const dateString = selectedDate ? selectedDate.format('YYYY-MM-DD') : '';
-      if (!dateString) {
-        message.error('Please select a valid date');
-        return;
-      }
+      const dateString = selectedDate.format('YYYY-MM-DD');
       const response = await axios.get(`/api/orders/date/${dateString}`);
       
       const { orders, total_orders, total_items } = response.data;
@@ -351,7 +382,6 @@ function DailyReport() {
         return;
       }
 
-      // Load products for all orders
       const productPromises = orders.map(async (order) => {
         try {
           const productResponse = await axios.get(`/api/orders/${order.order_id}`);
@@ -361,10 +391,7 @@ function DailyReport() {
           };
         } catch (error) {
           console.error(`Error loading products for order ${order.order_id}:`, error);
-          return {
-            orderId: order.order_id,
-            products: []
-          };
+          return { orderId: order.order_id, products: [] };
         }
       });
 
@@ -375,117 +402,18 @@ function DailyReport() {
       });
       setOrderProducts(productsMap);
 
-      // Set preview data and show table
       setPreviewMode('single');
       setPreviewData(orders);
       setShowPreview(true);
       setPreviewInfo(`Orders for ${dateString}`);
       
-      // Show summary
       message.success(`Found ${total_orders} orders with ${total_items} items for ${dateString}`);
-      
     } catch (error) {
       console.error('Error fetching order data:', error);
       message.error('Failed to fetch order data. Please try again.');
     } finally {
       setLoading(false);
     }
-  };
-
-  // Filter preview data
-  // Load available periods
-  const loadPeriods = async () => {
-    try {
-      const response = await axios.get('/api/monthly-forecast/current-period');
-      const currentPeriod = response.data;
-      
-      // Generate last 12 months of periods
-      const periodsList = [];
-      for (let i = 0; i < 12; i++) {
-        const period = calculatePeriodFromStartEnd(currentPeriod.start, i);
-        periodsList.push({
-          value: `${period.start}_${period.end}`,
-          label: formatPeriodLabel(period.start, period.end),
-          is_current: i === 0,
-          start: period.start,
-          end: period.end,
-        });
-      }
-      
-      setPeriods(periodsList);
-      if (periodsList.length > 0) {
-        setSelectedPeriod(periodsList[0].value);
-      }
-    } catch (error) {
-      console.error('Error loading periods:', error);
-    }
-  };
-
-  // Helper to calculate period from start date with offset
-  const calculatePeriodFromStartEnd = (startDateStr, monthOffset) => {
-    const startDate = dayjs(startDateStr);
-    const periodStart = startDate.subtract(monthOffset, 'month');
-    const periodEnd = periodStart.add(1, 'month').subtract(1, 'day');
-    return {
-      start: periodStart.format('YYYY-MM-DD'),
-      end: periodEnd.format('YYYY-MM-DD'),
-    };
-  };
-
-  // Helper to format period label
-  const formatPeriodLabel = (start, end) => {
-    const startDate = dayjs(start);
-    const endDate = dayjs(end);
-    return `${startDate.format('MMM YYYY')} - ${endDate.format('MMM YYYY')}`;
-  };
-
-  // Load forecasts
-  const loadForecasts = async () => {
-    if (!selectedPeriod) return;
-    
-    setForecastLoading(true);
-    try {
-      const [periodStart, periodEnd] = selectedPeriod.split('_');
-      const params = {
-        period_start: periodStart,
-        period_end: periodEnd,
-      };
-      
-      // Add territory filter for TSO users
-      if (isTSO && territoryName) {
-        params.territory_name = territoryName;
-      } else if (territoryFilter) {
-        params.territory_name = territoryFilter;
-      }
-      
-      const response = await axios.get('/api/monthly-forecast/all', { params });
-      setForecasts(response.data.forecasts || []);
-    } catch (error) {
-      console.error('Error loading forecasts:', error);
-      message.error('Failed to load forecasts');
-      setForecasts([]);
-    } finally {
-      setForecastLoading(false);
-    }
-  };
-
-  const filterForecasts = () => {
-    let filtered = [...forecasts];
-
-    if (forecastSearchTerm) {
-      filtered = filtered.filter(
-        (f) =>
-          f.dealer_name.toLowerCase().includes(forecastSearchTerm.toLowerCase()) ||
-          f.dealer_code.toLowerCase().includes(forecastSearchTerm.toLowerCase())
-      );
-    }
-
-    // Territory filter is already applied in API call for TSO, but allow manual filter for admin
-    if (!isTSO && territoryFilter) {
-      filtered = filtered.filter((f) => f.territory_name === territoryFilter);
-    }
-
-    setFilteredForecasts(filtered);
   };
 
   const filterPreviewData = () => {
@@ -504,9 +432,7 @@ function DailyReport() {
           return dealerMatch || territoryMatch || productMatch;
         });
       }
-      // Ignore status filter for aggregated view
     } else {
-      // Search filter for single-day orders
       if (searchTerm) {
         filtered = filtered.filter(order =>
           order.order_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -515,7 +441,6 @@ function DailyReport() {
         );
       }
 
-      // Status filter for single-day orders
       if (statusFilter !== 'all') {
         filtered = filtered.filter(order => (order.status || 'new') === statusFilter);
       }
@@ -523,298 +448,6 @@ function DailyReport() {
 
     setFilteredPreviewData(filtered);
   };
-
-  // Table columns for single-date preview (same as Placed Orders)
-  const singleColumns = [
-    {
-      title: 'Order ID',
-      dataIndex: 'order_id',
-      key: 'order_id',
-      ellipsis: true,
-      render: (orderId) => (
-        <Tag color="blue" style={{ fontSize: '12px' }}>
-          {orderId}
-        </Tag>
-      ),
-      sorter: (a, b) => a.order_id.localeCompare(b.order_id),
-    },
-    {
-      title: 'Dealer',
-      dataIndex: 'dealer_name',
-      key: 'dealer_name',
-      ellipsis: {
-        showTitle: true,
-      },
-      render: (name) => removeMSPrefix(name || 'N/A'),
-      sorter: (a, b) => a.dealer_name.localeCompare(b.dealer_name),
-    },
-    {
-      title: 'Territory',
-      dataIndex: 'dealer_territory',
-      key: 'dealer_territory',
-      ellipsis: true,
-      render: (territory) => territory || 'N/A',
-      sorter: (a, b) => {
-        const territoryA = a.dealer_territory || 'N/A';
-        const territoryB = b.dealer_territory || 'N/A';
-        return territoryA.localeCompare(territoryB);
-      },
-    },
-    {
-      title: 'Products',
-      key: 'products',
-      ellipsis: true,
-      render: (_, record) => {
-        return (
-          <div>
-            <Tag color="green" style={{ fontSize: '12px' }}>
-              {record.item_count} item{record.item_count !== 1 ? 's' : ''}
-            </Tag>
-          </div>
-        );
-      },
-      sorter: (a, b) => (a.item_count || 0) - (b.item_count || 0),
-    },
-    {
-      title: 'Product Details',
-      key: 'product_details',
-      ellipsis: {
-        showTitle: true,
-      },
-      render: (_, record) => {
-        const products = orderProducts[record.order_id] || [];
-        
-        if (products.length === 0) {
-          return (
-            <div style={{ fontSize: '12px', color: '#999', fontStyle: 'italic' }}>
-              No products found
-            </div>
-          );
-        }
-        
-        return (
-          <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
-            {products.map((product, index) => (
-              <div key={product.id} style={{ marginBottom: '2px' }}>
-                <span style={{ fontWeight: 'bold', color: '#1890ff' }}>
-                  #{index + 1}
-                </span>{' '}
-                <span style={{ fontWeight: 'bold' }}>
-                  {product.product_code}
-                </span>{' '}
-                <span style={{ color: '#666' }}>
-                  {product.product_name}
-                </span>
-                <span style={{ color: '#52c41a', marginLeft: '8px' }}>
-                  (Qty: {product.quantity})
-                </span>
-                {product.unit_tp && (
-                  <span style={{ color: '#1890ff', marginLeft: '8px' }}>
-                    @৳{product.unit_tp.toLocaleString()}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        );
-      },
-    },
-    {
-      title: 'Transport',
-      dataIndex: 'transport_name',
-      key: 'transport_name',
-      ellipsis: true,
-      sorter: (a, b) => {
-        const getTransportValue = (record) => {
-          const names = record.transport_name
-            ? [record.transport_name]
-            : record.transport_names || [];
-          if (Array.isArray(names) && names.length > 1) {
-            return 'Different Transport Providers';
-          }
-          const value = Array.isArray(names) ? names[0] : record.transport_name;
-          return value || 'N/A';
-        };
-        return getTransportValue(a).localeCompare(getTransportValue(b));
-      },
-      render: (_, record) => {
-        const names = record.transport_name
-          ? [record.transport_name]
-          : record.transport_names || [];
-        if (Array.isArray(names) && names.length > 1) {
-          return 'Different Transport Providers';
-        }
-        const value = Array.isArray(names) ? names[0] : record.transport_name;
-        return value || 'N/A';
-      },
-    },
-    {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-      width: 100,
-      align: 'center',
-      render: () => <Tag color="default">New</Tag>,
-      sorter: (a, b) => {
-        const statusA = a.status || 'new';
-        const statusB = b.status || 'new';
-        return statusA.localeCompare(statusB);
-      },
-    },
-    {
-      title: 'Created',
-      dataIndex: 'created_at',
-      key: 'created_at',
-      ellipsis: true,
-      render: (date) => new Date(date).toLocaleString(),
-      sorter: (a, b) => new Date(a.created_at) - new Date(b.created_at),
-    },
-  ];
-
-  const rangeColumns = [
-    {
-      title: 'Orders',
-      dataIndex: 'order_count',
-      key: 'order_count',
-      width: 90,
-      align: 'center',
-      sorter: (a, b) => (a.order_count || 0) - (b.order_count || 0),
-    },
-    {
-      title: 'Dealer',
-      dataIndex: 'dealer_name',
-      key: 'dealer_name',
-      ellipsis: {
-        showTitle: true,
-      },
-      render: (name) => removeMSPrefix(name || 'N/A'),
-      sorter: (a, b) => (a.dealer_name || '').localeCompare(b.dealer_name || ''),
-    },
-    {
-      title: 'Territory',
-      dataIndex: 'dealer_territory',
-      key: 'dealer_territory',
-      ellipsis: true,
-      render: (territory) => territory || 'N/A',
-      sorter: (a, b) => (a.dealer_territory || '').localeCompare(b.dealer_territory || ''),
-    },
-    {
-      title: 'Products',
-      dataIndex: 'distinct_products',
-      key: 'distinct_products',
-      width: 110,
-      align: 'center',
-      sorter: (a, b) => (a.distinct_products || 0) - (b.distinct_products || 0),
-      render: (count) => (
-        <Tag color="green" style={{ fontSize: '12px' }}>
-          {count || 0} item{count === 1 ? '' : 's'}
-        </Tag>
-      ),
-    },
-    {
-      title: 'Product Details',
-      key: 'product_details',
-      ellipsis: {
-        showTitle: true,
-      },
-      render: (_, record) => {
-        const products = record.product_summaries || [];
-        if (products.length === 0) {
-          return (
-            <div style={{ fontSize: '12px', color: '#999', fontStyle: 'italic' }}>
-              No products found
-            </div>
-          );
-        }
-
-        return (
-          <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
-            {products.map((product, index) => (
-              <div key={`${record.id}-${product.product_code}`} style={{ marginBottom: '2px' }}>
-                <span style={{ fontWeight: 'bold', color: '#1890ff' }}>
-                  #{index + 1}
-                </span>{' '}
-                <span style={{ fontWeight: 'bold' }}>
-                  {product.product_code}
-                </span>{' '}
-                <span style={{ color: '#666' }}>
-                  {product.product_name}
-                </span>
-                <span style={{ color: '#52c41a', marginLeft: '8px' }}>
-                  (Qty: {product.quantity})
-                </span>
-                {product.unit_tp != null && (
-                  <span style={{ color: '#1890ff', marginLeft: '8px' }}>
-                    @৳{Number(product.unit_tp).toLocaleString()}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        );
-      },
-    },
-    {
-      title: 'Transport',
-      dataIndex: 'transport_names',
-      key: 'transport_names',
-      ellipsis: true,
-      sorter: (a, b) => {
-        const getTransportValue = (record) => {
-          const names = record.transport_names || [];
-          if (!names || names.length === 0) {
-            return 'N/A';
-          }
-          if (names.length === 1) {
-            return names[0];
-          }
-          return 'Different Transport Providers';
-        };
-        return getTransportValue(a).localeCompare(getTransportValue(b));
-      },
-      render: (names = []) => {
-        if (!names || names.length === 0) {
-          return 'N/A';
-        }
-        if (names.length === 1) {
-          return names[0];
-        }
-        return 'Different Transport Providers';
-      },
-    },
-    {
-      title: 'Total Qty',
-      dataIndex: 'total_quantity',
-      key: 'total_quantity',
-      width: 110,
-      align: 'center',
-      sorter: (a, b) => (a.total_quantity || 0) - (b.total_quantity || 0),
-    },
-    {
-      title: 'Total Value',
-      dataIndex: 'total_value',
-      key: 'total_value',
-      width: 140,
-      align: 'center',
-      sorter: (a, b) => (Number(a.total_value || 0)) - (Number(b.total_value || 0)),
-      render: (value) => {
-        const numeric = Number(value || 0);
-        return numeric > 0 ? `৳${numeric.toLocaleString()}` : '৳0';
-      },
-    },
-    {
-      title: 'Date Span',
-      dataIndex: 'date_span',
-      key: 'date_span',
-      ellipsis: true,
-      sorter: (a, b) => {
-        const spanA = a.date_span || 'N/A';
-        const spanB = b.date_span || 'N/A';
-        return spanA.localeCompare(spanB);
-      },
-      render: (span) => span || 'N/A',
-    },
-  ];
 
   // Forecast export handler
   const handleForecastExport = () => {
@@ -909,10 +542,7 @@ function DailyReport() {
   const totalDealers = filteredForecasts.length;
   const totalProducts = filteredForecasts.reduce((sum, f) => sum + f.total_products, 0);
 
-  // Get unique territories for filter dropdown (only for admin)
-  const uniqueTerritories = [...new Set(forecasts.map(f => f.territory_name))].sort();
-
-  // Forecast table columns and renderers
+  // Forecast table columns and renderers (same as DealerForecasts_Option3_Expandable)
   const dealerColumns = [
     {
       title: 'Dealer Code',
@@ -1239,6 +869,184 @@ function DailyReport() {
     );
   };
 
+  // Daily Report table columns (abbreviated for space)
+  const singleColumns = [
+    {
+      title: 'Order ID',
+      dataIndex: 'order_id',
+      key: 'order_id',
+      ellipsis: true,
+      render: (orderId) => (
+        <Tag color="blue" style={{ fontSize: '12px' }}>{orderId}</Tag>
+      ),
+    },
+    {
+      title: 'Dealer',
+      dataIndex: 'dealer_name',
+      key: 'dealer_name',
+      ellipsis: { showTitle: true },
+      render: (name) => removeMSPrefix(name || 'N/A'),
+    },
+    {
+      title: 'Territory',
+      dataIndex: 'dealer_territory',
+      key: 'dealer_territory',
+      ellipsis: true,
+    },
+    {
+      title: 'Products',
+      key: 'products',
+      render: (_, record) => (
+        <Tag color="green" style={{ fontSize: '12px' }}>
+          {record.item_count} item{record.item_count !== 1 ? 's' : ''}
+        </Tag>
+      ),
+    },
+    {
+      title: 'Product Details',
+      key: 'product_details',
+      ellipsis: { showTitle: true },
+      render: (_, record) => {
+        const products = orderProducts[record.order_id] || [];
+        if (products.length === 0) {
+          return <div style={{ fontSize: '12px', color: '#999', fontStyle: 'italic' }}>No products found</div>;
+        }
+        return (
+          <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
+            {products.map((product, index) => (
+              <div key={product.id} style={{ marginBottom: '2px' }}>
+                <span style={{ fontWeight: 'bold', color: '#1890ff' }}>#{index + 1}</span>{' '}
+                <span style={{ fontWeight: 'bold' }}>{product.product_code}</span>{' '}
+                <span style={{ color: '#666' }}>{product.product_name}</span>
+                <span style={{ color: '#52c41a', marginLeft: '8px' }}>(Qty: {product.quantity})</span>
+                {product.unit_tp && (
+                  <span style={{ color: '#1890ff', marginLeft: '8px' }}>@৳{product.unit_tp.toLocaleString()}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        );
+      },
+    },
+    {
+      title: 'Transport',
+      dataIndex: 'transport_name',
+      key: 'transport_name',
+      ellipsis: true,
+    },
+    {
+      title: 'Status',
+      dataIndex: 'status',
+      key: 'status',
+      width: 100,
+      align: 'center',
+      render: () => <Tag color="default">New</Tag>,
+    },
+    {
+      title: 'Created',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      ellipsis: true,
+      render: (date) => new Date(date).toLocaleString(),
+    },
+  ];
+
+  const rangeColumns = [
+    {
+      title: 'Orders',
+      dataIndex: 'order_count',
+      key: 'order_count',
+      width: 90,
+      align: 'center',
+    },
+    {
+      title: 'Dealer',
+      dataIndex: 'dealer_name',
+      key: 'dealer_name',
+      ellipsis: { showTitle: true },
+      render: (name) => removeMSPrefix(name || 'N/A'),
+    },
+    {
+      title: 'Territory',
+      dataIndex: 'dealer_territory',
+      key: 'dealer_territory',
+      ellipsis: true,
+    },
+    {
+      title: 'Products',
+      dataIndex: 'distinct_products',
+      key: 'distinct_products',
+      width: 110,
+      align: 'center',
+      render: (count) => (
+        <Tag color="green" style={{ fontSize: '12px' }}>
+          {count || 0} item{count === 1 ? '' : 's'}
+        </Tag>
+      ),
+    },
+    {
+      title: 'Product Details',
+      key: 'product_details',
+      ellipsis: { showTitle: true },
+      render: (_, record) => {
+        const products = record.product_summaries || [];
+        if (products.length === 0) {
+          return <div style={{ fontSize: '12px', color: '#999', fontStyle: 'italic' }}>No products found</div>;
+        }
+        return (
+          <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
+            {products.map((product, index) => (
+              <div key={`${record.id}-${product.product_code}`} style={{ marginBottom: '2px' }}>
+                <span style={{ fontWeight: 'bold', color: '#1890ff' }}>#{index + 1}</span>{' '}
+                <span style={{ fontWeight: 'bold' }}>{product.product_code}</span>{' '}
+                <span style={{ color: '#666' }}>{product.product_name}</span>
+                <span style={{ color: '#52c41a', marginLeft: '8px' }}>(Qty: {product.quantity})</span>
+                {product.unit_tp != null && (
+                  <span style={{ color: '#1890ff', marginLeft: '8px' }}>@৳{Number(product.unit_tp).toLocaleString()}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        );
+      },
+    },
+    {
+      title: 'Transport',
+      dataIndex: 'transport_names',
+      key: 'transport_names',
+      ellipsis: true,
+      render: (names = []) => {
+        if (!names || names.length === 0) return 'N/A';
+        if (names.length === 1) return names[0];
+        return 'Different Transport Providers';
+      },
+    },
+    {
+      title: 'Total Qty',
+      dataIndex: 'total_quantity',
+      key: 'total_quantity',
+      width: 110,
+      align: 'center',
+    },
+    {
+      title: 'Total Value',
+      dataIndex: 'total_value',
+      key: 'total_value',
+      width: 140,
+      align: 'center',
+      render: (value) => {
+        const numeric = Number(value || 0);
+        return numeric > 0 ? `৳${numeric.toLocaleString()}` : '৳0';
+      },
+    },
+    {
+      title: 'Date Span',
+      dataIndex: 'date_span',
+      key: 'date_span',
+      ellipsis: true,
+    },
+  ];
+
   return (
     <div>
       <Title level={3} style={{ marginBottom: '8px' }}>
@@ -1248,7 +1056,7 @@ function DailyReport() {
         Generate reports for orders and view dealer forecasts
       </Text>
 
-      <Tabs activeKey={activeTab} onChange={setActiveTab}>
+      <Tabs activeKey={activeMainTab} onChange={setActiveMainTab}>
         {/* Daily Order Report Tab */}
         <Tabs.TabPane
           tab={
@@ -1319,7 +1127,6 @@ function DailyReport() {
                 </Text>
               </div>
               
-              {/* Filters */}
               <Card size="small" style={{ marginBottom: '16px', borderRadius: '8px' }}>
                 <Row gutter={[16, 16]} align="middle">
                   <Col xs={24} sm={12} md={8}>
@@ -1367,7 +1174,7 @@ function DailyReport() {
             </Card>
           )}
 
-          {loading && activeTab === 'daily-report' && (
+          {loading && activeMainTab === 'daily-report' && (
             <div style={{ textAlign: 'center', marginTop: '24px' }}>
               <Spin size="large" />
               <div style={{ marginTop: '16px' }}>
@@ -1449,7 +1256,6 @@ function DailyReport() {
                 </Text>
               </div>
               
-              {/* Filters */}
               <Card size="small" style={{ marginBottom: '16px', borderRadius: '8px' }}>
                 <Row gutter={[16, 16]} align="middle">
                   <Col xs={24} sm={12} md={8}>
@@ -1482,7 +1288,7 @@ function DailyReport() {
             </Card>
           )}
 
-          {loading && activeTab === 'order-summary' && (
+          {loading && activeMainTab === 'order-summary' && (
             <div style={{ textAlign: 'center', marginTop: '24px' }}>
               <Spin size="large" />
               <div style={{ marginTop: '16px' }}>
@@ -1511,7 +1317,6 @@ function DailyReport() {
                   style={{ width: '100%', marginTop: '8px' }}
                   value={selectedPeriod}
                   onChange={setSelectedPeriod}
-                  loading={!selectedPeriod}
                 >
                   {periods.map((p) => (
                     <Option key={p.value} value={p.value}>
@@ -1520,24 +1325,22 @@ function DailyReport() {
                   ))}
                 </Select>
               </Col>
-              {!isTSO && (
-                <Col xs={24} sm={12} md={6}>
-                  <Text strong>Territory:</Text>
-                  <Select
-                    style={{ width: '100%', marginTop: '8px' }}
-                    value={territoryFilter}
-                    onChange={setTerritoryFilter}
-                    allowClear
-                    placeholder="All Territories"
-                  >
-                    {uniqueTerritories.map((t) => (
-                      <Option key={t} value={t}>
-                        {t}
-                      </Option>
-                    ))}
-                  </Select>
-                </Col>
-              )}
+              <Col xs={24} sm={12} md={6}>
+                <Text strong>Territory:</Text>
+                <Select
+                  style={{ width: '100%', marginTop: '8px' }}
+                  value={territoryFilter}
+                  onChange={setTerritoryFilter}
+                  allowClear
+                  placeholder="All Territories"
+                >
+                  {territories.map((t) => (
+                    <Option key={t} value={t}>
+                      {t}
+                    </Option>
+                  ))}
+                </Select>
+              </Col>
               <Col xs={24} sm={12} md={6}>
                 <Text strong>Search:</Text>
                 <Input
@@ -1631,7 +1434,7 @@ function DailyReport() {
           }
           key="forecasts-by-product"
         >
-          {/* Filters and Actions - Same as by Dealer */}
+          {/* Filters and Actions */}
           <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
             <Row gutter={[16, 16]} align="middle">
               <Col xs={24} sm={12} md={6}>
@@ -1640,7 +1443,6 @@ function DailyReport() {
                   style={{ width: '100%', marginTop: '8px' }}
                   value={selectedPeriod}
                   onChange={setSelectedPeriod}
-                  loading={!selectedPeriod}
                 >
                   {periods.map((p) => (
                     <Option key={p.value} value={p.value}>
@@ -1649,24 +1451,22 @@ function DailyReport() {
                   ))}
                 </Select>
               </Col>
-              {!isTSO && (
-                <Col xs={24} sm={12} md={6}>
-                  <Text strong>Territory:</Text>
-                  <Select
-                    style={{ width: '100%', marginTop: '8px' }}
-                    value={territoryFilter}
-                    onChange={setTerritoryFilter}
-                    allowClear
-                    placeholder="All Territories"
-                  >
-                    {uniqueTerritories.map((t) => (
-                      <Option key={t} value={t}>
-                        {t}
-                      </Option>
-                    ))}
-                  </Select>
-                </Col>
-              )}
+              <Col xs={24} sm={12} md={6}>
+                <Text strong>Territory:</Text>
+                <Select
+                  style={{ width: '100%', marginTop: '8px' }}
+                  value={territoryFilter}
+                  onChange={setTerritoryFilter}
+                  allowClear
+                  placeholder="All Territories"
+                >
+                  {territories.map((t) => (
+                    <Option key={t} value={t}>
+                      {t}
+                    </Option>
+                  ))}
+                </Select>
+              </Col>
               <Col xs={24} sm={12} md={6}>
                 <Text strong>Search:</Text>
                 <Input
@@ -1760,7 +1560,7 @@ function DailyReport() {
           }
           key="forecasts-by-territory"
         >
-          {/* Filters and Actions - Same as by Dealer */}
+          {/* Filters and Actions */}
           <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
             <Row gutter={[16, 16]} align="middle">
               <Col xs={24} sm={12} md={6}>
@@ -1769,7 +1569,6 @@ function DailyReport() {
                   style={{ width: '100%', marginTop: '8px' }}
                   value={selectedPeriod}
                   onChange={setSelectedPeriod}
-                  loading={!selectedPeriod}
                 >
                   {periods.map((p) => (
                     <Option key={p.value} value={p.value}>
@@ -1778,24 +1577,22 @@ function DailyReport() {
                   ))}
                 </Select>
               </Col>
-              {!isTSO && (
-                <Col xs={24} sm={12} md={6}>
-                  <Text strong>Territory:</Text>
-                  <Select
-                    style={{ width: '100%', marginTop: '8px' }}
-                    value={territoryFilter}
-                    onChange={setTerritoryFilter}
-                    allowClear
-                    placeholder="All Territories"
-                  >
-                    {uniqueTerritories.map((t) => (
-                      <Option key={t} value={t}>
-                        {t}
-                      </Option>
-                    ))}
-                  </Select>
-                </Col>
-              )}
+              <Col xs={24} sm={12} md={6}>
+                <Text strong>Territory:</Text>
+                <Select
+                  style={{ width: '100%', marginTop: '8px' }}
+                  value={territoryFilter}
+                  onChange={setTerritoryFilter}
+                  allowClear
+                  placeholder="All Territories"
+                >
+                  {territories.map((t) => (
+                    <Option key={t} value={t}>
+                      {t}
+                    </Option>
+                  ))}
+                </Select>
+              </Col>
               <Col xs={24} sm={12} md={6}>
                 <Text strong>Search:</Text>
                 <Input
@@ -1875,17 +1672,9 @@ function DailyReport() {
           />
         </Tabs.TabPane>
       </Tabs>
-
-      {loading && (
-        <div style={{ textAlign: 'center', marginTop: '24px' }}>
-          <Spin size="large" />
-          <div style={{ marginTop: '16px' }}>
-            <Text>Processing your request...</Text>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
-export default DailyReport;
+export default DailyReport_WithForecasts;
+

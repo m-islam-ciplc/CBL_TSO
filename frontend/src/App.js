@@ -35,6 +35,11 @@ import ProductQuotaManagement from './pages/ProductQuotaManagement';
 import MonthlyForecastTab from './pages/MonthlyForecastTab';
 import AdminSettings from './pages/AdminSettings';
 import DebugPanel from './components/DebugPanel';
+import DealerForecasts_Option1_Table from './pages/demos/DealerForecasts_Option1_Table';
+import DealerForecasts_Option2_Cards from './pages/demos/DealerForecasts_Option2_Cards';
+import DealerForecasts_Option3_Summary from './pages/demos/DealerForecasts_Option3_Summary';
+import DealerForecasts_Option3_Expandable from './pages/demos/DealerForecasts_Option3_Expandable';
+import DailyReport_WithForecasts from './pages/demos/DailyReport_WithForecasts';
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
@@ -60,10 +65,13 @@ function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Redirect to login if not authenticated
+  // Redirect to login if not authenticated (except for demo pages and login page)
   useEffect(() => {
     const savedUser = sessionStorage.getItem('user');
-    if (!savedUser && location.pathname !== '/login') {
+    const isDemoPage = location.pathname.startsWith('/demo-forecasts-option') || location.pathname === '/demo-daily-report-forecasts';
+    const isLoginPage = location.pathname === '/login';
+    
+    if (!savedUser && !isLoginPage && !isDemoPage) {
       navigate('/login');
     }
   }, [navigate, location.pathname]);
@@ -552,6 +560,12 @@ function AppContent() {
             <ProductQuotaManagement /> : 
             <Dashboard setStats={setStats} />
           } />
+          {/* Demo routes - accessible without login */}
+          <Route path="/demo-forecasts-option1" element={<DealerForecasts_Option1_Table />} />
+          <Route path="/demo-forecasts-option2" element={<DealerForecasts_Option2_Cards />} />
+          <Route path="/demo-forecasts-option3" element={<DealerForecasts_Option3_Summary />} />
+          <Route path="/demo-forecasts-option3-expandable" element={<DealerForecasts_Option3_Expandable />} />
+          <Route path="/demo-daily-report-forecasts" element={<DailyReport_WithForecasts />} />
         </Routes>
       </Content>
 

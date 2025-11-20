@@ -909,7 +909,7 @@ function DealerManagement() {
             },
             expandedRowRender: renderExpandedRow,
             expandRowByClick: false, // Disable row click expansion
-            expandIcon: () => null, // Hide the plus/minus icon on the left
+            showExpandColumn: false, // Completely remove the expand column (no blank space)
           }}
         />
       </Card>
