@@ -204,6 +204,8 @@ CREATE TABLE IF NOT EXISTS monthly_forecast (
     period_end DATE NOT NULL,
     forecast_date DATE NOT NULL,
     quantity INT NOT NULL DEFAULT 0,
+    is_submitted BOOLEAN DEFAULT FALSE,
+    submitted_at TIMESTAMP NULL DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (dealer_id) REFERENCES dealers(id) ON DELETE CASCADE,
@@ -212,7 +214,8 @@ CREATE TABLE IF NOT EXISTS monthly_forecast (
     INDEX idx_dealer_id (dealer_id),
     INDEX idx_product_id (product_id),
     INDEX idx_period (period_start, period_end),
-    INDEX idx_forecast_date (forecast_date)
+    INDEX idx_forecast_date (forecast_date),
+    INDEX idx_is_submitted (is_submitted)
 );
 
 -- Settings table for application configuration

@@ -1260,54 +1260,54 @@ function DailyReport() {
           key="daily-report"
         >
           <Card title="Daily Order Report" style={{ marginBottom: '16px', borderRadius: '8px' }} bodyStyle={{ padding: '12px' }}>
-            <Row gutter={[16, 16]} align="bottom">
-              <Col xs={24} sm={12} md={6}>
-                <Space direction="vertical" style={{ width: '100%' }}>
-                  <Text strong>Select Date</Text>
-                  <DatePicker
-                    value={selectedDate}
-                    onChange={setSelectedDate}
-                    format="YYYY-MM-DD"
-                    style={{ width: '100%' }}
-                    placeholder="Select date for report"
-                    disabledDate={disabledDate}
-                    dateRender={dateCellRender}
-                  />
-                </Space>
-              </Col>
+        <Row gutter={[16, 16]} align="bottom">
+          <Col xs={24} sm={12} md={6}>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Text strong>Select Date</Text>
+              <DatePicker
+                value={selectedDate}
+                onChange={setSelectedDate}
+                format="YYYY-MM-DD"
+                style={{ width: '100%' }}
+                placeholder="Select date for report"
+                disabledDate={disabledDate}
+                dateRender={dateCellRender}
+              />
+            </Space>
+          </Col>
               <Col xs={24} sm={24} md={6}>
-                <Button
-                  type="default"
-                  icon={<EyeOutlined />}
-                  onClick={handlePreviewData}
-                  loading={loading}
-                  style={{ width: '100%' }}
-                >
-                  Preview Orders
-                </Button>
-              </Col>
+            <Button
+              type="default"
+              icon={<EyeOutlined />}
+              onClick={handlePreviewData}
+              loading={loading}
+              style={{ width: '100%' }}
+            >
+              Preview Orders
+            </Button>
+          </Col>
               <Col xs={24} sm={24} md={6}>
-                <Button
-                  type="primary"
-                  icon={<DownloadOutlined />}
-                  onClick={handleGenerateReport}
-                  loading={loading}
-                  style={{ width: '100%' }}
-                >
+            <Button
+              type="primary"
+              icon={<DownloadOutlined />}
+              onClick={handleGenerateReport}
+              loading={loading}
+              style={{ width: '100%' }}
+            >
                   Download Daily Order Report Excel
-                </Button>
-              </Col>
+            </Button>
+          </Col>
               <Col xs={24} sm={24} md={6}>
-                <Button
-                  icon={<DownloadOutlined />}
-                  onClick={handleGenerateMRReport}
-                  loading={loading}
-                  style={{ width: '100%' }}
-                >
-                  Download MR CSV
-                </Button>
-              </Col>
-            </Row>
+            <Button
+              icon={<DownloadOutlined />}
+              onClick={handleGenerateMRReport}
+              loading={loading}
+              style={{ width: '100%' }}
+            >
+              Download MR CSV
+            </Button>
+          </Col>
+        </Row>
           </Card>
 
           {/* Preview Table */}
@@ -1337,6 +1337,11 @@ function DailyReport() {
                       onChange={setStatusFilter}
                       style={{ width: '100%' }}
                       allowClear
+                      showSearch
+                      filterOption={(input, option) => {
+                        const optionText = option?.children?.toString() || '';
+                        return optionText.toLowerCase().includes(input.toLowerCase());
+                      }}
                     >
                       <Select.Option value="all">All Status</Select.Option>
                       <Select.Option value="new">New</Select.Option>
@@ -1390,97 +1395,97 @@ function DailyReport() {
           <Card title="Order Summary Report" style={{ marginBottom: '16px', borderRadius: '8px' }} bodyStyle={{ padding: '12px' }}>
             <Row gutter={[16, 16]} align="bottom">
               <Col xs={24} sm={12} md={6}>
-                <Space direction="vertical" style={{ width: '100%' }}>
-                  <Text strong>Start Date</Text>
-                  <DatePicker
-                    value={rangeStart}
-                    onChange={setRangeStart}
-                    format="YYYY-MM-DD"
-                    style={{ width: '100%' }}
-                    placeholder="Start date"
-                    dateRender={dateCellRender}
-                  />
-                </Space>
-              </Col>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Text strong>Start Date</Text>
+              <DatePicker
+                value={rangeStart}
+                onChange={setRangeStart}
+                format="YYYY-MM-DD"
+                style={{ width: '100%' }}
+                placeholder="Start date"
+                dateRender={dateCellRender}
+              />
+            </Space>
+          </Col>
               <Col xs={24} sm={12} md={6}>
-                <Space direction="vertical" style={{ width: '100%' }}>
-                  <Text strong>End Date</Text>
-                  <DatePicker
-                    value={rangeEnd}
-                    onChange={setRangeEnd}
-                    format="YYYY-MM-DD"
-                    style={{ width: '100%' }}
-                    placeholder="End date"
-                    dateRender={dateCellRender}
-                  />
-                </Space>
-              </Col>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Text strong>End Date</Text>
+              <DatePicker
+                value={rangeEnd}
+                onChange={setRangeEnd}
+                format="YYYY-MM-DD"
+                style={{ width: '100%' }}
+                placeholder="End date"
+                dateRender={dateCellRender}
+              />
+            </Space>
+          </Col>
               <Col xs={24} sm={24} md={6}>
-                <Button
-                  type="default"
-                  icon={<EyeOutlined />}
-                  onClick={handlePreviewRange}
-                  loading={loading}
-                  style={{ width: '100%' }}
-                >
-                  Preview Range Orders
-                </Button>
-              </Col>
+              <Button
+                type="default"
+                icon={<EyeOutlined />}
+                onClick={handlePreviewRange}
+                loading={loading}
+                style={{ width: '100%' }}
+              >
+                Preview Range Orders
+              </Button>
+          </Col>
               <Col xs={24} sm={24} md={6}>
-                <Button
-                  type="primary"
-                  icon={<FileExcelOutlined />}
-                  onClick={handleGenerateRangeReport}
-                  loading={loading}
-                  style={{ width: '100%' }}
-                >
+              <Button
+                type="primary"
+                icon={<FileExcelOutlined />}
+                onClick={handleGenerateRangeReport}
+                loading={loading}
+                style={{ width: '100%' }}
+              >
                   Download Order Summary Excel
-                </Button>
+              </Button>
+          </Col>
+        </Row>
+      </Card>
+
+      {/* Preview Table */}
+          {showPreview && previewMode === 'range' && previewData.length > 0 && (
+        <Card>
+          <div style={{ marginBottom: '16px' }}>
+            <Text strong>
+              {previewInfo || 'Orders'} ({filteredPreviewData.length})
+            </Text>
+          </div>
+          
+          {/* Filters */}
+              <Card size="small" style={{ marginBottom: '16px', borderRadius: '8px' }}>
+            <Row gutter={[16, 16]} align="middle">
+              <Col xs={24} sm={12} md={8}>
+                <Input
+                      placeholder="Search dealers or products..."
+                  prefix={<SearchOutlined />}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
               </Col>
             </Row>
           </Card>
 
-          {/* Preview Table */}
-          {showPreview && previewMode === 'range' && previewData.length > 0 && (
-            <Card>
-              <div style={{ marginBottom: '16px' }}>
-                <Text strong>
-                  {previewInfo || 'Orders'} ({filteredPreviewData.length})
-                </Text>
-              </div>
-              
-              {/* Filters */}
-              <Card size="small" style={{ marginBottom: '16px', borderRadius: '8px' }}>
-                <Row gutter={[16, 16]} align="middle">
-                  <Col xs={24} sm={12} md={8}>
-                    <Input
-                      placeholder="Search dealers or products..."
-                      prefix={<SearchOutlined />}
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </Col>
-                </Row>
-              </Card>
-
-              <Table
+          <Table
                 columns={rangeColumns}
-                dataSource={filteredPreviewData}
+            dataSource={filteredPreviewData}
                 rowKey={(record) => record.id}
-                pagination={{
-                  pageSize: 20,
-                  showSizeChanger: true,
-                  showQuickJumper: true,
-                  showTotal: (total, range) =>
+            pagination={{
+              pageSize: 20,
+              showSizeChanger: true,
+              showQuickJumper: true,
+              showTotal: (total, range) =>
                     `${range[0]}-${range[1]} of ${total} dealers`,
-                  pageSizeOptions: ['10', '20', '50', '100'],
-                  defaultPageSize: 20,
-                }}
-                scroll={{ x: 'max-content' }}
-                size="small"
-              />
-            </Card>
-          )}
+              pageSizeOptions: ['10', '20', '50', '100'],
+              defaultPageSize: 20,
+            }}
+            scroll={{ x: 'max-content' }}
+            size="small"
+          />
+        </Card>
+      )}
 
           {loading && activeTab === 'order-summary' && (
             <div style={{ textAlign: 'center', marginTop: '24px' }}>
@@ -1512,6 +1517,12 @@ function DailyReport() {
                   value={selectedPeriod}
                   onChange={setSelectedPeriod}
                   loading={!selectedPeriod}
+                  allowClear
+                  showSearch
+                  filterOption={(input, option) => {
+                    const optionText = option?.children?.toString() || '';
+                    return optionText.toLowerCase().includes(input.toLowerCase());
+                  }}
                 >
                   {periods.map((p) => (
                     <Option key={p.value} value={p.value}>
@@ -1528,7 +1539,12 @@ function DailyReport() {
                     value={territoryFilter}
                     onChange={setTerritoryFilter}
                     allowClear
+                    showSearch
                     placeholder="All Territories"
+                    filterOption={(input, option) => {
+                      const optionText = option?.children?.toString() || '';
+                      return optionText.toLowerCase().includes(input.toLowerCase());
+                    }}
                   >
                     {uniqueTerritories.map((t) => (
                       <Option key={t} value={t}>
@@ -1641,6 +1657,12 @@ function DailyReport() {
                   value={selectedPeriod}
                   onChange={setSelectedPeriod}
                   loading={!selectedPeriod}
+                  allowClear
+                  showSearch
+                  filterOption={(input, option) => {
+                    const optionText = option?.children?.toString() || '';
+                    return optionText.toLowerCase().includes(input.toLowerCase());
+                  }}
                 >
                   {periods.map((p) => (
                     <Option key={p.value} value={p.value}>
@@ -1657,7 +1679,12 @@ function DailyReport() {
                     value={territoryFilter}
                     onChange={setTerritoryFilter}
                     allowClear
+                    showSearch
                     placeholder="All Territories"
+                    filterOption={(input, option) => {
+                      const optionText = option?.children?.toString() || '';
+                      return optionText.toLowerCase().includes(input.toLowerCase());
+                    }}
                   >
                     {uniqueTerritories.map((t) => (
                       <Option key={t} value={t}>
@@ -1770,6 +1797,12 @@ function DailyReport() {
                   value={selectedPeriod}
                   onChange={setSelectedPeriod}
                   loading={!selectedPeriod}
+                  allowClear
+                  showSearch
+                  filterOption={(input, option) => {
+                    const optionText = option?.children?.toString() || '';
+                    return optionText.toLowerCase().includes(input.toLowerCase());
+                  }}
                 >
                   {periods.map((p) => (
                     <Option key={p.value} value={p.value}>
@@ -1786,7 +1819,12 @@ function DailyReport() {
                     value={territoryFilter}
                     onChange={setTerritoryFilter}
                     allowClear
+                    showSearch
                     placeholder="All Territories"
+                    filterOption={(input, option) => {
+                      const optionText = option?.children?.toString() || '';
+                      return optionText.toLowerCase().includes(input.toLowerCase());
+                    }}
                   >
                     {uniqueTerritories.map((t) => (
                       <Option key={t} value={t}>

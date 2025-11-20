@@ -26,12 +26,13 @@ const { Title, Text } = Typography;
 const { Option } = Select;
 
 function MonthlyForecastTab() {
-  const { dealerId } = useUser();
+  const { dealerId, userRole, isAdmin, isTSO } = useUser();
   const [periodInfo, setPeriodInfo] = useState({ start: '', end: '' });
   const [selectedPeriod, setSelectedPeriod] = useState(null); // { period_start, period_end, is_current }
   const [availablePeriods, setAvailablePeriods] = useState([]);
   const [products, setProducts] = useState([]);
   const [forecastData, setForecastData] = useState({}); // { productId: quantity }
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loadingPeriods, setLoadingPeriods] = useState(false);
@@ -140,6 +141,9 @@ function MonthlyForecastTab() {
         });
       }
       
+      // Update submission status
+      setIsSubmitted(response.data.is_submitted || false);
+      
       // Initialize forecast data structure: { productId: quantity }
       const initialData = {};
       products.forEach(product => {
@@ -231,6 +235,12 @@ function MonthlyForecastTab() {
       return;
     }
 
+    // Check if forecast is submitted and user is not admin/TSO
+    if (isSubmitted && !isAdmin && !isTSO) {
+      message.error('This forecast has already been submitted and cannot be modified. Please contact admin or TSO for changes.');
+      return;
+    }
+
     setSaving(true);
     try {
       // Prepare bulk data: only include non-null quantities
@@ -257,6 +267,7 @@ function MonthlyForecastTab() {
           dealer_id: dealerId,
           product_id: forecast.product_id,
           quantity: forecast.quantity,
+          user_role: userRole, // Pass user role to backend
         })
       );
 
@@ -276,6 +287,7 @@ function MonthlyForecastTab() {
 
   const isCurrentPeriod = selectedPeriod?.is_current;
   const hasForecast = selectedPeriod?.has_forecast;
+  const canEdit = isCurrentPeriod && (!isSubmitted || isAdmin || isTSO);
 
   return (
     <div style={{ padding: '16px', background: '#f5f5f5', minHeight: '100vh' }}>
@@ -287,42 +299,46 @@ function MonthlyForecastTab() {
               <CalendarOutlined /> Monthly Forecast
             </Title>
             <div style={{ marginTop: '12px' }}>
-              <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                <div>
-                  <Text strong style={{ marginRight: '8px' }}>Select Period:</Text>
-                  <Select
-                    style={{ width: 280 }}
-                    value={selectedPeriod ? `${selectedPeriod.period_start}_${selectedPeriod.period_end}` : undefined}
-                    onChange={(value) => {
-                      const period = availablePeriods.find(p => `${p.period_start}_${p.period_end}` === value);
-                      setSelectedPeriod(period);
-                    }}
-                    loading={loadingPeriods}
-                    placeholder="Select forecast period"
-                  >
-                    {availablePeriods.map((period, index) => (
-                      <Option key={`${period.period_start}_${period.period_end}`} value={`${period.period_start}_${period.period_end}`}>
-                        <Space>
-                          {formatPeriodLabel(period)}
-                          {period.is_current && <Tag color="green" size="small">Current</Tag>}
-                          {!period.is_current && period.has_forecast && <Tag color="blue" size="small"><HistoryOutlined /> Historical</Tag>}
-                          {!period.has_forecast && !period.is_current && <Tag color="default" size="small">No Data</Tag>}
-                        </Space>
-                      </Option>
-                    ))}
-                  </Select>
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <Text strong style={{ marginRight: '8px' }}>Select Period:</Text>
+                <Select
+                  style={{ width: 280 }}
+                  value={selectedPeriod ? `${selectedPeriod.period_start}_${selectedPeriod.period_end}` : undefined}
+                  onChange={(value) => {
+                    const period = availablePeriods.find(p => `${p.period_start}_${p.period_end}` === value);
+                    setSelectedPeriod(period);
+                  }}
+                  loading={loadingPeriods}
+                  placeholder="Select forecast period"
+                >
+                  {availablePeriods.map((period, index) => (
+                    <Option key={`${period.period_start}_${period.period_end}`} value={`${period.period_start}_${period.period_end}`}>
+                      <Space>
+                        {formatPeriodLabel(period)}
+                        {period.is_current && <Tag color="green" size="small">Current</Tag>}
+                        {!period.is_current && period.has_forecast && <Tag color="blue" size="small"><HistoryOutlined /> Historical</Tag>}
+                        {!period.has_forecast && !period.is_current && <Tag color="default" size="small">No Data</Tag>}
+                      </Space>
+                    </Option>
+                  ))}
+                </Select>
                 {selectedPeriod && (
-                  <div>
-                    <Tag color={isCurrentPeriod ? 'green' : 'blue'} style={{ marginRight: '8px' }}>
+                  <>
+                    <Text strong style={{ marginLeft: '8px' }}>
                       {isCurrentPeriod ? 'Current Period' : 'Historical Period'}
-                    </Tag>
-                    <Text type="secondary">
-                      {periodInfo.start ? dayjs(periodInfo.start).format('DD MMM YYYY') : ''} - {periodInfo.end ? dayjs(periodInfo.end).format('DD MMM YYYY') : ''}
                     </Text>
-                  </div>
+                    <Tag 
+                      color={isCurrentPeriod ? 'green' : 'blue'} 
+                      style={{ 
+                        marginLeft: '8px',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      {periodInfo.start ? dayjs(periodInfo.start).format('DD MMM YYYY') : ''} - {periodInfo.end ? dayjs(periodInfo.end).format('DD MMM YYYY') : ''}
+                    </Tag>
+                  </>
                 )}
-              </Space>
+              </div>
             </div>
           </Col>
         </Row>
@@ -362,9 +378,32 @@ function MonthlyForecastTab() {
                     placeholder="Enter quantity"
                     style={{ width: '100%' }}
                     controls={true}
-                    disabled={!isCurrentPeriod}
-                    readOnly={!isCurrentPeriod}
+                    disabled={!canEdit}
+                    readOnly={!canEdit}
                   />
+                  {canEdit && (
+                    <div style={{ 
+                      display: 'flex', 
+                      gap: '6px', 
+                      marginTop: '8px',
+                      flexWrap: 'nowrap'
+                    }}>
+                      {[5, 10, 15, 20].map(presetQty => (
+                        <Button
+                          key={presetQty}
+                          size="small"
+                          type={forecastData[product.id] === presetQty ? 'primary' : 'default'}
+                          onClick={() => handleQuantityChange(product.id, presetQty)}
+                          style={{
+                            flex: '1 1 0',
+                            fontSize: '12px'
+                          }}
+                        >
+                          {presetQty}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <Button
@@ -373,7 +412,7 @@ function MonthlyForecastTab() {
                   onClick={() => handleClearProduct(product.id)}
                   style={{ width: '100%' }}
                   size="small"
-                  disabled={!isCurrentPeriod}
+                  disabled={!canEdit}
                 >
                   Clear
                 </Button>
@@ -388,7 +427,7 @@ function MonthlyForecastTab() {
       </Card>
 
       {/* Footer Actions */}
-      {isCurrentPeriod && (
+      {isCurrentPeriod && canEdit && (
         <Card style={{ borderRadius: '8px' }}>
           <Row justify="end">
             <Col>
@@ -407,6 +446,17 @@ function MonthlyForecastTab() {
                   Save All
                 </Button>
               </Space>
+            </Col>
+          </Row>
+        </Card>
+      )}
+      {isCurrentPeriod && isSubmitted && !isAdmin && !isTSO && (
+        <Card style={{ borderRadius: '8px', background: '#fff7e6', border: '1px solid #ffd591' }}>
+          <Row justify="center">
+            <Col>
+              <Text type="warning" strong>
+                ⚠️ This forecast has been submitted and cannot be modified. Please contact admin or TSO for changes.
+              </Text>
             </Col>
           </Row>
         </Card>

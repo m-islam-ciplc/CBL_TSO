@@ -5,14 +5,12 @@ import {
   UserOutlined,
   ShoppingCartOutlined,
   TruckOutlined,
-  BarChartOutlined,
   SettingOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
 import DealerManagement from './DealerManagement';
 import ProductManagement from './ProductManagement';
 import TransportManagement from './TransportManagement';
-import ProductQuotaManagement from './ProductQuotaManagement';
 import AdminSettings from './AdminSettings';
 import UserManagement from './UserManagement';
 import { useUser } from '../contexts/UserContext';
@@ -37,9 +35,6 @@ function Settings() {
     } else if (path === '/manage-transports') {
       navigate('/settings?tab=transports', { replace: true });
       setActiveTab('transports');
-    } else if (path === '/manage-quotas') {
-      navigate('/settings?tab=quotas', { replace: true });
-      setActiveTab('quotas');
     } else if (path === '/admin-settings') {
       navigate('/settings?tab=admin-settings', { replace: true });
       setActiveTab('admin-settings');
@@ -50,7 +45,7 @@ function Settings() {
       // Check URL params for tab
       const params = new URLSearchParams(location.search);
       const tab = params.get('tab');
-      if (tab && ['users', 'dealers', 'products', 'transports', 'quotas', 'admin-settings'].includes(tab)) {
+      if (tab && ['users', 'dealers', 'products', 'transports', 'admin-settings'].includes(tab)) {
         setActiveTab(tab);
       }
     }
@@ -62,7 +57,7 @@ function Settings() {
         <SettingOutlined /> Settings
       </Title>
       <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
-        Manage users, dealers, products, transports, quotas, and application settings
+        Manage users, dealers, products, transports, and application settings
       </Text>
 
       <Tabs 
@@ -121,20 +116,6 @@ function Settings() {
         >
           <TransportManagement />
         </Tabs.TabPane>
-
-        {userRole === 'admin' && (
-          <Tabs.TabPane
-            tab={
-              <span>
-                <BarChartOutlined />
-                Manage Quotas
-              </span>
-            }
-            key="quotas"
-          >
-            <ProductQuotaManagement />
-          </Tabs.TabPane>
-        )}
 
         {userRole === 'admin' && (
           <Tabs.TabPane

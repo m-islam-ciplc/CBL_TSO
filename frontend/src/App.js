@@ -29,6 +29,7 @@ import DailyReport from './pages/DailyReport';
 import TSOReport from './pages/TSOReport';
 import TSODashboard from './pages/TSODashboard';
 import UserManagement from './pages/UserManagement';
+import ProductQuotaManagement from './pages/ProductQuotaManagement';
 import MonthlyForecastTab from './pages/MonthlyForecastTab';
 import DebugPanel from './components/DebugPanel';
 import DealerForecasts_Option1_Table from './pages/demos/DealerForecasts_Option1_Table';
@@ -104,7 +105,8 @@ function AppContent() {
     if (path === '/new-orders') return 'new-orders';
     if (path === '/review-orders') return 'review-orders';
     if (path === '/placed-orders') return 'placed-orders';
-    if (path === '/settings' || path === '/manage-dealers' || path === '/manage-products' || path === '/manage-transports' || path === '/manage-quotas' || path === '/admin-settings' || path === '/user-management') return 'settings';
+    if (path === '/settings' || path === '/manage-dealers' || path === '/manage-products' || path === '/manage-transports' || path === '/admin-settings' || path === '/user-management') return 'settings';
+    if (path === '/manage-quotas') return 'manage-quotas';
     if (path === '/reports') return 'reports';
     if (path === '/tso-report') return 'tso-report';
     return 'dashboard';
@@ -313,6 +315,11 @@ function AppContent() {
       icon: <OrderedListOutlined />,
       label: 'Placed Orders',
     },
+    ...(userRole === 'admin' ? [{
+      key: 'manage-quotas',
+      icon: <BarChartOutlined />,
+      label: 'Manage Quotas',
+    }] : []),
     {
       key: 'reports',
       icon: <FileExcelOutlined />,
@@ -529,7 +536,7 @@ function AppContent() {
           } />
           <Route path="/manage-quotas" element={
             userRole === 'admin' ? 
-            <Settings /> : 
+            <ProductQuotaManagement /> : 
             <Dashboard setStats={setStats} />
           } />
           {/* Demo routes - accessible without login */}

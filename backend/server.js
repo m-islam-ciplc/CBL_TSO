@@ -3937,31 +3937,52 @@ app.get('/api/monthly-forecast/dealer/:dealerId', (req, res) => {
                 period = calculateMonthlyPeriod(startDay, 0);
             }
             
-            // Get forecast for this period (bulk - sum all quantities per product)
-            const forecastQuery = `
-                SELECT 
-                    mf.product_id,
-                    SUM(mf.quantity) AS quantity,
-                    p.name AS product_name,
-                    p.product_code
-                FROM monthly_forecast mf
-                LEFT JOIN products p ON mf.product_id = p.id
-                WHERE mf.dealer_id = ? 
-                AND mf.period_start = ? 
-                AND mf.period_end = ?
-                GROUP BY mf.product_id, p.name, p.product_code
-                ORDER BY p.product_code
+            // Check if forecast is submitted for this period
+            const submittedCheckQuery = `
+                SELECT COUNT(*) as count 
+                FROM monthly_forecast 
+                WHERE dealer_id = ? 
+                AND period_start = ? 
+                AND period_end = ? 
+                AND is_submitted = TRUE
+                LIMIT 1
             `;
             
-            db.query(forecastQuery, [dealerId, period.start, period.end], (err, forecast) => {
+            db.query(submittedCheckQuery, [dealerId, period.start, period.end], (err, submittedResult) => {
                 if (err) {
-                    console.error('Error fetching monthly forecast:', err);
+                    console.error('Error checking submission status:', err);
                     return res.status(500).json({ error: 'Database error' });
                 }
-                res.json({
-                    period_start: period.start,
-                    period_end: period.end,
-                    forecast: forecast
+                
+                const isSubmitted = submittedResult[0].count > 0;
+                
+                // Get forecast for this period (bulk - sum all quantities per product)
+                const forecastQuery = `
+                    SELECT 
+                        mf.product_id,
+                        SUM(mf.quantity) AS quantity,
+                        p.name AS product_name,
+                        p.product_code
+                    FROM monthly_forecast mf
+                    LEFT JOIN products p ON mf.product_id = p.id
+                    WHERE mf.dealer_id = ? 
+                    AND mf.period_start = ? 
+                    AND mf.period_end = ?
+                    GROUP BY mf.product_id, p.name, p.product_code
+                    ORDER BY p.product_code
+                `;
+                
+                db.query(forecastQuery, [dealerId, period.start, period.end], (err, forecast) => {
+                    if (err) {
+                        console.error('Error fetching monthly forecast:', err);
+                        return res.status(500).json({ error: 'Database error' });
+                    }
+                    res.json({
+                        period_start: period.start,
+                        period_end: period.end,
+                        forecast: forecast,
+                        is_submitted: isSubmitted
+                    });
                 });
             });
         });
@@ -3973,7 +3994,7 @@ app.get('/api/monthly-forecast/dealer/:dealerId', (req, res) => {
 // This endpoint allows dealers to submit their monthly battery forecast
 // Create or update dealer monthly forecast (bulk - one quantity per product per period)
 app.post('/api/monthly-forecast', (req, res) => {
-    const { dealer_id, product_id, quantity } = req.body;
+    const { dealer_id, product_id, quantity, user_role } = req.body;
     
     if (!dealer_id || !product_id || quantity === undefined) {
         return res.status(400).json({ error: 'dealer_id, product_id, and quantity are required' });
@@ -4031,38 +4052,91 @@ app.post('/api/monthly-forecast', (req, res) => {
                 const startDay = results.length > 0 ? parseInt(results[0].setting_value) : 18;
                 const period = calculateMonthlyPeriod(startDay);
                 
-                // For bulk forecast: delete all existing day-wise entries for this product/period, then insert one entry
-                // Use period.start as forecast_date for the bulk entry
-                db.query('DELETE FROM monthly_forecast WHERE dealer_id = ? AND product_id = ? AND period_start = ? AND period_end = ?', 
-                    [dealer_id, product_id, period.start, period.end], (err) => {
+                // Check if forecast is already submitted for this period
+                const submittedCheckQuery = `
+                    SELECT COUNT(*) as count 
+                    FROM monthly_forecast 
+                    WHERE dealer_id = ? 
+                    AND period_start = ? 
+                    AND period_end = ? 
+                    AND is_submitted = TRUE
+                    LIMIT 1
+                `;
+                
+                db.query(submittedCheckQuery, [dealer_id, period.start, period.end], (err, submittedResult) => {
                     if (err) {
-                        console.error('Error deleting old forecast entries:', err);
+                        console.error('Error checking submission status:', err);
                         return res.status(500).json({ error: 'Database error' });
                     }
                     
-                    // Insert bulk forecast entry
-                    const insertQuery = `
-                        INSERT INTO monthly_forecast (dealer_id, product_id, period_start, period_end, forecast_date, quantity)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    `;
+                    const isSubmitted = submittedResult[0].count > 0;
+                    const isAdminOrTSO = user_role === 'admin' || user_role === 'tso';
                     
-                    db.query(insertQuery, [
-                        dealer_id,
-                        product_id,
-                        period.start,
-                        period.end,
-                        period.start, // Use period start as forecast_date for bulk entry
-                        quantity
-                    ], (err, result) => {
+                    // Prevent dealers from modifying submitted forecasts
+                    if (isSubmitted && !isAdminOrTSO) {
+                        return res.status(403).json({ 
+                            error: 'This forecast has already been submitted and cannot be modified. Please contact admin or TSO for changes.' 
+                        });
+                    }
+                    
+                    // For bulk forecast: delete all existing day-wise entries for this product/period, then insert one entry
+                    // Use period.start as forecast_date for the bulk entry
+                    db.query('DELETE FROM monthly_forecast WHERE dealer_id = ? AND product_id = ? AND period_start = ? AND period_end = ?', 
+                        [dealer_id, product_id, period.start, period.end], (err) => {
                         if (err) {
-                            console.error('Error saving monthly forecast:', err);
+                            console.error('Error deleting old forecast entries:', err);
                             return res.status(500).json({ error: 'Database error' });
                         }
-                        res.json({ 
-                            success: true, 
-                            id: result.insertId,
-                            period_start: period.start,
-                            period_end: period.end
+                        
+                        // Insert bulk forecast entry
+                        // Only set is_submitted if this is a dealer (not admin/TSO) and it's the first save
+                        const insertQuery = `
+                            INSERT INTO monthly_forecast (dealer_id, product_id, period_start, period_end, forecast_date, quantity, is_submitted, submitted_at)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        `;
+                        
+                        // If dealer is saving (not admin/TSO), mark as submitted
+                        const shouldMarkSubmitted = !isAdminOrTSO;
+                        const submittedAt = shouldMarkSubmitted ? new Date() : null;
+                        
+                        db.query(insertQuery, [
+                            dealer_id,
+                            product_id,
+                            period.start,
+                            period.end,
+                            period.start, // Use period start as forecast_date for bulk entry
+                            quantity,
+                            shouldMarkSubmitted,
+                            submittedAt
+                        ], (err, result) => {
+                            if (err) {
+                                console.error('Error saving monthly forecast:', err);
+                                return res.status(500).json({ error: 'Database error' });
+                            }
+                            
+                            // If dealer saved, mark all other entries for this period as submitted too
+                            if (shouldMarkSubmitted) {
+                                db.query(`
+                                    UPDATE monthly_forecast 
+                                    SET is_submitted = TRUE, submitted_at = ? 
+                                    WHERE dealer_id = ? 
+                                    AND period_start = ? 
+                                    AND period_end = ? 
+                                    AND is_submitted = FALSE
+                                `, [submittedAt, dealer_id, period.start, period.end], (err) => {
+                                    if (err) {
+                                        console.error('Error marking other entries as submitted:', err);
+                                        // Don't fail the request, just log the error
+                                    }
+                                });
+                            }
+                            
+                            res.json({ 
+                                success: true, 
+                                id: result.insertId,
+                                period_start: period.start,
+                                period_end: period.end
+                            });
                         });
                     });
                 });
@@ -4253,7 +4327,7 @@ app.get('/api/monthly-forecast/all', (req, res) => {
             SELECT 
                 d.id AS dealer_id,
                 d.dealer_code,
-                d.dealer_name,
+                d.name AS dealer_name,
                 d.territory_name,
                 mf.product_id,
                 SUM(mf.quantity) AS quantity,
@@ -4275,7 +4349,7 @@ app.get('/api/monthly-forecast/all', (req, res) => {
         }
         
         forecastQuery += `
-            GROUP BY d.id, d.dealer_code, d.dealer_name, d.territory_name, mf.product_id, p.name, p.product_code
+            GROUP BY d.id, d.dealer_code, d.name, d.territory_name, mf.product_id, p.name, p.product_code
             ORDER BY d.territory_name, d.dealer_code, p.product_code
         `;
         

@@ -133,6 +133,8 @@ async function updateDatabase() {
           period_end DATE NOT NULL,
           forecast_date DATE NOT NULL,
           quantity INT NOT NULL DEFAULT 0,
+          is_submitted BOOLEAN DEFAULT FALSE,
+          submitted_at TIMESTAMP NULL DEFAULT NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
           FOREIGN KEY (dealer_id) REFERENCES dealers(id) ON DELETE CASCADE,
@@ -141,12 +143,32 @@ async function updateDatabase() {
           INDEX idx_dealer_id (dealer_id),
           INDEX idx_product_id (product_id),
           INDEX idx_period (period_start, period_end),
-          INDEX idx_forecast_date (forecast_date)
+          INDEX idx_forecast_date (forecast_date),
+          INDEX idx_is_submitted (is_submitted)
         )
       `);
       console.log('   ✓ Created monthly_forecast table');
     } else {
       console.log('   ✓ monthly_forecast table already exists');
+      
+      // Check if is_submitted column exists
+      const [colCheck] = await connection.query(`
+        SELECT COUNT(*) as count 
+        FROM information_schema.COLUMNS 
+        WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'monthly_forecast' AND COLUMN_NAME = 'is_submitted'
+      `, [config.database]);
+      
+      if (colCheck[0].count === 0) {
+        await connection.query(`
+          ALTER TABLE monthly_forecast 
+          ADD COLUMN is_submitted BOOLEAN DEFAULT FALSE AFTER quantity,
+          ADD COLUMN submitted_at TIMESTAMP NULL DEFAULT NULL AFTER is_submitted,
+          ADD INDEX idx_is_submitted (is_submitted)
+        `);
+        console.log('   ✓ Added is_submitted and submitted_at columns');
+      } else {
+        console.log('   ✓ is_submitted and submitted_at columns already exist');
+      }
     }
 
     // 3. Create settings table
