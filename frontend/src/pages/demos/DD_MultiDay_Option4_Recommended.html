@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DD Multi-Day - Option 4: Recommended (Hybrid)</title>
+    <style>
+        body { padding: 20px; background: #f5f5f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .demo-container { max-width: 1400px; margin: 0 auto; }
+        .demo-card { background: white; border-radius: 8px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .date-selector-card { background: #f0f7ff; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+        .selected-dates { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+        .date-chip { background: white; border: 2px solid #1890ff; color: #1890ff; padding: 6px 14px; border-radius: 20px; font-size: 13px; display: flex; align-items: center; gap: 8px; font-weight: 500; }
+        .date-chip .remove { cursor: pointer; font-weight: bold; }
+        .date-chip .remove:hover { color: red; }
+        .product-section { background: white; border-radius: 8px; padding: 16px; margin-bottom: 16px; border: 1px solid #e8e8e8; }
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin-top: 12px; }
+        .product-card { border: 1px solid #d9d9d9; border-radius: 8px; padding: 12px; cursor: pointer; transition: all 0.3s; background: white; }
+        .product-card:hover { border-color: #1890ff; box-shadow: 0 2px 8px rgba(24,144,255,0.2); }
+        .demand-summary-card { background: #fafafa; border-radius: 8px; padding: 16px; margin-top: 16px; }
+        .date-group { margin-bottom: 20px; padding-bottom: 16px; border-bottom: 2px solid #e8e8e8; }
+        .date-group:last-child { border-bottom: none; margin-bottom: 0; }
+        .date-header { font-size: 16px; font-weight: bold; color: #1890ff; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .order-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: white; border-radius: 4px; margin-bottom: 8px; border: 1px solid #f0f0f0; }
+        .badge { background: #52c41a; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; margin-left: 8px; }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <div class="demo-card">
+            <h2>Option 4: Recommended Hybrid Approach ⭐</h2>
+            <p><strong>Concept:</strong> Select dates → Add products → See grouped summary by date. Best of both worlds - clear organization with easy product selection.</p>
+            
+            <div style="margin: 20px 0; padding: 12px; background: #e6f7ff; border-left: 4px solid #1890ff; border-radius: 4px;">
+                <strong>Why Recommended:</strong>
+                <ul style="margin: 8px 0;">
+                    <li>✅ Clear date organization</li>
+                    <li>✅ Single product selection (adds to all selected dates)</li>
+                    <li>✅ Easy to see what's ordered per date</li>
+                    <li>✅ Works well on mobile and desktop</li>
+                    <li>✅ Matches current UI style</li>
+                </ul>
+            </div>
+
+            <div style="background: #fff; padding: 20px; border: 2px dashed #1890ff; border-radius: 8px;">
+                <h4 style="margin-top: 0;">Visual Mockup:</h4>
+                
+                <!-- Step 1: Date Selection -->
+                <div class="date-selector-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong style="font-size: 14px;">📅 Step 1: Select Dates for Daily Demand</strong>
+                            <div style="font-size: 12px; color: #666; margin-top: 4px;">
+                                Select one or more dates to place demand orders
+                            </div>
+                        </div>
+                        <button style="padding: 6px 16px; background: #1890ff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">
+                            + Add Date
+                        </button>
+                    </div>
+                    <div class="selected-dates">
+                        <div class="date-chip">
+                            <span>📅 Today (Nov 30)</span>
+                            <span class="remove">×</span>
+                        </div>
+                        <div class="date-chip">
+                            <span>📅 Tomorrow (Dec 1)</span>
+                            <span class="remove">×</span>
+                        </div>
+                        <div class="date-chip">
+                            <span>📅 Dec 2</span>
+                            <span class="remove">×</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Product Selection -->
+                <div class="product-section">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <strong style="font-size: 14px;">📦 Step 2: Select Products</strong>
+                        <div style="font-size: 12px; color: #666;">
+                            Click product to add quantities for selected dates
+                        </div>
+                    </div>
+                    
+                    <!-- Search -->
+                    <div style="margin-bottom: 12px;">
+                        <input type="text" placeholder="Search products..." style="width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 13px;">
+                    </div>
+
+                    <!-- Product Grid -->
+                    <div class="product-grid">
+                        <div class="product-card">
+                            <div style="font-weight: bold; font-size: 13px;">ET140T- L Gaston</div>
+                            <div style="font-size: 11px; color: #999;">L101GT003</div>
+                            <div style="font-size: 11px; color: #1890ff; margin-top: 4px;">TP: 1250</div>
+                        </div>
+                        <div class="product-card">
+                            <div style="font-weight: bold; font-size: 13px;">EV200T Gaston Premium</div>
+                            <div style="font-size: 11px; color: #999;">L101GM130</div>
+                            <div style="font-size: 11px; color: #1890ff; margin-top: 4px;">TP: 1500</div>
+                        </div>
+                        <div class="product-card">
+                            <div style="font-weight: bold; font-size: 13px;">EV-250T Sunrise Power</div>
+                            <div style="font-size: 11px; color: #999;">L101SN127</div>
+                            <div style="font-size: 11px; color: #1890ff; margin-top: 4px;">TP: 1800</div>
+                        </div>
+                        <div class="product-card">
+                            <div style="font-weight: bold; font-size: 13px;">6DGA-225(H) Kingshuk Power</div>
+                            <div style="font-size: 11px; color: #999;">L101KI141</div>
+                            <div style="font-size: 11px; color: #1890ff; margin-top: 4px;">TP: 2000</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3: Demand Summary -->
+                <div class="demand-summary-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <strong style="font-size: 14px;">📋 Step 3: Review Daily Demands</strong>
+                        <div style="font-size: 12px; color: #666;">
+                            <span class="badge">3 dates</span>
+                            <span class="badge" style="background: #1890ff;">3 products</span>
+                        </div>
+                    </div>
+
+                    <!-- Today's Demand -->
+                    <div class="date-group">
+                        <div class="date-header">
+                            📅 Today - November 30, 2024
+                            <span class="badge">2 items</span>
+                        </div>
+                        <div class="order-item">
+                            <div>
+                                <strong>L101GT003</strong> - ET140T- L Gaston
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span><strong>Qty: 5</strong></span>
+                                <button style="color: red; border: none; background: none; cursor: pointer; padding: 4px 8px;">Remove</button>
+                            </div>
+                        </div>
+                        <div class="order-item">
+                            <div>
+                                <strong>L101GM130</strong> - EV200T Gaston Premium
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span><strong>Qty: 3</strong></span>
+                                <button style="color: red; border: none; background: none; cursor: pointer; padding: 4px 8px;">Remove</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tomorrow's Demand -->
+                    <div class="date-group">
+                        <div class="date-header">
+                            📅 Tomorrow - December 1, 2024
+                            <span class="badge">2 items</span>
+                        </div>
+                        <div class="order-item">
+                            <div>
+                                <strong>L101GT003</strong> - ET140T- L Gaston
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span><strong>Qty: 3</strong></span>
+                                <button style="color: red; border: none; background: none; cursor: pointer; padding: 4px 8px;">Remove</button>
+                            </div>
+                        </div>
+                        <div class="order-item">
+                            <div>
+                                <strong>L101SN127</strong> - EV-250T Sunrise Power
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span><strong>Qty: 10</strong></span>
+                                <button style="color: red; border: none; background: none; cursor: pointer; padding: 4px 8px;">Remove</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dec 2 Demand -->
+                    <div class="date-group">
+                        <div class="date-header">
+                            📅 December 2, 2024
+                            <span class="badge">1 item</span>
+                        </div>
+                        <div class="order-item">
+                            <div>
+                                <strong>L101GM130</strong> - EV200T Gaston Premium
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span><strong>Qty: 5</strong></span>
+                                <button style="color: red; border: none; background: none; cursor: pointer; padding: 4px 8px;">Remove</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div style="margin-top: 20px; text-align: right;">
+                    <button style="padding: 12px 32px; background: #52c41a; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 4px rgba(82,196,26,0.3);">
+                        ✓ Submit All Daily Demands (3 dates, 5 items)
+                    </button>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px; padding: 16px; background: #f6ffed; border-left: 4px solid #52c41a; border-radius: 4px;">
+                <strong style="color: #389e0d;">✅ Recommended Implementation:</strong>
+                <ul style="margin: 8px 0;">
+                    <li><strong>Date Selection:</strong> DatePicker with multiple selection or quick buttons (Today, Tomorrow, +Custom)</li>
+                    <li><strong>Product Selection:</strong> Same grid as current Daily Demand</li>
+                    <li><strong>Product Popup:</strong> Shows quantity inputs for each selected date</li>
+                    <li><strong>Summary View:</strong> Grouped by date, easy to review and edit</li>
+                    <li><strong>Submit:</strong> Creates multiple DD orders (one per date) in single API call</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+

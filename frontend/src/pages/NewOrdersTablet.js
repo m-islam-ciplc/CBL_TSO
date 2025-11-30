@@ -81,9 +81,11 @@ function NewOrdersTablet({ onOrderCreated: _onOrderCreated }) {
   }
 
   function initializeFormDefaults(orderTypes, warehouses) {
-    if (orderTypes.length > 0 && warehouses.length > 0) {
+    // Auto-select "SO" (Sales Order) order type for TSOs
+    const soOrderType = orderTypes.find(ot => ot.name === 'SO') || orderTypes[0];
+    if (soOrderType && warehouses.length > 0) {
       const initialValues = {
-        orderType: orderTypes[0].id,
+        orderType: soOrderType.id,
         warehouse: warehouses[0].id,
         territoryCode: undefined,
         territoryName: undefined,

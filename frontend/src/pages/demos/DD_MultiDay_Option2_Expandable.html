@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DD Multi-Day - Option 2: Expandable Sections</title>
+    <style>
+        body { padding: 20px; background: #f5f5f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .demo-container { max-width: 1400px; margin: 0 auto; }
+        .demo-card { background: white; border-radius: 8px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .date-section { border: 1px solid #d9d9d9; border-radius: 8px; margin-bottom: 12px; overflow: hidden; }
+        .date-header { padding: 12px 16px; background: #fafafa; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        .date-header:hover { background: #f0f0f0; }
+        .date-content { padding: 16px; display: none; }
+        .date-content.expanded { display: block; }
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin-top: 12px; }
+        .product-card { border: 1px solid #d9d9d9; border-radius: 8px; padding: 12px; cursor: pointer; transition: all 0.3s; }
+        .product-card:hover { border-color: #1890ff; box-shadow: 0 2px 8px rgba(24,144,255,0.2); }
+        .order-summary { background: #fafafa; border-radius: 8px; padding: 12px; margin-top: 12px; }
+        .order-item { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #f0f0f0; }
+        .badge { background: #1890ff; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; margin-left: 8px; }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <div class="demo-card">
+            <h2>Option 2: Expandable Date Sections</h2>
+            <p><strong>Concept:</strong> All dates visible in expandable sections. Dealer can expand/collapse each date to add products.</p>
+            
+            <div style="margin: 20px 0;">
+                <h3>UI Flow:</h3>
+                <ol>
+                    <li>Dealer clicks "Add Date" → Selects dates</li>
+                    <li>Each date appears as expandable section</li>
+                    <li>Click date header to expand/collapse</li>
+                    <li>Add products in expanded section</li>
+                    <li>See all dates and their orders at once</li>
+                    <li>Submit all at once</li>
+                </ol>
+            </div>
+
+            <div style="background: #fff; padding: 20px; border: 2px dashed #1890ff; border-radius: 8px;">
+                <h4 style="margin-top: 0;">Visual Mockup:</h4>
+                
+                <!-- Add Date Button -->
+                <div style="margin-bottom: 16px;">
+                    <button style="padding: 8px 16px; background: #1890ff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        + Add Date
+                    </button>
+                </div>
+
+                <!-- Date Section 1 - Expanded -->
+                <div class="date-section">
+                    <div class="date-header" onclick="toggleSection(this)">
+                        <div>
+                            <strong>📅 Today - November 30, 2024</strong>
+                            <span class="badge">2 items</span>
+                        </div>
+                        <span style="color: #1890ff;">▼</span>
+                    </div>
+                    <div class="date-content expanded">
+                        <!-- Product Grid -->
+                        <div class="product-grid">
+                            <div class="product-card">
+                                <div style="font-weight: bold; font-size: 13px;">ET140T- L Gaston</div>
+                                <div style="font-size: 11px; color: #999;">L101GT003</div>
+                                <div style="font-size: 11px; color: #1890ff; margin-top: 4px;">TP: 1250</div>
+                            </div>
+                            <div class="product-card">
+                                <div style="font-weight: bold; font-size: 13px;">EV200T Gaston Premium</div>
+                                <div style="font-size: 11px; color: #999;">L101GM130</div>
+                                <div style="font-size: 11px; color: #1890ff; margin-top: 4px;">TP: 1500</div>
+                            </div>
+                            <div class="product-card">
+                                <div style="font-weight: bold; font-size: 13px;">EV-250T Sunrise Power</div>
+                                <div style="font-size: 11px; color: #999;">L101SN127</div>
+                                <div style="font-size: 11px; color: #1890ff; margin-top: 4px;">TP: 1800</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Order Summary -->
+                        <div class="order-summary">
+                            <strong>Today's Demand:</strong>
+                            <div class="order-item">
+                                <span>L101GT003 - ET140T- L Gaston</span>
+                                <span><strong>Qty: 5</strong> <button style="margin-left: 8px; color: red; border: none; background: none; cursor: pointer;">×</button></span>
+                            </div>
+                            <div class="order-item">
+                                <span>L101GM130 - EV200T Gaston Premium</span>
+                                <span><strong>Qty: 3</strong> <button style="margin-left: 8px; color: red; border: none; background: none; cursor: pointer;">×</button></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Date Section 2 - Collapsed -->
+                <div class="date-section">
+                    <div class="date-header" onclick="toggleSection(this)">
+                        <div>
+                            <strong>📅 Tomorrow - December 1, 2024</strong>
+                            <span class="badge">0 items</span>
+                        </div>
+                        <span style="color: #666;">▶</span>
+                    </div>
+                    <div class="date-content">
+                        <!-- Content hidden when collapsed -->
+                    </div>
+                </div>
+
+                <!-- Date Section 3 - Collapsed -->
+                <div class="date-section">
+                    <div class="date-header" onclick="toggleSection(this)">
+                        <div>
+                            <strong>📅 December 2, 2024</strong>
+                            <span class="badge">1 item</span>
+                        </div>
+                        <span style="color: #666;">▶</span>
+                    </div>
+                    <div class="date-content">
+                        <!-- Content hidden when collapsed -->
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div style="margin-top: 20px; text-align: right;">
+                    <button style="padding: 10px 24px; background: #52c41a; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold;">
+                        ✓ Submit All Daily Demands (3 dates)
+                    </button>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px; padding: 12px; background: #fff7e6; border-left: 4px solid #faad14; border-radius: 4px;">
+                <strong>Pros:</strong>
+                <ul style="margin: 8px 0;">
+                    <li>See all dates at once</li>
+                    <li>Quick overview with item counts</li>
+                    <li>Expand only what you need</li>
+                    <li>Good for mobile/tablet</li>
+                </ul>
+                <strong>Cons:</strong>
+                <li>More scrolling if many dates</li>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleSection(header) {
+            const content = header.nextElementSibling;
+            const arrow = header.querySelector('span:last-child');
+            if (content.classList.contains('expanded')) {
+                content.classList.remove('expanded');
+                arrow.textContent = '▶';
+                arrow.style.color = '#666';
+            } else {
+                content.classList.add('expanded');
+                arrow.textContent = '▼';
+                arrow.style.color = '#1890ff';
+            }
+        }
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,93 @@
+# CBL TSO Design Consistency Rules
+
+## CRITICAL: UI/UX Design Consistency
+
+**MANDATORY**: ALL new pages, components, and features MUST match the existing design theme and patterns. This is non-negotiable and must be checked BEFORE submitting any code.
+
+### Design Consistency Checklist (MUST FOLLOW):
+
+#### 1. Before Creating ANY New Component:
+- ✅ **ALWAYS** review similar existing pages first (e.g., `PlacedOrders.js`, `TSOReport.js`, `DailyDemand.js`, `NewOrdersTablet.js`)
+- ✅ **ALWAYS** match exact styling patterns from existing components
+- ✅ **ALWAYS** use the same Ant Design component configurations
+- ✅ **NEVER** create new design patterns without matching existing ones
+
+#### 2. Card Styling:
+- `borderRadius: '8px'` (always use this exact value)
+- `boxShadow` for depth
+- `background: '#f0f7ff'` for info/header cards
+- `bodyStyle={{ padding: '12px' }}` for card body padding
+- `style={{ marginBottom: '16px' }}` for card spacing
+
+#### 3. Table Design:
+- **Pagination**: 
+  - `showSizeChanger: true`
+  - `showQuickJumper: true`
+  - `showTotal: (total, range) => \`${range[0]}-${range[1]} of ${total} orders\``
+  - `pageSizeOptions: ['10', '20', '50', '100']`
+  - `defaultPageSize: 20`
+- **Columns**:
+  - Use `ellipsis: true` for long text columns
+  - Use `sorter` functions for sortable columns
+  - Use `Tag` components for IDs/statuses
+  - Use `Tooltip` for truncated text
+- **Styling**: Match exact table styling from `PlacedOrders.js` and `TSOReport.js`
+
+#### 4. Form Elements:
+- **Input/Select sizes**: `size="middle"` (standard size)
+- **Form layout**: Use `Row` and `Col` with `gutter={[12, 12]}`
+- **Form.Item**: Standard Ant Design Form.Item patterns
+- **Labels**: Use `Text strong style={{ fontSize: '12px' }}` for filter labels
+- **Spacing**: Use `Space` component with `size="small"` for vertical spacing
+
+#### 5. Buttons:
+- Standard button sizes (no custom sizes unless matching existing)
+- Icon buttons: Use Ant Design icons consistently
+- Button placement: Match existing patterns
+
+#### 6. Typography:
+- **Title**: `Title level={3}` with icon, `style={{ marginBottom: '8px' }}`
+- **Subtitle**: `Text type="secondary"` with `style={{ marginBottom: '24px', display: 'block' }}`
+- **Font sizes**: Match existing patterns (typically `12px` for labels, standard for body)
+
+#### 7. Colors and Themes:
+- Match existing color schemes exactly
+- Use Ant Design default colors unless matching specific existing patterns
+- Info cards: `background: '#f0f7ff'`
+
+#### 8. Component Structure:
+- Match the exact structure of similar existing pages
+- Use same import patterns
+- Use same state management patterns
+- Use same API call patterns
+
+### Reference Files for Design Patterns:
+- **Tables**: `frontend/src/pages/PlacedOrders.js`, `frontend/src/pages/TSOReport.js`
+- **Forms**: `frontend/src/pages/NewOrdersTablet.js`, `frontend/src/pages/DailyDemand.js`
+- **Cards/Layout**: `frontend/src/pages/MonthlyForecastTab.js`
+
+### Workflow for New Features:
+1. **First**: Read similar existing components to understand patterns
+2. **Second**: Copy styling patterns exactly (don't invent new ones)
+3. **Third**: Implement functionality using existing patterns
+4. **Fourth**: Verify consistency by comparing with reference files
+5. **Fifth**: Only then submit code
+
+### Common Mistakes to Avoid:
+- ❌ Creating new card styles instead of matching existing ones
+- ❌ Using different pagination configurations
+- ❌ Using different table column rendering patterns
+- ❌ Using different button sizes or styles
+- ❌ Using different form layouts
+- ❌ Not checking existing similar pages first
+
+### Enforcement:
+- This rule applies to ALL new pages, components, and features
+- It applies even if the user doesn't explicitly mention it
+- Always verify consistency before completing any task
+- If unsure, ask the user to point to a similar existing page to match
+
+---
+
+**Remember**: The user has repeatedly emphasized design consistency. This is a core requirement, not optional. Always match existing design patterns exactly.
+

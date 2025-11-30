@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DD Multi-Day - Option 3: Unified Product Selection</title>
+    <style>
+        body { padding: 20px; background: #f5f5f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .demo-container { max-width: 1400px; margin: 0 auto; }
+        .demo-card { background: white; border-radius: 8px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .date-selector { padding: 12px; background: #f0f7ff; border-radius: 8px; margin-bottom: 16px; }
+        .selected-dates { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+        .date-tag { background: #1890ff; color: white; padding: 4px 12px; border-radius: 16px; font-size: 12px; display: flex; align-items: center; gap: 6px; }
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin-top: 12px; }
+        .product-card { border: 1px solid #d9d9d9; border-radius: 8px; padding: 12px; cursor: pointer; transition: all 0.3s; }
+        .product-card:hover { border-color: #1890ff; box-shadow: 0 2px 8px rgba(24,144,255,0.2); }
+        .demand-table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+        .demand-table th, .demand-table td { padding: 8px; text-align: left; border-bottom: 1px solid #f0f0f0; }
+        .demand-table th { background: #fafafa; font-weight: bold; }
+        .qty-input { width: 80px; padding: 4px 8px; border: 1px solid #d9d9d9; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <div class="demo-card">
+            <h2>Option 3: Unified Product Selection</h2>
+            <p><strong>Concept:</strong> Select dates first, then add products. For each product, enter quantities for each selected date in a table.</p>
+            
+            <div style="margin: 20px 0;">
+                <h3>UI Flow:</h3>
+                <ol>
+                    <li>Dealer selects multiple dates</li>
+                    <li>Selects products (same products for all dates)</li>
+                    <li>Table shows: Product | Date 1 Qty | Date 2 Qty | Date 3 Qty</li>
+                    <li>Enter quantities per date in table cells</li>
+                    <li>Submit all at once</li>
+                </ol>
+            </div>
+
+            <div style="background: #fff; padding: 20px; border: 2px dashed #1890ff; border-radius: 8px;">
+                <h4 style="margin-top: 0;">Visual Mockup:</h4>
+                
+                <!-- Date Selection -->
+                <div class="date-selector">
+                    <strong>📅 Select Dates for Daily Demand:</strong>
+                    <div style="margin-top: 8px;">
+                        <button style="padding: 6px 12px; background: #1890ff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            + Add Date
+                        </button>
+                    </div>
+                    <div class="selected-dates">
+                        <div class="date-tag">
+                            Today (Nov 30) <span style="cursor: pointer;">×</span>
+                        </div>
+                        <div class="date-tag">
+                            Tomorrow (Dec 1) <span style="cursor: pointer;">×</span>
+                        </div>
+                        <div class="date-tag">
+                            Dec 2 <span style="cursor: pointer;">×</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Product Grid -->
+                <div>
+                    <strong>Select Products:</strong>
+                    <div class="product-grid">
+                        <div class="product-card">
+                            <div style="font-weight: bold; font-size: 13px;">ET140T- L Gaston</div>
+                            <div style="font-size: 11px; color: #999;">L101GT003</div>
+                            <div style="font-size: 11px; color: #1890ff; margin-top: 4px;">TP: 1250</div>
+                        </div>
+                        <div class="product-card">
+                            <div style="font-weight: bold; font-size: 13px;">EV200T Gaston Premium</div>
+                            <div style="font-size: 11px; color: #999;">L101GM130</div>
+                            <div style="font-size: 11px; color: #1890ff; margin-top: 4px;">TP: 1500</div>
+                        </div>
+                        <div class="product-card">
+                            <div style="font-weight: bold; font-size: 13px;">EV-250T Sunrise Power</div>
+                            <div style="font-size: 11px; color: #999;">L101SN127</div>
+                            <div style="font-size: 11px; color: #1890ff; margin-top: 4px;">TP: 1800</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Demand Table -->
+                <div style="margin-top: 24px;">
+                    <strong>Enter Quantities for Each Date:</strong>
+                    <table class="demand-table">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Today (Nov 30)</th>
+                                <th>Tomorrow (Dec 1)</th>
+                                <th>Dec 2</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <div><strong>L101GT003</strong></div>
+                                    <div style="font-size: 11px; color: #999;">ET140T- L Gaston</div>
+                                </td>
+                                <td><input type="number" class="qty-input" value="5" min="0"></td>
+                                <td><input type="number" class="qty-input" value="3" min="0"></td>
+                                <td><input type="number" class="qty-input" value="0" min="0"></td>
+                                <td><button style="color: red; border: none; background: none; cursor: pointer;">Remove</button></td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <div><strong>L101GM130</strong></div>
+                                    <div style="font-size: 11px; color: #999;">EV200T Gaston Premium</div>
+                                </td>
+                                <td><input type="number" class="qty-input" value="3" min="0"></td>
+                                <td><input type="number" class="qty-input" value="2" min="0"></td>
+                                <td><input type="number" class="qty-input" value="5" min="0"></td>
+                                <td><button style="color: red; border: none; background: none; cursor: pointer;">Remove</button></td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <div><strong>L101SN127</strong></div>
+                                    <div style="font-size: 11px; color: #999;">EV-250T Sunrise Power</div>
+                                </td>
+                                <td><input type="number" class="qty-input" value="0" min="0"></td>
+                                <td><input type="number" class="qty-input" value="10" min="0"></td>
+                                <td><input type="number" class="qty-input" value="0" min="0"></td>
+                                <td><button style="color: red; border: none; background: none; cursor: pointer;">Remove</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Summary -->
+                <div style="margin-top: 20px; padding: 12px; background: #f0f7ff; border-radius: 8px;">
+                    <strong>Summary:</strong>
+                    <div style="margin-top: 8px;">
+                        <div>📅 <strong>3 dates</strong> selected</div>
+                        <div>📦 <strong>3 products</strong> added</div>
+                        <div>📊 <strong>Total items:</strong> 8 (5+3+0+3+2+5+0+10+0)</div>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div style="margin-top: 20px; text-align: right;">
+                    <button style="padding: 10px 24px; background: #52c41a; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold;">
+                        ✓ Submit All Daily Demands
+                    </button>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px; padding: 12px; background: #fff7e6; border-left: 4px solid #faad14; border-radius: 4px;">
+                <strong>Pros:</strong>
+                <ul style="margin: 8px 0;">
+                    <li>See all dates and products in one view</li>
+                    <li>Easy to compare quantities across dates</li>
+                    <li>Efficient for bulk entry</li>
+                    <li>Good for desktop</li>
+                </ul>
+                <strong>Cons:</strong>
+                <ul style="margin: 8px 0;">
+                    <li>Table can get wide with many dates</li>
+                    <li>Less intuitive on mobile</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+

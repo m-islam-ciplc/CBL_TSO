@@ -29,6 +29,10 @@ CREATE TABLE IF NOT EXISTS order_types (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Insert default order types
+INSERT INTO order_types (name) VALUES ('SO') ON DUPLICATE KEY UPDATE name=name;
+INSERT INTO order_types (name) VALUES ('DD') ON DUPLICATE KEY UPDATE name=name;
+
 -- Warehouses table
 CREATE TABLE IF NOT EXISTS warehouses (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -141,19 +145,21 @@ CREATE TABLE IF NOT EXISTS orders (
     dealer_name VARCHAR(255),
     territory_id VARCHAR(50),
     territory_name VARCHAR(100),
-    warehouse_id INT NOT NULL,
+    warehouse_id INT NULL,
     warehouse_name VARCHAR(100),
     transport_id INT,
     transport_name VARCHAR(255),
     user_id INT,
     user_name VARCHAR(100),
+    order_source ENUM('tso', 'dealer', 'admin') DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     total_quantity INT NOT NULL DEFAULT 0,
     FOREIGN KEY (order_type_id) REFERENCES order_types(id),
     FOREIGN KEY (dealer_id) REFERENCES dealers(id),
     FOREIGN KEY (warehouse_id) REFERENCES warehouses(id),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
-    INDEX idx_user_id (user_id)
+    INDEX idx_user_id (user_id),
+    INDEX idx_order_source (order_source)
 );
 
 -- Order Items table (separate table for order items)
@@ -281,6 +287,7 @@ BEGIN
     DECLARE v_warehouse_name VARCHAR(100);
     DECLARE v_transport_name VARCHAR(255);
     DECLARE v_user_name VARCHAR(100);
+    DECLARE v_user_role VARCHAR(50);
 
     SELECT name
       INTO v_order_type_name
@@ -311,13 +318,22 @@ BEGIN
     END IF;
 
     IF NEW.user_id IS NOT NULL THEN
-        SELECT full_name
-          INTO v_user_name
+        SELECT full_name, role
+          INTO v_user_name, v_user_role
           FROM users
          WHERE id = NEW.user_id
          LIMIT 1;
+        
+        -- Set order_source based on user role
+        SET NEW.order_source = CASE 
+            WHEN v_user_role IN ('tso', 'sales_manager') THEN 'tso'
+            WHEN v_user_role = 'dealer' THEN 'dealer'
+            WHEN v_user_role = 'admin' THEN 'admin'
+            ELSE NULL
+        END;
     ELSE
         SET v_user_name = NULL;
+        SET NEW.order_source = NULL;
     END IF;
 
     SET NEW.order_type_name = v_order_type_name;
@@ -340,6 +356,7 @@ BEGIN
     DECLARE v_warehouse_name VARCHAR(100);
     DECLARE v_transport_name VARCHAR(255);
     DECLARE v_user_name VARCHAR(100);
+    DECLARE v_user_role VARCHAR(50);
 
     IF NEW.order_type_id IS NOT NULL THEN
         SELECT name
@@ -384,13 +401,24 @@ BEGIN
     END IF;
 
     IF NEW.user_id IS NOT NULL THEN
-        SELECT full_name
-          INTO v_user_name
+        SELECT full_name, role
+          INTO v_user_name, v_user_role
           FROM users
          WHERE id = NEW.user_id
          LIMIT 1;
+        
+        -- Update order_source based on user role if user_id changed
+        IF NEW.user_id != OLD.user_id OR NEW.order_source IS NULL THEN
+            SET NEW.order_source = CASE 
+                WHEN v_user_role IN ('tso', 'sales_manager') THEN 'tso'
+                WHEN v_user_role = 'dealer' THEN 'dealer'
+                WHEN v_user_role = 'admin' THEN 'admin'
+                ELSE NULL
+            END;
+        END IF;
     ELSE
         SET v_user_name = NULL;
+        SET NEW.order_source = NULL;
     END IF;
 
     SET NEW.order_type_name = v_order_type_name;

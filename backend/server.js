@@ -2505,6 +2505,263 @@ app.get('/api/dealers/filter', (req, res) => {
 });
 
 // Create new order with multiple products
+// Dealer Daily Demand Order endpoint (DD orders - no warehouse/transport required)
+app.post('/api/orders/dealer', async (req, res) => {
+    try {
+        console.log('📦 Creating dealer daily demand order with data:', req.body);
+        const { order_type_id, dealer_id, territory_name, order_items, user_id } = req.body;
+        
+        // Validate required fields for dealer orders
+        if (!order_type_id || !dealer_id || !territory_name || !order_items || !Array.isArray(order_items) || order_items.length === 0) {
+            return res.status(400).json({ 
+                error: 'Missing required fields: order_type_id, dealer_id, territory_name, and order_items array' 
+            });
+        }
+
+        // Verify order type is DD
+        const [orderTypeRows] = await dbPromise.query('SELECT name FROM order_types WHERE id = ?', [order_type_id]);
+        if (orderTypeRows.length === 0 || orderTypeRows[0].name !== 'DD') {
+            return res.status(400).json({ 
+                error: 'Invalid order type. Dealer orders must use DD (Daily Demand) order type.' 
+            });
+        }
+
+        // Validate each order item
+        for (const item of order_items) {
+            if (!item.product_id || !item.quantity || item.quantity <= 0) {
+                return res.status(400).json({ 
+                    error: 'Each order item must have product_id and quantity > 0' 
+                });
+            }
+        }
+
+        const order_id = uuidv4().substring(0, 8).toUpperCase();
+        
+        await withTransaction(async (connection) => {
+            // For DD orders: No quota validation - open ended to collect actual demand
+            // Only validate that products are assigned to the dealer
+            const validationErrors = [];
+
+            for (const item of order_items) {
+                // Check if product is assigned to this dealer
+                const [assignmentRows] = await connection.query(`
+                    SELECT COUNT(*) as count
+                    FROM dealer_product_assignments dpa
+                    WHERE dpa.dealer_id = ?
+                      AND (
+                        (dpa.assignment_type = 'product' AND dpa.product_id = ?)
+                        OR
+                        (dpa.assignment_type = 'category' AND dpa.product_category = (
+                            SELECT application_name FROM products WHERE id = ?
+                        ))
+                      )
+                `, [dealer_id, item.product_id, item.product_id]);
+
+                if (assignmentRows[0].count === 0) {
+                    const [productRows] = await connection.query(`
+                        SELECT product_code, name FROM products WHERE id = ?
+                    `, [item.product_id]);
+                    const product = productRows[0];
+                    validationErrors.push(`Product ${product?.product_code || item.product_id} is not allocated to this dealer.`);
+                }
+            }
+
+            if (validationErrors.length > 0) {
+                const validationError = new Error('Order validation failed');
+                validationError.status = 400;
+                validationError.details = validationErrors;
+                throw validationError;
+            }
+            
+            // Insert order with NULL warehouse_id and transport_id for dealer orders
+            // For single-day dealer orders, order_date defaults to today (CURDATE())
+            await connection.query(`
+                INSERT INTO orders (order_id, order_type_id, dealer_id, warehouse_id, transport_id, user_id, order_date) 
+                VALUES (?, ?, ?, NULL, NULL, ?, CURDATE())
+            `, [order_id, order_type_id, dealer_id, user_id || null]);
+            
+            // Add order items
+            for (const item of order_items) {
+                await connection.query(`
+                    INSERT INTO order_items (order_id, product_id, quantity) 
+                    VALUES (?, ?, ?)
+                `, [order_id, item.product_id, item.quantity]);
+                
+                console.log('✅ Added order item:', { product_id: item.product_id, quantity: item.quantity });
+            }
+        });
+
+        // Broadcast quota change to notify all connected clients
+        broadcastQuotaChange();
+
+        res.json({ 
+            success: true, 
+            order_id: order_id,
+            message: `Daily Demand order created successfully with ${order_items.length} product(s)`,
+            item_count: order_items.length
+        });
+
+    } catch (error) {
+        console.error('❌ Dealer order creation error:', error);
+        console.error('❌ Error details:', error.message);
+        console.error('❌ Stack trace:', error.stack);
+        
+        // Handle validation errors with details
+        if (error.status === 400 && error.details) {
+            return res.status(400).json({ 
+                error: error.message,
+                details: error.details
+            });
+        }
+        
+        res.status(error.status || 500).json({ error: error.message });
+    }
+});
+
+// Multi-day Daily Demand endpoint for dealers
+app.post('/api/orders/dealer/multi-day', async (req, res) => {
+    try {
+        console.log('📦 Creating multi-day dealer daily demand orders with data:', req.body);
+        const { dealer_id, territory_name, demands, user_id } = req.body;
+        
+        // Validate required fields
+        if (!dealer_id || !territory_name || !demands || !Array.isArray(demands) || demands.length === 0) {
+            return res.status(400).json({ 
+                error: 'Missing required fields: dealer_id, territory_name, and demands array' 
+            });
+        }
+
+        // Get DD order type ID
+        const [orderTypeRows] = await dbPromise.query('SELECT id FROM order_types WHERE name = ?', ['DD']);
+        if (orderTypeRows.length === 0) {
+            return res.status(400).json({ 
+                error: 'DD order type not found. Please contact administrator.' 
+            });
+        }
+        const ddOrderTypeId = orderTypeRows[0].id;
+
+        // Validate each demand entry
+        for (const demand of demands) {
+            if (!demand.date || !demand.order_items || !Array.isArray(demand.order_items) || demand.order_items.length === 0) {
+                return res.status(400).json({ 
+                    error: 'Each demand must have date and order_items array with at least one item' 
+                });
+            }
+            
+            // Validate date format
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(demand.date)) {
+                return res.status(400).json({ 
+                    error: `Invalid date format: ${demand.date}. Expected YYYY-MM-DD` 
+                });
+            }
+
+            // Validate each order item
+            for (const item of demand.order_items) {
+                if (!item.product_id || !item.quantity || item.quantity <= 0) {
+                    return res.status(400).json({ 
+                        error: 'Each order item must have product_id and quantity > 0' 
+                    });
+                }
+            }
+        }
+
+        const createdOrders = [];
+        let totalItems = 0;
+        
+        await withTransaction(async (connection) => {
+            // Validate all products are assigned to dealer (once, before creating orders)
+            const allProductIds = [...new Set(demands.flatMap(d => d.order_items.map(item => item.product_id)))];
+            const validationErrors = [];
+
+            for (const productId of allProductIds) {
+                // Check if product is assigned to this dealer
+                const [assignmentRows] = await connection.query(`
+                    SELECT COUNT(*) as count
+                    FROM dealer_product_assignments dpa
+                    WHERE dpa.dealer_id = ?
+                      AND (
+                        (dpa.assignment_type = 'product' AND dpa.product_id = ?)
+                        OR
+                        (dpa.assignment_type = 'category' AND dpa.product_category = (
+                            SELECT application_name FROM products WHERE id = ?
+                        ))
+                      )
+                `, [dealer_id, productId, productId]);
+
+                if (assignmentRows[0].count === 0) {
+                    const [productRows] = await connection.query(`
+                        SELECT product_code, name FROM products WHERE id = ?
+                    `, [productId]);
+                    const product = productRows[0];
+                    validationErrors.push(`Product ${product?.product_code || productId} is not allocated to this dealer.`);
+                }
+            }
+
+            if (validationErrors.length > 0) {
+                const validationError = new Error('Order validation failed');
+                validationError.status = 400;
+                validationError.details = validationErrors;
+                throw validationError;
+            }
+
+            // Create orders for each date
+            for (const demand of demands) {
+                const order_id = uuidv4().substring(0, 8).toUpperCase();
+                
+                // Insert order with NULL warehouse_id and transport_id for dealer orders
+                // Store demand.date as order_date (the date the order is for, not when it was created)
+                await connection.query(`
+                    INSERT INTO orders (order_id, order_type_id, dealer_id, territory_name, warehouse_id, transport_id, user_id, order_date) 
+                    VALUES (?, ?, ?, ?, NULL, NULL, ?, ?)
+                `, [order_id, ddOrderTypeId, dealer_id, territory_name, user_id || null, demand.date]);
+                
+                // Add order items
+                for (const item of demand.order_items) {
+                    await connection.query(`
+                        INSERT INTO order_items (order_id, product_id, quantity) 
+                        VALUES (?, ?, ?)
+                    `, [order_id, item.product_id, item.quantity]);
+                }
+                
+                createdOrders.push({
+                    order_id: order_id,
+                    date: demand.date,
+                    item_count: demand.order_items.length
+                });
+                totalItems += demand.order_items.length;
+                
+                console.log(`✅ Created order ${order_id} for date ${demand.date} with ${demand.order_items.length} item(s)`);
+            }
+        });
+
+        // Broadcast quota change to notify all connected clients
+        broadcastQuotaChange();
+
+        res.json({ 
+            success: true, 
+            orders: createdOrders,
+            total_orders: createdOrders.length,
+            total_items: totalItems,
+            message: `Successfully created ${createdOrders.length} Daily Demand order(s) with ${totalItems} item(s)`
+        });
+
+    } catch (error) {
+        console.error('❌ Multi-day dealer order creation error:', error);
+        console.error('❌ Error details:', error.message);
+        console.error('❌ Stack trace:', error.stack);
+        
+        // Handle validation errors with details
+        if (error.status === 400 && error.details) {
+            return res.status(400).json({ 
+                error: error.message,
+                details: error.details
+            });
+        }
+        
+        res.status(error.status || 500).json({ error: error.message });
+    }
+});
+
 app.post('/api/orders', async (req, res) => {
     try {
         console.log('📦 Creating order with data:', req.body);
@@ -2630,9 +2887,10 @@ app.post('/api/orders', async (req, res) => {
                 }
             }
             
+            // For TSO orders, order_date is the same as creation date (CURDATE())
             await connection.query(`
-                INSERT INTO orders (order_id, order_type_id, dealer_id, warehouse_id, transport_id, user_id) 
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO orders (order_id, order_type_id, dealer_id, warehouse_id, transport_id, user_id, order_date) 
+                VALUES (?, ?, ?, ?, ?, ?, CURDATE())
             `, [order_id, order_type_id, dealer_id, warehouse_id, transport_id, user_id]);
             
             // Add order items
@@ -2675,8 +2933,9 @@ app.post('/api/orders', async (req, res) => {
 
 // Get all orders with their items
 app.get('/api/orders', (req, res) => {
-    // Get user_id from query parameter (sent from frontend for TSO users)
+    // Get query parameters
     const user_id = req.query.user_id;
+    const order_source = req.query.order_source; // Optional: filter by 'tso', 'dealer', or 'admin'
     
     let query = `
         SELECT 
@@ -2700,15 +2959,26 @@ app.get('/api/orders', (req, res) => {
     `;
     
     const params = [];
+    const conditions = [];
     
     // Filter by user_id if provided (for TSO users to see only their orders)
     if (user_id) {
-        query += ' WHERE o.user_id = ?';
+        conditions.push('o.user_id = ?');
         params.push(user_id);
     }
     
+    // Filter by order_source if provided (for filtering TSO vs Dealer orders)
+    if (order_source && ['tso', 'dealer', 'admin'].includes(order_source)) {
+        conditions.push('o.order_source = ?');
+        params.push(order_source);
+    }
+    
+    if (conditions.length > 0) {
+        query += ' WHERE ' + conditions.join(' AND ');
+    }
+    
     query += `
-        GROUP BY o.id, o.order_id, o.order_type_id, o.dealer_id, o.warehouse_id, o.created_at, o.user_id, ot.name, d.name, d.territory_name, w.name
+        GROUP BY o.id, o.order_id, o.order_type_id, o.dealer_id, o.warehouse_id, o.created_at, o.user_id, o.order_source, ot.name, d.name, d.territory_name, w.name
         ORDER BY o.created_at DESC
     `;
     
@@ -3306,6 +3576,644 @@ app.get('/api/orders/tso/range', async (req, res) => {
     }
 });
 
+// Get dealer's available dates with orders
+app.get('/api/orders/dealer/available-dates', async (req, res) => {
+    try {
+        const { dealer_id } = req.query;
+        
+        if (!dealer_id) {
+            return res.status(400).json({ error: 'dealer_id is required' });
+        }
+        
+        const query = `
+            SELECT DISTINCT COALESCE(order_date, DATE(created_at)) as order_date
+            FROM orders
+            WHERE dealer_id = ? AND order_source = 'dealer'
+            ORDER BY order_date DESC
+        `;
+        
+        const result = await dbPromise.query(query, [dealer_id]);
+        const dates = result[0].map(row => row.order_date);
+        
+        res.json({ dates });
+    } catch (error) {
+        console.error('Error fetching dealer available dates:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get dealer's orders for a specific date
+app.get('/api/orders/dealer/date', async (req, res) => {
+    try {
+        const { dealer_id, date } = req.query;
+        
+        if (!dealer_id) {
+            return res.status(400).json({ error: 'dealer_id is required' });
+        }
+        
+        if (!date) {
+            return res.status(400).json({ error: 'date is required' });
+        }
+        
+        // Validate date format (YYYY-MM-DD)
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(date)) {
+            return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+        }
+        
+        // Get orders for the specific date filtered by dealer_id and order_source='dealer'
+        const ordersQuery = `
+            SELECT 
+                o.*, 
+                ot.name as order_type, 
+                d.name as dealer_name, 
+                d.territory_name as dealer_territory,
+                COALESCE(o.order_date, DATE(o.created_at)) as order_date,
+                COUNT(oi.id) as item_count,
+                COALESCE(SUM(oi.quantity), 0) as quantity
+            FROM orders o
+            LEFT JOIN order_types ot ON o.order_type_id = ot.id
+            LEFT JOIN dealers d ON o.dealer_id = d.id
+            LEFT JOIN order_items oi ON o.order_id = oi.order_id
+            WHERE COALESCE(o.order_date, DATE(o.created_at)) = ? AND o.dealer_id = ? AND o.order_source = 'dealer'
+            GROUP BY o.id, o.order_id, o.order_type_id, o.dealer_id, o.created_at, o.user_id, ot.name, d.name, d.territory_name
+            ORDER BY o.created_at DESC
+        `;
+        
+        const orders = await dbPromise.query(ordersQuery, [date, dealer_id]);
+        
+        if (orders[0].length === 0) {
+            return res.json({ 
+                orders: [], 
+                message: `No orders found for date: ${date}` 
+            });
+        }
+        
+        res.json({ 
+            orders: orders[0],
+            date: date,
+            total_orders: orders[0].length,
+            total_items: orders[0].reduce((sum, order) => sum + (order.item_count || 0), 0)
+        });
+        
+    } catch (error) {
+        console.error('Error fetching dealer orders by date:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get dealer's orders for a date range
+app.get('/api/orders/dealer/range', async (req, res) => {
+    try {
+        const { startDate, endDate, dealer_id } = req.query;
+
+        if (!startDate || !endDate) {
+            return res.status(400).json({ error: 'startDate and endDate are required' });
+        }
+
+        if (!dealer_id) {
+            return res.status(400).json({ error: 'dealer_id is required' });
+        }
+
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+            return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+        }
+        
+        if (startDate > endDate) {
+            return res.status(400).json({ error: 'startDate cannot be after endDate' });
+        }
+
+        const query = `
+            SELECT 
+                o.*, 
+                ot.name as order_type, 
+                d.name as dealer_name, 
+                d.territory_name as dealer_territory,
+                COALESCE(o.order_date, DATE(o.created_at)) as date,
+                COUNT(oi.id) as item_count,
+                COALESCE(SUM(oi.quantity), 0) as quantity
+            FROM orders o
+            LEFT JOIN order_types ot ON o.order_type_id = ot.id
+            LEFT JOIN dealers d ON o.dealer_id = d.id
+            LEFT JOIN order_items oi ON o.order_id = oi.order_id
+            WHERE COALESCE(o.order_date, DATE(o.created_at)) BETWEEN ? AND ? 
+              AND o.dealer_id = ? 
+              AND o.order_source = 'dealer'
+            GROUP BY o.id, o.order_id, o.order_type_id, o.dealer_id, o.created_at, o.user_id, ot.name, d.name, d.territory_name
+            ORDER BY o.created_at DESC
+        `;
+        
+        const orders = await dbPromise.query(query, [startDate, endDate, dealer_id]);
+        
+        res.json({
+            orders: orders[0],
+            total_orders: orders[0].length,
+            total_items: orders[0].reduce((sum, order) => sum + (order.item_count || 0), 0)
+        });
+    } catch (error) {
+        console.error('Error fetching dealer range orders:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Generate dealer Excel report for a specific date (same style as TSO reports)
+app.get('/api/orders/dealer/my-report/:date', async (req, res) => {
+    try {
+        const { date } = req.params;
+        const { dealer_id } = req.query;
+        
+        if (!dealer_id) {
+            return res.status(400).json({ error: 'dealer_id is required' });
+        }
+        
+        // Validate date format (YYYY-MM-DD)
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(date)) {
+            return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+        }
+        
+        // Get orders for the specific date filtered by dealer_id and order_source='dealer'
+        const ordersQuery = `
+            SELECT 
+                o.*, 
+                ot.name as order_type, 
+                d.name as dealer_name, 
+                d.territory_name as dealer_territory,
+                d.address as dealer_address,
+                d.contact as dealer_contact,
+                COALESCE(o.order_date, DATE(o.created_at)) as order_date
+            FROM orders o
+            LEFT JOIN order_types ot ON o.order_type_id = ot.id
+            LEFT JOIN dealers d ON o.dealer_id = d.id
+            WHERE COALESCE(o.order_date, DATE(o.created_at)) = ? AND o.dealer_id = ? AND o.order_source = 'dealer'
+            ORDER BY o.created_at ASC
+        `;
+
+        const orders = await dbPromise.query(ordersQuery, [date, dealer_id]);
+
+        if (orders[0].length === 0) {
+            return res.status(404).json({ 
+                error: `No orders found for date: ${date}` 
+            });
+        }
+
+        // Get order items for each order
+        const ordersWithItems = [];
+        for (const order of orders[0]) {
+            const itemsQuery = `
+                SELECT oi.*, p.name as product_name, p.product_code
+                FROM order_items oi
+                LEFT JOIN products p ON oi.product_id = p.id
+                WHERE oi.order_id = ?
+                ORDER BY oi.id
+            `;
+
+            const items = await dbPromise.query(itemsQuery, [order.order_id]);
+            order.items = items[0];
+            ordersWithItems.push(order);
+        }
+
+        // Generate Excel report without prices (same style as TSO)
+        const reportData = await generateExcelReportNoPrices(ordersWithItems, {
+            date,
+            dateLabel: date,
+        });
+        
+        // Set headers for file download
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="Dealer_Daily_Demand_Report_${date}.xlsx"`);
+
+        res.send(reportData);
+        
+    } catch (error) {
+        console.error('Error generating dealer Excel report:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Generate dealer Excel report for a date range (same style as TSO reports)
+app.get('/api/orders/dealer/my-report-range', async (req, res) => {
+    try {
+        const { startDate, endDate, dealer_id } = req.query;
+
+        if (!startDate || !endDate) {
+            return res.status(400).json({ error: 'startDate and endDate are required' });
+        }
+
+        if (!dealer_id) {
+            return res.status(400).json({ error: 'dealer_id is required' });
+        }
+
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+            return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+        }
+
+        if (startDate > endDate) {
+            return res.status(400).json({ error: 'startDate cannot be after endDate' });
+        }
+
+        // Fetch orders filtered by dealer_id and order_source='dealer'
+        const ordersQuery = `
+            SELECT 
+                o.*, 
+                ot.name AS order_type,
+                d.id AS dealer_id,
+                d.name AS dealer_name, 
+                d.territory_name AS dealer_territory,
+                d.address AS dealer_address,
+                d.contact AS dealer_contact,
+                COALESCE(o.order_date, DATE(o.created_at)) AS order_date
+        FROM orders o
+        LEFT JOIN order_types ot ON o.order_type_id = ot.id
+        LEFT JOIN dealers d ON o.dealer_id = d.id
+            WHERE COALESCE(o.order_date, DATE(o.created_at)) BETWEEN ? AND ? 
+              AND o.dealer_id = ? 
+              AND o.order_source = 'dealer'
+            ORDER BY o.created_at ASC
+        `;
+
+        const [orders] = await dbPromise.query(ordersQuery, [startDate, endDate, dealer_id]);
+        if (!orders.length) {
+            return res.status(404).json({ error: `No orders found between ${startDate} and ${endDate}` });
+        }
+
+        const orderIds = orders.map(order => order.order_id);
+        const [items] = await dbPromise.query(`
+            SELECT 
+                oi.*, 
+                p.name AS product_name, 
+                p.product_code
+            FROM order_items oi
+            LEFT JOIN products p ON oi.product_id = p.id
+            WHERE oi.order_id IN (?)
+            ORDER BY oi.order_id, oi.id
+        `, [orderIds]);
+
+        const itemsByOrder = {};
+        orderIds.forEach(id => {
+            itemsByOrder[id] = [];
+        });
+        items.forEach(item => {
+            if (itemsByOrder[item.order_id]) {
+                itemsByOrder[item.order_id].push(item);
+            }
+        });
+
+        const ordersWithItems = orders.map(order => ({
+            ...order,
+            items: itemsByOrder[order.order_id] || []
+        }));
+
+        const dateLabel = `${startDate} to ${endDate}`;
+        const { summaries } = buildDealerRangeSummaryNoPrices(ordersWithItems);
+        const aggregatedOrders = convertDealerSummariesToOrdersNoPrices(summaries, dateLabel);
+        const reportData = await generateExcelReportNoPrices(aggregatedOrders, {
+            date: startDate,
+            dateLabel,
+        });
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="Dealer_Daily_Demand_Report_${startDate}_${endDate}.xlsx"`);
+        res.send(reportData);
+    } catch (error) {
+        console.error('Error generating dealer range Excel report:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Generate Daily Demand Excel report for dealer (pivot format with summary)
+app.get('/api/orders/dealer/daily-demand-report/:date', async (req, res) => {
+    try {
+        const { date } = req.params;
+        const { dealer_id } = req.query;
+        
+        if (!dealer_id) {
+            return res.status(400).json({ error: 'dealer_id is required' });
+        }
+        
+        // Validate date format (YYYY-MM-DD)
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(date)) {
+            return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+        }
+        
+        // Get dealer info
+        const [dealerRows] = await dbPromise.query(`
+            SELECT name, territory_name FROM dealers WHERE id = ?
+        `, [dealer_id]);
+        
+        if (dealerRows.length === 0) {
+            return res.status(404).json({ error: 'Dealer not found' });
+        }
+        
+        const dealer = dealerRows[0];
+        
+        // Get all segments/applications allocated to this dealer
+        const [allocatedSegments] = await dbPromise.query(`
+            SELECT DISTINCT 
+                COALESCE(dpa.product_category, p.application_name) as application_name
+            FROM dealer_product_assignments dpa
+            LEFT JOIN products p ON dpa.product_id = p.id AND dpa.assignment_type = 'product'
+            WHERE dpa.dealer_id = ?
+              AND (
+                (dpa.assignment_type = 'category' AND dpa.product_category IS NOT NULL)
+                OR (dpa.assignment_type = 'product' AND p.application_name IS NOT NULL)
+              )
+            ORDER BY application_name
+        `, [dealer_id]);
+        
+        // Initialize application totals map with all allocated segments (0 quantity)
+        const applicationTotals = new Map();
+        allocatedSegments.forEach(seg => {
+            const appName = seg.application_name || 'Other';
+            applicationTotals.set(appName, 0);
+        });
+        
+        // Get all orders for this dealer on this date
+        const [orders] = await dbPromise.query(`
+            SELECT o.order_id, o.created_at
+            FROM orders o
+            WHERE COALESCE(o.order_date, DATE(o.created_at)) = ? 
+              AND o.dealer_id = ? 
+              AND o.order_source = 'dealer'
+            ORDER BY o.created_at ASC
+        `, [date, dealer_id]);
+        
+        const orderIds = orders.length > 0 ? orders.map(o => o.order_id) : [];
+        
+        // Get all order items with product details (if orders exist)
+        let items = [];
+        if (orderIds.length > 0) {
+            const [itemsResult] = await dbPromise.query(`
+                SELECT 
+                    oi.order_id,
+                    oi.product_id,
+                    oi.quantity,
+                    p.product_code,
+                    p.name as product_name,
+                    p.application_name
+                FROM order_items oi
+                LEFT JOIN products p ON oi.product_id = p.id
+                WHERE oi.order_id IN (?)
+                ORDER BY p.application_name, p.product_code
+            `, [orderIds]);
+            items = itemsResult;
+        }
+        
+        // Aggregate quantities by product (sum across all orders for same product)
+        const productMap = new Map();
+        
+        items.forEach(item => {
+            const key = `${item.product_id}_${item.product_code}`;
+            const appName = item.application_name || 'Other';
+            
+            if (!productMap.has(key)) {
+                productMap.set(key, {
+                    product_id: item.product_id,
+                    product_code: item.product_code,
+                    product_name: item.product_name,
+                    application_name: appName,
+                    quantity: 0
+                });
+            }
+            
+            const product = productMap.get(key);
+            product.quantity += Number(item.quantity) || 0;
+            
+            // Update application totals from orders
+            if (applicationTotals.has(appName)) {
+                applicationTotals.set(appName, applicationTotals.get(appName) + (Number(item.quantity) || 0));
+            } else {
+                // If application not in allocated list, add it (shouldn't happen but handle it)
+                applicationTotals.set(appName, Number(item.quantity) || 0);
+            }
+        });
+        
+        // Group products by application
+        const productsByApplication = {};
+        productMap.forEach(product => {
+            const appName = product.application_name;
+            if (!productsByApplication[appName]) {
+                productsByApplication[appName] = [];
+            }
+            productsByApplication[appName].push(product);
+        });
+        
+        // Get all products allocated to dealer (for showing in main table)
+        const [allocatedProducts] = await dbPromise.query(`
+            SELECT DISTINCT
+                p.id,
+                p.product_code,
+                p.name as product_name,
+                p.application_name
+            FROM products p
+            WHERE p.status = 'A'
+              AND (
+                p.id IN (
+                    SELECT product_id 
+                    FROM dealer_product_assignments 
+                    WHERE dealer_id = ? AND assignment_type = 'product' AND product_id IS NOT NULL
+                )
+                OR p.application_name IN (
+                    SELECT product_category 
+                    FROM dealer_product_assignments 
+                    WHERE dealer_id = ? AND assignment_type = 'category' AND product_category IS NOT NULL
+                )
+              )
+            ORDER BY p.application_name, p.product_code
+        `, [dealer_id, dealer_id]);
+        
+        // Merge allocated products with ordered products (to show quantities)
+        allocatedProducts.forEach(allocatedProduct => {
+            const appName = allocatedProduct.application_name || 'Other';
+            const orderedProduct = Array.from(productMap.values()).find(
+                p => p.product_id === allocatedProduct.id
+            );
+            
+            if (!productsByApplication[appName]) {
+                productsByApplication[appName] = [];
+            }
+            
+            // Add product if not already in the list
+            const exists = productsByApplication[appName].some(p => p.product_id === allocatedProduct.id);
+            if (!exists) {
+                productsByApplication[appName].push({
+                    product_id: allocatedProduct.id,
+                    product_code: allocatedProduct.product_code,
+                    product_name: allocatedProduct.product_name,
+                    application_name: appName,
+                    quantity: orderedProduct ? orderedProduct.quantity : 0
+                });
+            }
+        });
+        
+        // Sort applications (use allocated segments order)
+        const applicationNames = Array.from(applicationTotals.keys()).sort();
+        
+        // Create Excel workbook
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Daily Demand Report');
+        
+        const defaultFont = { name: 'Calibri', size: 10 };
+        const thinBorder = {
+            top: { style: 'thin', color: { argb: 'FF000000' } },
+            left: { style: 'thin', color: { argb: 'FF000000' } },
+            bottom: { style: 'thin', color: { argb: 'FF000000' } },
+            right: { style: 'thin', color: { argb: 'FF000000' } }
+        };
+        
+        // Format date string for header (MM/DD/YYYY)
+        const [year, month, day] = date.split('-');
+        const formattedDate = `${month}/${day}/${year}`;
+        
+        // Header section
+        worksheet.getCell('A1').value = 'Report Type:';
+        worksheet.getCell('B1').value = 'Dealer Daily Demand Report';
+        worksheet.getCell('A2').value = 'Date:';
+        worksheet.getCell('B2').value = formattedDate;
+        
+        // Format header
+        ['A1', 'B1', 'A2', 'B2'].forEach(addr => {
+            const cell = worksheet.getCell(addr);
+            cell.font = { ...defaultFont, bold: true };
+        });
+        
+        // Summary table (starting at row 3)
+        worksheet.getCell('A3').value = 'Seg';
+        worksheet.getCell('B3').value = 'Qty';
+        
+        let summaryRow = 4;
+        let grandTotal = 0;
+        applicationNames.forEach(appName => {
+            const qty = applicationTotals.get(appName) || 0;
+            worksheet.getCell(`A${summaryRow}`).value = appName;
+            worksheet.getCell(`B${summaryRow}`).value = qty;
+            grandTotal += qty;
+            summaryRow++;
+        });
+        
+        // Total row
+        worksheet.getCell(`A${summaryRow}`).value = 'Total';
+        worksheet.getCell(`B${summaryRow}`).value = grandTotal;
+        
+        // Format summary table
+        for (let row = 3; row <= summaryRow; row++) {
+            ['A', 'B'].forEach(col => {
+                const cell = worksheet.getCell(`${col}${row}`);
+                cell.border = thinBorder;
+                cell.font = row === 3 || col === 'A' && row === summaryRow ? { ...defaultFont, bold: true } : defaultFont;
+                cell.alignment = { horizontal: 'left', vertical: 'middle' };
+                if (row === 3) {
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
+                }
+            });
+        }
+        
+        // Main report table (starting at row summaryRow + 2)
+        const mainTableStartRow = summaryRow + 2;
+        
+        // Headers
+        worksheet.getCell(`A${mainTableStartRow}`).value = 'Sl. No.';
+        worksheet.getCell(`B${mainTableStartRow}`).value = 'Date';
+        worksheet.getCell(`C${mainTableStartRow}`).value = 'Territory';
+        worksheet.getCell(`D${mainTableStartRow}`).value = 'Name of Dealer';
+        
+        // Get all products for the first application (or combine all if needed)
+        // For simplicity, we'll use the first application's products
+        const firstApp = applicationNames[0] || 'Other';
+        const products = productsByApplication[firstApp] || [];
+        
+        // Application header (merged across product columns)
+        if (products.length > 0) {
+            const productStartCol = 'E';
+            const productEndCol = String.fromCharCode(64 + 4 + products.length); // E + number of products
+            worksheet.mergeCells(`${productStartCol}${mainTableStartRow}:${productEndCol}${mainTableStartRow}`);
+            worksheet.getCell(`${productStartCol}${mainTableStartRow}`).value = firstApp;
+        }
+        
+        // Format main header row
+        ['A', 'B', 'C', 'D'].forEach(col => {
+            const cell = worksheet.getCell(`${col}${mainTableStartRow}`);
+            cell.border = thinBorder;
+            cell.font = { ...defaultFont, bold: true };
+            cell.alignment = { horizontal: 'left', vertical: 'middle' };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
+        });
+        
+        if (products.length > 0) {
+            const cell = worksheet.getCell(`E${mainTableStartRow}`);
+            cell.border = thinBorder;
+            cell.font = { ...defaultFont, bold: true };
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
+        }
+        
+        // Product sub-headers (row mainTableStartRow + 1)
+        const subHeaderRow = mainTableStartRow + 1;
+        products.forEach((product, index) => {
+            const col = String.fromCharCode(69 + index); // E, F, G, etc.
+            worksheet.getCell(`${col}${subHeaderRow}`).value = product.product_name;
+            const cell = worksheet.getCell(`${col}${subHeaderRow}`);
+            cell.border = thinBorder;
+            cell.font = { ...defaultFont, bold: true };
+            cell.alignment = { horizontal: 'left', vertical: 'middle' };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
+        });
+        
+        // Data row
+        const dataRow = subHeaderRow + 1;
+        worksheet.getCell(`A${dataRow}`).value = 1;
+        // Set date as Excel date object for proper formatting
+        const dateCell = worksheet.getCell(`B${dataRow}`);
+        const dateObj = new Date(date + 'T00:00:00');
+        dateCell.value = dateObj;
+        dateCell.numFmt = 'MM/DD/YYYY';
+        worksheet.getCell(`C${dataRow}`).value = dealer.territory_name || '';
+        worksheet.getCell(`D${dataRow}`).value = dealer.name;
+        
+        products.forEach((product, index) => {
+            const col = String.fromCharCode(69 + index); // E, F, G, etc.
+            worksheet.getCell(`${col}${dataRow}`).value = product.quantity;
+            const cell = worksheet.getCell(`${col}${dataRow}`);
+            cell.border = thinBorder;
+            cell.alignment = { horizontal: 'right', vertical: 'middle' };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE3F2FD' } }; // Light blue
+        });
+        
+        // Format data row
+        ['A', 'B', 'C', 'D'].forEach(col => {
+            const cell = worksheet.getCell(`${col}${dataRow}`);
+            cell.border = thinBorder;
+            cell.alignment = { horizontal: 'left', vertical: 'middle' };
+        });
+        
+        // Set column widths
+        worksheet.getColumn('A').width = 10; // Sl. No.
+        worksheet.getColumn('B').width = 12; // Date
+        worksheet.getColumn('C').width = 20; // Territory
+        worksheet.getColumn('D').width = 30; // Dealer Name
+        products.forEach((product, index) => {
+            const colLetter = String.fromCharCode(69 + index); // E, F, G, etc.
+            worksheet.getColumn(colLetter).width = 25; // Product columns
+        });
+        
+        // Generate Excel buffer
+        const buffer = await workbook.xlsx.writeBuffer();
+        
+        // Set headers for file download
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="Dealer_Daily_Demand_Report_${date}.xlsx"`);
+        
+        res.send(buffer);
+        
+    } catch (error) {
+        console.error('Error generating Daily Demand Excel report:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Get order details with items
 app.get('/api/orders/:orderId', (req, res) => {
     const { orderId } = req.params;
@@ -3370,13 +4278,15 @@ app.get('/api/orders/mr-report/:date', async (req, res) => {
                 d.territory_name as dealer_territory, 
                 w.name as warehouse_name,
                 w.alias as warehouse_alias,
-                DATE(o.created_at) as order_date,
+                COALESCE(o.order_date, DATE(o.created_at)) as order_date,
                 o.created_at
             FROM orders o
             LEFT JOIN order_types ot ON o.order_type_id = ot.id
             LEFT JOIN dealers d ON o.dealer_id = d.id
             LEFT JOIN warehouses w ON o.warehouse_id = w.id
-            WHERE DATE(o.created_at) = ?
+            WHERE COALESCE(o.order_date, DATE(o.created_at)) = ?
+              AND o.dealer_id = ?
+              AND o.order_source = 'dealer'
             ORDER BY o.created_at ASC
         `;
         
@@ -3962,13 +4872,14 @@ app.get('/api/monthly-forecast/dealer/:dealerId', (req, res) => {
                         mf.product_id,
                         SUM(mf.quantity) AS quantity,
                         p.name AS product_name,
-                        p.product_code
+                        p.product_code,
+                        p.application_name
                     FROM monthly_forecast mf
                     LEFT JOIN products p ON mf.product_id = p.id
                     WHERE mf.dealer_id = ? 
                     AND mf.period_start = ? 
                     AND mf.period_end = ?
-                    GROUP BY mf.product_id, p.name, p.product_code
+                    GROUP BY mf.product_id, p.name, p.product_code, p.application_name
                     ORDER BY p.product_code
                 `;
                 
@@ -4427,45 +5338,93 @@ app.delete('/api/monthly-forecast/:id', (req, res) => {
 });
 
 // Get all products for dealer monthly forecast selection (filtered by dealer assignments if dealer_id provided)
+// For dealers: Also filters to only show products with daily quotas for their territory
 app.get('/api/products', (req, res) => {
-    const { dealer_id } = req.query;
+    const { dealer_id, check_quota } = req.query; // check_quota: filter by daily quotas (for DD orders)
     
     let query;
     let params = [];
     
     if (dealer_id) {
-        // Get products assigned to this dealer (by product_id or category)
-        query = `
-            SELECT DISTINCT p.id, p.product_code, p.name, p.product_category
-            FROM products p
-            WHERE p.id IN (
-                SELECT product_id 
-                FROM dealer_product_assignments 
-                WHERE dealer_id = ? AND assignment_type = 'product' AND product_id IS NOT NULL
-                UNION
-                SELECT id 
-                FROM products 
-                WHERE application_name IN (
-                    SELECT product_category 
-                    FROM dealer_product_assignments 
-                    WHERE dealer_id = ? AND assignment_type = 'category' AND product_category IS NOT NULL
-                )
-            )
-            ORDER BY p.product_code
-        `;
-        params = [dealer_id, dealer_id];
+        // Get dealer's territory first
+        db.query('SELECT territory_name FROM dealers WHERE id = ?', [dealer_id], (err, dealerResults) => {
+            if (err) {
+                console.error('Error fetching dealer:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            
+            if (dealerResults.length === 0) {
+                return res.status(404).json({ error: 'Dealer not found' });
+            }
+            
+            const territory_name = dealerResults[0].territory_name;
+            
+            if (check_quota === 'true' && territory_name) {
+                // For Daily Demand: Only show products with quotas for dealer's territory today
+                query = `
+                    SELECT DISTINCT p.id, p.product_code, p.name, p.product_category, p.unit_tp, p.brand_code, p.brand_name, p.application_name
+                    FROM products p
+                    INNER JOIN daily_quotas dq ON dq.product_id = p.id 
+                        AND dq.territory_name = ? 
+                        AND DATE(dq.date) = CURDATE()
+                    WHERE p.id IN (
+                        SELECT product_id 
+                        FROM dealer_product_assignments 
+                        WHERE dealer_id = ? AND assignment_type = 'product' AND product_id IS NOT NULL
+                        UNION
+                        SELECT id 
+                        FROM products 
+                        WHERE application_name IN (
+                            SELECT product_category 
+                            FROM dealer_product_assignments 
+                            WHERE dealer_id = ? AND assignment_type = 'category' AND product_category IS NOT NULL
+                        )
+                    )
+                    ORDER BY p.product_code
+                `;
+                params = [territory_name, dealer_id, dealer_id];
+            } else {
+                // For Monthly Forecast: Show all assigned products (no quota filter)
+                query = `
+                    SELECT DISTINCT p.id, p.product_code, p.name, p.product_category
+                    FROM products p
+                    WHERE p.id IN (
+                        SELECT product_id 
+                        FROM dealer_product_assignments 
+                        WHERE dealer_id = ? AND assignment_type = 'product' AND product_id IS NOT NULL
+                        UNION
+                        SELECT id 
+                        FROM products 
+                        WHERE application_name IN (
+                            SELECT product_category 
+                            FROM dealer_product_assignments 
+                            WHERE dealer_id = ? AND assignment_type = 'category' AND product_category IS NOT NULL
+                        )
+                    )
+                    ORDER BY p.product_code
+                `;
+                params = [dealer_id, dealer_id];
+            }
+            
+            db.query(query, params, (err, results) => {
+                if (err) {
+                    console.error('Error fetching products:', err);
+                    return res.status(500).json({ error: 'Database error' });
+                }
+                res.json(results);
+            });
+        });
     } else {
         // Admin or no filter - return all products
         query = 'SELECT id, product_code, name, brand_code, brand_name, application_name, unit_tp, product_category FROM products ORDER BY product_code';
+        db.query(query, params, (err, results) => {
+            if (err) {
+                console.error('Error fetching products:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            res.json(results);
+        });
     }
-    
-    db.query(query, params, (err, results) => {
-        if (err) {
-            console.error('Error fetching products:', err);
-            return res.status(500).json({ error: 'Database error' });
-        }
-        res.json(results);
-    });
 });
 
 // ============================================================================

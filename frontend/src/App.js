@@ -31,12 +31,15 @@ import TSODashboard from './pages/TSODashboard';
 import UserManagement from './pages/UserManagement';
 import ProductQuotaManagement from './pages/ProductQuotaManagement';
 import MonthlyForecastTab from './pages/MonthlyForecastTab';
+import DailyDemandMultiDay from './pages/DailyDemandMultiDay';
+import DealerReports from './pages/DealerReports';
 import DebugPanel from './components/DebugPanel';
 import DealerForecasts_Option1_Table from './pages/demos/DealerForecasts_Option1_Table';
 import DealerForecasts_Option2_Cards from './pages/demos/DealerForecasts_Option2_Cards';
 import DealerForecasts_Option3_Summary from './pages/demos/DealerForecasts_Option3_Summary';
 import DealerForecasts_Option3_Expandable from './pages/demos/DealerForecasts_Option3_Expandable';
 import DailyReport_WithForecasts from './pages/demos/DailyReport_WithForecasts';
+import DDMultiDayDemo from './pages/demos/DDMultiDayDemo';
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
@@ -65,7 +68,9 @@ function AppContent() {
   // Redirect to login if not authenticated (except for demo pages and login page)
   useEffect(() => {
     const savedUser = sessionStorage.getItem('user');
-    const isDemoPage = location.pathname.startsWith('/demo-forecasts-option') || location.pathname === '/demo-daily-report-forecasts';
+    const isDemoPage = location.pathname.startsWith('/demo-forecasts-option') || 
+                       location.pathname === '/demo-daily-report-forecasts' ||
+                       location.pathname === '/demo-dd-multiday';
     const isLoginPage = location.pathname === '/login';
     
     if (!savedUser && !isLoginPage && !isDemoPage) {
@@ -109,6 +114,9 @@ function AppContent() {
     if (path === '/manage-quotas') return 'manage-quotas';
     if (path === '/reports') return 'reports';
     if (path === '/tso-report') return 'tso-report';
+    if (path === '/monthly-forecast') return 'monthly-forecast';
+    if (path === '/daily-demand') return 'daily-demand';
+    if (path === '/my-reports') return 'my-reports';
     return 'dashboard';
   };
 
@@ -304,6 +312,16 @@ function AppContent() {
       icon: <CalendarOutlined />,
       label: 'Monthly Forecast',
     },
+    {
+      key: 'daily-demand',
+      icon: <ShoppingCartOutlined />,
+      label: 'Daily Demand',
+    },
+    {
+      key: 'my-reports',
+      icon: <FileExcelOutlined />,
+      label: 'My Reports',
+    },
   ] : [
     {
       key: 'dashboard',
@@ -490,6 +508,16 @@ function AppContent() {
             <MonthlyForecastTab /> :
             <Dashboard setStats={setStats} />
           } />
+          <Route path="/daily-demand" element={
+            isDealer ? 
+            <DailyDemandMultiDay /> :
+            <Dashboard setStats={setStats} />
+          } />
+          <Route path="/my-reports" element={
+            isDealer ? 
+            <DealerReports /> :
+            <Dashboard setStats={setStats} />
+          } />
           <Route path="/new-orders" element={<NewOrdersTablet onOrderCreated={refreshOrders} />} />
           <Route path="/review-orders" element={<ReviewOrdersTablet onOrderCreated={refreshOrders} />} />
           <Route path="/placed-orders" element={<PlacedOrders refreshTrigger={refreshTrigger} />} />
@@ -545,6 +573,8 @@ function AppContent() {
           <Route path="/demo-forecasts-option3" element={<DealerForecasts_Option3_Summary />} />
           <Route path="/demo-forecasts-option3-expandable" element={<DealerForecasts_Option3_Expandable />} />
           <Route path="/demo-daily-report-forecasts" element={<DailyReport_WithForecasts />} />
+          {/* DD Multi-Day Demo Route */}
+          <Route path="/demo-dd-multiday" element={<DDMultiDayDemo />} />
         </Routes>
       </Content>
 
