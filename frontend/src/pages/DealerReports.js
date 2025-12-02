@@ -5,11 +5,13 @@ import axios from 'axios';
 import dayjs from 'dayjs';
 import * as XLSX from 'xlsx';
 import { useUser } from '../contexts/UserContext';
+import { StandardExpandableTable, renderStandardExpandedRow } from '../standard_templates/ExpandableTableTemplate';
+import { createStandardDatePickerConfig } from '../standard_templates/StandardTableConfig';
 
 const { Title, Text } = Typography;
 
 function DealerReports() {
-  const { dealerId, userId } = useUser();
+  const { dealerId } = useUser();
   const [selectedDate, setSelectedDate] = useState(null);
   const [loading, setLoading] = useState(false);
   const [availableDates, setAvailableDates] = useState([]);
@@ -20,7 +22,6 @@ function DealerReports() {
   const [rangeStart, setRangeStart] = useState(null);
   const [rangeEnd, setRangeEnd] = useState(null);
   const [previewInfo, setPreviewInfo] = useState('');
-  const [previewMode, setPreviewMode] = useState('single');
   const [activeTab, setActiveTab] = useState('daily-demand');
   
   // Monthly Forecast states
@@ -120,7 +121,6 @@ function DealerReports() {
       
       const ordersData = response.data.orders || [];
       setOrders(ordersData);
-      setPreviewMode('single');
       setPreviewInfo(`Orders for ${dateString}`);
 
       // Load products for all orders
@@ -180,7 +180,6 @@ function DealerReports() {
       
       const ordersData = response.data.orders || [];
       setOrders(ordersData);
-      setPreviewMode('range');
       setPreviewInfo(`Orders from ${startDate} to ${endDate} (${ordersData.length} orders)`);
 
       // Load products for all orders
@@ -469,27 +468,8 @@ function DealerReports() {
     }
   };
 
-  const disabledDate = (current) => {
-    const dateString = current.format('YYYY-MM-DD');
-    return !availableDates.includes(dateString);
-  };
-
-  const dateCellRender = (current) => {
-    const dateString = current.format('YYYY-MM-DD');
-    const hasOrders = availableDates.includes(dateString);
-    
-    return (
-      <div style={{
-        color: hasOrders ? '#000' : '#d9d9d9',
-        backgroundColor: hasOrders ? 'transparent' : '#f5f5f5',
-        cursor: hasOrders ? 'pointer' : 'not-allowed',
-        borderRadius: '4px',
-        padding: '2px'
-      }}>
-        {current.date()}
-      </div>
-    );
-  };
+  // Standard date picker configuration
+  const { disabledDate, dateCellRender } = createStandardDatePickerConfig(availableDates);
 
   const orderColumns = [
     {
@@ -661,12 +641,16 @@ function DealerReports() {
                     value={rangeStart}
                     onChange={setRangeStart}
                     format="DD MMM YYYY"
+                    disabledDate={disabledDate}
+                    dateRender={dateCellRender}
                   />
                   <DatePicker
                     placeholder="End Date"
                     value={rangeEnd}
                     onChange={setRangeEnd}
                     format="DD MMM YYYY"
+                    disabledDate={disabledDate}
+                    dateRender={dateCellRender}
                   />
                 </Space>
               </Col>
@@ -726,44 +710,41 @@ function DealerReports() {
               style={{ marginBottom: '16px' }}
             />
 
-            {loading && (
-              <div style={{ textAlign: 'center', padding: '40px' }}>
-                <Spin size="large" />
-              </div>
-            )}
-
-            {!loading && (
-              <Table
-                columns={orderColumns}
-                dataSource={filteredOrders}
-                rowKey="order_id"
-                pagination={{
-                  pageSize: 10,
-                  showSizeChanger: true,
-                  showTotal: (total) => `Total ${total} orders`,
-                }}
-                expandable={{
-                  expandedRowRender: (record) => {
-                    const products = orderProducts[record.order_id] || [];
-                    return (
-                      <div style={{ padding: '16px', background: '#fafafa' }}>
-                        <Text strong style={{ marginBottom: '8px', display: 'block' }}>Order Items:</Text>
-                        {products.map((product, idx) => (
-                          <div key={idx} style={{ marginBottom: '8px', padding: '8px', background: 'white', borderRadius: '4px' }}>
-                            <Text strong>{product.product_code}</Text> - {product.product_name}
-                            <br />
-                            <Text type="secondary">Quantity: {product.quantity}</Text>
-                            {product.unit_tp && (
-                              <Text type="secondary"> | Unit TP: ৳{product.unit_tp}</Text>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  },
-                }}
-              />
-            )}
+            <StandardExpandableTable
+              columns={orderColumns}
+              dataSource={filteredOrders}
+              loading={loading}
+              rowKey="order_id"
+              expandedRowRender={(record) => {
+                const products = orderProducts[record.order_id] || [];
+                return renderStandardExpandedRow(
+                  record,
+                  products,
+                  (item) => (
+                    <>
+                      <Text strong>{item.product_code}</Text> - {item.product_name}
+                      <br />
+                      <Text type="secondary" style={{ fontSize: '12px' }}>
+                        Quantity: {item.quantity}
+                      </Text>
+                      {item.unit_tp && (
+                        <Text type="secondary" style={{ fontSize: '12px' }}>
+                          {' | '}Unit TP: ৳{item.unit_tp}
+                        </Text>
+                      )}
+                    </>
+                  ),
+                  'Order Items:'
+                );
+              }}
+              pagination={{
+                pageSize: 10,
+                showSizeChanger: true,
+                showTotal: (total) => `Total ${total} orders`,
+                pageSizeOptions: ['10', '20', '50', '100'],
+                defaultPageSize: 10
+              }}
+            />
           </Card>
         </Tabs.TabPane>
 

@@ -5,6 +5,7 @@ import axios from 'axios';
 import dayjs from 'dayjs';
 import * as XLSX from 'xlsx';
 import { useUser } from '../contexts/UserContext';
+import { createStandardDatePickerConfig } from '../standard_templates/StandardTableConfig';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -244,31 +245,8 @@ function DailyReport() {
   };
 
   // Disable dates without orders
-  const disabledDate = (current) => {
-    const dateString = current.format('YYYY-MM-DD');
-    console.log('Checking date:', dateString, 'Available dates:', availableDates);
-    const isDisabled = !availableDates.includes(dateString);
-    console.log('Date disabled:', isDisabled);
-    return isDisabled;
-  };
-
-  // Custom date cell renderer
-  const dateCellRender = (current) => {
-    const dateString = current.format('YYYY-MM-DD');
-    const hasOrders = availableDates.includes(dateString);
-    
-    return (
-      <div style={{
-        color: hasOrders ? '#000' : '#d9d9d9',
-        backgroundColor: hasOrders ? 'transparent' : '#f5f5f5',
-        cursor: hasOrders ? 'pointer' : 'not-allowed',
-        borderRadius: '4px',
-        padding: '2px'
-      }}>
-        {current.date()}
-      </div>
-    );
-  };
+  // Standard date picker configuration
+  const { disabledDate, dateCellRender } = createStandardDatePickerConfig(availableDates);
 
   const handleGenerateReport = async () => {
     if (!selectedDate) {

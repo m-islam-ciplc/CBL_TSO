@@ -1,23 +1,23 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { UserProvider, useUser } from './contexts/UserContext';
-import { Layout, Typography, Button, Drawer, Alert } from 'antd';
+import { Layout, Typography, Button, Drawer, Alert, Dropdown } from 'antd';
 import './App.css';
 import {
   DashboardOutlined,
   PlusOutlined,
   OrderedListOutlined,
-  UserOutlined,
   ShoppingCartOutlined,
   CheckOutlined,
   FileExcelOutlined,
-  TruckOutlined,
-  TeamOutlined,
   BarChartOutlined,
   LogoutOutlined,
   MoreOutlined,
   CalendarOutlined,
   SettingOutlined,
+  ExperimentOutlined,
+  TableOutlined,
+  DownOutlined,
 } from '@ant-design/icons';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -28,7 +28,6 @@ import Settings from './pages/Settings';
 import DailyReport from './pages/DailyReport';
 import TSOReport from './pages/TSOReport';
 import TSODashboard from './pages/TSODashboard';
-import UserManagement from './pages/UserManagement';
 import ProductQuotaManagement from './pages/ProductQuotaManagement';
 import MonthlyForecastTab from './pages/MonthlyForecastTab';
 import DailyDemandMultiDay from './pages/DailyDemandMultiDay';
@@ -40,6 +39,9 @@ import DealerForecasts_Option3_Summary from './pages/demos/DealerForecasts_Optio
 import DealerForecasts_Option3_Expandable from './pages/demos/DealerForecasts_Option3_Expandable';
 import DailyReport_WithForecasts from './pages/demos/DailyReport_WithForecasts';
 import DDMultiDayDemo from './pages/demos/DDMultiDayDemo';
+import ExpandableTableTemplateDemo from './pages/demos/ExpandableTableTemplateDemo';
+import CalendarWidgetDemo from './pages/demos/ui-components/CalendarWidgetDemo';
+import StandardTablesDemo from './pages/demos/ui-components/StandardTablesDemo';
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
@@ -68,12 +70,10 @@ function AppContent() {
   // Redirect to login if not authenticated (except for demo pages and login page)
   useEffect(() => {
     const savedUser = sessionStorage.getItem('user');
-    const isDemoPage = location.pathname.startsWith('/demo-forecasts-option') || 
-                       location.pathname === '/demo-daily-report-forecasts' ||
-                       location.pathname === '/demo-dd-multiday';
+    const isTemplatePage = location.pathname.startsWith('/template-');
     const isLoginPage = location.pathname === '/login';
     
-    if (!savedUser && !isLoginPage && !isDemoPage) {
+    if (!savedUser && !isLoginPage && !isTemplatePage) {
       navigate('/login');
     }
   }, [navigate, location.pathname]);
@@ -451,12 +451,61 @@ function AppContent() {
             </div>
           </div>
 
-          {/* User Role Display and Logout */}
+          {/* Demo Button and User Role Display and Logout */}
           <div style={{ 
             display: 'flex', 
             alignItems: 'center', 
+            gap: '12px',
             marginLeft: '16px'
-          }} className="header-logout">
+          }} className="header-actions">
+            <Dropdown
+              menu={{
+                items: [
+                  {
+                    key: 'template-tables',
+                    label: 'Table Templates',
+                    icon: <TableOutlined />,
+                    children: [
+                      {
+                        key: 'standard-tables',
+                        label: 'Standard Tables',
+                        onClick: () => navigate('/template-standard-tables')
+                      },
+                      {
+                        key: 'expandable-table',
+                        label: 'Expandable Tables',
+                        onClick: () => navigate('/template-expandable-tables')
+                      },
+                    ]
+                  },
+                  {
+                    key: 'template-calendars',
+                    label: 'Calendar Templates',
+                    icon: <CalendarOutlined />,
+                    children: [
+                      {
+                        key: 'calendar',
+                        label: 'Calendar Widget',
+                        onClick: () => navigate('/template-calendar-widget')
+                      },
+                    ]
+                  },
+                ]
+              }}
+              trigger={['click']}
+            >
+              <Button
+                type="text"
+              icon={<ExperimentOutlined />}
+              style={{ 
+                color: 'white',
+                border: '1px solid rgba(255,255,255,0.3)',
+                borderRadius: '4px'
+              }}
+            >
+              Templates <DownOutlined />
+            </Button>
+            </Dropdown>
             <Button
               type="text"
               icon={<LogoutOutlined />}
@@ -575,6 +624,11 @@ function AppContent() {
           <Route path="/demo-daily-report-forecasts" element={<DailyReport_WithForecasts />} />
           {/* DD Multi-Day Demo Route */}
           <Route path="/demo-dd-multiday" element={<DDMultiDayDemo />} />
+          {/* Expandable Table Template Demo Route */}
+          {/* Template Routes - accessible without login */}
+          <Route path="/template-standard-tables" element={<StandardTablesDemo />} />
+          <Route path="/template-expandable-tables" element={<ExpandableTableTemplateDemo />} />
+          <Route path="/template-calendar-widget" element={<CalendarWidgetDemo />} />
         </Routes>
       </Content>
 

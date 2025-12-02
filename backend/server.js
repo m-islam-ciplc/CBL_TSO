@@ -4765,9 +4765,6 @@ app.get('/api/monthly-forecast/dealer/:dealerId/periods', (req, res) => {
             }
             const startDay = results.length > 0 ? parseInt(results[0].setting_value) : 18;
             
-            // Get current period
-            const currentPeriod = calculateMonthlyPeriod(startDay, 0);
-            
             // Generate list of periods (current + last 11 months)
             const periods = [];
             for (let i = 0; i >= -11; i--) {

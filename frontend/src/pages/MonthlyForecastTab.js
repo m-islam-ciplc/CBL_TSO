@@ -286,7 +286,6 @@ function MonthlyForecastTab() {
   };
 
   const isCurrentPeriod = selectedPeriod?.is_current;
-  const hasForecast = selectedPeriod?.has_forecast;
   const canEdit = isCurrentPeriod && (!isSubmitted || isAdmin || isTSO);
 
   return (
@@ -311,7 +310,7 @@ function MonthlyForecastTab() {
                   loading={loadingPeriods}
                   placeholder="Select forecast period"
                 >
-                  {availablePeriods.map((period, index) => (
+                  {availablePeriods.map((period) => (
                     <Option key={`${period.period_start}_${period.period_end}`} value={`${period.period_start}_${period.period_end}`}>
                       <Space>
                         {formatPeriodLabel(period)}

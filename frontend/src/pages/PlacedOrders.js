@@ -29,6 +29,7 @@ import {
   OrderedListOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { getStandardPagination } from '../standard_templates/StandardTableConfig';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -55,15 +56,7 @@ function PlacedOrders({ refreshTrigger }) {
   const [productsList, setProductsList] = useState([]);
   const [dealersList, setDealersList] = useState([]);
   const [transportsList, setTransportsList] = useState([]);
-  const [pagination, setPagination] = useState({
-    current: 1,
-    pageSize: 20,
-    showSizeChanger: true,
-    showQuickJumper: true,
-    showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} orders`,
-    pageSizeOptions: ['10', '20', '50', '100'],
-    defaultPageSize: 20,
-  });
+  const [pagination, setPagination] = useState(getStandardPagination('orders'));
 
   const loadDropdownData = async () => {
     try {

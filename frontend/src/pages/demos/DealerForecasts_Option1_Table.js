@@ -84,10 +84,6 @@ function DealerForecasts_Option1_Table() {
 
   const territories = ['Cumilla Territory', 'Tangail Territory', 'Dhaka Territory'];
 
-  useEffect(() => {
-    filterForecasts();
-  }, [searchTerm, territoryFilter, forecasts]);
-
   const filterForecasts = () => {
     let filtered = [...forecasts];
 
@@ -105,6 +101,10 @@ function DealerForecasts_Option1_Table() {
 
     setFilteredForecasts(filtered);
   };
+
+  useEffect(() => {
+    filterForecasts();
+  }, [searchTerm, territoryFilter, forecasts]);
 
   const handleExport = () => {
     try {

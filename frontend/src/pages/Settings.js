@@ -43,6 +43,7 @@ function Settings() {
       setActiveTab('users');
     } else {
       // Check URL params for tab
+      // eslint-disable-next-line no-undef
       const params = new URLSearchParams(location.search);
       const tab = params.get('tab');
       if (tab && ['users', 'dealers', 'products', 'transports', 'admin-settings'].includes(tab)) {

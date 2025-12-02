@@ -134,17 +134,6 @@ function DailyDemand() {
     setSelectedProductForPopup(null);
   };
 
-  const updateProductQuantity = (productId, change) => {
-    setProductQuantities(prev => {
-      const currentQty = prev[productId] || 0;
-      const newQty = Math.max(0, currentQty + change);
-      return {
-        ...prev,
-        [productId]: newQty
-      };
-    });
-  };
-
   const addProductToOrder = (product) => {
     const quantity = productQuantities[product.id] || 1;
     if (quantity === 0) {

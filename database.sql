@@ -153,13 +153,17 @@ CREATE TABLE IF NOT EXISTS orders (
     user_name VARCHAR(100),
     order_source ENUM('tso', 'dealer', 'admin') DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    order_date DATE NOT NULL,
     total_quantity INT NOT NULL DEFAULT 0,
     FOREIGN KEY (order_type_id) REFERENCES order_types(id),
     FOREIGN KEY (dealer_id) REFERENCES dealers(id),
     FOREIGN KEY (warehouse_id) REFERENCES warehouses(id),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
     INDEX idx_user_id (user_id),
-    INDEX idx_order_source (order_source)
+    INDEX idx_order_source (order_source),
+    INDEX idx_order_date (order_date),
+    INDEX idx_dealer_order_date (dealer_id, order_date),
+    INDEX idx_order_source_date (order_source, order_date)
 );
 
 -- Order Items table (separate table for order items)
@@ -343,6 +347,11 @@ BEGIN
     SET NEW.warehouse_name = v_warehouse_name;
     SET NEW.transport_name = v_transport_name;
     SET NEW.user_name = v_user_name;
+    
+    -- Set order_date to current date if not provided
+    IF NEW.order_date IS NULL THEN
+        SET NEW.order_date = CURRENT_DATE;
+    END IF;
 END//
 
 CREATE TRIGGER trg_orders_bu
@@ -428,6 +437,11 @@ BEGIN
     SET NEW.warehouse_name = v_warehouse_name;
     SET NEW.transport_name = v_transport_name;
     SET NEW.user_name = v_user_name;
+    
+    -- Set order_date to current date if not provided (for UPDATE trigger)
+    IF NEW.order_date IS NULL THEN
+        SET NEW.order_date = CURRENT_DATE;
+    END IF;
 END//
 
 CREATE TRIGGER trg_order_items_bi
@@ -471,7 +485,7 @@ BEGIN
        SET total_quantity = total_quantity + NEW.quantity
      WHERE order_id = NEW.order_id;
 
-    SELECT DATE(o.created_at), d.territory_name
+    SELECT COALESCE(o.order_date, DATE(o.created_at)), d.territory_name
       INTO v_order_date, v_territory
       FROM orders o
       JOIN dealers d ON d.id = o.dealer_id
@@ -498,7 +512,7 @@ BEGIN
        SET total_quantity = GREATEST(total_quantity - OLD.quantity, 0) + NEW.quantity
      WHERE order_id = NEW.order_id;
 
-    SELECT DATE(o.created_at), d.territory_name
+    SELECT COALESCE(o.order_date, DATE(o.created_at)), d.territory_name
       INTO v_order_date, v_territory
       FROM orders o
       JOIN dealers d ON d.id = o.dealer_id
@@ -531,7 +545,7 @@ BEGIN
        SET total_quantity = GREATEST(total_quantity - OLD.quantity, 0)
      WHERE order_id = OLD.order_id;
 
-    SELECT DATE(o.created_at), d.territory_name
+    SELECT COALESCE(o.order_date, DATE(o.created_at)), d.territory_name
       INTO v_order_date, v_territory
       FROM orders o
       JOIN dealers d ON d.id = o.dealer_id
