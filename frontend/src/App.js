@@ -71,9 +71,10 @@ function AppContent() {
   useEffect(() => {
     const savedUser = sessionStorage.getItem('user');
     const isTemplatePage = location.pathname.startsWith('/template-');
+    const isDemoPage = location.pathname.startsWith('/demo-');
     const isLoginPage = location.pathname === '/login';
     
-    if (!savedUser && !isLoginPage && !isTemplatePage) {
+    if (!savedUser && !isLoginPage && !isTemplatePage && !isDemoPage) {
       navigate('/login');
     }
   }, [navigate, location.pathname]);

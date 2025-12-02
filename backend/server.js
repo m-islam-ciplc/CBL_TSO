@@ -2978,7 +2978,7 @@ app.get('/api/orders', (req, res) => {
     }
     
     query += `
-        GROUP BY o.id, o.order_id, o.order_type_id, o.dealer_id, o.warehouse_id, o.created_at, o.user_id, o.order_source, ot.name, d.name, d.territory_name, w.name
+        GROUP BY o.id, o.order_id, o.order_type_id, o.dealer_id, o.warehouse_id, o.created_at, o.user_id, o.order_source, ot.name, d.name, d.territory_name, w.name, w.alias
         ORDER BY o.created_at DESC
     `;
     
@@ -4285,8 +4285,7 @@ app.get('/api/orders/mr-report/:date', async (req, res) => {
             LEFT JOIN dealers d ON o.dealer_id = d.id
             LEFT JOIN warehouses w ON o.warehouse_id = w.id
             WHERE COALESCE(o.order_date, DATE(o.created_at)) = ?
-              AND o.dealer_id = ?
-              AND o.order_source = 'dealer'
+              AND o.order_source = 'tso'
             ORDER BY o.created_at ASC
         `;
         

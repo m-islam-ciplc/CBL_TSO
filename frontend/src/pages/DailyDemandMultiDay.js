@@ -119,13 +119,13 @@ function DailyDemandMultiDay() {
     }
   };
 
+  const [defaultDatePickerValue, setDefaultDatePickerValue] = useState(dayjs().add(2, 'day'));
+
   const handleAddDate = () => {
     // Always default to day after tomorrow (3 days from today)
     setDefaultDatePickerValue(dayjs().add(2, 'day'));
     setIsDatePickerVisible(true);
   };
-
-  const [defaultDatePickerValue, setDefaultDatePickerValue] = useState(dayjs().add(2, 'day'));
 
   const handleDateSelect = (date) => {
     if (!date) return;
@@ -194,6 +194,7 @@ function DailyDemandMultiDay() {
   const handleAddProductToDates = () => {
     if (!selectedProductForPopup) return;
 
+    // Create a deep copy of existing demands to avoid mutation
     const newDemands = {};
     Object.keys(demands).forEach(dateStr => {
       newDemands[dateStr] = { ...demands[dateStr] };
@@ -203,17 +204,29 @@ function DailyDemandMultiDay() {
 
     selectedDates.forEach(date => {
       const dateStr = date.format('YYYY-MM-DD');
+      
+      // Ensure each date has its own object (no shared references)
       if (!newDemands[dateStr]) {
         newDemands[dateStr] = {};
       } else {
         newDemands[dateStr] = { ...newDemands[dateStr] };
       }
       
-      const quantity = dateQuantities[dateStr] || 0;
+      // Get quantity ONLY for this specific date from dateQuantities state
+      // Use explicit undefined check to avoid falsy issues
+      const quantity = dateQuantities.hasOwnProperty(dateStr) 
+        ? (dateQuantities[dateStr] || 0)
+        : (demands[dateStr]?.[selectedProductForPopup.id] || 0);
+      
       if (quantity > 0) {
-        newDemands[dateStr][selectedProductForPopup.id] = quantity;
+        // Create a completely new object for this date to avoid any reference sharing
+        newDemands[dateStr] = {
+          ...newDemands[dateStr],
+          [selectedProductForPopup.id]: Number(quantity) // Ensure it's a number
+        };
         hasChanges = true;
       } else {
+        // Remove product from this date only
         const updatedDateDemands = { ...newDemands[dateStr] };
         delete updatedDateDemands[selectedProductForPopup.id];
         if (Object.keys(updatedDateDemands).length === 0) {
@@ -638,25 +651,29 @@ function DailyDemandMultiDay() {
             Enter quantities for each selected date:
           </Text>
           
-          {selectedDates.map((date, index) => (
-            <div key={index} style={{ marginBottom: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <Text>{date.format('dddd, MMM D, YYYY')}</Text>
-                <InputNumber
-                  min={0}
-                  value={dateQuantities[date.format('YYYY-MM-DD')] || 0}
-                  onChange={(value) => {
-                    const dateStr = date.format('YYYY-MM-DD');
-                    setDateQuantities(prev => ({
-                      ...prev,
-                      [dateStr]: value || 0
-                    }));
-                  }}
-                  style={{ width: '120px' }}
-                />
+          {selectedDates.map((date) => {
+            const dateStr = date.format('YYYY-MM-DD');
+            const uniqueKey = `${dateStr}-${selectedProductForPopup?.id || 'none'}`;
+            
+            return (
+              <div key={uniqueKey} style={{ marginBottom: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <Text>{date.format('dddd, MMM D, YYYY')}</Text>
+                  <InputNumber
+                    min={0}
+                    value={dateQuantities[dateStr] || 0}
+                    onChange={(value) => {
+                      setDateQuantities(prev => ({
+                        ...prev,
+                        [dateStr]: value || 0
+                      }));
+                    }}
+                    style={{ width: '120px' }}
+                  />
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           
           <Divider />
           
@@ -670,11 +687,19 @@ function DailyDemandMultiDay() {
                   key={presetQty}
                   size="small"
                   onClick={() => {
-                    const newQuantities = {};
-                    selectedDates.forEach(date => {
-                      newQuantities[date.format('YYYY-MM-DD')] = presetQty;
+                    // Apply preset ONLY to dates that currently have 0 quantity
+                    // Do not overwrite existing non-zero quantities
+                    setDateQuantities(prev => {
+                      const newQuantities = { ...prev };
+                      selectedDates.forEach(date => {
+                        const dateStr = date.format('YYYY-MM-DD');
+                        // Only apply preset if current quantity is 0 or undefined
+                        if (!newQuantities[dateStr] || newQuantities[dateStr] === 0) {
+                          newQuantities[dateStr] = presetQty;
+                        }
+                      });
+                      return newQuantities;
                     });
-                    setDateQuantities(newQuantities);
                   }}
                 >
                   {presetQty}
