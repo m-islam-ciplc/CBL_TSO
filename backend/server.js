@@ -8,6 +8,8 @@ const multer = require('multer');
 const XLSX = require('xlsx');
 const ExcelJS = require('exceljs');
 const fs = require('fs');
+const { spawn } = require('child_process');
+const path = require('path');
 
 // Excel report generation function using ExcelJS without external template
 async function generateExcelReport(orders, options = {}) {
@@ -3636,7 +3638,7 @@ app.get('/api/orders/dealer/date', async (req, res) => {
             LEFT JOIN dealers d ON o.dealer_id = d.id
             LEFT JOIN order_items oi ON o.order_id = oi.order_id
             WHERE COALESCE(o.order_date, DATE(o.created_at)) = ? AND o.dealer_id = ? AND o.order_source = 'dealer'
-            GROUP BY o.id, o.order_id, o.order_type_id, o.dealer_id, o.created_at, o.user_id, ot.name, d.name, d.territory_name
+            GROUP BY o.id, o.order_id, o.order_type_id, o.dealer_id, o.created_at, o.user_id, ot.name, d.name, d.territory_name, COALESCE(o.order_date, DATE(o.created_at))
             ORDER BY o.created_at DESC
         `;
         
@@ -3700,7 +3702,7 @@ app.get('/api/orders/dealer/range', async (req, res) => {
             WHERE COALESCE(o.order_date, DATE(o.created_at)) BETWEEN ? AND ? 
               AND o.dealer_id = ? 
               AND o.order_source = 'dealer'
-            GROUP BY o.id, o.order_id, o.order_type_id, o.dealer_id, o.created_at, o.user_id, ot.name, d.name, d.territory_name
+            GROUP BY o.id, o.order_id, o.order_type_id, o.dealer_id, o.created_at, o.user_id, ot.name, d.name, d.territory_name, COALESCE(o.order_date, DATE(o.created_at))
             ORDER BY o.created_at DESC
         `;
         
@@ -4114,48 +4116,76 @@ app.get('/api/orders/dealer/daily-demand-report/:date', async (req, res) => {
         // Main report table (starting at row summaryRow + 2)
         const mainTableStartRow = summaryRow + 2;
         
-        // Headers
-        worksheet.getCell(`A${mainTableStartRow}`).value = 'Sl. No.';
-        worksheet.getCell(`B${mainTableStartRow}`).value = 'Date';
-        worksheet.getCell(`C${mainTableStartRow}`).value = 'Territory';
-        worksheet.getCell(`D${mainTableStartRow}`).value = 'Name of Dealer';
+        // Get row object to ensure it exists
+        const mainHeaderRow = worksheet.getRow(mainTableStartRow);
+        
+        // Headers - use row.getCell() instead of worksheet.getCell()
+        mainHeaderRow.getCell(1).value = 'Sl. No.'; // Column A = 1
+        mainHeaderRow.getCell(2).value = 'Date'; // Column B = 2
+        mainHeaderRow.getCell(3).value = 'Territory'; // Column C = 3
+        mainHeaderRow.getCell(4).value = 'Name of Dealer'; // Column D = 4
         
         // Get all products for the first application (or combine all if needed)
         // For simplicity, we'll use the first application's products
-        const firstApp = applicationNames[0] || 'Other';
-        const products = productsByApplication[firstApp] || [];
+        const firstApp = applicationNames.length > 0 ? applicationNames[0] : 'Other';
+        const products = (productsByApplication[firstApp] || []).filter(p => p && p.product_id);
+        
+        // Helper function to convert column number to Excel column letter
+        const getColumnLetter = (colNum) => {
+            let result = '';
+            while (colNum > 0) {
+                colNum--;
+                result = String.fromCharCode(65 + (colNum % 26)) + result;
+                colNum = Math.floor(colNum / 26);
+            }
+            return result;
+        };
         
         // Application header (merged across product columns)
         if (products.length > 0) {
-            const productStartCol = 'E';
-            const productEndCol = String.fromCharCode(64 + 4 + products.length); // E + number of products
+            const productStartColNum = 5; // Column E = 5
+            const productEndColNum = productStartColNum + products.length - 1;
+            const productStartCol = getColumnLetter(productStartColNum);
+            const productEndCol = getColumnLetter(productEndColNum);
+            // Set value first
+            const appHeaderCell = mainHeaderRow.getCell(productStartColNum);
+            appHeaderCell.value = firstApp;
+            // Then merge
             worksheet.mergeCells(`${productStartCol}${mainTableStartRow}:${productEndCol}${mainTableStartRow}`);
-            worksheet.getCell(`${productStartCol}${mainTableStartRow}`).value = firstApp;
+            // Format merged cell
+            appHeaderCell.border = thinBorder;
+            appHeaderCell.font = { ...defaultFont, bold: true };
+            appHeaderCell.alignment = { horizontal: 'center', vertical: 'middle' };
+            appHeaderCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
         }
         
         // Format main header row
-        ['A', 'B', 'C', 'D'].forEach(col => {
-            const cell = worksheet.getCell(`${col}${mainTableStartRow}`);
+        [1, 2, 3, 4].forEach(colNum => {
+            const cell = mainHeaderRow.getCell(colNum);
             cell.border = thinBorder;
             cell.font = { ...defaultFont, bold: true };
             cell.alignment = { horizontal: 'left', vertical: 'middle' };
             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
         });
         
-        if (products.length > 0) {
-            const cell = worksheet.getCell(`E${mainTableStartRow}`);
-            cell.border = thinBorder;
-            cell.font = { ...defaultFont, bold: true };
-            cell.alignment = { horizontal: 'center', vertical: 'middle' };
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
-        }
-        
         // Product sub-headers (row mainTableStartRow + 1)
         const subHeaderRow = mainTableStartRow + 1;
+        // Get row object to ensure it exists
+        const subHeaderRowObj = worksheet.getRow(subHeaderRow);
+        
+        // Format sub-header columns A-D even if no products
+        [1, 2, 3, 4].forEach(colNum => {
+            const cell = subHeaderRowObj.getCell(colNum);
+            cell.border = thinBorder;
+            cell.font = { ...defaultFont, bold: true };
+            cell.alignment = { horizontal: 'left', vertical: 'middle' };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
+        });
+        
         products.forEach((product, index) => {
-            const col = String.fromCharCode(69 + index); // E, F, G, etc.
-            worksheet.getCell(`${col}${subHeaderRow}`).value = product.product_name;
-            const cell = worksheet.getCell(`${col}${subHeaderRow}`);
+            const colNum = 5 + index; // Column E = 5, F = 6, etc.
+            const cell = subHeaderRowObj.getCell(colNum);
+            cell.value = product.product_name;
             cell.border = thinBorder;
             cell.font = { ...defaultFont, bold: true };
             cell.alignment = { horizontal: 'left', vertical: 'middle' };
@@ -4164,27 +4194,30 @@ app.get('/api/orders/dealer/daily-demand-report/:date', async (req, res) => {
         
         // Data row
         const dataRow = subHeaderRow + 1;
-        worksheet.getCell(`A${dataRow}`).value = 1;
+        // Get row object to ensure it exists
+        const dataRowObj = worksheet.getRow(dataRow);
+        
+        dataRowObj.getCell(1).value = 1; // Column A
         // Set date as Excel date object for proper formatting
-        const dateCell = worksheet.getCell(`B${dataRow}`);
+        const dateCell = dataRowObj.getCell(2); // Column B
         const dateObj = new Date(date + 'T00:00:00');
         dateCell.value = dateObj;
         dateCell.numFmt = 'MM/DD/YYYY';
-        worksheet.getCell(`C${dataRow}`).value = dealer.territory_name || '';
-        worksheet.getCell(`D${dataRow}`).value = dealer.name;
+        dataRowObj.getCell(3).value = dealer.territory_name || ''; // Column C
+        dataRowObj.getCell(4).value = dealer.name; // Column D
         
         products.forEach((product, index) => {
-            const col = String.fromCharCode(69 + index); // E, F, G, etc.
-            worksheet.getCell(`${col}${dataRow}`).value = product.quantity;
-            const cell = worksheet.getCell(`${col}${dataRow}`);
+            const colNum = 5 + index; // Column E = 5, F = 6, etc.
+            const cell = dataRowObj.getCell(colNum);
+            cell.value = product.quantity || 0;
             cell.border = thinBorder;
             cell.alignment = { horizontal: 'right', vertical: 'middle' };
             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE3F2FD' } }; // Light blue
         });
         
-        // Format data row
-        ['A', 'B', 'C', 'D'].forEach(col => {
-            const cell = worksheet.getCell(`${col}${dataRow}`);
+        // Format data row columns A-D
+        [1, 2, 3, 4].forEach(colNum => {
+            const cell = dataRowObj.getCell(colNum);
             cell.border = thinBorder;
             cell.alignment = { horizontal: 'left', vertical: 'middle' };
         });
@@ -4195,7 +4228,8 @@ app.get('/api/orders/dealer/daily-demand-report/:date', async (req, res) => {
         worksheet.getColumn('C').width = 20; // Territory
         worksheet.getColumn('D').width = 30; // Dealer Name
         products.forEach((product, index) => {
-            const colLetter = String.fromCharCode(69 + index); // E, F, G, etc.
+            const colNum = 5 + index; // Column E = 5, F = 6, etc.
+            const colLetter = getColumnLetter(colNum);
             worksheet.getColumn(colLetter).width = 25; // Product columns
         });
         
@@ -5551,6 +5585,85 @@ app.post('/api/dealer-assignments/bulk', (req, res) => {
             return res.status(500).json({ error: 'Database error' });
         }
         res.json({ success: true, inserted: result.affectedRows });
+    });
+});
+
+// API endpoint to run admin workflow test
+app.post('/api/tests/run-admin-workflow', (req, res) => {
+    const { testType = 'admin' } = req.body;
+    
+    // Set headers for streaming text output
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no'); // Disable buffering for nginx if used
+    
+    // Path to test script (relative to backend directory)
+    const testScriptPath = path.join(__dirname, '..', 'project_tools_deletable', 'test_scripts', 'test_workflows.js');
+    
+    // Check if script exists
+    if (!fs.existsSync(testScriptPath)) {
+        res.write(JSON.stringify({ type: 'error', message: 'Test script not found' }) + '\n');
+        res.end();
+        return;
+    }
+    
+    // Spawn the test process
+    const testProcess = spawn('node', [testScriptPath, testType], {
+        cwd: path.join(__dirname, '..'), // Run from project root
+        stdio: ['inherit', 'pipe', 'pipe'],
+        env: { ...process.env, API_URL: process.env.API_URL || 'http://localhost:3001' }
+    });
+    
+    // Send stdout lines as JSON lines
+    testProcess.stdout.on('data', (data) => {
+        const output = data.toString();
+        // Split by lines and send each as a JSON object
+        const lines = output.split('\n');
+        lines.forEach(line => {
+            if (line.trim()) {
+                try {
+                    res.write(JSON.stringify({ type: 'stdout', message: line }) + '\n');
+                } catch (e) {
+                    // Skip if encoding fails
+                }
+            }
+        });
+    });
+    
+    // Send stderr lines as JSON lines
+    testProcess.stderr.on('data', (data) => {
+        const output = data.toString();
+        const lines = output.split('\n');
+        lines.forEach(line => {
+            if (line.trim()) {
+                try {
+                    res.write(JSON.stringify({ type: 'stderr', message: line }) + '\n');
+                } catch (e) {
+                    // Skip if encoding fails
+                }
+            }
+        });
+    });
+    
+    // Send completion event
+    testProcess.on('close', (code) => {
+        res.write(JSON.stringify({ type: 'complete', exitCode: code }) + '\n');
+        res.end();
+    });
+    
+    // Handle errors
+    testProcess.on('error', (error) => {
+        res.write(JSON.stringify({ type: 'error', message: error.message }) + '\n');
+        res.end();
+    });
+    
+    // Handle client disconnect
+    req.on('close', () => {
+        if (!testProcess.killed) {
+            testProcess.kill();
+        }
+        res.end();
     });
 });
 

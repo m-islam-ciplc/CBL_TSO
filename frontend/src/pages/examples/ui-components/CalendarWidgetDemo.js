@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, Typography, DatePicker, Space, Tag, Divider, Row, Col } from 'antd';
 import { CalendarOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { createStandardDatePickerConfig } from '../../../standard_templates/StandardTableConfig';
+import { createStandardDatePickerConfig } from '../../../templates/UIConfig';
 
 const { Title, Text } = Typography;
 

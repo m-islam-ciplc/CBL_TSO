@@ -16,6 +16,7 @@ import {
   Row,
   Col,
 } from 'antd';
+import { useStandardPagination } from '../templates/useStandardPagination';
 import {
   PlusOutlined,
   EditOutlined,
@@ -35,6 +36,7 @@ function UserManagement() {
   const [editingUser, setEditingUser] = useState(null);
   const [form] = Form.useForm();
   const [selectedRole, setSelectedRole] = useState(null);
+  const { pagination, setPagination, handleTableChange } = useStandardPagination('users', 20);
 
   useEffect(() => {
     loadUsers();
@@ -284,11 +286,8 @@ function UserManagement() {
           dataSource={users}
           rowKey="id"
           loading={loading}
-          pagination={{
-            pageSize: 20,
-            showSizeChanger: true,
-            showTotal: (total) => `Total ${total} users`,
-          }}
+          pagination={pagination}
+          onChange={handleTableChange}
           size="small"
         />
       </Card>

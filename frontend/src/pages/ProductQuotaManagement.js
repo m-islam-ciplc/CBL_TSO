@@ -25,6 +25,7 @@ import {
   BarChartOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { getStandardPaginationConfig } from '../templates/useStandardPagination';
 
 const { Title, Text } = Typography;
 
@@ -779,7 +780,7 @@ useEffect(() => {
               dataSource={getAllocations()}
               columns={allocationColumns}
               rowKey="key"
-              pagination={{ pageSize: 20 }}
+              pagination={getStandardPaginationConfig('allocations', 20)}
               scroll={{ x: 'max-content' }}
               locale={{ emptyText: 'No allocations yet. Add allocations using the form above.' }}
               size="small"
@@ -819,7 +820,7 @@ useEffect(() => {
               dataSource={historyAllocations}
               columns={historyColumns}
               rowKey="key"
-              pagination={{ pageSize: 20 }}
+              pagination={getStandardPaginationConfig('allocations', 20)}
               scroll={{ x: 'max-content' }}
               size="small"
               loading={historyLoading}

@@ -1,8 +1,9 @@
 /**
- * STANDARD TABLE CONFIGURATION
+ * UI CONFIGURATION
  * 
- * Standard pagination and table configuration for all tables in the application.
- * Use this configuration to ensure consistency across all tables.
+ * Standard UI component configurations for the application.
+ * Contains pagination, date picker, and other UI utility configurations.
+ * Use these configurations to ensure consistency across all components.
  */
 
 export const STANDARD_PAGINATION = {

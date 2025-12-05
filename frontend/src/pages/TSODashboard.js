@@ -22,6 +22,7 @@ import {
   DashboardOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { getStandardPaginationConfig } from '../templates/useStandardPagination';
 
 const { Title, Text } = Typography;
 
@@ -327,7 +328,7 @@ function TSODashboard() {
               dataSource={quotas}
               columns={columns}
               rowKey="id"
-              pagination={{ pageSize: 20 }}
+              pagination={getStandardPaginationConfig('quotas', 20)}
               size="small"
             />
           )}

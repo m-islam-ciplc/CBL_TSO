@@ -35,10 +35,7 @@ mysql -u root -p < database.sql
 
 **Using Docker (Recommended):**
 ```bash
-# Deploy using Docker
-deploy.bat
-
-# Or manually:
+# Deploy manually:
 docker-compose up -d --build
 ```
 
@@ -103,7 +100,6 @@ Press Ctrl+C in each terminal window
 
 ## Additional Resources
 
-- **Docker Deployment:** See `DOCKER_README.md` for comprehensive Docker guide
-- **Local Development:** Use `manage-servers.bat` on Windows for easy server management
 - **Database:** Schema is automatically created from `database.sql` in Docker setup
+- **Development Tools:** See `project_tools_deletable/` folder for deployment scripts, test tools, and documentation (optional, can be deleted)
 

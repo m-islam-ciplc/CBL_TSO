@@ -99,3 +99,12 @@ temp/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Debug and analysis scripts (should not be committed)
+check_*.js
+debug_*.js
+analyze_*.js
+*_ANALYSIS*.md
+*_MIGRATION*.md
+cleanup.bat
+cleanup.sh

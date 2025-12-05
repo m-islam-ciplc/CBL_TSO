@@ -14,6 +14,7 @@ import {
   Col,
   Statistic
 } from 'antd';
+import { useStandardPagination } from '../templates/useStandardPagination';
 import {
   UploadOutlined,
   DownloadOutlined,
@@ -32,15 +33,7 @@ function TransportManagement() {
   const [importLoading, setImportLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [pagination, setPagination] = useState({
-    current: 1,
-    pageSize: 20,
-    showSizeChanger: true,
-    showQuickJumper: true,
-    showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} transports`,
-    pageSizeOptions: ['10', '20', '50', '100'],
-    defaultPageSize: 20,
-  });
+  const { pagination, setPagination, handleTableChange } = useStandardPagination('transports', 20);
 
   useEffect(() => {
     fetchTransports();
@@ -83,10 +76,6 @@ function TransportManagement() {
 
     setFilteredTransports(filtered);
     setPagination(prev => ({ ...prev, current: 1 }));
-  };
-
-  const handleTableChange = (newPagination) => {
-    setPagination(newPagination);
   };
 
   const handleImport = async (file) => {

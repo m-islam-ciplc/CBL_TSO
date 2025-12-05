@@ -6,13 +6,13 @@ This guide explains how to run tests selectively to validate each step of the wo
 
 ```bash
 # Show available tests
-node test-cumilla-workflow.js
+node test_scripts/test-workflow.js
 
 # Run individual tests
-node test-cumilla-workflow.js 1    # Test 1: Add quota
-node test-cumilla-workflow.js 2    # Test 2: Create order
-node test-cumilla-workflow.js 3    # Test 3: Update quota
-node test-cumilla-workflow.js all  # Run all tests
+node test_scripts/test-workflow.js 1    # Test 1: Add quota
+node test_scripts/test-workflow.js 2    # Test 2: Create order
+node test_scripts/test-workflow.js 3    # Test 3: Update quota
+node test_scripts/test-workflow.js all  # Run all tests
 ```
 
 ## Available Tests
@@ -27,7 +27,7 @@ node test-cumilla-workflow.js all  # Run all tests
 ```bash
 npm run test:workflow:1
 # or
-node test-cumilla-workflow.js 1
+node test_scripts/test-workflow.js 1
 ```
 
 **What to validate:**
@@ -48,7 +48,7 @@ node test-cumilla-workflow.js 1
 ```bash
 npm run test:workflow:2
 # or
-node test-cumilla-workflow.js 2
+node test_scripts/test-workflow.js 2
 ```
 
 **What to validate:**
@@ -70,7 +70,7 @@ node test-cumilla-workflow.js 2
 ```bash
 npm run test:workflow:3
 # or
-node test-cumilla-workflow.js 3
+node test_scripts/test-workflow.js 3
 ```
 
 **What to validate:**
@@ -176,7 +176,7 @@ To run all tests in sequence:
 ```bash
 npm run test:workflow:all
 # or
-node test-cumilla-workflow.js all
+node test_scripts/test-workflow.js all
 ```
 
 This will:
@@ -196,9 +196,9 @@ For Docker backend (port 3002):
 $env:API_URL="http://localhost:3002"
 
 # Then run tests
-node test-cumilla-workflow.js 1
-node test-cumilla-workflow.js 2
-node test-cumilla-workflow.js 3
+node test_scripts/test-workflow.js 1
+node test_scripts/test-workflow.js 2
+node test_scripts/test-workflow.js 3
 ```
 
 Or use npm scripts with Docker URL:
@@ -234,7 +234,7 @@ Or use npm scripts with Docker URL:
 
 ## Test Configuration
 
-Edit `test-cumilla-workflow.js` to change:
+Edit `test_scripts/test-workflow.js` to change:
 
 ```javascript
 const TEST_CONFIG = {

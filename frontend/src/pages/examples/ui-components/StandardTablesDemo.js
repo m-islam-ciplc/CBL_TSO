@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, Typography, Table, Tag, Space, Divider, Row, Col } from 'antd';
 import { TableOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { getStandardPagination } from '../../../standard_templates/StandardTableConfig';
+import { getStandardPagination } from '../../../templates/UIConfig';
 
 const { Title, Text } = Typography;
 

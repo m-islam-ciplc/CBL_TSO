@@ -29,7 +29,7 @@ import {
 import axios from 'axios';
 import dayjs from 'dayjs';
 import * as XLSX from 'xlsx';
-import { createStandardDatePickerConfig } from '../../standard_templates/StandardTableConfig';
+import { createStandardDatePickerConfig } from '../../templates/UIConfig';
 
 const { Title, Text } = Typography;
 const { Option } = Select;

@@ -89,5 +89,70 @@
 
 ---
 
-**Remember**: The user has repeatedly emphasized design consistency. This is a core requirement, not optional. Always match existing design patterns exactly.
+## CRITICAL: Template Usage - Universal Template Policy
+
+**MANDATORY**: When a template is defined in the `frontend/src/templates/` directory, ALL pages and components MUST use that template. No exceptions.
+
+### Template Usage Rules:
+
+#### 1. Template Discovery:
+- **ALWAYS** check `frontend/src/templates/` directory before implementing any UI component
+- **ALWAYS** check if a template exists for:
+  - Pagination
+  - Tables
+  - Date pickers
+  - Any reusable UI component
+
+#### 2. Template Usage:
+- ✅ **MUST** use existing templates for all components that match their purpose
+- ✅ **MUST** import templates from `frontend/src/templates/`
+- ✅ **MUST** use template functions/hooks as-is without modification
+- ❌ **NEVER** create custom implementations when a template exists
+- ❌ **NEVER** use inline configurations when a template is available
+- ❌ **NEVER** duplicate template logic in individual pages
+
+#### 3. Available Templates:
+
+##### Pagination Template:
+- **File**: `frontend/src/templates/useStandardPagination.js`
+- **For state management**: Use `useStandardPagination(itemName, pageSize)` hook
+- **For inline use**: Use `getStandardPaginationConfig(itemName, pageSize)` function
+- **Usage**: ALL tables with pagination MUST use this template
+- **Examples**: See `ProductManagement.js`, `DealerManagement.js`, `PlacedOrders.js`
+
+##### Date Picker Template:
+- **File**: `frontend/src/templates/UIConfig.js`
+- **Function**: `createStandardDatePickerConfig(availableDates)`
+- **Usage**: ALL date pickers MUST use this template
+- **Examples**: See `PlacedOrders.js`, `DailyReport.js`, `TSOReport.js`
+
+##### Table Template:
+- **File**: `frontend/src/templates/TableTemplate.js`
+- **Components**: `StandardExpandableTable`, `renderStandardExpandedRow`
+- **Usage**: ALL expandable tables MUST use this template
+- **Examples**: See `DealerReports.js`, `ExpandableTableTemplateDemo.js`
+
+#### 4. Template Compliance Checklist:
+- [ ] Checked `frontend/src/templates/` for existing template
+- [ ] Imported template function/component
+- [ ] Used template instead of custom implementation
+- [ ] Verified template usage matches other pages
+- [ ] No inline custom configurations created
+
+#### 5. Enforcement:
+- **ALL** new components must check for templates first
+- **ALL** existing components must be updated to use templates when available
+- **NO** exceptions - templates are mandatory when they exist
+- If a template doesn't exist for a pattern, create one in `frontend/src/templates/` for future use
+
+### Template Files Location:
+- **Directory**: `frontend/src/templates/`
+- **Current Templates**:
+  - `useStandardPagination.js` - Universal pagination hook/function
+  - `UIConfig.js` - Date picker and UI configurations
+  - `TableTemplate.js` - Expandable table template
+
+---
+
+**Remember**: The user has repeatedly emphasized design consistency. This is a core requirement, not optional. Always match existing design patterns exactly. **ALWAYS use templates when they exist - no custom implementations allowed.**
 

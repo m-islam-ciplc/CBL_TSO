@@ -29,7 +29,8 @@ import {
   OrderedListOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { getStandardPagination } from '../standard_templates/StandardTableConfig';
+import { createStandardDatePickerConfig } from '../templates/UIConfig';
+import { useStandardPagination } from '../templates/useStandardPagination';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -56,7 +57,8 @@ function PlacedOrders({ refreshTrigger }) {
   const [productsList, setProductsList] = useState([]);
   const [dealersList, setDealersList] = useState([]);
   const [transportsList, setTransportsList] = useState([]);
-  const [pagination, setPagination] = useState(getStandardPagination('orders'));
+  const { pagination, setPagination, handleTableChange } = useStandardPagination('orders', 20);
+  const [availableDates, setAvailableDates] = useState([]);
 
   const loadDropdownData = async () => {
     try {
@@ -129,6 +131,33 @@ function PlacedOrders({ refreshTrigger }) {
     loadDropdownData();
   }, []);
 
+  // Fetch available dates with orders
+  const getAvailableDates = async () => {
+    try {
+      const endpoint = isTSO && userId 
+        ? `/api/orders/tso/available-dates?user_id=${userId}`
+        : '/api/orders/available-dates';
+      const response = await axios.get(endpoint);
+      const dates = response.data.dates || response.data || [];
+      const formattedDates = dates.map(date => {
+        if (typeof date === 'string') {
+          return date.split('T')[0]; // Extract date part if timestamp
+        }
+        return date;
+      });
+      setAvailableDates(formattedDates);
+    } catch (error) {
+      console.error('Failed to load available dates:', error);
+      // Continue without graying out dates if API fails
+      setAvailableDates([]);
+    }
+  };
+
+  // Load available dates on mount and when user changes
+  useEffect(() => {
+    getAvailableDates();
+  }, [isTSO, userId]);
+
   const filterOrders = () => {
     let filtered = orders;
 
@@ -187,10 +216,6 @@ function PlacedOrders({ refreshTrigger }) {
     setStatusFilter('all');
   };
 
-  const handleTableChange = (newPagination) => {
-    console.log('Table pagination changed:', newPagination);
-    setPagination(newPagination);
-  };
 
   const getStatusTag = (status) => {
     switch (status) {
@@ -402,6 +427,9 @@ function PlacedOrders({ refreshTrigger }) {
     }] : []),
   ];
 
+  // Standard date picker configuration
+  const { disabledDate, dateCellRender } = createStandardDatePickerConfig(availableDates);
+
   return (
     <div>
       <Title level={3} style={{ marginBottom: '8px' }}>
@@ -420,10 +448,12 @@ function PlacedOrders({ refreshTrigger }) {
               <DatePicker
                 value={selectedDate}
                 onChange={setSelectedDate}
-                format="YYYY-MM-DD"
+                format="DD MMM YYYY"
                 style={{ width: '100%' }}
                 size="middle"
                 allowClear={false}
+                disabledDate={disabledDate}
+                dateRender={dateCellRender}
               />
             </Space>
           </Col>

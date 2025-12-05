@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Card, DatePicker, Button, message, Typography, Row, Col, Space, Spin, Table, Tag, Input, Tabs, Select } from 'antd';
-import { DownloadOutlined, FileExcelOutlined, EyeOutlined, SearchOutlined, CalendarOutlined, ShoppingCartOutlined } from '@ant-design/icons';
+import { Card, DatePicker, Button, message, Typography, Row, Col, Space, Spin, Table, Tag, Input, Tabs, Select, Badge } from 'antd';
+import { DownloadOutlined, FileExcelOutlined, EyeOutlined, SearchOutlined, CalendarOutlined, ShoppingCartOutlined, AppstoreOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import dayjs from 'dayjs';
 import * as XLSX from 'xlsx';
 import { useUser } from '../contexts/UserContext';
-import { StandardExpandableTable, renderStandardExpandedRow } from '../standard_templates/ExpandableTableTemplate';
-import { createStandardDatePickerConfig } from '../standard_templates/StandardTableConfig';
+import { StandardExpandableTable, renderStandardExpandedRow } from '../templates/TableTemplate';
+import { createStandardDatePickerConfig } from '../templates/UIConfig';
+import { getStandardPaginationConfig } from '../templates/useStandardPagination';
 
 const { Title, Text } = Typography;
 
@@ -31,6 +32,7 @@ function DealerReports() {
   const [selectedPeriod, setSelectedPeriod] = useState(null);
   const [periods, setPeriods] = useState([]);
   const [forecastSearchTerm, setForecastSearchTerm] = useState('');
+  const [expandedRowKeys, setExpandedRowKeys] = useState([]);
 
   // Load available dates for Daily Demand orders
   useEffect(() => {
@@ -570,6 +572,41 @@ function DealerReports() {
       render: (date) => new Date(date).toLocaleString(),
       sorter: (a, b) => new Date(a.created_at) - new Date(b.created_at),
     },
+    {
+      title: 'Actions',
+      key: 'actions',
+      width: 180,
+      align: 'center',
+      fixed: 'right',
+      render: (_, record) => {
+        const isExpanded = expandedRowKeys.includes(record.order_id);
+        const itemCount = record.item_count || 0;
+        
+        return (
+          <Badge 
+            count={itemCount} 
+            showZero={true}
+            overflowCount={999}
+          >
+            <Button
+              type="primary"
+              icon={<AppstoreOutlined />}
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent row click
+                if (isExpanded) {
+                  setExpandedRowKeys(expandedRowKeys.filter(key => key !== record.order_id));
+                } else {
+                  setExpandedRowKeys([...expandedRowKeys, record.order_id]);
+                }
+              }}
+            >
+              {isExpanded ? 'Hide Details' : 'View Details'}
+            </Button>
+          </Badge>
+        );
+      },
+    },
   ];
 
   const forecastColumns = [
@@ -715,6 +752,14 @@ function DealerReports() {
               dataSource={filteredOrders}
               loading={loading}
               rowKey="order_id"
+              expandedRowKeys={expandedRowKeys}
+              onExpand={(expanded, record) => {
+                if (expanded) {
+                  setExpandedRowKeys([...expandedRowKeys, record.order_id]);
+                } else {
+                  setExpandedRowKeys(expandedRowKeys.filter(key => key !== record.order_id));
+                }
+              }}
               expandedRowRender={(record) => {
                 const products = orderProducts[record.order_id] || [];
                 return renderStandardExpandedRow(
@@ -737,13 +782,7 @@ function DealerReports() {
                   'Order Items:'
                 );
               }}
-              pagination={{
-                pageSize: 10,
-                showSizeChanger: true,
-                showTotal: (total) => `Total ${total} orders`,
-                pageSizeOptions: ['10', '20', '50', '100'],
-                defaultPageSize: 10
-              }}
+              pagination={getStandardPaginationConfig('orders', 10)}
             />
           </Card>
         </Tabs.TabPane>
@@ -815,14 +854,7 @@ function DealerReports() {
                 columns={forecastColumns}
                 dataSource={filteredForecasts}
                 rowKey="product_id"
-                pagination={{
-                  pageSize: 20,
-                  showSizeChanger: true,
-                  showQuickJumper: true,
-                  showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} products`,
-                  pageSizeOptions: ['10', '20', '50', '100'],
-                  defaultPageSize: 20,
-                }}
+                pagination={getStandardPaginationConfig('products', 20)}
               />
             )}
 

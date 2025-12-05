@@ -1,12 +1,15 @@
 /**
- * STANDARD EXPANDABLE TABLE TEMPLATE
+ * TABLE TEMPLATE
  * 
- * This template defines the standard design for all expandable tables in the application.
- * Use this template as a reference when creating any new expandable table.
+ * Standard design template for expandable tables in the application.
+ * Use this template when creating any new expandable table.
  * 
- * Design Source: Daily Demand Orders table in DealerReports.js
+ * Design Source: Manage Dealers table in DealerManagement.js
  * 
  * IMPORTANT: All expandable tables MUST follow this design exactly.
+ * - Uses action column with buttons (no default plus icon)
+ * - Action column is fixed on the right
+ * - Row click expansion is disabled
  */
 
 import { Table, Card, Typography, Tag, Spin } from 'antd';
@@ -14,9 +17,9 @@ import { Table, Card, Typography, Tag, Spin } from 'antd';
 const { Text } = Typography;
 
 /**
- * STANDARD EXPANDABLE TABLE CONFIGURATION
+ * TABLE CONFIGURATION
  * 
- * Use this configuration object for all expandable tables
+ * Standard configuration for expandable tables
  */
 export const STANDARD_EXPANDABLE_TABLE_CONFIG = {
   // Table wrapper styling
@@ -205,9 +208,21 @@ export const StandardExpandableTable = ({
   loading,
   rowKey,
   expandedRowRender,
+  expandedRowKeys,
+  onExpand,
   pagination = STANDARD_EXPANDABLE_TABLE_CONFIG.pagination,
   ...otherProps
 }) => {
+  // Default expandable configuration - uses action column instead of plus icon
+  const defaultExpandableConfig = {
+    expandedRowKeys,
+    onExpand,
+    expandedRowRender: expandedRowRender,
+    expandRowByClick: false, // Disable row click expansion - use action buttons only
+    showExpandColumn: false, // Hide the default plus icon column
+    ...otherProps.expandable // Allow override
+  };
+
   return (
     <Card style={STANDARD_EXPANDABLE_TABLE_CONFIG.cardStyle}>
       {loading && (
@@ -222,9 +237,7 @@ export const StandardExpandableTable = ({
           dataSource={dataSource}
           rowKey={rowKey}
           pagination={pagination}
-          expandable={{
-            expandedRowRender: expandedRowRender
-          }}
+          expandable={defaultExpandableConfig}
           {...otherProps}
         />
       )}
@@ -235,7 +248,9 @@ export const StandardExpandableTable = ({
 /**
  * USAGE EXAMPLES:
  * 
- * 1. Basic expandable table:
+ * 1. Basic expandable table with action column:
+ * 
+ *    const [expandedRowKeys, setExpandedRowKeys] = useState([]);
  * 
  *    const columns = [
  *      {
@@ -246,6 +261,35 @@ export const StandardExpandableTable = ({
  *        ...STANDARD_EXPANDABLE_TABLE_CONFIG.columnStyles.idColumn
  *      },
  *      // ... more columns
+ *      {
+ *        title: 'Actions',
+ *        key: 'actions',
+ *        width: 180,
+ *        align: 'center',
+ *        fixed: 'right',
+ *        render: (_, record) => {
+ *          const isExpanded = expandedRowKeys.includes(record.id);
+ *          return (
+ *            <Badge count={record.item_count || 0} showZero={true} overflowCount={999}>
+ *              <Button
+ *                type="primary"
+ *                icon={<EyeOutlined />}
+ *                size="small"
+ *                onClick={(e) => {
+ *                  e.stopPropagation();
+ *                  if (isExpanded) {
+ *                    setExpandedRowKeys(expandedRowKeys.filter(key => key !== record.id));
+ *                  } else {
+ *                    setExpandedRowKeys([...expandedRowKeys, record.id]);
+ *                  }
+ *                }}
+ *              >
+ *                {isExpanded ? 'Hide Details' : 'View Details'}
+ *              </Button>
+ *            </Badge>
+ *          );
+ *        },
+ *      },
  *    ];
  * 
  *    <StandardExpandableTable
@@ -253,6 +297,14 @@ export const StandardExpandableTable = ({
  *       dataSource={data}
  *       loading={loading}
  *       rowKey="id"
+ *       expandedRowKeys={expandedRowKeys}
+ *       onExpand={(expanded, record) => {
+ *         if (expanded) {
+ *           setExpandedRowKeys([...expandedRowKeys, record.id]);
+ *         } else {
+ *           setExpandedRowKeys(expandedRowKeys.filter(key => key !== record.id));
+ *         }
+ *       }}
  *       expandedRowRender={(record) => renderStandardExpandedRow(
  *         record,
  *         record.items || [],
@@ -266,6 +318,13 @@ export const StandardExpandableTable = ({
  *         'Items:'
  *       )}
  *     />
+ * 
+ * KEY FEATURES:
+ * - Action column is fixed on the right (width: 180px, align: 'center')
+ * - Button text changes based on expanded state (e.g., "View Details" / "Hide Details")
+ * - Badge shows count of items (optional)
+ * - No default plus icon column (showExpandColumn: false)
+ * - Row click expansion disabled (expandRowByClick: false)
  * 
  * 2. Custom expanded content (still following standard styling):
  * 

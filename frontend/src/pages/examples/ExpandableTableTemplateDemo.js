@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Card, Typography, Table, Tag, Space, Divider } from 'antd';
+import { Card, Typography, Table, Tag, Space, Divider, Button, Badge } from 'antd';
 import { 
   renderStandardExpandedRow,
   StandardExpandableTable
-} from '../../standard_templates/ExpandableTableTemplate';
+} from '../../templates/TableTemplate';
+import { EyeOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
@@ -17,6 +18,7 @@ const { Title, Text } = Typography;
 
 const ExpandableTableTemplateDemo = () => {
   const [loading] = useState(false);
+  const [expandedRowKeys, setExpandedRowKeys] = useState([]);
 
   // Sample data for demonstration
   const sampleOrders = [
@@ -168,7 +170,42 @@ const ExpandableTableTemplateDemo = () => {
       ellipsis: true,
       render: (qty) => <Text strong>{qty || 0}</Text>,
       sorter: (a, b) => (a.total_quantity || 0) - (b.total_quantity || 0),
-    }
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      width: 180,
+      align: 'center',
+      fixed: 'right',
+      render: (_, record) => {
+        const isExpanded = expandedRowKeys.includes(record.order_id);
+        const itemCount = record.item_count || 0;
+        
+        return (
+          <Badge 
+            count={itemCount} 
+            showZero={true}
+            overflowCount={999}
+          >
+            <Button
+              type="primary"
+              icon={<EyeOutlined />}
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent row click
+                if (isExpanded) {
+                  setExpandedRowKeys(expandedRowKeys.filter(key => key !== record.order_id));
+                } else {
+                  setExpandedRowKeys([...expandedRowKeys, record.order_id]);
+                }
+              }}
+            >
+              {isExpanded ? 'Hide Details' : 'View Details'}
+            </Button>
+          </Badge>
+        );
+      },
+    },
   ];
 
   return (
@@ -195,6 +232,14 @@ const ExpandableTableTemplateDemo = () => {
             dataSource={sampleOrders}
             loading={loading}
             rowKey="order_id"
+            expandedRowKeys={expandedRowKeys}
+            onExpand={(expanded, record) => {
+              if (expanded) {
+                setExpandedRowKeys([...expandedRowKeys, record.order_id]);
+              } else {
+                setExpandedRowKeys(expandedRowKeys.filter(key => key !== record.order_id));
+              }
+            }}
             expandedRowRender={(record) => renderStandardExpandedRow(
               record,
               record.items || [],
@@ -262,6 +307,20 @@ const ExpandableTableTemplateDemo = () => {
               <Text strong style={{ display: 'block', marginBottom: '4px' }}>Tags:</Text>
               <Text type="secondary" style={{ fontSize: '12px' }}>
                 ID tags: color=&quot;blue&quot;, fontSize: &apos;12px&apos; | Status tags: color=&quot;green&quot;
+              </Text>
+            </div>
+            <Divider style={{ margin: '8px 0' }} />
+            <div>
+              <Text strong style={{ display: 'block', marginBottom: '4px' }}>Action Column:</Text>
+              <Text type="secondary" style={{ fontSize: '12px' }}>
+                Fixed on the right, width: 180px, aligned center. Button shows &quot;View Details&quot; when collapsed, &quot;Hide Details&quot; when expanded. Badge shows item count.
+              </Text>
+            </div>
+            <Divider style={{ margin: '8px 0' }} />
+            <div>
+              <Text strong style={{ display: 'block', marginBottom: '4px' }}>Expansion:</Text>
+              <Text type="secondary" style={{ fontSize: '12px' }}>
+                No default plus icon (showExpandColumn: false), row click disabled (expandRowByClick: false). Only expand/collapse via action button.
               </Text>
             </div>
             <Divider style={{ margin: '8px 0' }} />

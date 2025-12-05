@@ -20,6 +20,8 @@ import {
   Divider,
   Badge,
 } from 'antd';
+import { useStandardPagination, getStandardPaginationConfig } from '../templates/useStandardPagination';
+import { STANDARD_EXPANDABLE_TABLE_CONFIG } from '../templates/TableTemplate';
 import {
   UploadOutlined,
   DownloadOutlined,
@@ -55,11 +57,11 @@ const ExpandedRowContent = ({
 }) => {
   const [form] = Form.useForm();
   return (
-    <div style={{ padding: '16px', background: '#fafafa' }}>
-      <Card size="small" style={{ marginBottom: '16px' }}>
+    <div style={STANDARD_EXPANDABLE_TABLE_CONFIG.expandedRowContent.container}>
+      <Card size="small" style={{ marginBottom: STANDARD_EXPANDABLE_TABLE_CONFIG.spacing.cardMargin }}>
         <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
           <Col>
-            <Text strong>
+            <Text strong style={{ fontSize: STANDARD_EXPANDABLE_TABLE_CONFIG.fontSizes.title }}>
               <AppstoreOutlined /> Product Assignments
             </Text>
           </Col>
@@ -76,7 +78,7 @@ const ExpandedRowContent = ({
         </Row>
 
         {showForm && (
-          <Card size="small" style={{ marginBottom: '16px', background: '#fff' }}>
+          <Card size="small" style={{ marginBottom: STANDARD_EXPANDABLE_TABLE_CONFIG.spacing.cardMargin, background: STANDARD_EXPANDABLE_TABLE_CONFIG.colors.background.itemCard }}>
             <Form
               form={form}
               layout="vertical"
@@ -87,7 +89,7 @@ const ExpandedRowContent = ({
             >
               <Form.Item
                 name="product_ids"
-                label="Select Products (Brand Name)"
+                label={<Text style={{ fontSize: STANDARD_EXPANDABLE_TABLE_CONFIG.fontSizes.label }}>Select Products (Brand Name)</Text>}
               >
                 <Select
                   mode="multiple"
@@ -110,7 +112,7 @@ const ExpandedRowContent = ({
 
               <Form.Item
                 name="product_categories"
-                label="Select Application Names"
+                label={<Text style={{ fontSize: STANDARD_EXPANDABLE_TABLE_CONFIG.fontSizes.label }}>Select Application Names</Text>}
               >
                 <Select
                   mode="multiple"
@@ -153,7 +155,7 @@ const ExpandedRowContent = ({
               dataIndex: 'assignment_type',
               key: 'assignment_type',
               render: (type) => (
-                <Tag color={type === 'product' ? 'blue' : 'green'}>
+                <Tag color={type === 'product' ? 'blue' : 'green'} style={{ fontSize: STANDARD_EXPANDABLE_TABLE_CONFIG.fontSizes.tag }}>
                   {type === 'product' ? 'Product' : 'Application Name'}
                 </Tag>
               ),
@@ -197,7 +199,7 @@ const ExpandedRowContent = ({
           dataSource={assignments}
           loading={assignmentsLoading}
           rowKey="id"
-          pagination={{ pageSize: 10 }}
+          pagination={getStandardPaginationConfig('assignments', 10)}
           size="small"
         />
       </Card>
@@ -224,15 +226,7 @@ function DealerManagement() {
   const [productCounts, setProductCounts] = useState({}); // { dealerId: count }
   const countsLoadedForLengthRef = useRef(0);
 
-  const [pagination, setPagination] = useState({
-    current: 1,
-    pageSize: 20,
-    showSizeChanger: true,
-    showQuickJumper: true,
-    showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} dealers`,
-    pageSizeOptions: ['10', '20', '50', '100'],
-    defaultPageSize: 20,
-  });
+  const { pagination, setPagination, handleTableChange } = useStandardPagination('dealers', 20);
 
   useEffect(() => {
     loadDealers();
@@ -558,9 +552,6 @@ function DealerManagement() {
     setPagination(prev => ({ ...prev, current: 1 }));
   };
 
-  const handleTableChange = (newPagination) => {
-    setPagination(newPagination);
-  };
 
   const handleImport = async (file) => {
     const formData = new FormData();

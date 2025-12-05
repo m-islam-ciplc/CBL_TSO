@@ -18,6 +18,7 @@ import {
   ExperimentOutlined,
   TableOutlined,
   DownOutlined,
+  PlayCircleOutlined,
 } from '@ant-design/icons';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -33,15 +34,16 @@ import MonthlyForecastTab from './pages/MonthlyForecastTab';
 import DailyDemandMultiDay from './pages/DailyDemandMultiDay';
 import DealerReports from './pages/DealerReports';
 import DebugPanel from './components/DebugPanel';
-import DealerForecasts_Option1_Table from './pages/demos/DealerForecasts_Option1_Table';
-import DealerForecasts_Option2_Cards from './pages/demos/DealerForecasts_Option2_Cards';
-import DealerForecasts_Option3_Summary from './pages/demos/DealerForecasts_Option3_Summary';
-import DealerForecasts_Option3_Expandable from './pages/demos/DealerForecasts_Option3_Expandable';
-import DailyReport_WithForecasts from './pages/demos/DailyReport_WithForecasts';
-import DDMultiDayDemo from './pages/demos/DDMultiDayDemo';
-import ExpandableTableTemplateDemo from './pages/demos/ExpandableTableTemplateDemo';
-import CalendarWidgetDemo from './pages/demos/ui-components/CalendarWidgetDemo';
-import StandardTablesDemo from './pages/demos/ui-components/StandardTablesDemo';
+import DealerForecasts_Option1_Table from './pages/examples/DealerForecasts_Option1_Table';
+import DealerForecasts_Option2_Cards from './pages/examples/DealerForecasts_Option2_Cards';
+import DealerForecasts_Option3_Summary from './pages/examples/DealerForecasts_Option3_Summary';
+import DealerForecasts_Option3_Expandable from './pages/examples/DealerForecasts_Option3_Expandable';
+import DailyReport_WithForecasts from './pages/examples/DailyReport_WithForecasts';
+import DDMultiDayDemo from './pages/examples/DDMultiDayDemo';
+import ExpandableTableTemplateDemo from './pages/examples/ExpandableTableTemplateDemo';
+import CalendarWidgetDemo from './pages/examples/ui-components/CalendarWidgetDemo';
+import StandardTablesDemo from './pages/examples/ui-components/StandardTablesDemo';
+import WorkflowTests from './pages/examples/WorkflowTests';
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
@@ -71,10 +73,10 @@ function AppContent() {
   useEffect(() => {
     const savedUser = sessionStorage.getItem('user');
     const isTemplatePage = location.pathname.startsWith('/template-');
-    const isDemoPage = location.pathname.startsWith('/demo-');
+    const isExamplePage = location.pathname.startsWith('/example-');
     const isLoginPage = location.pathname === '/login';
     
-    if (!savedUser && !isLoginPage && !isTemplatePage && !isDemoPage) {
+    if (!savedUser && !isLoginPage && !isTemplatePage && !isExamplePage) {
       navigate('/login');
     }
   }, [navigate, location.pathname]);
@@ -491,6 +493,18 @@ function AppContent() {
                       },
                     ]
                   },
+                  {
+                    key: 'template-tests',
+                    label: 'Tests',
+                    icon: <PlayCircleOutlined />,
+                    children: [
+                      {
+                        key: 'workflow-tests',
+                        label: 'Workflow Tests',
+                        onClick: () => navigate('/template-workflow-tests')
+                      },
+                    ]
+                  },
                 ]
               }}
               trigger={['click']}
@@ -617,19 +631,18 @@ function AppContent() {
             <ProductQuotaManagement /> : 
             <Dashboard setStats={setStats} />
           } />
-          {/* Demo routes - accessible without login */}
-          <Route path="/demo-forecasts-option1" element={<DealerForecasts_Option1_Table />} />
-          <Route path="/demo-forecasts-option2" element={<DealerForecasts_Option2_Cards />} />
-          <Route path="/demo-forecasts-option3" element={<DealerForecasts_Option3_Summary />} />
-          <Route path="/demo-forecasts-option3-expandable" element={<DealerForecasts_Option3_Expandable />} />
-          <Route path="/demo-daily-report-forecasts" element={<DailyReport_WithForecasts />} />
-          {/* DD Multi-Day Demo Route */}
-          <Route path="/demo-dd-multiday" element={<DDMultiDayDemo />} />
-          {/* Expandable Table Template Demo Route */}
+          {/* Example routes - accessible without login */}
+          <Route path="/example-forecasts-option1" element={<DealerForecasts_Option1_Table />} />
+          <Route path="/example-forecasts-option2" element={<DealerForecasts_Option2_Cards />} />
+          <Route path="/example-forecasts-option3" element={<DealerForecasts_Option3_Summary />} />
+          <Route path="/example-forecasts-option3-expandable" element={<DealerForecasts_Option3_Expandable />} />
+          <Route path="/example-daily-report-forecasts" element={<DailyReport_WithForecasts />} />
+          <Route path="/example-dd-multiday" element={<DDMultiDayDemo />} />
           {/* Template Routes - accessible without login */}
           <Route path="/template-standard-tables" element={<StandardTablesDemo />} />
           <Route path="/template-expandable-tables" element={<ExpandableTableTemplateDemo />} />
           <Route path="/template-calendar-widget" element={<CalendarWidgetDemo />} />
+          <Route path="/template-workflow-tests" element={<WorkflowTests />} />
         </Routes>
       </Content>
 

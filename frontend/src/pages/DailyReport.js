@@ -5,7 +5,9 @@ import axios from 'axios';
 import dayjs from 'dayjs';
 import * as XLSX from 'xlsx';
 import { useUser } from '../contexts/UserContext';
-import { createStandardDatePickerConfig } from '../standard_templates/StandardTableConfig';
+import { createStandardDatePickerConfig } from '../templates/UIConfig';
+import { getStandardPaginationConfig } from '../templates/useStandardPagination';
+import { STANDARD_EXPANDABLE_TABLE_CONFIG } from '../templates/TableTemplate';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -1288,18 +1290,20 @@ function DailyReport() {
         key: 'quantity',
         width: 150,
         align: 'right',
-        render: (text) => <Text strong>{text.toLocaleString()}</Text>,
+        render: (text) => <Text strong style={{ fontSize: STANDARD_EXPANDABLE_TABLE_CONFIG.fontSizes.strong }}>{text.toLocaleString()}</Text>,
       },
     ];
 
     return (
-      <Table
-        columns={productColumns}
-        dataSource={record.products}
-        pagination={false}
-        size="small"
-        rowKey="product_code"
-      />
+      <div style={STANDARD_EXPANDABLE_TABLE_CONFIG.expandedRowContent.container}>
+        <Table
+          columns={productColumns}
+          dataSource={record.products}
+          pagination={false}
+          size="small"
+          rowKey="product_code"
+        />
+      </div>
     );
   };
 
@@ -1329,18 +1333,20 @@ function DailyReport() {
         key: 'quantity',
         width: 120,
         align: 'right',
-        render: (text) => <Text strong>{text.toLocaleString()}</Text>,
+        render: (text) => <Text strong style={{ fontSize: STANDARD_EXPANDABLE_TABLE_CONFIG.fontSizes.strong }}>{text.toLocaleString()}</Text>,
       },
     ];
 
     return (
-      <Table
-        columns={dealerColumns}
-        dataSource={record.dealers}
-        pagination={false}
-        size="small"
-        rowKey="dealer_code"
-      />
+      <div style={STANDARD_EXPANDABLE_TABLE_CONFIG.expandedRowContent.container}>
+        <Table
+          columns={dealerColumns}
+          dataSource={record.dealers}
+          pagination={false}
+          size="small"
+          rowKey="dealer_code"
+        />
+      </div>
     );
   };
 
@@ -1572,7 +1578,7 @@ function DailyReport() {
         key: 'total_products',
         width: 100,
         align: 'center',
-        render: (text) => <Tag color="blue">{text}</Tag>,
+        render: (text) => <Tag color="blue" style={{ fontSize: STANDARD_EXPANDABLE_TABLE_CONFIG.fontSizes.tag }}>{text}</Tag>,
       },
       {
         title: 'Total Quantity',
@@ -1580,18 +1586,20 @@ function DailyReport() {
         key: 'total_quantity',
         width: 130,
         align: 'right',
-        render: (text) => <Text strong>{text.toLocaleString()}</Text>,
+        render: (text) => <Text strong style={{ fontSize: STANDARD_EXPANDABLE_TABLE_CONFIG.fontSizes.strong }}>{text.toLocaleString()}</Text>,
       },
     ];
 
     return (
-      <Table
-        columns={dealerColumns}
-        dataSource={record.dealers}
-        pagination={false}
-        size="small"
-        rowKey="dealer_code"
-      />
+      <div style={STANDARD_EXPANDABLE_TABLE_CONFIG.expandedRowContent.container}>
+        <Table
+          columns={dealerColumns}
+          dataSource={record.dealers}
+          pagination={false}
+          size="small"
+          rowKey="dealer_code"
+        />
+      </div>
     );
   };
 
@@ -1713,15 +1721,7 @@ function DailyReport() {
                 columns={singleColumns}
                 dataSource={filteredPreviewData}
                 rowKey={(record) => record.order_id || record.id}
-                pagination={{
-                  pageSize: 20,
-                  showSizeChanger: true,
-                  showQuickJumper: true,
-                  showTotal: (total, range) =>
-                    `${range[0]}-${range[1]} of ${total} orders`,
-                  pageSizeOptions: ['10', '20', '50', '100'],
-                  defaultPageSize: 20,
-                }}
+                pagination={getStandardPaginationConfig('orders', 20)}
                 scroll={{ x: 'max-content' }}
                 size="small"
               />
@@ -1828,15 +1828,7 @@ function DailyReport() {
                 columns={rangeColumns}
             dataSource={filteredPreviewData}
                 rowKey={(record) => record.id}
-            pagination={{
-              pageSize: 20,
-              showSizeChanger: true,
-              showQuickJumper: true,
-              showTotal: (total, range) =>
-                    `${range[0]}-${range[1]} of ${total} dealers`,
-              pageSizeOptions: ['10', '20', '50', '100'],
-              defaultPageSize: 20,
-            }}
+            pagination={getStandardPaginationConfig('dealers', 20)}
             scroll={{ x: 'max-content' }}
             size="small"
           />
@@ -2004,11 +1996,7 @@ function DailyReport() {
               expandRowByClick: false,
               showExpandColumn: false,
             }}
-            pagination={{
-              pageSize: 20,
-              showSizeChanger: true,
-              showTotal: (total) => `${total} dealers`,
-            }}
+            pagination={getStandardPaginationConfig('dealers', 20)}
             scroll={{ x: 800 }}
           />
         </Tabs.TabPane>
@@ -2144,11 +2132,7 @@ function DailyReport() {
               expandRowByClick: false,
               showExpandColumn: false,
             }}
-            pagination={{
-              pageSize: 20,
-              showSizeChanger: true,
-              showTotal: (total) => `${total} products`,
-            }}
+            pagination={getStandardPaginationConfig('products', 20)}
             scroll={{ x: 800 }}
           />
         </Tabs.TabPane>
@@ -2541,11 +2525,7 @@ function DailyReport() {
                   expandRowByClick: false,
                   showExpandColumn: false,
                 }}
-                pagination={{
-                  pageSize: 20,
-                  showSizeChanger: true,
-                  showTotal: (total) => `${total} products`,
-                }}
+                pagination={getStandardPaginationConfig('products', 20)}
                 scroll={{ x: 800 }}
               />
             ) : getForecastReportViewType() === 'territory' ? (
@@ -2618,11 +2598,7 @@ function DailyReport() {
                   expandRowByClick: false,
                   showExpandColumn: false,
                 }}
-                pagination={{
-                  pageSize: 20,
-                  showSizeChanger: true,
-                  showTotal: (total) => `${total} dealers`,
-                }}
+                pagination={getStandardPaginationConfig('dealers', 20)}
                 scroll={{ x: 800 }}
               />
             )

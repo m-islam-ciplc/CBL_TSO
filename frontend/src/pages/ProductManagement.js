@@ -13,6 +13,7 @@ import {
   Row,
   Col,
 } from 'antd';
+import { useStandardPagination } from '../templates/useStandardPagination';
 import {
   UploadOutlined,
   DownloadOutlined,
@@ -27,15 +28,7 @@ function ProductManagement() {
   const [loading, setLoading] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [pagination, setPagination] = useState({
-    current: 1,
-    pageSize: 20,
-    showSizeChanger: true,
-    showQuickJumper: true,
-    showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} products`,
-    pageSizeOptions: ['10', '20', '50', '100'],
-    defaultPageSize: 20,
-  });
+  const { pagination, setPagination, handleTableChange } = useStandardPagination('products', 20);
 
   useEffect(() => {
     loadProducts();
@@ -76,10 +69,6 @@ function ProductManagement() {
     setPagination(prev => ({ ...prev, current: 1 }));
   };
 
-  const handleTableChange = (newPagination) => {
-    console.log('Table pagination changed:', newPagination);
-    setPagination(newPagination);
-  };
 
   const handleImport = async (file) => {
     const formData = new FormData();

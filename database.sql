@@ -4,25 +4,7 @@
 CREATE DATABASE IF NOT EXISTS cbl_so;
 USE cbl_so;
 
--- Users table for authentication
-CREATE TABLE IF NOT EXISTS users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(50) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
-    full_name VARCHAR(100) NOT NULL,
-    role ENUM('tso', 'sales_manager', 'admin', 'dealer') NOT NULL,
-    territory_name VARCHAR(100) DEFAULT NULL,
-    dealer_id INT DEFAULT NULL,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_username (username),
-    INDEX idx_territory_name (territory_name),
-    INDEX idx_dealer_id (dealer_id),
-    FOREIGN KEY (dealer_id) REFERENCES dealers(id) ON DELETE SET NULL
-);
-
--- Order Types table
+-- Order Types table (no dependencies)
 CREATE TABLE IF NOT EXISTS order_types (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE,
@@ -33,7 +15,7 @@ CREATE TABLE IF NOT EXISTS order_types (
 INSERT INTO order_types (name) VALUES ('SO') ON DUPLICATE KEY UPDATE name=name;
 INSERT INTO order_types (name) VALUES ('DD') ON DUPLICATE KEY UPDATE name=name;
 
--- Warehouses table
+-- Warehouses table (no dependencies)
 CREATE TABLE IF NOT EXISTS warehouses (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE,
@@ -41,7 +23,7 @@ CREATE TABLE IF NOT EXISTS warehouses (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Dealers table - Comprehensive schema with all columns from VW_ALL_CUSTOMER_INFO
+-- Dealers table - Comprehensive schema with all columns from VW_ALL_CUSTOMER_INFO (no dependencies)
 CREATE TABLE IF NOT EXISTS dealers (
     id INT AUTO_INCREMENT PRIMARY KEY,
     dealer_code VARCHAR(50) NOT NULL UNIQUE,
@@ -76,6 +58,24 @@ CREATE TABLE IF NOT EXISTS dealers (
     erp_status VARCHAR(50),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Users table for authentication (must come after dealers due to FK constraint)
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    full_name VARCHAR(100) NOT NULL,
+    role ENUM('tso', 'sales_manager', 'admin', 'dealer') NOT NULL,
+    territory_name VARCHAR(100) DEFAULT NULL,
+    dealer_id INT DEFAULT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_username (username),
+    INDEX idx_territory_name (territory_name),
+    INDEX idx_dealer_id (dealer_id),
+    FOREIGN KEY (dealer_id) REFERENCES dealers(id) ON DELETE SET NULL
 );
 
 -- Products table (must come before daily_quotas)
@@ -153,7 +153,7 @@ CREATE TABLE IF NOT EXISTS orders (
     user_name VARCHAR(100),
     order_source ENUM('tso', 'dealer', 'admin') DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    order_date DATE NOT NULL,
+    order_date DATE NOT NULL DEFAULT (CURRENT_DATE),
     total_quantity INT NOT NULL DEFAULT 0,
     FOREIGN KEY (order_type_id) REFERENCES order_types(id),
     FOREIGN KEY (dealer_id) REFERENCES dealers(id),
@@ -676,7 +676,7 @@ SELECT
     COALESCE(SUM(oi.quantity), 0) AS sold_quantity,
     d.max_quantity - COALESCE(SUM(oi.quantity), 0) AS remaining_quantity
 FROM daily_quotas d
-LEFT JOIN orders o ON DATE(o.created_at) = d.date
+LEFT JOIN orders o ON COALESCE(o.order_date, DATE(o.created_at)) = d.date
 LEFT JOIN dealers de ON de.id = o.dealer_id AND de.territory_name = d.territory_name
 LEFT JOIN order_items oi ON oi.order_id = o.order_id AND oi.product_id = d.product_id
 GROUP BY d.id, d.date, d.product_id, d.product_name, d.territory_name, d.max_quantity;

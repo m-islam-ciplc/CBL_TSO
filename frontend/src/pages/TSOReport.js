@@ -4,7 +4,8 @@ import { DownloadOutlined, FileExcelOutlined, EyeOutlined, SearchOutlined, FileT
 import axios from 'axios';
 import dayjs from 'dayjs';
 import { useUser } from '../contexts/UserContext';
-import { createStandardDatePickerConfig } from '../standard_templates/StandardTableConfig';
+import { createStandardDatePickerConfig } from '../templates/UIConfig';
+import { getStandardPaginationConfig } from '../templates/useStandardPagination';
 
 const { Title, Text } = Typography;
 
@@ -739,15 +740,7 @@ function TSOReport() {
                 ? record.id
                 : record.order_id || record.id
             }
-            pagination={{
-              pageSize: 20,
-              showSizeChanger: true,
-              showQuickJumper: true,
-              showTotal: (total, range) =>
-                `${range[0]}-${range[1]} of ${total} ${previewMode === 'range' ? 'dealers' : 'orders'}`,
-              pageSizeOptions: ['10', '20', '50', '100'],
-              defaultPageSize: 20,
-            }}
+            pagination={getStandardPaginationConfig(previewMode === 'range' ? 'dealers' : 'orders', 20)}
             scroll={{ x: 'max-content' }}
             size="small"
           />
