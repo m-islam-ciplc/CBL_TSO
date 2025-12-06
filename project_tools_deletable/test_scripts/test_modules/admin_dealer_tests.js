@@ -5,7 +5,7 @@
  * - Navigate to dealers tab
  * - Search, filter, import, export dealers
  * - View dealer details
- * - Assign products/categories to dealers
+ * - Assign products to dealers
  * - Manage dealer assignments
  */
 
@@ -235,7 +235,6 @@ async function testA17_AssignProductToDealer() {
   
   const assignmentPayload = {
     dealer_id: dealerId,
-    assignment_type: 'product',
     product_id: productId
   };
   
@@ -252,75 +251,6 @@ async function testA17_AssignProductToDealer() {
   }
   
   throw new Error(`A17 FAILED: Product assignment failed - ${result.status} - ${JSON.stringify(result.data)}`);
-}
-
-// A18: Assign category to dealer
-async function testA18_AssignCategoryToDealer() {
-  console.log('\n' + '='.repeat(70));
-  console.log('📋 A18: Assign category to dealer');
-  console.log('='.repeat(70));
-  
-  // Use existing token from A1 (no need to login again)
-  
-  const testData = utils.getTestData();
-  const categoriesResult = await utils.makeRequest('/api/products/categories', 'GET', null, {
-    'Authorization': `Bearer ${testData.adminToken}`
-  });
-  
-  if (categoriesResult.status !== 200 || !Array.isArray(categoriesResult.data) || categoriesResult.data.length === 0) {
-    console.log(`\n⚠️  A18 SKIPPED: No product categories available`);
-    return true;
-  }
-  
-  testData.productCategories = categoriesResult.data;
-  const selectedCategory = testData.productCategories[0];
-  
-  if (!testData.dealers || testData.dealers.length === 0) {
-    const dealersResult = await utils.makeRequest('/api/dealers', 'GET', null, {
-      'Authorization': `Bearer ${testData.adminToken}`
-    });
-    testData.dealers = dealersResult.status === 200 ? dealersResult.data : [];
-  }
-  
-  if (testData.dealers.length === 0) {
-    throw new Error(`A18 FAILED: No dealers found`);
-  }
-  
-  const dealerId = testData.dealers[0].id;
-  
-  const currentAssignmentsResult = await utils.makeRequest(`/api/dealer-assignments/${dealerId}`, 'GET', null, {
-    'Authorization': `Bearer ${testData.adminToken}`
-  });
-  
-  if (currentAssignmentsResult.status === 200 && Array.isArray(currentAssignmentsResult.data)) {
-    const existingCategory = currentAssignmentsResult.data.find(a => 
-      a.assignment_type === 'category' && a.product_category === selectedCategory
-    );
-    
-    if (existingCategory) {
-      console.log(`\n⚠️  A18 SKIPPED: Category already assigned`);
-      return true;
-    }
-  }
-  
-  const assignmentPayload = {
-    dealer_id: dealerId,
-    assignment_type: 'category',
-    product_category: selectedCategory
-  };
-  
-  const result = await utils.makeRequest('/api/dealer-assignments', 'POST', assignmentPayload, {
-    'Authorization': `Bearer ${testData.adminToken}`
-  });
-  
-  if (result.status === 200 && result.data) {
-    console.log(`\n✅ A18 PASSED: Category assigned to dealer`);
-    console.log(`   Dealer ID: ${dealerId}`);
-    console.log(`   Category: ${selectedCategory}`);
-    return true;
-  }
-  
-  throw new Error(`A18 FAILED: Category assignment failed - ${result.status} - ${JSON.stringify(result.data)}`);
 }
 
 // A19: Bulk assign products to dealer
@@ -357,8 +287,7 @@ async function testA19_BulkAssignProductsToDealer() {
   
   const bulkPayload = {
     dealer_id: dealerId,
-    product_ids: selectedProductIds,
-    product_categories: []
+    product_ids: selectedProductIds
   };
   
   const result = await utils.makeRequest('/api/dealer-assignments/bulk', 'POST', bulkPayload, {
@@ -431,7 +360,6 @@ module.exports = {
   testA15_ExportDealersToExcel,
   testA16_ViewDealerDetails,
   testA17_AssignProductToDealer,
-  testA18_AssignCategoryToDealer,
   testA19_BulkAssignProductsToDealer,
   testA20_RemoveProductAssignment
 };

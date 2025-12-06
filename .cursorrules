@@ -1,4 +1,4 @@
-# CBL TSO Design Consistency Rules
+# UI Design Consistency Rules
 
 ## CRITICAL: UI/UX Design Consistency
 
@@ -66,12 +66,15 @@
 - **Forms**: `frontend/src/pages/NewOrdersTablet.js`, `frontend/src/pages/DailyDemand.js`
 - **Cards/Layout**: `frontend/src/pages/MonthlyForecastTab.js`
 
-### Workflow for New Features:
-1. **First**: Read similar existing components to understand patterns
-2. **Second**: Copy styling patterns exactly (don't invent new ones)
-3. **Third**: Implement functionality using existing patterns
-4. **Fourth**: Verify consistency by comparing with reference files
-5. **Fifth**: Only then submit code
+### MANDATORY Workflow for New Features (NO EXCEPTIONS):
+1. **MUST DO FIRST**: Search codebase for similar existing pages/components
+2. **MUST DO SECOND**: Read 2-3 similar pages COMPLETELY (all lines, not skimming)
+3. **MUST DO THIRD**: Extract and document exact styling patterns found
+4. **MUST DO FOURTH**: Copy styling patterns EXACTLY (no variations, no assumptions)
+5. **MUST DO FIFTH**: Verify by comparing line-by-line with reference files
+6. **ONLY THEN**: Submit code
+
+**If no similar page exists, ask user to point to one before proceeding.**
 
 ### Common Mistakes to Avoid:
 - ❌ Creating new card styles instead of matching existing ones
@@ -81,78 +84,31 @@
 - ❌ Using different form layouts
 - ❌ Not checking existing similar pages first
 
-### Enforcement:
-- This rule applies to ALL new pages, components, and features
-- It applies even if the user doesn't explicitly mention it
-- Always verify consistency before completing any task
-- If unsure, ask the user to point to a similar existing page to match
+### CRITICAL Enforcement Rules:
+- **NEVER create a new page/component without checking similar existing ones FIRST**
+- **NEVER assume styling - always check existing code first**
+- **NEVER invent new patterns - match existing ones exactly**
+- If similar page doesn't exist, ASK user to point to one before coding
+- Always show what patterns you found before implementing
+- This applies to EVERY UI change, even small ones
+
+### Standard Page Structure (MANDATORY - Checked from existing pages):
+```jsx
+return (
+  <div>  {/* NO styling props */}
+    <Title level={3} style={{ marginBottom: '8px' }}>
+      <Icon /> Page Title
+    </Title>
+    <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
+      Subtitle
+    </Text>
+    <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
+      {/* Content */}
+    </Card>
+  </div>
+);
+```
 
 ---
 
-## CRITICAL: Template Usage - Universal Template Policy
-
-**MANDATORY**: When a template is defined in the `frontend/src/templates/` directory, ALL pages and components MUST use that template. No exceptions.
-
-### Template Usage Rules:
-
-#### 1. Template Discovery:
-- **ALWAYS** check `frontend/src/templates/` directory before implementing any UI component
-- **ALWAYS** check if a template exists for:
-  - Pagination
-  - Tables
-  - Date pickers
-  - Any reusable UI component
-
-#### 2. Template Usage:
-- ✅ **MUST** use existing templates for all components that match their purpose
-- ✅ **MUST** import templates from `frontend/src/templates/`
-- ✅ **MUST** use template functions/hooks as-is without modification
-- ❌ **NEVER** create custom implementations when a template exists
-- ❌ **NEVER** use inline configurations when a template is available
-- ❌ **NEVER** duplicate template logic in individual pages
-
-#### 3. Available Templates:
-
-##### Pagination Template:
-- **File**: `frontend/src/templates/useStandardPagination.js`
-- **For state management**: Use `useStandardPagination(itemName, pageSize)` hook
-- **For inline use**: Use `getStandardPaginationConfig(itemName, pageSize)` function
-- **Usage**: ALL tables with pagination MUST use this template
-- **Examples**: See `ProductManagement.js`, `DealerManagement.js`, `PlacedOrders.js`
-
-##### Date Picker Template:
-- **File**: `frontend/src/templates/UIConfig.js`
-- **Function**: `createStandardDatePickerConfig(availableDates)`
-- **Usage**: ALL date pickers MUST use this template
-- **Examples**: See `PlacedOrders.js`, `DailyReport.js`, `TSOReport.js`
-
-##### Table Template:
-- **File**: `frontend/src/templates/TableTemplate.js`
-- **Components**: `StandardExpandableTable`, `renderStandardExpandedRow`
-- **Usage**: ALL expandable tables MUST use this template
-- **Examples**: See `DealerReports.js`, `ExpandableTableTemplateDemo.js`
-
-#### 4. Template Compliance Checklist:
-- [ ] Checked `frontend/src/templates/` for existing template
-- [ ] Imported template function/component
-- [ ] Used template instead of custom implementation
-- [ ] Verified template usage matches other pages
-- [ ] No inline custom configurations created
-
-#### 5. Enforcement:
-- **ALL** new components must check for templates first
-- **ALL** existing components must be updated to use templates when available
-- **NO** exceptions - templates are mandatory when they exist
-- If a template doesn't exist for a pattern, create one in `frontend/src/templates/` for future use
-
-### Template Files Location:
-- **Directory**: `frontend/src/templates/`
-- **Current Templates**:
-  - `useStandardPagination.js` - Universal pagination hook/function
-  - `UIConfig.js` - Date picker and UI configurations
-  - `TableTemplate.js` - Expandable table template
-
----
-
-**Remember**: The user has repeatedly emphasized design consistency. This is a core requirement, not optional. Always match existing design patterns exactly. **ALWAYS use templates when they exist - no custom implementations allowed.**
-
+**CRITICAL**: The user has explicitly stated that creating reference documents won't prevent inconsistencies. The REAL solution is to ALWAYS check existing pages FIRST before making ANY UI changes. This is non-negotiable.

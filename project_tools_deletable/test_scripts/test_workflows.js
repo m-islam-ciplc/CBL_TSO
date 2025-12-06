@@ -1010,7 +1010,6 @@ async function runAdminTests() {
       { name: 'A15: Export dealers to Excel', fn: dealerTests.testA15_ExportDealersToExcel },
       { name: 'A16: View dealer details', fn: dealerTests.testA16_ViewDealerDetails },
       { name: 'A17: Assign product to dealer', fn: dealerTests.testA17_AssignProductToDealer },
-      { name: 'A18: Assign category to dealer', fn: dealerTests.testA18_AssignCategoryToDealer },
       { name: 'A19: Bulk assign products to dealer', fn: dealerTests.testA19_BulkAssignProductsToDealer },
       { name: 'A20: Remove product assignment from dealer', fn: dealerTests.testA20_RemoveProductAssignment },
       // Product Management Tests (A21-A25)

@@ -2550,14 +2550,9 @@ app.post('/api/orders/dealer', async (req, res) => {
                     SELECT COUNT(*) as count
                     FROM dealer_product_assignments dpa
                     WHERE dpa.dealer_id = ?
-                      AND (
-                        (dpa.assignment_type = 'product' AND dpa.product_id = ?)
-                        OR
-                        (dpa.assignment_type = 'category' AND dpa.product_category = (
-                            SELECT application_name FROM products WHERE id = ?
-                        ))
-                      )
-                `, [dealer_id, item.product_id, item.product_id]);
+                      AND dpa.assignment_type = 'product' 
+                      AND dpa.product_id = ?
+                `, [dealer_id, item.product_id]);
 
                 if (assignmentRows[0].count === 0) {
                     const [productRows] = await connection.query(`
@@ -2681,14 +2676,9 @@ app.post('/api/orders/dealer/multi-day', async (req, res) => {
                     SELECT COUNT(*) as count
                     FROM dealer_product_assignments dpa
                     WHERE dpa.dealer_id = ?
-                      AND (
-                        (dpa.assignment_type = 'product' AND dpa.product_id = ?)
-                        OR
-                        (dpa.assignment_type = 'category' AND dpa.product_category = (
-                            SELECT application_name FROM products WHERE id = ?
-                        ))
-                      )
-                `, [dealer_id, productId, productId]);
+                      AND dpa.assignment_type = 'product' 
+                      AND dpa.product_id = ?
+                `, [dealer_id, productId]);
 
                 if (assignmentRows[0].count === 0) {
                     const [productRows] = await connection.query(`
@@ -3081,7 +3071,7 @@ app.get('/api/orders/date/:date', async (req, res) => {
                 w.name as warehouse_name,
                 w.alias as warehouse_alias,
                 t.truck_details as transport_name,
-                DATE(o.created_at) as order_date,
+                COALESCE(o.order_date, DATE(o.created_at)) as order_date,
                 COUNT(oi.id) as item_count,
                 COALESCE(SUM(oi.quantity), 0) as quantity,
                 (SELECT p.name FROM order_items oi2 
@@ -3094,7 +3084,7 @@ app.get('/api/orders/date/:date', async (req, res) => {
             LEFT JOIN warehouses w ON o.warehouse_id = w.id
             LEFT JOIN transports t ON o.transport_id = t.id
             LEFT JOIN order_items oi ON o.order_id = oi.order_id
-            WHERE DATE(o.created_at) = ?
+            WHERE COALESCE(o.order_date, DATE(o.created_at)) = ?
             GROUP BY o.id, o.order_id, o.order_type_id, o.dealer_id, o.warehouse_id, o.created_at, o.user_id, ot.name, d.name, d.territory_name, d.address, d.contact, w.name, w.alias
             ORDER BY o.created_at DESC
         `;
@@ -3481,7 +3471,7 @@ app.get('/api/orders/tso/date/:date', async (req, res) => {
                 w.name as warehouse_name,
                 w.alias as warehouse_alias,
                 t.truck_details as transport_name,
-                DATE(o.created_at) as order_date,
+                COALESCE(o.order_date, DATE(o.created_at)) as order_date,
                 COUNT(oi.id) as item_count,
                 COALESCE(SUM(oi.quantity), 0) as quantity
             FROM orders o
@@ -3490,7 +3480,7 @@ app.get('/api/orders/tso/date/:date', async (req, res) => {
             LEFT JOIN warehouses w ON o.warehouse_id = w.id
             LEFT JOIN transports t ON o.transport_id = t.id
             LEFT JOIN order_items oi ON o.order_id = oi.order_id
-            WHERE DATE(o.created_at) = ? AND o.user_id = ?
+            WHERE COALESCE(o.order_date, DATE(o.created_at)) = ? AND o.user_id = ?
             GROUP BY o.id, o.order_id, o.order_type_id, o.dealer_id, o.warehouse_id, o.created_at, o.user_id, ot.name, d.name, d.territory_name, d.address, d.contact, w.name, w.alias
             ORDER BY o.created_at DESC
         `;
@@ -3638,7 +3628,7 @@ app.get('/api/orders/dealer/date', async (req, res) => {
             LEFT JOIN dealers d ON o.dealer_id = d.id
             LEFT JOIN order_items oi ON o.order_id = oi.order_id
             WHERE COALESCE(o.order_date, DATE(o.created_at)) = ? AND o.dealer_id = ? AND o.order_source = 'dealer'
-            GROUP BY o.id, o.order_id, o.order_type_id, o.dealer_id, o.created_at, o.user_id, ot.name, d.name, d.territory_name, COALESCE(o.order_date, DATE(o.created_at))
+            GROUP BY o.id, o.order_id, o.order_type_id, o.dealer_id, o.warehouse_id, o.order_source, o.created_at, o.user_id, ot.name, d.name, d.territory_name, COALESCE(o.order_date, DATE(o.created_at))
             ORDER BY o.created_at DESC
         `;
         
@@ -3702,7 +3692,7 @@ app.get('/api/orders/dealer/range', async (req, res) => {
             WHERE COALESCE(o.order_date, DATE(o.created_at)) BETWEEN ? AND ? 
               AND o.dealer_id = ? 
               AND o.order_source = 'dealer'
-            GROUP BY o.id, o.order_id, o.order_type_id, o.dealer_id, o.created_at, o.user_id, ot.name, d.name, d.territory_name, COALESCE(o.order_date, DATE(o.created_at))
+            GROUP BY o.id, o.order_id, o.order_type_id, o.dealer_id, o.warehouse_id, o.order_source, o.created_at, o.user_id, ot.name, d.name, d.territory_name, COALESCE(o.order_date, DATE(o.created_at))
             ORDER BY o.created_at DESC
         `;
         
@@ -3915,14 +3905,12 @@ app.get('/api/orders/dealer/daily-demand-report/:date', async (req, res) => {
         // Get all segments/applications allocated to this dealer
         const [allocatedSegments] = await dbPromise.query(`
             SELECT DISTINCT 
-                COALESCE(dpa.product_category, p.application_name) as application_name
+                p.application_name
             FROM dealer_product_assignments dpa
-            LEFT JOIN products p ON dpa.product_id = p.id AND dpa.assignment_type = 'product'
+            INNER JOIN products p ON dpa.product_id = p.id
             WHERE dpa.dealer_id = ?
-              AND (
-                (dpa.assignment_type = 'category' AND dpa.product_category IS NOT NULL)
-                OR (dpa.assignment_type = 'product' AND p.application_name IS NOT NULL)
-              )
+              AND dpa.assignment_type = 'product'
+              AND p.application_name IS NOT NULL
             ORDER BY application_name
         `, [dealer_id]);
         
@@ -4012,20 +4000,13 @@ app.get('/api/orders/dealer/daily-demand-report/:date', async (req, res) => {
                 p.application_name
             FROM products p
             WHERE p.status = 'A'
-              AND (
-                p.id IN (
+              AND p.id IN (
                     SELECT product_id 
                     FROM dealer_product_assignments 
                     WHERE dealer_id = ? AND assignment_type = 'product' AND product_id IS NOT NULL
                 )
-                OR p.application_name IN (
-                    SELECT product_category 
-                    FROM dealer_product_assignments 
-                    WHERE dealer_id = ? AND assignment_type = 'category' AND product_category IS NOT NULL
-                )
-              )
             ORDER BY p.application_name, p.product_code
-        `, [dealer_id, dealer_id]);
+        `, [dealer_id]);
         
         // Merge allocated products with ordered products (to show quantities)
         allocatedProducts.forEach(allocatedProduct => {
@@ -4248,54 +4229,6 @@ app.get('/api/orders/dealer/daily-demand-report/:date', async (req, res) => {
     }
 });
 
-// Get order details with items
-app.get('/api/orders/:orderId', (req, res) => {
-    const { orderId } = req.params;
-    
-    // Get order details
-    const orderQuery = `
-        SELECT o.*, ot.name as order_type, d.name as dealer_name, d.territory_name as dealer_territory, w.name as warehouse_name
-            FROM orders o
-            LEFT JOIN order_types ot ON o.order_type_id = ot.id
-            LEFT JOIN dealers d ON o.dealer_id = d.id
-            LEFT JOIN warehouses w ON o.warehouse_id = w.id
-        WHERE o.order_id = ?
-    `;
-    
-    db.query(orderQuery, [orderId], (err, orderResults) => {
-        if (err) {
-            res.status(500).json({ error: err.message });
-            return;
-        }
-        
-        if (orderResults.length === 0) {
-            res.status(404).json({ error: 'Order not found' });
-            return;
-        }
-        
-        // Get order items
-            const itemsQuery = `
-                SELECT oi.*, p.name as product_name, p.product_code, p.unit_tp, p.mrp, p.unit_trade_price
-                FROM order_items oi
-                LEFT JOIN products p ON oi.product_id = p.id
-                WHERE oi.order_id = ?
-                ORDER BY oi.id
-            `;
-            
-        db.query(itemsQuery, [orderId], (err, itemsResults) => {
-            if (err) {
-                res.status(500).json({ error: err.message });
-                return;
-            }
-            
-            const order = orderResults[0];
-            order.items = itemsResults;
-            
-            res.json(order);
-        });
-    });
-});
-
 // Generate MR Order Report CSV (using warehouse aliases)
 app.get('/api/orders/mr-report/:date', async (req, res) => {
     const { date } = req.params;
@@ -4391,6 +4324,54 @@ app.get('/api/orders/mr-report/:date', async (req, res) => {
         console.error('Error generating MR Order Report CSV:', error);
         res.status(500).json({ error: error.message });
     }
+});
+
+// Get order details with items
+app.get('/api/orders/:orderId', (req, res) => {
+    const { orderId } = req.params;
+    
+    // Get order details
+    const orderQuery = `
+        SELECT o.*, ot.name as order_type, d.name as dealer_name, d.territory_name as dealer_territory, w.name as warehouse_name
+            FROM orders o
+            LEFT JOIN order_types ot ON o.order_type_id = ot.id
+            LEFT JOIN dealers d ON o.dealer_id = d.id
+            LEFT JOIN warehouses w ON o.warehouse_id = w.id
+        WHERE o.order_id = ?
+    `;
+    
+    db.query(orderQuery, [orderId], (err, orderResults) => {
+        if (err) {
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        
+        if (orderResults.length === 0) {
+            res.status(404).json({ error: 'Order not found' });
+            return;
+        }
+        
+        // Get order items
+            const itemsQuery = `
+                SELECT oi.*, p.name as product_name, p.product_code, p.unit_tp, p.mrp, p.unit_trade_price
+                FROM order_items oi
+                LEFT JOIN products p ON oi.product_id = p.id
+                WHERE oi.order_id = ?
+                ORDER BY oi.id
+            `;
+            
+        db.query(itemsQuery, [orderId], (err, itemsResults) => {
+            if (err) {
+                res.status(500).json({ error: err.message });
+                return;
+            }
+            
+            const order = orderResults[0];
+            order.items = itemsResults;
+            
+            res.json(order);
+        });
+    });
 });
 
 // ===== Manage Transport API ENDPOINTS =====
@@ -4960,21 +4941,14 @@ app.post('/api/monthly-forecast', (req, res) => {
             SELECT p.id 
             FROM products p
             WHERE p.id = ? 
-            AND (
-                p.id IN (
-                    SELECT product_id 
-                    FROM dealer_product_assignments 
-                    WHERE dealer_id = ? AND assignment_type = 'product' AND product_id IS NOT NULL
-                )
-                OR p.application_name IN (
-                    SELECT product_category 
-                    FROM dealer_product_assignments 
-                    WHERE dealer_id = ? AND assignment_type = 'category' AND product_category IS NOT NULL
-                )
+            AND p.id IN (
+                SELECT product_id 
+                FROM dealer_product_assignments 
+                WHERE dealer_id = ? AND assignment_type = 'product' AND product_id IS NOT NULL
             )
         `;
         
-        db.query(productAssignmentQuery, [product_id, dealer_id, dealer_id], (err, productCheck) => {
+        db.query(productAssignmentQuery, [product_id, dealer_id], (err, productCheck) => {
             if (err) {
                 console.error('Error checking product assignment:', err);
                 return res.status(500).json({ error: 'Database error' });
@@ -5150,21 +5124,14 @@ app.post('/api/monthly-forecast/bulk', (req, res) => {
                 SELECT DISTINCT p.id 
                 FROM products p
                 WHERE p.id IN (${productIds.map(() => '?').join(',')})
-                AND (
-                    p.id IN (
-                        SELECT product_id 
-                        FROM dealer_product_assignments 
-                        WHERE dealer_id = ? AND assignment_type = 'product' AND product_id IS NOT NULL
-                    )
-                    OR p.application_name IN (
-                        SELECT product_category 
-                        FROM dealer_product_assignments 
-                        WHERE dealer_id = ? AND assignment_type = 'category' AND product_category IS NOT NULL
-                    )
+                AND p.id IN (
+                    SELECT product_id 
+                    FROM dealer_product_assignments 
+                    WHERE dealer_id = ? AND assignment_type = 'product' AND product_id IS NOT NULL
                 )
             `;
             
-            db.query(productAssignmentQuery, [...productIds, dealer_id, dealer_id], (err, productCheck) => {
+            db.query(productAssignmentQuery, [...productIds, dealer_id], (err, productCheck) => {
                 if (err) {
                     console.error('Error checking product assignments:', err);
                     return res.status(500).json({ error: 'Database error' });
@@ -5401,18 +5368,10 @@ app.get('/api/products', (req, res) => {
                         SELECT product_id 
                         FROM dealer_product_assignments 
                         WHERE dealer_id = ? AND assignment_type = 'product' AND product_id IS NOT NULL
-                        UNION
-                        SELECT id 
-                        FROM products 
-                        WHERE application_name IN (
-                            SELECT product_category 
-                            FROM dealer_product_assignments 
-                            WHERE dealer_id = ? AND assignment_type = 'category' AND product_category IS NOT NULL
-                        )
                     )
                     ORDER BY p.product_code
                 `;
-                params = [territory_name, dealer_id, dealer_id];
+                params = [territory_name, dealer_id];
             } else {
                 // For Monthly Forecast: Show all assigned products (no quota filter)
                 query = `
@@ -5422,18 +5381,10 @@ app.get('/api/products', (req, res) => {
                         SELECT product_id 
                         FROM dealer_product_assignments 
                         WHERE dealer_id = ? AND assignment_type = 'product' AND product_id IS NOT NULL
-                        UNION
-                        SELECT id 
-                        FROM products 
-                        WHERE application_name IN (
-                            SELECT product_category 
-                            FROM dealer_product_assignments 
-                            WHERE dealer_id = ? AND assignment_type = 'category' AND product_category IS NOT NULL
-                        )
                     )
                     ORDER BY p.product_code
                 `;
-                params = [dealer_id, dealer_id];
+                params = [dealer_id];
             }
             
             db.query(query, params, (err, results) => {
@@ -5500,30 +5451,22 @@ app.get('/api/dealer-assignments/:dealerId', (req, res) => {
 
 // Add product assignment to dealer
 app.post('/api/dealer-assignments', (req, res) => {
-    const { dealer_id, assignment_type, product_id, product_category } = req.body;
+    const { dealer_id, product_id } = req.body;
     
-    if (!dealer_id || !assignment_type) {
-        return res.status(400).json({ error: 'dealer_id and assignment_type are required' });
-    }
-    
-    if (assignment_type === 'product' && !product_id) {
-        return res.status(400).json({ error: 'product_id is required for product assignment' });
-    }
-    
-    if (assignment_type === 'category' && !product_category) {
-        return res.status(400).json({ error: 'product_category is required for category assignment' });
+    if (!dealer_id || !product_id) {
+        return res.status(400).json({ error: 'dealer_id and product_id are required' });
     }
     
     const query = `
         INSERT INTO dealer_product_assignments (dealer_id, assignment_type, product_id, product_category)
-        VALUES (?, ?, ?, ?)
+        VALUES (?, 'product', ?, NULL)
     `;
     
-    db.query(query, [dealer_id, assignment_type, product_id || null, product_category || null], (err, result) => {
+    db.query(query, [dealer_id, product_id], (err, result) => {
         if (err) {
             console.error('Error adding dealer assignment:', err);
             if (err.code === 'ER_DUP_ENTRY') {
-                return res.status(400).json({ error: 'This product/category is already assigned to this dealer' });
+                return res.status(400).json({ error: 'This product is already assigned to this dealer' });
             }
             return res.status(500).json({ error: 'Database error' });
         }
@@ -5545,33 +5488,24 @@ app.delete('/api/dealer-assignments/:id', (req, res) => {
     });
 });
 
-// Bulk assign products/categories to dealer
+// Bulk assign products to dealer
 app.post('/api/dealer-assignments/bulk', (req, res) => {
-    const { dealer_id, product_ids, product_categories } = req.body;
+    const { dealer_id, product_ids } = req.body;
     
     if (!dealer_id) {
         return res.status(400).json({ error: 'dealer_id is required' });
     }
     
+    if (!Array.isArray(product_ids) || product_ids.length === 0) {
+        return res.status(400).json({ error: 'At least one product_id is required' });
+    }
+    
     const assignments = [];
     
     // Add product assignments
-    if (Array.isArray(product_ids) && product_ids.length > 0) {
-        product_ids.forEach(product_id => {
-            assignments.push([dealer_id, 'product', product_id, null]);
-        });
-    }
-    
-    // Add category assignments
-    if (Array.isArray(product_categories) && product_categories.length > 0) {
-        product_categories.forEach(category => {
-            assignments.push([dealer_id, 'category', null, category]);
-        });
-    }
-    
-    if (assignments.length === 0) {
-        return res.status(400).json({ error: 'At least one product_id or product_category is required' });
-    }
+    product_ids.forEach(product_id => {
+        assignments.push([dealer_id, 'product', product_id, null]);
+    });
     
     const query = `
         INSERT INTO dealer_product_assignments (dealer_id, assignment_type, product_id, product_category)

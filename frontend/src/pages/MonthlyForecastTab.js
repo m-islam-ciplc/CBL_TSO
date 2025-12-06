@@ -21,6 +21,8 @@ import axios from 'axios';
 import { useUser } from '../contexts/UserContext';
 import dayjs from 'dayjs';
 import './NewOrdersTablet.css';
+import { DealerProductCard } from '../templates/DealerProductCard';
+import { FILTER_CARD_CONFIG, CONTENT_CARD_CONFIG } from '../templates/CardTemplates';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -289,58 +291,55 @@ function MonthlyForecastTab() {
   const canEdit = isCurrentPeriod && (!isSubmitted || isAdmin || isTSO);
 
   return (
-    <div style={{ padding: '16px', background: '#f5f5f5', minHeight: '100vh' }}>
-      {/* Header */}
-      <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
-        <Row justify="space-between" align="middle">
-          <Col flex="auto">
-            <Title level={3} style={{ margin: 0, fontSize: '20px' }}>
-              <CalendarOutlined /> Monthly Forecast
-            </Title>
-            <div style={{ marginTop: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                <Text strong style={{ marginRight: '8px' }}>Select Period:</Text>
-                <Select
-                  style={{ width: 280 }}
-                  value={selectedPeriod ? `${selectedPeriod.period_start}_${selectedPeriod.period_end}` : undefined}
-                  onChange={(value) => {
-                    const period = availablePeriods.find(p => `${p.period_start}_${p.period_end}` === value);
-                    setSelectedPeriod(period);
-                  }}
-                  loading={loadingPeriods}
-                  placeholder="Select forecast period"
-                >
-                  {availablePeriods.map((period) => (
-                    <Option key={`${period.period_start}_${period.period_end}`} value={`${period.period_start}_${period.period_end}`}>
-                      <Space>
-                        {formatPeriodLabel(period)}
-                        {period.is_current && <Tag color="green" size="small">Current</Tag>}
-                        {!period.is_current && period.has_forecast && <Tag color="blue" size="small"><HistoryOutlined /> Historical</Tag>}
-                        {!period.has_forecast && !period.is_current && <Tag color="default" size="small">No Data</Tag>}
-                      </Space>
-                    </Option>
-                  ))}
-                </Select>
-                {selectedPeriod && (
-                  <>
-                    <Text strong style={{ marginLeft: '8px' }}>
-                      {isCurrentPeriod ? 'Current Period' : 'Historical Period'}
-                    </Text>
-                    <Tag 
-                      color={isCurrentPeriod ? 'green' : 'blue'} 
-                      style={{ 
-                        marginLeft: '8px',
-                        fontWeight: 'bold'
-                      }}
-                    >
-                      {periodInfo.start ? dayjs(periodInfo.start).format('DD MMM YYYY') : ''} - {periodInfo.end ? dayjs(periodInfo.end).format('DD MMM YYYY') : ''}
-                    </Tag>
-                  </>
-                )}
-              </div>
-            </div>
-          </Col>
-        </Row>
+    <div>
+      <Title level={3} style={{ marginBottom: '8px' }}>
+        <CalendarOutlined /> Monthly Forecast
+      </Title>
+      <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
+        Submit your monthly product forecast for the selected period.
+      </Text>
+
+      {/* Period Selection Card */}
+      <Card title="Select Period" {...FILTER_CARD_CONFIG}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <Select
+            style={{ width: 280 }}
+            value={selectedPeriod ? `${selectedPeriod.period_start}_${selectedPeriod.period_end}` : undefined}
+            onChange={(value) => {
+              const period = availablePeriods.find(p => `${p.period_start}_${p.period_end}` === value);
+              setSelectedPeriod(period);
+            }}
+            loading={loadingPeriods}
+            placeholder="Select forecast period"
+          >
+            {availablePeriods.map((period) => (
+              <Option key={`${period.period_start}_${period.period_end}`} value={`${period.period_start}_${period.period_end}`}>
+                <Space>
+                  {formatPeriodLabel(period)}
+                  {period.is_current && <Tag color="green" size="small">Current</Tag>}
+                  {!period.is_current && period.has_forecast && <Tag color="blue" size="small"><HistoryOutlined /> Historical</Tag>}
+                  {!period.has_forecast && !period.is_current && <Tag color="default" size="small">No Data</Tag>}
+                </Space>
+              </Option>
+            ))}
+          </Select>
+          {selectedPeriod && (
+            <>
+              <Text strong style={{ marginLeft: '8px' }}>
+                {isCurrentPeriod ? 'Current Period' : 'Historical Period'}
+              </Text>
+              <Tag 
+                color={isCurrentPeriod ? 'green' : 'blue'} 
+                style={{ 
+                  marginLeft: '8px',
+                  fontWeight: 'bold'
+                }}
+              >
+                {periodInfo.start ? dayjs(periodInfo.start).format('DD MMM YYYY') : ''} - {periodInfo.end ? dayjs(periodInfo.end).format('DD MMM YYYY') : ''}
+              </Tag>
+            </>
+          )}
+        </div>
       </Card>
 
       {/* Products Card Grid */}
@@ -348,74 +347,17 @@ function MonthlyForecastTab() {
         {products.length > 0 ? (
           <div className="responsive-product-grid">
             {products.map(product => (
-              <Card
+              <DealerProductCard
                 key={product.id}
-                style={{
-                  borderRadius: '8px',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                }}
-                bodyStyle={{ padding: '16px' }}
-              >
-                <div style={{ marginBottom: '12px' }}>
-                  <Text strong style={{ fontSize: '14px', display: 'block', marginBottom: '4px' }}>
-                    {product.name}
-                  </Text>
-                  <Text type="secondary" style={{ fontSize: '12px' }}>
-                    {product.product_code}
-                  </Text>
-                </div>
-                
-                <div style={{ marginBottom: '12px' }}>
-                  <Text style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>
-                    Monthly Forecast Quantity:
-                  </Text>
-                  <InputNumber
-                    size="large"
-                    min={0}
-                    value={forecastData[product.id] || null}
-                    onChange={(value) => handleQuantityChange(product.id, value)}
-                    placeholder="Enter quantity"
-                    style={{ width: '100%' }}
-                    controls={true}
-                    disabled={!canEdit}
-                    readOnly={!canEdit}
-                  />
-                  {canEdit && (
-                    <div style={{ 
-                      display: 'flex', 
-                      gap: '6px', 
-                      marginTop: '8px',
-                      flexWrap: 'nowrap'
-                    }}>
-                      {[5, 10, 15, 20].map(presetQty => (
-                        <Button
-                          key={presetQty}
-                          size="small"
-                          type={forecastData[product.id] === presetQty ? 'primary' : 'default'}
-                          onClick={() => handleQuantityChange(product.id, presetQty)}
-                          style={{
-                            flex: '1 1 0',
-                            fontSize: '12px'
-                          }}
-                        >
-                          {presetQty}
-                        </Button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <Button
-                  danger
-                  icon={<ClearOutlined />}
-                  onClick={() => handleClearProduct(product.id)}
-                  style={{ width: '100%' }}
-                  size="small"
-                  disabled={!canEdit}
-                >
-                  Clear
-                </Button>
-              </Card>
+                product={product}
+                quantity={forecastData[product.id] || null}
+                onQuantityChange={handleQuantityChange}
+                onClear={handleClearProduct}
+                canEdit={canEdit}
+                labelText="Monthly Forecast Quantity:"
+                presetValues={[5, 10, 15, 20]}
+                showClearButton={true}
+              />
             ))}
           </div>
         ) : (
@@ -427,7 +369,7 @@ function MonthlyForecastTab() {
 
       {/* Footer Actions */}
       {isCurrentPeriod && canEdit && (
-        <Card style={{ borderRadius: '8px' }}>
+        <Card {...CONTENT_CARD_CONFIG}>
           <Row justify="end">
             <Col>
               <Space>

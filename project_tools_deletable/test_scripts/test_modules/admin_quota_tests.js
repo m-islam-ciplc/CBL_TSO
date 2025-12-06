@@ -101,6 +101,7 @@ async function testA33_BulkAllocateQuotas() {
     throw new Error(`A33 FAILED: Could not fetch territories`);
   }
   
+  // Limit to 2 products for testing (reasonable test size)
   const products = productsResult.data.slice(0, 2);
   
   // Ensure Scrap Territory is included for TSO tests (subrata.das)
@@ -108,7 +109,7 @@ async function testA33_BulkAllocateQuotas() {
   const targetTerritory = 'Scrap Territory';
   
   // Find Scrap Territory in the list, or use the first territory if not found
-  let scrapTerritory = territoriesResult.data.find(t => 
+  let scrapTerritory = territoriesResult.data.find(t =>  
     t && t.toLowerCase().includes('scrap')
   );
   
@@ -135,7 +136,7 @@ async function testA33_BulkAllocateQuotas() {
         product_code: product.product_code,
         product_name: product.name,
         territory_name: territory,
-        max_quantity: 50
+        max_quantity: 10
       });
     });
   });
@@ -177,7 +178,8 @@ async function testA34_UpdateQuota() {
   }
   
   const quota = quotasResult.data[0];
-  const newQuantity = (Number(quota.max_quantity) || 0) + 10;
+  // Update to 10 (max allowed) - ensures we test update without exceeding limit
+  const newQuantity = 10;
   
   const result = await utils.makeRequest(
     `/api/product-caps/${today}/${quota.product_id}/${encodeURIComponent(quota.territory_name)}`,
@@ -229,18 +231,49 @@ async function testA35_DeleteQuota() {
     return true;
   }
   
-  const product = productsResult.data[0];
-  const territory = territoriesResult.data[0];
+  // Use a different product/territory than A33 to avoid quota accumulation
+  // A33 uses first 2 products + Scrap Territory, so A35 should use:
+  // - Product from index 2+ (to avoid conflict with A33's products)
+  // - Territory that's NOT Scrap Territory (to avoid conflict)
+  
+  const scrapTerritoryName = 'Scrap Territory';
+  const scrapTerritoryLower = scrapTerritoryName.toLowerCase();
+  
+  // Find a territory that's NOT Scrap Territory
+  let testTerritory = territoriesResult.data.find(t => 
+    t && !t.toLowerCase().includes('scrap') && t !== scrapTerritoryName
+  );
+  
+  // If no non-Scrap territory found, use the second territory
+  if (!testTerritory && territoriesResult.data.length > 1) {
+    testTerritory = territoriesResult.data[1];
+  } else if (!testTerritory) {
+    // Fallback to first territory if only one exists
+    testTerritory = territoriesResult.data[0];
+    console.log(`\n⚠️  Warning: Using first territory for deletion test: ${testTerritory}`);
+  }
+  
+  // Use product from index 2 or later to avoid conflict with A33 (which uses first 2)
+  let testProduct = null;
+  if (productsResult.data.length > 2) {
+    testProduct = productsResult.data[2]; // Use 3rd product (index 2)
+  } else if (productsResult.data.length === 2) {
+    // If only 2 products exist, use the 2nd one (A33 uses first 2, so this is safe if territory differs)
+    testProduct = productsResult.data[1];
+  } else {
+    testProduct = productsResult.data[0]; // Fallback
+    console.log(`\n⚠️  Warning: Only one product available, using it for deletion test`);
+  }
   
   // Create quota first
   const createResult = await utils.makeRequest('/api/product-caps/bulk', 'POST', {
     quotas: [{
       date: today,
-      product_id: product.id,
-      product_code: product.product_code,
-      product_name: product.name,
-      territory_name: territory,
-      max_quantity: 100
+      product_id: testProduct.id,
+      product_code: testProduct.product_code,
+      product_name: testProduct.name,
+      territory_name: testTerritory,
+      max_quantity: 10
     }]
   }, {
     'Authorization': `Bearer ${testData.adminToken}`
@@ -253,7 +286,7 @@ async function testA35_DeleteQuota() {
   
   // Now delete it
   const deleteResult = await utils.makeRequest(
-    `/api/product-caps/${today}/${product.id}/${encodeURIComponent(territory)}`,
+    `/api/product-caps/${today}/${testProduct.id}/${encodeURIComponent(testTerritory)}`,
     'DELETE',
     null,
     {

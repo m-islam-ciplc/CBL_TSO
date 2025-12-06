@@ -50,7 +50,6 @@ const ExpandedRowContent = ({
   assignmentsLoading, 
   showForm, 
   products, 
-  categories,
   onToggleForm,
   onSubmitAssignment,
   onDeleteAssignment
@@ -89,7 +88,8 @@ const ExpandedRowContent = ({
             >
               <Form.Item
                 name="product_ids"
-                label={<Text style={{ fontSize: STANDARD_EXPANDABLE_TABLE_CONFIG.fontSizes.label }}>Select Products (Brand Name)</Text>}
+                label={<Text style={{ fontSize: STANDARD_EXPANDABLE_TABLE_CONFIG.fontSizes.label }}>Select Products</Text>}
+                rules={[{ required: true, message: 'Please select at least one product' }]}
               >
                 <Select
                   mode="multiple"
@@ -103,29 +103,6 @@ const ExpandedRowContent = ({
                   {products.map(product => (
                     <Option key={product.id} value={product.id} label={`${product.product_code} - ${product.name}`}>
                       {product.product_code} - {product.name}
-                    </Option>
-                  ))}
-                </Select>
-              </Form.Item>
-
-              <Divider style={{ margin: '12px 0' }}>OR</Divider>
-
-              <Form.Item
-                name="product_categories"
-                label={<Text style={{ fontSize: STANDARD_EXPANDABLE_TABLE_CONFIG.fontSizes.label }}>Select Application Names</Text>}
-              >
-                <Select
-                  mode="multiple"
-                  placeholder="Select application names"
-                  showSearch
-                  optionFilterProp="label"
-                  filterOption={(input, option) =>
-                    option.label.toLowerCase().indexOf(input.toLowerCase()) >= 0
-                  }
-                >
-                  {categories.map(category => (
-                    <Option key={category} value={category} label={category}>
-                      {category}
                     </Option>
                   ))}
                 </Select>
@@ -151,31 +128,15 @@ const ExpandedRowContent = ({
         <Table
           columns={[
             {
-              title: 'Type',
-              dataIndex: 'assignment_type',
-              key: 'assignment_type',
-              render: (type) => (
-                <Tag color={type === 'product' ? 'blue' : 'green'} style={{ fontSize: STANDARD_EXPANDABLE_TABLE_CONFIG.fontSizes.tag }}>
-                  {type === 'product' ? 'Product' : 'Application Name'}
-                </Tag>
-              ),
-            },
-            {
               title: 'Product',
               key: 'product',
               render: (_, record) => {
-                if (record.assignment_type === 'product') {
+                if (record.assignment_type === 'product' && record.product_id) {
                   const product = products.find(p => p.id === record.product_id);
                   return product ? `${product.product_code} - ${product.name}` : `Product ID: ${record.product_id}`;
                 }
                 return '-';
               },
-            },
-            {
-              title: 'Application Name',
-              dataIndex: 'product_category',
-              key: 'product_category',
-              render: (category) => category || '-',
             },
             {
               title: 'Actions',
@@ -221,7 +182,6 @@ function DealerManagement() {
   // Product assignment state per dealer
   const [assignmentsData, setAssignmentsData] = useState({}); // { dealerId: { assignments, loading } }
   const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
   const [showAddForm, setShowAddForm] = useState({}); // { dealerId: boolean }
   const [productCounts, setProductCounts] = useState({}); // { dealerId: count }
   const countsLoadedForLengthRef = useRef(0);
@@ -231,7 +191,6 @@ function DealerManagement() {
   useEffect(() => {
     loadDealers();
     loadProducts();
-    loadCategories();
   }, []);
 
   useEffect(() => {
@@ -460,14 +419,6 @@ function DealerManagement() {
     }
   };
 
-  const loadCategories = async () => {
-    try {
-      const response = await axios.get('/api/products/categories');
-      setCategories(response.data || []);
-    } catch (error) {
-      console.error('Failed to load categories:', error);
-    }
-  };
 
   const loadAssignments = async (dealerId) => {
     if (!dealerId) return;
@@ -512,15 +463,17 @@ function DealerManagement() {
 
   const handleSubmitAssignment = async (dealerId, values) => {
     try {
+      if (!values.product_ids || values.product_ids.length === 0) {
+        message.error('Please select at least one product');
+        return;
+      }
+      
       await axios.post('/api/dealer-assignments/bulk', {
         dealer_id: dealerId,
         product_ids: values.product_ids || [],
-        product_categories: values.product_categories || [],
       });
       const productCount = (values.product_ids || []).length;
-      const categoryCount = (values.product_categories || []).length;
-      const totalCount = productCount + categoryCount;
-      message.success(`Successfully assigned ${totalCount} item${totalCount !== 1 ? 's' : ''}`);
+      message.success(`Successfully assigned ${productCount} product${productCount !== 1 ? 's' : ''}`);
       setShowAddForm(prev => ({ ...prev, [dealerId]: false }));
       loadAssignments(dealerId);
     } catch (error) {
@@ -723,7 +676,6 @@ function DealerManagement() {
         assignmentsLoading={assignmentsLoading}
         showForm={showForm}
         products={products}
-        categories={categories}
         onToggleForm={() => {
           setShowAddForm(prev => ({ ...prev, [dealerId]: !prev[dealerId] }));
         }}

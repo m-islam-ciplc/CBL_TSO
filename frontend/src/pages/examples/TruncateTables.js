@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Card, Typography, Button, Space, Divider, Tag, Alert, message } from 'antd';
 import { DatabaseOutlined, CopyOutlined, CheckCircleOutlined, WarningOutlined } from '@ant-design/icons';
+import { FILTER_CARD_CONFIG } from '../../templates/CardTemplates';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -71,7 +72,7 @@ function TruncateTables() {
         style={{ marginBottom: '24px' }}
       />
 
-      <Card title="How to Run" style={{ marginBottom: '24px' }}>
+      <Card title="How to Run" {...FILTER_CARD_CONFIG}>
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
           {commands.map((cmd, index) => (
             <div key={index}>
@@ -109,7 +110,7 @@ function TruncateTables() {
         </Space>
       </Card>
 
-      <Card title="What Gets Truncated">
+      <Card title="What Gets Truncated" {...FILTER_CARD_CONFIG}>
         <Space direction="vertical" style={{ width: '100%' }}>
           <div>
             <Text strong style={{ color: '#ff4d4f' }}>Tables Deleted (All Data Removed):</Text>
@@ -137,7 +138,7 @@ function TruncateTables() {
         </Space>
       </Card>
 
-      <Card title="Database Configuration" style={{ marginTop: '24px' }}>
+      <Card title="Database Configuration" {...FILTER_CARD_CONFIG}>
         <Space direction="vertical" style={{ width: '100%' }}>
           <div>
             <Text strong>Database: </Text>
@@ -159,7 +160,7 @@ function TruncateTables() {
         </Space>
       </Card>
 
-      <Card title="What the Script Does" style={{ marginTop: '24px' }}>
+      <Card title="What the Script Does" {...FILTER_CARD_CONFIG}>
         <Paragraph>The script will:</Paragraph>
         <ul>
           <li>Disable foreign key checks temporarily</li>
@@ -171,7 +172,7 @@ function TruncateTables() {
         </ul>
       </Card>
 
-      <Card title="File Locations" style={{ marginTop: '24px' }}>
+      <Card title="File Locations" {...FILTER_CARD_CONFIG}>
         <Space direction="vertical" style={{ width: '100%' }}>
           <div>
             <Text strong>Node.js Script: </Text>

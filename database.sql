@@ -305,11 +305,15 @@ BEGIN
      WHERE id = NEW.dealer_id
      LIMIT 1;
 
-    SELECT name
-      INTO v_warehouse_name
-      FROM warehouses
-     WHERE id = NEW.warehouse_id
-     LIMIT 1;
+    IF NEW.warehouse_id IS NOT NULL THEN
+        SELECT name
+          INTO v_warehouse_name
+          FROM warehouses
+         WHERE id = NEW.warehouse_id
+         LIMIT 1;
+    ELSE
+        SET v_warehouse_name = NULL;
+    END IF;
 
     IF NEW.transport_id IS NOT NULL THEN
         SELECT truck_details

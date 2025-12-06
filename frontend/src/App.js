@@ -34,15 +34,11 @@ import MonthlyForecastTab from './pages/MonthlyForecastTab';
 import DailyDemandMultiDay from './pages/DailyDemandMultiDay';
 import DealerReports from './pages/DealerReports';
 import DebugPanel from './components/DebugPanel';
-import DealerForecasts_Option1_Table from './pages/examples/DealerForecasts_Option1_Table';
-import DealerForecasts_Option2_Cards from './pages/examples/DealerForecasts_Option2_Cards';
-import DealerForecasts_Option3_Summary from './pages/examples/DealerForecasts_Option3_Summary';
-import DealerForecasts_Option3_Expandable from './pages/examples/DealerForecasts_Option3_Expandable';
-import DailyReport_WithForecasts from './pages/examples/DailyReport_WithForecasts';
-import DDMultiDayDemo from './pages/examples/DDMultiDayDemo';
 import ExpandableTableTemplateDemo from './pages/examples/ExpandableTableTemplateDemo';
 import CalendarWidgetDemo from './pages/examples/ui-components/CalendarWidgetDemo';
 import StandardTablesDemo from './pages/examples/ui-components/StandardTablesDemo';
+import DealerProductCardTemplateDemo from './pages/examples/DealerProductCardTemplateDemo';
+import CardTemplatesDemo from './pages/examples/CardTemplatesDemo';
 import WorkflowTests from './pages/examples/WorkflowTests';
 
 const { Header, Content } = Layout;
@@ -74,9 +70,10 @@ function AppContent() {
     const savedUser = sessionStorage.getItem('user');
     const isTemplatePage = location.pathname.startsWith('/template-');
     const isExamplePage = location.pathname.startsWith('/example-');
+    const isDemoPage = location.pathname.startsWith('/demo-');
     const isLoginPage = location.pathname === '/login';
     
-    if (!savedUser && !isLoginPage && !isTemplatePage && !isExamplePage) {
+    if (!savedUser && !isLoginPage && !isTemplatePage && !isExamplePage && !isDemoPage) {
       navigate('/login');
     }
   }, [navigate, location.pathname]);
@@ -494,6 +491,23 @@ function AppContent() {
                     ]
                   },
                   {
+                    key: 'template-cards',
+                    label: 'Card Templates',
+                    icon: <ShoppingCartOutlined />,
+                    children: [
+                      {
+                        key: 'standard-cards',
+                        label: 'Standard Cards',
+                        onClick: () => navigate('/template-standard-cards')
+                      },
+                      {
+                        key: 'dealer-product-card',
+                        label: 'Dealer Product Card',
+                        onClick: () => navigate('/template-dealer-product-card')
+                      },
+                    ]
+                  },
+                  {
                     key: 'template-tests',
                     label: 'Tests',
                     icon: <PlayCircleOutlined />,
@@ -631,17 +645,12 @@ function AppContent() {
             <ProductQuotaManagement /> : 
             <Dashboard setStats={setStats} />
           } />
-          {/* Example routes - accessible without login */}
-          <Route path="/example-forecasts-option1" element={<DealerForecasts_Option1_Table />} />
-          <Route path="/example-forecasts-option2" element={<DealerForecasts_Option2_Cards />} />
-          <Route path="/example-forecasts-option3" element={<DealerForecasts_Option3_Summary />} />
-          <Route path="/example-forecasts-option3-expandable" element={<DealerForecasts_Option3_Expandable />} />
-          <Route path="/example-daily-report-forecasts" element={<DailyReport_WithForecasts />} />
-          <Route path="/example-dd-multiday" element={<DDMultiDayDemo />} />
           {/* Template Routes - accessible without login */}
           <Route path="/template-standard-tables" element={<StandardTablesDemo />} />
           <Route path="/template-expandable-tables" element={<ExpandableTableTemplateDemo />} />
           <Route path="/template-calendar-widget" element={<CalendarWidgetDemo />} />
+          <Route path="/template-standard-cards" element={<CardTemplatesDemo />} />
+          <Route path="/template-dealer-product-card" element={<DealerProductCardTemplateDemo />} />
           <Route path="/template-workflow-tests" element={<WorkflowTests />} />
         </Routes>
       </Content>
