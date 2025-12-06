@@ -24,18 +24,15 @@ import {
 import {
   ReloadOutlined,
   SearchOutlined,
-  CheckCircleOutlined,
-  ClockCircleOutlined,
-  CarOutlined,
   DeleteOutlined,
   ClearOutlined,
-  OrderedListOutlined,
+  ShoppingCartOutlined,
   EditOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { createStandardDatePickerConfig } from '../templates/UIConfig';
 import { useStandardPagination } from '../templates/useStandardPagination';
-import { FILTER_CARD_CONFIG, CONTENT_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
+import { FILTER_CARD_CONFIG, CONTENT_CARD_CONFIG } from '../templates/CardTemplates';
 import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, COMPACT_ROW_GUTTER, STANDARD_FORM_LABEL_STYLE, STANDARD_INPUT_SIZE, STANDARD_SELECT_SIZE, STANDARD_TABLE_SIZE, STANDARD_TAG_STYLE, STANDARD_POPCONFIRM_CONFIG, STANDARD_TOOLTIP_CONFIG, STANDARD_SPIN_SIZE, STANDARD_DATE_PICKER_CONFIG, STANDARD_SPACE_SIZE_SMALL, STANDARD_MODAL_CONFIG, STANDARD_INPUT_NUMBER_SIZE, STANDARD_BUTTON_SIZE } from '../templates/UIElements';
 
 const { Title, Text } = Typography;
@@ -44,26 +41,22 @@ const { Option } = Select;
 // Helper function to remove M/S prefix from dealer names
 const removeMSPrefix = (name) => {
   if (!name) return name;
-  // Remove "M/S", "M/S.", "M/S " prefix (case insensitive, with or without space/period)
   return name.replace(/^M\/S[.\s]*/i, '').trim();
 };
 
-function PlacedOrders({ refreshTrigger }) {
-  const { isTSO, userId, userRole, isAdmin, isSalesManager } = useUser();
+function DailyDemandManagement() {
+  const { userRole, isAdmin, isSalesManager } = useUser();
   const [orders, setOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [orderTypeFilter, setOrderTypeFilter] = useState('tso'); // 'tso' = TSO Orders, 'dd' = Daily Demands, 'all' = All
-  const [selectedDate, setSelectedDate] = useState(dayjs()); // Default to today
+  const [selectedDate, setSelectedDate] = useState(dayjs());
   const [productFilter, setProductFilter] = useState(null);
   const [dealerFilter, setDealerFilter] = useState(null);
-  const [transportFilter, setTransportFilter] = useState(null);
   const [orderProducts, setOrderProducts] = useState({});
   const [productsList, setProductsList] = useState([]);
   const [dealersList, setDealersList] = useState([]);
-  const [transportsList, setTransportsList] = useState([]);
-  const { pagination, setPagination, handleTableChange } = useStandardPagination('orders', 20);
+  const { pagination, setPagination, handleTableChange } = useStandardPagination('daily-demand-orders', 20);
   const [availableDates, setAvailableDates] = useState([]);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingOrder, setEditingOrder] = useState(null);
@@ -74,14 +67,12 @@ function PlacedOrders({ refreshTrigger }) {
 
   const loadDropdownData = async () => {
     try {
-      const [productsRes, dealersRes, transportsRes] = await Promise.all([
+      const [productsRes, dealersRes] = await Promise.all([
         axios.get('/api/products'),
-        axios.get('/api/dealers'),
-        axios.get('/api/transports')
+        axios.get('/api/dealers')
       ]);
       setProductsList(productsRes.data || []);
       setDealersList(dealersRes.data || []);
-      setTransportsList(transportsRes.data || []);
     } catch (_error) {
       console.error('Failed to load dropdown data:', _error);
     }
@@ -90,13 +81,16 @@ function PlacedOrders({ refreshTrigger }) {
   const loadOrders = useCallback(async () => {
     try {
       setLoading(true);
-      // For TSO users, filter orders by their user_id
-      const params = isTSO && userId ? { user_id: userId } : {};
-      const response = await axios.get('/api/orders', { params });
-      setOrders(response.data);
+      // Load only dealer daily demand orders (DD orders with dealer_id and no warehouse_id)
+      const response = await axios.get('/api/orders');
+      // Filter for dealer orders (has dealer_id, warehouse_id is null)
+      const dealerOrders = response.data.filter(order => 
+        order.dealer_id && order.warehouse_id === null
+      );
+      setOrders(dealerOrders);
 
       // Load products for all orders automatically
-      const productPromises = response.data.map(async (order) => {
+      const productPromises = dealerOrders.map(async (order) => {
         try {
           const productResponse = await axios.get(`/api/orders/${order.order_id}`);
           return {
@@ -118,67 +112,44 @@ function PlacedOrders({ refreshTrigger }) {
         productsMap[result.orderId] = result.products;
       });
       setOrderProducts(productsMap);
-    } catch (_error) {
-      console.error('Failed to load orders:', _error);
-      message.error('Failed to load orders');
+    } catch (error) {
+      console.error('Failed to load orders:', error);
+      message.error('Failed to load daily demand orders');
     } finally {
       setLoading(false);
     }
-  }, [isTSO, userId]);
+  }, []);
 
   useEffect(() => {
+    loadDropdownData();
     loadOrders();
   }, [loadOrders]);
 
-  useEffect(() => {
-    loadOrders();
-  }, [refreshTrigger, loadOrders]);
-
-  useEffect(() => {
-    filterOrders();
-  }, [orders, searchTerm, orderTypeFilter, selectedDate, productFilter, dealerFilter, transportFilter]);
-
-  // Load dropdown data
-  useEffect(() => {
-    loadDropdownData();
-  }, []);
-
-  // Fetch available dates with orders
   const getAvailableDates = async () => {
     try {
-      const endpoint = isTSO && userId 
-        ? `/api/orders/tso/available-dates?user_id=${userId}`
-        : '/api/orders/available-dates';
-      const response = await axios.get(endpoint);
-      const dates = response.data.dates || response.data || [];
-      const formattedDates = dates.map(date => {
-        if (typeof date === 'string') {
-          return date.split('T')[0]; // Extract date part if timestamp
-        }
-        return date;
+      const response = await axios.get('/api/orders/available-dates');
+      const formattedDates = response.data.dates.map(date => {
+        return new Date(date).toISOString().split('T')[0];
       });
       setAvailableDates(formattedDates);
     } catch (error) {
-      console.error('Failed to load available dates:', error);
-      // Continue without graying out dates if API fails
-      setAvailableDates([]);
+      console.error('Error fetching available dates:', error);
     }
   };
 
-  // Load available dates on mount and when user changes
   useEffect(() => {
     getAvailableDates();
-  }, [isTSO, userId]);
+  }, []);
 
   const filterOrders = () => {
     let filtered = orders;
 
-    // Date filter - default to today
+    // Date filter - filter by order_date (the date the order is for)
     if (selectedDate) {
-      const selectedDateStr = selectedDate.format('YYYY-MM-DD');
+      const dateStr = selectedDate.format('YYYY-MM-DD');
       filtered = filtered.filter(order => {
-        const orderDate = dayjs(order.created_at).format('YYYY-MM-DD');
-        return orderDate === selectedDateStr;
+        const orderDate = order.order_date ? dayjs(order.order_date).format('YYYY-MM-DD') : dayjs(order.created_at).format('YYYY-MM-DD');
+        return orderDate === dateStr;
       });
     }
 
@@ -186,80 +157,41 @@ function PlacedOrders({ refreshTrigger }) {
     if (productFilter) {
       filtered = filtered.filter(order => {
         const products = orderProducts[order.order_id] || [];
-        return products.some(p => p.product_id === productFilter || p.product_code === productFilter);
+        return products.some(p => p.product_id === productFilter);
       });
     }
 
-    // Dealer/Vendor filter
+    // Dealer filter
     if (dealerFilter) {
       filtered = filtered.filter(order => order.dealer_id === dealerFilter);
     }
 
-    // Transport filter
-    if (transportFilter) {
-      filtered = filtered.filter(order => order.transport_id === transportFilter);
-    }
-
     // Search filter
     if (searchTerm) {
-      filtered = filtered.filter(order =>
-        order.order_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.dealer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.product_name?.toLowerCase().includes(searchTerm.toLowerCase())
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(order => 
+        order.order_id?.toLowerCase().includes(term) ||
+        order.dealer_name?.toLowerCase().includes(term) ||
+        order.dealer_territory?.toLowerCase().includes(term)
       );
     }
 
-    // Order Type filter: TSO Orders (warehouse_id IS NOT NULL) vs Daily Demands (warehouse_id IS NULL)
-    if (orderTypeFilter === 'tso') {
-      filtered = filtered.filter(order => order.warehouse_id !== null);
-    } else if (orderTypeFilter === 'dd') {
-      filtered = filtered.filter(order => order.warehouse_id === null);
-    }
-    // If 'all', show everything (no filter)
-
     setFilteredOrders(filtered);
-    // Reset pagination when filters change
     setPagination(prev => ({ ...prev, current: 1 }));
   };
 
+  useEffect(() => {
+    filterOrders();
+  }, [orders, selectedDate, productFilter, dealerFilter, searchTerm, orderProducts]);
+
   const clearFilters = () => {
-    setSelectedDate(dayjs()); // Reset to today
+    setSelectedDate(dayjs());
     setProductFilter(null);
     setDealerFilter(null);
-    setTransportFilter(null);
     setSearchTerm('');
-    setOrderTypeFilter('tso'); // Default to TSO Orders
   };
-
-
-  const getStatusTag = (status) => {
-    switch (status) {
-      case 'completed':
-        return <Tag color="success" icon={<CheckCircleOutlined />}>Completed</Tag>;
-      case 'processing':
-        return <Tag color="warning" icon={<ClockCircleOutlined />}>Processing</Tag>;
-      case 'shipped':
-        return <Tag color="blue" icon={<CarOutlined />}>Shipped</Tag>;
-      default:
-        return <Tag color="default">New</Tag>;
-    }
-  };
-
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-        <Spin size={STANDARD_SPIN_SIZE} />
-      </div>
-    );
-  }
 
   const handleEditOrder = async (order) => {
-    // Check if order is a dealer order (has dealer_id, no warehouse_id, order_type is DD)
-    if (!order.dealer_id || order.warehouse_id !== null) {
-      message.warning('Only dealer daily demand orders can be edited');
-      return;
-    }
-    
     // Load order details and dealer assigned products
     try {
       const [orderResponse, assignmentsResponse] = await Promise.all([
@@ -336,7 +268,6 @@ function PlacedOrders({ refreshTrigger }) {
   };
 
   const handleDeleteOrder = async (orderId, orderCreatedAt) => {
-    // Additional safety check: only allow deletion of today's orders
     const orderDate = dayjs(orderCreatedAt).format('YYYY-MM-DD');
     const today = dayjs().format('YYYY-MM-DD');
     
@@ -348,14 +279,20 @@ function PlacedOrders({ refreshTrigger }) {
     try {
       const response = await axios.delete(`/api/orders/${orderId}`);
       message.success(response.data.message || 'Order deleted successfully');
-      loadOrders(); // Refresh the orders list
+      loadOrders();
     } catch (_error) {
       const errorMessage = _error.response?.data?.error || _error.message || 'Failed to delete order';
       message.error(errorMessage);
     }
   };
 
-
+  if (loading && orders.length === 0) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+        <Spin size={STANDARD_SPIN_SIZE} />
+      </div>
+    );
+  }
 
   const columns = [
     {
@@ -363,15 +300,11 @@ function PlacedOrders({ refreshTrigger }) {
       dataIndex: 'order_id',
       key: 'order_id',
       ellipsis: true,
-      render: (orderId, record) => {
-        const isTSOOrder = record.warehouse_id !== null;
-        const prefix = isTSOOrder ? 'SO' : 'DD';
-        return (
-          <Tag color={isTSOOrder ? 'blue' : 'green'} style={STANDARD_TAG_STYLE}>
-            {prefix}-{orderId}
-          </Tag>
-        );
-      },
+      render: (orderId) => (
+        <Tag color="blue" style={STANDARD_TAG_STYLE}>
+          {orderId}
+        </Tag>
+      ),
       sorter: (a, b) => a.order_id.localeCompare(b.order_id),
     },
     {
@@ -397,6 +330,18 @@ function PlacedOrders({ refreshTrigger }) {
       },
     },
     {
+      title: 'Order Date',
+      dataIndex: 'order_date',
+      key: 'order_date',
+      ellipsis: true,
+      render: (date) => date ? dayjs(date).format('YYYY-MM-DD') : 'N/A',
+      sorter: (a, b) => {
+        const dateA = a.order_date || a.created_at;
+        const dateB = b.order_date || b.created_at;
+        return new Date(dateA) - new Date(dateB);
+      },
+    },
+    {
       title: 'Products',
       key: 'products',
       ellipsis: true,
@@ -404,7 +349,7 @@ function PlacedOrders({ refreshTrigger }) {
         return (
           <div>
             <Tag color="green" style={STANDARD_TAG_STYLE}>
-              {record.item_count} item{record.item_count !== 1 ? 's' : ''}
+              {record.item_count || 0} item{(record.item_count || 0) !== 1 ? 's' : ''}
             </Tag>
           </div>
         );
@@ -444,35 +389,10 @@ function PlacedOrders({ refreshTrigger }) {
                 <span style={{ color: '#52c41a', marginLeft: '8px' }}>
                   (Qty: {product.quantity})
                 </span>
-                {!isTSO && product.unit_tp && (
-                  <span style={{ color: '#1890ff', marginLeft: '8px' }}>
-                    @৳{product.unit_tp.toLocaleString()}
-                  </span>
-                )}
               </div>
             ))}
           </div>
         );
-      },
-    },
-    {
-      title: 'Order Type',
-      key: 'order_type',
-      width: 120,
-      align: 'center',
-      render: (_, record) => {
-        const isTSOOrder = record.warehouse_id !== null;
-        return (
-          <Tag color={isTSOOrder ? 'blue' : 'green'} style={STANDARD_TAG_STYLE}>
-            {isTSOOrder ? 'TSO Order' : 'Daily Demand'}
-          </Tag>
-        );
-      },
-      sorter: (a, b) => {
-        const aIsTSO = a.warehouse_id !== null;
-        const bIsTSO = b.warehouse_id !== null;
-        if (aIsTSO === bIsTSO) return 0;
-        return aIsTSO ? 1 : -1;
       },
     },
     {
@@ -483,7 +403,7 @@ function PlacedOrders({ refreshTrigger }) {
       render: (date) => new Date(date).toLocaleString(),
       sorter: (a, b) => new Date(a.created_at) - new Date(b.created_at),
     },
-    ...(!isTSO ? [{
+    {
       title: 'Actions',
       key: 'actions',
       width: 120,
@@ -492,12 +412,10 @@ function PlacedOrders({ refreshTrigger }) {
         const orderDate = dayjs(record.created_at).format('YYYY-MM-DD');
         const today = dayjs().format('YYYY-MM-DD');
         const isToday = orderDate === today;
-        const isDealerOrder = record.dealer_id && record.warehouse_id === null;
-        const canEditDealerOrder = isDealerOrder && (isAdmin || isSalesManager);
         
         return (
           <Space>
-            {canEditDealerOrder && (
+            {(isAdmin || isSalesManager) && (
               <Tooltip {...STANDARD_TOOLTIP_CONFIG} title="Edit Order">
                 <Button
                   type="text"
@@ -514,7 +432,7 @@ function PlacedOrders({ refreshTrigger }) {
                 description={
                   <div>
                     <div>Are you sure you want to delete order {record.order_id}?</div>
-                    <div>This will also delete all associated items, and quotas will revert to the TSO.</div>
+                    <div>This action cannot be undone.</div>
                   </div>
                 }
                 onConfirm={() => handleDeleteOrder(record.id, record.created_at)}
@@ -545,7 +463,7 @@ function PlacedOrders({ refreshTrigger }) {
           </Space>
         );
       },
-    }] : []),
+    },
   ];
 
   // Standard date picker configuration
@@ -554,10 +472,10 @@ function PlacedOrders({ refreshTrigger }) {
   return (
     <div>
       <Title {...STANDARD_PAGE_TITLE_CONFIG}>
-        <OrderedListOutlined /> Placed Orders
+        <ShoppingCartOutlined /> Daily Demand Orders
       </Title>
       <Text {...STANDARD_PAGE_SUBTITLE_CONFIG}>
-        {isTSO ? "View orders you've placed and filter by date, product, dealer, or transport." : 'View and manage all orders placed by TSOs.'}
+        View and manage dealer daily demand orders. Edit orders placed by dealers.
       </Text>
 
       {/* Filters */}
@@ -627,46 +545,6 @@ function PlacedOrders({ refreshTrigger }) {
           </Col>
           <Col xs={24} sm={12} md={6}>
             <Space direction="vertical" style={{ width: '100%' }} size="small">
-              <Text strong style={STANDARD_FORM_LABEL_STYLE}>Transport</Text>
-              <Select
-                placeholder="All Transports"
-                value={transportFilter}
-                onChange={setTransportFilter}
-                style={{ width: '100%' }}
-                size={STANDARD_INPUT_SIZE}
-                allowClear
-                showSearch
-                filterOption={(input, option) => {
-                  const optionText = option?.children?.toString() || '';
-                  return optionText.toLowerCase().includes(input.toLowerCase());
-                }}
-              >
-                {transportsList.map(transport => (
-                  <Option key={transport.id} value={transport.id}>
-                    {transport.truck_details || transport.truck_no || `Transport #${transport.id}`}
-                  </Option>
-                ))}
-              </Select>
-            </Space>
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <Space direction="vertical" style={{ width: '100%' }} size="small">
-              <Text strong style={STANDARD_FORM_LABEL_STYLE}>Order Type</Text>
-              <Select
-                placeholder="Select Order Type"
-                value={orderTypeFilter}
-                onChange={setOrderTypeFilter}
-                style={{ width: '100%' }}
-                size={STANDARD_INPUT_SIZE}
-              >
-                <Option value="tso">TSO Orders</Option>
-                <Option value="dd">Daily Demands</Option>
-                <Option value="all">All Orders</Option>
-              </Select>
-            </Space>
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <Space direction="vertical" style={{ width: '100%' }} size="small">
               <Text strong style={STANDARD_FORM_LABEL_STYLE}>Actions</Text>
               <Space style={{ width: '100%' }}>
                 <Button
@@ -692,7 +570,7 @@ function PlacedOrders({ refreshTrigger }) {
       {/* Orders Table */}
       <Card>
         <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text strong>{isTSO ? `Today's Orders (${filteredOrders.length})` : `Today's Orders Placed by TSOs (${filteredOrders.length})`}</Text>
+          <Text strong>Daily Demand Orders ({filteredOrders.length})</Text>
           <Input
             placeholder="Search orders..."
             prefix={<SearchOutlined />}
@@ -711,7 +589,7 @@ function PlacedOrders({ refreshTrigger }) {
               No orders found
             </Title>
             <Text type="secondary">
-              {searchTerm ? 'Try adjusting your search criteria' : 'No orders have been placed yet'}
+              {searchTerm ? 'Try adjusting your search criteria' : 'No daily demand orders have been placed yet'}
             </Text>
           </div>
         ) : (
@@ -730,7 +608,7 @@ function PlacedOrders({ refreshTrigger }) {
       {/* Edit Order Modal */}
       <Modal
         {...STANDARD_MODAL_CONFIG}
-        title="Edit Dealer Order"
+        title="Edit Daily Demand Order"
         open={editModalVisible}
         onCancel={() => {
           setEditModalVisible(false);
@@ -866,4 +744,5 @@ function PlacedOrders({ refreshTrigger }) {
   );
 }
 
-export default PlacedOrders;
+export default DailyDemandManagement;
+

@@ -1021,9 +1021,9 @@ async function runAdminTests() {
       // Transport Management Tests (A26-A30)
       { name: 'A26: Switch to Manage Transports tab', fn: transportTests.testA26_SwitchToManageTransportsTab },
       { name: 'A27: Search transports', fn: transportTests.testA27_SearchTransports },
-      { name: 'A28: Create transport', fn: transportTests.testA28_CreateTransport },
-      { name: 'A29: Edit transport', fn: transportTests.testA29_EditTransport },
-      { name: 'A30: Delete transport', fn: transportTests.testA30_DeleteTransport },
+      { name: 'A28: Verify transport import functionality', fn: transportTests.testA28_VerifyTransportImport },
+      { name: 'A29: Verify transport data structure', fn: transportTests.testA29_VerifyTransportDataStructure },
+      { name: 'A30: Verify transport status filter', fn: transportTests.testA30_VerifyTransportStatusFilter },
       // Quota Management Tests (A31-A42)
       { name: 'A31: Switch to Manage Quotas tab', fn: quotaTests.testA31_SwitchToManageQuotasTab },
       { name: 'A32: View quotas', fn: quotaTests.testA32_ViewQuotas },
@@ -1216,6 +1216,7 @@ async function runDealerTests() {
       { name: 'D9: Add product to order', fn: dealerOrdersTests.testD9_AddProductToOrder },
       { name: 'D10: Create single-day daily demand order', fn: dealerOrdersTests.testD10_CreateSingleDayOrder },
       { name: 'D11: Create multi-day daily demand orders', fn: dealerOrdersTests.testD11_CreateMultiDayOrder },
+      { name: 'D11b: Test duplicate order prevention', fn: dealerOrdersTests.testD11b_TestDuplicateOrderPrevention },
       { name: 'D12: View created order', fn: dealerOrdersTests.testD12_ViewCreatedOrder },
       { name: 'D13: Get available dates with orders', fn: dealerOrdersTests.testD13_GetAvailableDates },
       { name: 'D14: View orders for a specific date', fn: dealerOrdersTests.testD14_ViewOrdersForDate },

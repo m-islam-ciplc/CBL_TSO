@@ -1837,19 +1837,29 @@ app.get('/api/product-caps', (req, res) => {
                SELECT SUM(oi.quantity)
                FROM order_items oi
                JOIN orders o ON o.order_id = oi.order_id
+               JOIN order_types ot ON o.order_type_id = ot.id
                JOIN dealers d ON d.id = o.dealer_id
                WHERE oi.product_id = pc.product_id
                  AND d.territory_name = pc.territory_name
-                 AND DATE(o.created_at) = pc.date
+                 AND COALESCE(o.order_date, DATE(o.created_at)) = pc.date
+                 AND o.warehouse_id IS NOT NULL
+                 AND o.dealer_id IS NOT NULL
+                 AND ot.name != 'DD'
+                 AND (o.order_source = 'tso' OR o.order_source IS NULL)
              ), 0) as sold_quantity,
              pc.max_quantity - COALESCE((
                SELECT SUM(oi.quantity)
                FROM order_items oi
                JOIN orders o ON o.order_id = oi.order_id
+               JOIN order_types ot ON o.order_type_id = ot.id
                JOIN dealers d ON d.id = o.dealer_id
                WHERE oi.product_id = pc.product_id
                  AND d.territory_name = pc.territory_name
-                 AND DATE(o.created_at) = pc.date
+                 AND COALESCE(o.order_date, DATE(o.created_at)) = pc.date
+                 AND o.warehouse_id IS NOT NULL
+                 AND o.dealer_id IS NOT NULL
+                 AND ot.name != 'DD'
+                 AND (o.order_source = 'tso' OR o.order_source IS NULL)
              ), 0) as remaining_quantity
       FROM daily_quotas pc
       JOIN products p ON pc.product_id = p.id
@@ -2696,6 +2706,34 @@ app.post('/api/orders/dealer/multi-day', async (req, res) => {
                 throw validationError;
             }
 
+            // Check for existing orders before creating new ones
+            const existingOrders = [];
+            for (const demand of demands) {
+                const [existingOrderRows] = await connection.query(`
+                    SELECT order_id, order_date
+                    FROM orders
+                    WHERE dealer_id = ?
+                      AND order_type_id = ?
+                      AND order_date = ?
+                `, [dealer_id, ddOrderTypeId, demand.date]);
+                
+                if (existingOrderRows.length > 0) {
+                    existingOrders.push({
+                        date: demand.date,
+                        order_id: existingOrderRows[0].order_id
+                    });
+                }
+            }
+            
+            if (existingOrders.length > 0) {
+                const datesList = existingOrders.map(e => e.date).join(', ');
+                const orderIdsList = existingOrders.map(e => e.order_id).join(', ');
+                const validationError = new Error(`Daily demand order already exists for date(s): ${datesList}. Order ID(s): ${orderIdsList}. You cannot modify existing orders.`);
+                validationError.status = 400;
+                validationError.existingOrders = existingOrders;
+                throw validationError;
+            }
+
             // Create orders for each date
             for (const demand of demands) {
                 const order_id = uuidv4().substring(0, 8).toUpperCase();
@@ -2743,10 +2781,148 @@ app.post('/api/orders/dealer/multi-day', async (req, res) => {
         console.error('❌ Stack trace:', error.stack);
         
         // Handle validation errors with details
-        if (error.status === 400 && error.details) {
+        if (error.status === 400) {
+            if (error.details) {
+                return res.status(400).json({ 
+                    error: error.message,
+                    details: error.details
+                });
+            }
+            if (error.existingOrders) {
+                return res.status(400).json({ 
+                    error: error.message,
+                    existingOrders: error.existingOrders
+                });
+            }
             return res.status(400).json({ 
-                error: error.message,
-                details: error.details
+                error: error.message
+            });
+        }
+        
+        res.status(error.status || 500).json({ error: error.message });
+    }
+});
+
+// Update dealer daily demand order (Admin/Sales Manager only)
+app.put('/api/orders/dealer/:orderId', async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const { order_items, user_role } = req.body;
+        
+        // Check if user is admin or sales_manager
+        if (user_role !== 'admin' && user_role !== 'sales_manager') {
+            return res.status(403).json({ 
+                error: 'Only admin or sales manager can edit dealer orders' 
+            });
+        }
+        
+        // Validate order_items
+        if (!order_items || !Array.isArray(order_items) || order_items.length === 0) {
+            return res.status(400).json({ 
+                error: 'order_items array is required with at least one item' 
+            });
+        }
+        
+        // Validate each order item
+        for (const item of order_items) {
+            if (!item.product_id || !item.quantity || item.quantity <= 0) {
+                return res.status(400).json({ 
+                    error: 'Each order item must have product_id and quantity > 0' 
+                });
+            }
+        }
+        
+        // Get order to verify it exists and is a dealer order
+        const [orderRows] = await dbPromise.query(`
+            SELECT o.*, ot.name as order_type_name
+            FROM orders o
+            JOIN order_types ot ON o.order_type_id = ot.id
+            WHERE o.order_id = ?
+        `, [orderId]);
+        
+        if (orderRows.length === 0) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+        
+        const order = orderRows[0];
+        
+        // Verify it's a DD order (dealer daily demand)
+        if (order.order_type_name !== 'DD') {
+            return res.status(400).json({ 
+                error: 'Only daily demand orders can be edited' 
+            });
+        }
+        
+        // Verify it's a dealer order (has dealer_id, no warehouse_id)
+        if (!order.dealer_id || order.warehouse_id !== null) {
+            return res.status(400).json({ 
+                error: 'Only dealer orders can be edited' 
+            });
+        }
+        
+        await withTransaction(async (connection) => {
+            // Validate all products are assigned to dealer
+            const allProductIds = [...new Set(order_items.map(item => item.product_id))];
+            const validationErrors = [];
+            
+            for (const productId of allProductIds) {
+                const [assignmentRows] = await connection.query(`
+                    SELECT COUNT(*) as count
+                    FROM dealer_product_assignments dpa
+                    WHERE dpa.dealer_id = ?
+                      AND dpa.assignment_type = 'product' 
+                      AND dpa.product_id = ?
+                `, [order.dealer_id, productId]);
+                
+                if (assignmentRows[0].count === 0) {
+                    const [productRows] = await connection.query(`
+                        SELECT product_code, name FROM products WHERE id = ?
+                    `, [productId]);
+                    const product = productRows[0];
+                    validationErrors.push(`Product ${product?.product_code || productId} is not allocated to this dealer.`);
+                }
+            }
+            
+            if (validationErrors.length > 0) {
+                const validationError = new Error('Order validation failed');
+                validationError.status = 400;
+                validationError.details = validationErrors;
+                throw validationError;
+            }
+            
+            // Delete existing order items
+            await connection.query('DELETE FROM order_items WHERE order_id = ?', [orderId]);
+            
+            // Insert new order items
+            for (const item of order_items) {
+                await connection.query(`
+                    INSERT INTO order_items (order_id, product_id, quantity) 
+                    VALUES (?, ?, ?)
+                `, [orderId, item.product_id, item.quantity]);
+            }
+        });
+        
+        // Broadcast quota change
+        broadcastQuotaChange();
+        
+        res.json({ 
+            success: true,
+            message: `Order ${orderId} updated successfully`,
+            order_id: orderId
+        });
+        
+    } catch (error) {
+        console.error('❌ Update dealer order error:', error);
+        
+        if (error.status === 400) {
+            if (error.details) {
+                return res.status(400).json({ 
+                    error: error.message,
+                    details: error.details
+                });
+            }
+            return res.status(400).json({ 
+                error: error.message
             });
         }
         
@@ -2797,6 +2973,7 @@ app.post('/api/orders', async (req, res) => {
                 for (const item of order_items) {
                     // Get current quota and sold quantity for this product/territory/date
                     // Use CURDATE() to match today's date, same as TSO quota endpoint
+                    // Exclude DD (Daily Demand) orders - only count actual TSO orders
                     const [quotaRows] = await connection.query(`
                         SELECT 
                             pc.max_quantity,
@@ -2806,10 +2983,13 @@ app.post('/api/orders', async (req, res) => {
                                 SELECT SUM(oi.quantity)
                                 FROM order_items oi
                                 JOIN orders o ON o.order_id = oi.order_id
+                                JOIN order_types ot ON o.order_type_id = ot.id
                                 JOIN dealers d ON d.id = o.dealer_id
                                 WHERE oi.product_id = pc.product_id
                                   AND d.territory_name = pc.territory_name
-                                  AND DATE(o.created_at) = pc.date
+                                  AND COALESCE(o.order_date, DATE(o.created_at)) = pc.date
+                                  AND o.warehouse_id IS NOT NULL
+                                  AND ot.name != 'DD'
                             ), 0) as sold_quantity
                         FROM daily_quotas pc
                         WHERE pc.product_id = ? 
@@ -2985,10 +3165,14 @@ app.get('/api/orders', (req, res) => {
 
 // Get available dates with orders
 app.get('/api/orders/available-dates', (req, res) => {
+    // Get distinct order_date values (the date the order is FOR, not when it was created)
+    // Filter for dealer daily demand orders (has dealer_id, warehouse_id is null)
     const query = `
-        SELECT DISTINCT DATE(created_at) as date
+        SELECT DISTINCT COALESCE(order_date, DATE(created_at)) as date
         FROM orders 
-        WHERE created_at IS NOT NULL
+        WHERE dealer_id IS NOT NULL 
+          AND warehouse_id IS NULL
+          AND (order_date IS NOT NULL OR created_at IS NOT NULL)
         ORDER BY date DESC
     `;
     
@@ -4039,7 +4223,7 @@ app.get('/api/orders/dealer/daily-demand-report/:date', async (req, res) => {
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Daily Demand Report');
         
-        const defaultFont = { name: 'Calibri', size: 10 };
+        const defaultFont = { name: 'Calibri', size: 8 };
         const thinBorder = {
             top: { style: 'thin', color: { argb: 'FF000000' } },
             left: { style: 'thin', color: { argb: 'FF000000' } },
@@ -4985,12 +5169,12 @@ app.post('/api/monthly-forecast', (req, res) => {
                     }
                     
                     const isSubmitted = submittedResult[0].count > 0;
-                    const isAdminOrTSO = user_role === 'admin' || user_role === 'tso';
+                    const isAdminOrSalesManager = user_role === 'admin' || user_role === 'sales_manager';
                     
-                    // Prevent dealers from modifying submitted forecasts
-                    if (isSubmitted && !isAdminOrTSO) {
+                    // Prevent dealers from modifying submitted forecasts (admin/sales manager can always edit)
+                    if (isSubmitted && !isAdminOrSalesManager) {
                         return res.status(403).json({ 
-                            error: 'This forecast has already been submitted and cannot be modified. Please contact admin or TSO for changes.' 
+                            error: 'This forecast has already been submitted and cannot be modified. Please contact admin or sales manager for changes.' 
                         });
                     }
                     
@@ -5004,14 +5188,14 @@ app.post('/api/monthly-forecast', (req, res) => {
                         }
                         
                         // Insert bulk forecast entry
-                        // Only set is_submitted if this is a dealer (not admin/TSO) and it's the first save
+                        // Only set is_submitted if this is a dealer (not admin/sales manager) and it's the first save
                         const insertQuery = `
                             INSERT INTO monthly_forecast (dealer_id, product_id, period_start, period_end, forecast_date, quantity, is_submitted, submitted_at)
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                         `;
                         
-                        // If dealer is saving (not admin/TSO), mark as submitted
-                        const shouldMarkSubmitted = !isAdminOrTSO;
+                        // If dealer is saving (not admin/sales manager), mark as submitted
+                        const shouldMarkSubmitted = !isAdminOrSalesManager;
                         const submittedAt = shouldMarkSubmitted ? new Date() : null;
                         
                         db.query(insertQuery, [

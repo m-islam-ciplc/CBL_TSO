@@ -85,7 +85,7 @@ function AdminSettings() {
 
       <Card 
         {...CONTENT_CARD_CONFIG}
-        title="Monthly Forecast Period Settings"
+        title="Monthly Forecast Period Settings" 
       >
         <Form
           form={form}

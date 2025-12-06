@@ -9,13 +9,12 @@ import { StandardExpandableTable, renderStandardExpandedRow } from '../templates
 import { createStandardDatePickerConfig } from '../templates/UIConfig';
 import { getStandardPaginationConfig } from '../templates/useStandardPagination';
 import { CONTENT_CARD_CONFIG, FILTER_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
-import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, SINGLE_ROW_GUTTER, STANDARD_FORM_LABEL_STYLE, STANDARD_TAG_STYLE, STANDARD_TABS_CONFIG, STANDARD_BADGE_CONFIG, STANDARD_SPIN_SIZE, STANDARD_DATE_PICKER_CONFIG, STANDARD_SPACE_SIZE_MIDDLE } from '../templates/UIElements';
+import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, SINGLE_ROW_GUTTER, STANDARD_ROW_GUTTER, STANDARD_FORM_LABEL_STYLE, STANDARD_TAG_STYLE, STANDARD_TABS_CONFIG, STANDARD_BADGE_CONFIG, STANDARD_SPIN_SIZE, STANDARD_DATE_PICKER_CONFIG, STANDARD_SPACE_SIZE_MIDDLE, STANDARD_BUTTON_SIZE, STANDARD_INPUT_SIZE } from '../templates/UIElements';
 
 const { Title, Text } = Typography;
 
 function DealerReports() {
   const { dealerId } = useUser();
-  const [selectedDate, setSelectedDate] = useState(null);
   const [loading, setLoading] = useState(false);
   const [availableDates, setAvailableDates] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -43,32 +42,21 @@ function DealerReports() {
     }
   }, [dealerId]);
 
-  // Set selectedDate to most recent available date when availableDates are loaded
+  // Set rangeStart to most recent available date when availableDates are loaded
   useEffect(() => {
-    if (availableDates.length > 0 && dealerId && !selectedDate) {
+    if (availableDates.length > 0 && dealerId && !rangeStart) {
       // Set to most recent date (first in array, sorted DESC)
       const mostRecentDate = availableDates[0];
-      setSelectedDate(dayjs(mostRecentDate));
-    } else if (availableDates.length > 0 && dealerId && selectedDate) {
-      // If selectedDate exists but doesn't have orders, switch to most recent date with orders
-      const currentDateStr = selectedDate.format('YYYY-MM-DD');
+      setRangeStart(dayjs(mostRecentDate));
+    } else if (availableDates.length > 0 && dealerId && rangeStart) {
+      // If rangeStart exists but doesn't have orders, switch to most recent date with orders
+      const currentDateStr = rangeStart.format('YYYY-MM-DD');
       if (!availableDates.includes(currentDateStr)) {
         const mostRecentDate = availableDates[0];
-        setSelectedDate(dayjs(mostRecentDate));
+        setRangeStart(dayjs(mostRecentDate));
       }
     }
   }, [availableDates, dealerId]);
-
-  // Load orders when date changes
-  useEffect(() => {
-    if (selectedDate && dealerId && availableDates.length > 0) {
-      const dateString = selectedDate.format('YYYY-MM-DD');
-      // Only load if the date has orders
-      if (availableDates.includes(dateString)) {
-        loadOrders();
-      }
-    }
-  }, [selectedDate, dealerId]);
 
   // Load periods for forecasts
   useEffect(() => {
@@ -111,117 +99,117 @@ function DealerReports() {
   };
 
   const loadOrders = async () => {
-    if (!selectedDate || !dealerId) return;
-    
-    setLoading(true);
-    try {
-      const dateString = selectedDate.format('YYYY-MM-DD');
-      const response = await axios.get('/api/orders/dealer/date', {
-        params: {
-          dealer_id: dealerId,
-          date: dateString
-        }
-      });
-      
-      const ordersData = response.data.orders || [];
-      setOrders(ordersData);
-      setPreviewInfo(`Orders for ${dateString}`);
-
-      // Load products for all orders
-      const productPromises = ordersData.map(async (order) => {
-        try {
-          const productResponse = await axios.get(`/api/orders/${order.order_id}`);
-          return {
-            orderId: order.order_id,
-            products: productResponse.data.items || []
-          };
-        } catch (error) {
-          console.error(`Error loading products for order ${order.order_id}:`, error);
-          return {
-            orderId: order.order_id,
-            products: []
-          };
-        }
-      });
-
-      const productResults = await Promise.all(productPromises);
-      const productsMap = {};
-      productResults.forEach(result => {
-        productsMap[result.orderId] = result.products;
-      });
-      setOrderProducts(productsMap);
-    } catch (error) {
-      console.error('Error loading orders:', error);
-      message.error('Failed to load orders');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadOrdersRange = async () => {
-    if (!rangeStart || !rangeEnd || !dealerId) {
-      message.error('Please select both start and end dates');
+    if (!rangeStart || !dealerId) {
+      message.error('Please select a start date');
       return;
     }
 
-    if (rangeStart.isAfter(rangeEnd)) {
-      message.error('Start date cannot be after end date');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const startDate = rangeStart.format('YYYY-MM-DD');
-      const endDate = rangeEnd.format('YYYY-MM-DD');
-      
-      const response = await axios.get('/api/orders/dealer/range', {
-        params: {
-          dealer_id: dealerId,
-          startDate,
-          endDate
-        }
-      });
-      
-      const ordersData = response.data.orders || [];
-      setOrders(ordersData);
-      setPreviewInfo(`Orders from ${startDate} to ${endDate} (${ordersData.length} orders)`);
-
-      // Load products for all orders
-      const productPromises = ordersData.map(async (order) => {
-        try {
-          const productResponse = await axios.get(`/api/orders/${order.order_id}`);
-          return {
-            orderId: order.order_id,
-            products: productResponse.data.items || []
-          };
-        } catch (error) {
-          console.error(`Error loading products for order ${order.order_id}:`, error);
-          return {
-            orderId: order.order_id,
-            products: []
-          };
-        }
-      });
-
-      const productResults = await Promise.all(productPromises);
-      const productsMap = {};
-      productResults.forEach(result => {
-        productsMap[result.orderId] = result.products;
-      });
-      setOrderProducts(productsMap);
-
-      message.success(`Loaded ${ordersData.length} orders from ${startDate} to ${endDate}`);
-    } catch (error) {
-      console.error('Error loading range orders:', error);
-      if (error.response?.status === 404) {
-        message.info(`No orders found between ${rangeStart.format('YYYY-MM-DD')} and ${rangeEnd.format('YYYY-MM-DD')}`);
-        setOrders([]);
-        setOrderProducts({});
-      } else {
-        message.error('Failed to load orders');
+    // If both dates are selected, treat as date range
+    if (rangeEnd) {
+      if (rangeStart.isAfter(rangeEnd)) {
+        message.error('Start date cannot be after end date');
+        return;
       }
-    } finally {
-      setLoading(false);
+
+      setLoading(true);
+      try {
+        const startDate = rangeStart.format('YYYY-MM-DD');
+        const endDate = rangeEnd.format('YYYY-MM-DD');
+        
+        const response = await axios.get('/api/orders/dealer/range', {
+          params: {
+            dealer_id: dealerId,
+            startDate,
+            endDate
+          }
+        });
+        
+        const ordersData = response.data.orders || [];
+        setOrders(ordersData);
+        setPreviewInfo(`Orders from ${startDate} to ${endDate} (${ordersData.length} orders)`);
+
+        // Load products for all orders
+        const productPromises = ordersData.map(async (order) => {
+          try {
+            const productResponse = await axios.get(`/api/orders/${order.order_id}`);
+            return {
+              orderId: order.order_id,
+              products: productResponse.data.items || []
+            };
+          } catch (error) {
+            console.error(`Error loading products for order ${order.order_id}:`, error);
+            return {
+              orderId: order.order_id,
+              products: []
+            };
+          }
+        });
+
+        const productResults = await Promise.all(productPromises);
+        const productsMap = {};
+        productResults.forEach(result => {
+          productsMap[result.orderId] = result.products;
+        });
+        setOrderProducts(productsMap);
+
+        message.success(`Loaded ${ordersData.length} orders from ${startDate} to ${endDate}`);
+      } catch (error) {
+        console.error('Error loading range orders:', error);
+        if (error.response?.status === 404) {
+          message.info(`No orders found between ${rangeStart.format('YYYY-MM-DD')} and ${rangeEnd.format('YYYY-MM-DD')}`);
+          setOrders([]);
+          setOrderProducts({});
+        } else {
+          message.error('Failed to load orders');
+        }
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      // Single date mode
+      setLoading(true);
+      try {
+        const dateString = rangeStart.format('YYYY-MM-DD');
+        const response = await axios.get('/api/orders/dealer/date', {
+          params: {
+            dealer_id: dealerId,
+            date: dateString
+          }
+        });
+        
+        const ordersData = response.data.orders || [];
+        setOrders(ordersData);
+        setPreviewInfo(`Orders for ${dateString}`);
+
+        // Load products for all orders
+        const productPromises = ordersData.map(async (order) => {
+          try {
+            const productResponse = await axios.get(`/api/orders/${order.order_id}`);
+            return {
+              orderId: order.order_id,
+              products: productResponse.data.items || []
+            };
+          } catch (error) {
+            console.error(`Error loading products for order ${order.order_id}:`, error);
+            return {
+              orderId: order.order_id,
+              products: []
+            };
+          }
+        });
+
+        const productResults = await Promise.all(productPromises);
+        const productsMap = {};
+        productResults.forEach(result => {
+          productsMap[result.orderId] = result.products;
+        });
+        setOrderProducts(productsMap);
+      } catch (error) {
+        console.error('Error loading orders:', error);
+        message.error('Failed to load orders');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -352,6 +340,29 @@ function DealerReports() {
         { wch: 18 }  // Forecast Quantity
       ];
       
+      // Set font style for all cells: Calibri size 8
+      const defaultFontStyle = {
+        font: {
+          name: 'Calibri',
+          sz: 8,
+          bold: false
+        }
+      };
+      
+      // Apply default font to all cells
+      const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+      for (let R = range.s.r; R <= range.e.r; ++R) {
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+          const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+          if (!worksheet[cellAddress]) continue;
+          if (!worksheet[cellAddress].s) worksheet[cellAddress].s = {};
+          worksheet[cellAddress].s.font = {
+            ...defaultFontStyle.font,
+            ...(worksheet[cellAddress].s.font || {})
+          };
+        }
+      }
+      
       // Make header row (row 4, index 3) bold
       const headerRowIndex = 3;
       ['A', 'B', 'C', 'D', 'E', 'F'].forEach(col => {
@@ -360,6 +371,8 @@ function DealerReports() {
           if (!worksheet[cellAddress].s) worksheet[cellAddress].s = {};
           if (!worksheet[cellAddress].s.font) worksheet[cellAddress].s.font = {};
           worksheet[cellAddress].s.font.bold = true;
+          worksheet[cellAddress].s.font.name = 'Calibri';
+          worksheet[cellAddress].s.font.sz = 8;
         }
       });
 
@@ -381,89 +394,79 @@ function DealerReports() {
   };
 
   const handleGenerateReport = async () => {
-    if (!selectedDate) {
-      message.error('Please select a date');
+    if (!rangeStart) {
+      message.error('Please select a start date');
       return;
     }
 
     setLoading(true);
     try {
-      const dateString = selectedDate.format('YYYY-MM-DD');
-      
-      const response = await axios.get(`/api/orders/dealer/daily-demand-report/${dateString}`, {
-        responseType: 'blob',
-        headers: {
-          'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        },
-        params: {
-          dealer_id: dealerId,
+      // If both dates are selected, treat as date range
+      if (rangeEnd) {
+        if (rangeStart.isAfter(rangeEnd)) {
+          message.error('Start date cannot be after end date');
+          setLoading(false);
+          return;
         }
-      });
 
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `Dealer_Daily_Demand_Report_${dateString}.xlsx`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+        const startDate = rangeStart.format('YYYY-MM-DD');
+        const endDate = rangeEnd.format('YYYY-MM-DD');
+        
+        const response = await axios.get('/api/orders/dealer/my-report-range', {
+          responseType: 'blob',
+          headers: {
+            'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          },
+          params: {
+            dealer_id: dealerId,
+            startDate,
+            endDate
+          }
+        });
 
-      message.success(`Excel report generated successfully for ${dateString}`);
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `Dealer_Daily_Demand_Report_${startDate}_${endDate}.xlsx`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+
+        message.success(`Excel report generated successfully for ${startDate} to ${endDate}`);
+      } else {
+        // Single date mode
+        const dateString = rangeStart.format('YYYY-MM-DD');
+        
+        const response = await axios.get(`/api/orders/dealer/daily-demand-report/${dateString}`, {
+          responseType: 'blob',
+          headers: {
+            'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          },
+          params: {
+            dealer_id: dealerId,
+          }
+        });
+
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `Dealer_Daily_Demand_Report_${dateString}.xlsx`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+
+        message.success(`Excel report generated successfully for ${dateString}`);
+      }
     } catch (error) {
       console.error('Error generating report:', error);
       if (error.response?.status === 404) {
-        message.error(`No orders found for ${selectedDate.format('YYYY-MM-DD')}`);
-      } else {
-        message.error('Failed to generate report. Please try again.');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGenerateRangeReport = async () => {
-    if (!rangeStart || !rangeEnd) {
-      message.error('Please select both start and end dates');
-      return;
-    }
-
-    if (rangeStart.isAfter(rangeEnd)) {
-      message.error('Start date cannot be after end date');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const startDate = rangeStart.format('YYYY-MM-DD');
-      const endDate = rangeEnd.format('YYYY-MM-DD');
-      
-      const response = await axios.get('/api/orders/dealer/my-report-range', {
-        responseType: 'blob',
-        headers: {
-          'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        },
-        params: {
-          dealer_id: dealerId,
-          startDate,
-          endDate
+        if (rangeEnd) {
+          message.error(`No orders found between ${rangeStart.format('YYYY-MM-DD')} and ${rangeEnd.format('YYYY-MM-DD')}`);
+        } else {
+          message.error(`No orders found for ${rangeStart.format('YYYY-MM-DD')}`);
         }
-      });
-
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `Dealer_Daily_Demand_Report_${startDate}_${endDate}.xlsx`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-
-      message.success(`Excel report generated successfully for ${startDate} to ${endDate}`);
-    } catch (error) {
-      console.error('Error generating range report:', error);
-      if (error.response?.status === 404) {
-        message.error(`No orders found between ${rangeStart.format('YYYY-MM-DD')} and ${rangeEnd.format('YYYY-MM-DD')}`);
       } else {
         message.error('Failed to generate report. Please try again.');
       }
@@ -490,11 +493,19 @@ function DealerReports() {
     },
     {
       title: 'Date',
-      dataIndex: 'created_at',
-      key: 'created_at',
+      dataIndex: 'order_date',
+      key: 'order_date',
       ellipsis: true,
-      render: (date) => dayjs(date).format('DD MMM YYYY'),
-      sorter: (a, b) => new Date(a.created_at) - new Date(b.created_at),
+      render: (date, record) => {
+        // Use order_date (date the demand is for), fallback to created_at if order_date doesn't exist
+        const displayDate = date || record.created_at;
+        return displayDate ? dayjs(displayDate).format('DD MMM YYYY') : 'N/A';
+      },
+      sorter: (a, b) => {
+        const dateA = a.order_date || a.created_at;
+        const dateB = b.order_date || b.created_at;
+        return new Date(dateA) - new Date(dateB);
+      },
     },
     {
       title: 'Order Type',
@@ -647,8 +658,17 @@ function DealerReports() {
         View your Daily Demand orders and Monthly Forecasts
       </Text>
 
-      <Tabs {...STANDARD_TABS_CONFIG} activeKey={activeTab} onChange={setActiveTab}>
-        {/* Daily Demand Orders Tab */}
+      <Tabs {...STANDARD_TABS_CONFIG} activeKey={activeTab} onChange={(key) => {
+        setActiveTab(key);
+        // Clear data when switching tabs
+        if (key !== 'daily-demand') {
+          setOrders([]);
+          setOrderProducts({});
+          setPreviewInfo('');
+          setFilteredOrders([]);
+        }
+      }}>
+        {/* Daily Demand Orders Tab - Unified Single Date and Date Range */}
         <Tabs.TabPane
           tab={
             <span>
@@ -658,92 +678,84 @@ function DealerReports() {
           }
           key="daily-demand"
         >
-          <Card {...CONTENT_CARD_CONFIG}>
-            <Row gutter={SINGLE_ROW_GUTTER} style={{ marginBottom: '16px' }}>
-              <Col xs={24} md={8}>
-                <Text strong style={{ display: 'block', marginBottom: '8px' }}>Select Date</Text>
-                <DatePicker
-                  {...STANDARD_DATE_PICKER_CONFIG}
-                  style={{ width: '100%' }}
-                  value={selectedDate}
-                  onChange={setSelectedDate}
-                  disabledDate={disabledDate}
-                  dateRender={dateCellRender}
-                  format="DD MMM YYYY"
-                />
-              </Col>
-              <Col xs={24} md={8}>
-                <Text strong style={{ display: 'block', marginBottom: '8px' }}>Date Range</Text>
-                <Space>
+          <Card title="View Orders" {...FILTER_CARD_CONFIG}>
+            <Row gutter={STANDARD_ROW_GUTTER} align="bottom">
+              <Col xs={24} sm={12} md={6}>
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  <Text strong style={STANDARD_FORM_LABEL_STYLE}>Start Date</Text>
                   <DatePicker
                     {...STANDARD_DATE_PICKER_CONFIG}
-                    placeholder="Start Date"
                     value={rangeStart}
                     onChange={setRangeStart}
-                    format="DD MMM YYYY"
+                    style={{ width: '100%' }}
+                    placeholder="Start date"
                     disabledDate={disabledDate}
                     dateRender={dateCellRender}
                   />
+                </Space>
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  <Text strong style={STANDARD_FORM_LABEL_STYLE}>End Date (Optional)</Text>
                   <DatePicker
                     {...STANDARD_DATE_PICKER_CONFIG}
-                    placeholder="End Date"
                     value={rangeEnd}
                     onChange={setRangeEnd}
-                    format="DD MMM YYYY"
-                    disabledDate={disabledDate}
+                    style={{ width: '100%' }}
+                    placeholder="End date (optional)"
+                    disabledDate={(current) => {
+                      if (!current) return false;
+                      // Disable dates before start date
+                      if (rangeStart && current < rangeStart.startOf('day')) {
+                        return true;
+                      }
+                      // Disable dates that don't have data
+                      const dateString = current.format('YYYY-MM-DD');
+                      return !availableDates.includes(dateString);
+                    }}
                     dateRender={dateCellRender}
+                    allowClear
                   />
                 </Space>
               </Col>
-              <Col xs={24} md={8}>
-                <Space style={{ marginTop: '28px' }}>
-                  <Button
-                    type="primary"
-                    icon={<EyeOutlined />}
-                    onClick={loadOrders}
-                    loading={loading}
-                  >
-                    View Orders
-                  </Button>
-                  <Button
-                    icon={<DownloadOutlined />}
-                    onClick={handleGenerateReport}
-                    loading={loading}
-                  >
-                    Export Excel
-                  </Button>
-                  {rangeStart && rangeEnd && (
-                    <>
-                      <Button
-                        type="default"
-                        icon={<EyeOutlined />}
-                        onClick={loadOrdersRange}
-                        loading={loading}
-                      >
-                        View Range
-                      </Button>
-                      <Button
-                        icon={<FileExcelOutlined />}
-                        onClick={handleGenerateRangeReport}
-                        loading={loading}
-                      >
-                        Export Range
-                      </Button>
-                    </>
-                  )}
-                </Space>
+              <Col xs={24} sm={12} md={6}>
+                <Button
+                  type="default"
+                  icon={<EyeOutlined />}
+                  onClick={loadOrders}
+                  loading={loading}
+                  disabled={!rangeStart}
+                  style={{ width: '100%' }}
+                >
+                  {rangeEnd ? 'View Range' : 'View Orders'}
+                </Button>
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Button
+                  type="primary"
+                  icon={<DownloadOutlined />}
+                  onClick={handleGenerateReport}
+                  loading={loading}
+                  disabled={!rangeStart}
+                  style={{ width: '100%' }}
+                >
+                  Export Excel
+                </Button>
               </Col>
             </Row>
+          </Card>
 
-            {previewInfo && (
-              <div style={{ marginBottom: '12px', padding: '8px 12px', background: '#f0f7ff', borderRadius: '4px', border: '1px solid #d4edda' }}>
-                <Text type="secondary" style={{ fontSize: '12px' }}>
-                  {previewInfo}
-                </Text>
-              </div>
-            )}
-            
+          {previewInfo && (
+            <Card {...CONTENT_CARD_CONFIG} style={{ background: '#f0f7ff', border: '1px solid #d4edda', marginTop: '16px' }}>
+              <Text type="secondary" style={{ fontSize: '12px' }}>
+                {previewInfo}
+              </Text>
+            </Card>
+          )}
+          
+          <Card {...CONTENT_CARD_CONFIG} style={{ marginTop: '16px' }}>
             <Input
+              size={STANDARD_INPUT_SIZE}
               placeholder="Search orders by Order ID or Product..."
               prefix={<SearchOutlined />}
               value={searchTerm}

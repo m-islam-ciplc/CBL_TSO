@@ -299,7 +299,18 @@ function DailyDemandMultiDay() {
       }
     } catch (error) {
       const errorData = error.response?.data;
-      if (errorData?.details && Array.isArray(errorData.details)) {
+      
+      // Check if error is about existing orders
+      if (errorData?.existingOrders) {
+        const existingOrders = errorData.existingOrders;
+        const datesList = existingOrders.map(e => e.date).join(', ');
+        const orderIdsList = existingOrders.map(e => e.order_id).join(', ');
+        message.error(`Daily demand order already exists for date(s): ${datesList}. Order ID(s): ${orderIdsList}. You cannot modify existing orders.`, 5);
+        
+        // Remove dates that already have orders from selected dates
+        const datesWithOrdersList = existingOrders.map(e => e.date);
+        setSelectedDates(prev => prev.filter(d => !datesWithOrdersList.includes(d.format('YYYY-MM-DD'))));
+      } else if (errorData?.details && Array.isArray(errorData.details)) {
         message.error(errorData.details.join(', '));
       } else {
         message.error(errorData?.error || 'Failed to create daily demand orders');
@@ -382,10 +393,9 @@ function DailyDemandMultiDay() {
                   }
                   key={dateStr}
                 >
-                  <div style={{ padding: '16px 0' }}>
-                    <Title level={5} style={{ marginBottom: '16px' }}>
-                      Select Products for {date.format('MMMM D, YYYY')}
-                    </Title>
+                  <Title level={5} style={{ marginBottom: '16px' }}>
+                    Select Products for {date.format('MMMM D, YYYY')}
+                  </Title>
 
                     <Input
                       placeholder="Search products..."
@@ -432,7 +442,6 @@ function DailyDemandMultiDay() {
                         {searchTerm ? 'No products found matching your search' : 'No products assigned to your dealer account'}
                       </div>
                     )}
-                  </div>
                 </TabPane>
               );
             })}

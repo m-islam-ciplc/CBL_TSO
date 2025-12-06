@@ -29,7 +29,7 @@ const { Title, Text } = Typography;
 const { Option } = Select;
 
 function MonthlyForecastTab() {
-  const { dealerId, userRole, isAdmin, isTSO } = useUser();
+  const { dealerId, userRole, isAdmin, isTSO, isSalesManager } = useUser();
   const [periodInfo, setPeriodInfo] = useState({ start: '', end: '' });
   const [selectedPeriod, setSelectedPeriod] = useState(null); // { period_start, period_end, is_current }
   const [availablePeriods, setAvailablePeriods] = useState([]);
@@ -238,9 +238,9 @@ function MonthlyForecastTab() {
       return;
     }
 
-    // Check if forecast is submitted and user is not admin/TSO
-    if (isSubmitted && !isAdmin && !isTSO) {
-      message.error('This forecast has already been submitted and cannot be modified. Please contact admin or TSO for changes.');
+    // Check if forecast is submitted and user is not admin/sales manager
+    if (isSubmitted && !isAdmin && !isSalesManager) {
+      message.error('This forecast has already been submitted and cannot be modified. Please contact admin or sales manager for changes.');
       return;
     }
 
@@ -289,7 +289,7 @@ function MonthlyForecastTab() {
   };
 
   const isCurrentPeriod = selectedPeriod?.is_current;
-  const canEdit = isCurrentPeriod && (!isSubmitted || isAdmin || isTSO);
+  const canEdit = isCurrentPeriod && (!isSubmitted || isAdmin || isSalesManager);
 
   return (
     <div>
@@ -392,7 +392,7 @@ function MonthlyForecastTab() {
           </Row>
         </Card>
       )}
-      {isCurrentPeriod && isSubmitted && !isAdmin && !isTSO && (
+      {isCurrentPeriod && isSubmitted && !isAdmin && !isSalesManager && (
         <Card style={{ borderRadius: '8px', background: '#fff7e6', border: '1px solid #ffd591' }}>
           <Row justify="center">
             <Col>

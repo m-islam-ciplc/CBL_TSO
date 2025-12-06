@@ -30,9 +30,11 @@ import Settings from './pages/Settings';
 import DailyReport from './pages/DailyReport';
 import TSOReport from './pages/TSOReport';
 import TSODashboard from './pages/TSODashboard';
+import DealerDashboard from './pages/DealerDashboard';
 import ProductQuotaManagement from './pages/ProductQuotaManagement';
 import MonthlyForecastTab from './pages/MonthlyForecastTab';
 import DailyDemandMultiDay from './pages/DailyDemandMultiDay';
+import DailyDemandManagement from './pages/DailyDemandManagement';
 import DealerReports from './pages/DealerReports';
 import DebugPanel from './components/DebugPanel';
 import UnifiedUITemplate from './pages/examples/UnifiedUITemplate';
@@ -42,7 +44,7 @@ const { Header, Content } = Layout;
 const { Title } = Typography;
 
 function AppContent() {
-  const { userRole, isTSO, isDealer, setUserRole, setUserName } = useUser();
+  const { userRole, isTSO, isDealer, isAdmin, isSalesManager, setUserRole, setUserName } = useUser();
   const [, setStats] = useState({
     dealers: 0,
     warehouses: 0,
@@ -305,6 +307,11 @@ function AppContent() {
     },
   ] : isDealer ? [
     {
+      key: 'dashboard',
+      icon: <DashboardOutlined />,
+      label: 'Dashboard',
+    },
+    {
       key: 'monthly-forecast',
       icon: <CalendarOutlined />,
       label: 'Monthly Forecast',
@@ -329,6 +336,11 @@ function AppContent() {
       key: 'placed-orders',
       icon: <OrderedListOutlined />,
       label: 'Placed Orders',
+    },
+    {
+      key: 'daily-demand-management',
+      icon: <ShoppingCartOutlined />,
+      label: 'Daily Demand',
     },
     ...(userRole === 'admin' ? [{
       key: 'manage-quotas',
@@ -522,14 +534,14 @@ function AppContent() {
             isTSO ? 
             <TSODashboard /> : 
             isDealer ?
-            <MonthlyForecastTab /> :
+            <DealerDashboard /> :
             <Dashboard setStats={setStats} />
           } />
           <Route path="/dashboard" element={
+            isDealer ? 
+            <DealerDashboard /> : 
             isTSO ? 
             <TSODashboard /> : 
-            isDealer ?
-            <MonthlyForecastTab /> :
             <Dashboard setStats={setStats} />
           } />
           <Route path="/monthly-forecast" element={
@@ -550,6 +562,11 @@ function AppContent() {
           <Route path="/new-orders" element={<NewOrdersTablet onOrderCreated={refreshOrders} />} />
           <Route path="/review-orders" element={<ReviewOrdersTablet onOrderCreated={refreshOrders} />} />
           <Route path="/placed-orders" element={<PlacedOrders refreshTrigger={refreshTrigger} />} />
+          <Route path="/daily-demand-management" element={
+            (isAdmin || isSalesManager) ? 
+            <DailyDemandManagement /> :
+            <Dashboard setStats={setStats} />
+          } />
           <Route path="/settings" element={
             isTSO ? 
             <NewOrdersTablet onOrderCreated={refreshOrders} /> : 
