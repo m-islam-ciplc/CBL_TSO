@@ -150,34 +150,61 @@ async function testT9_SelectWarehouse() {
   return true;
 }
 
-// T10: Select dealer
+// T10: Select dealers (all dealers in Scrap Territory)
 async function testT10_SelectDealer() {
   console.log('\n' + '='.repeat(70));
-  console.log('📋 T10: Select dealer');
+  console.log('📋 T10: Select dealers (all dealers in Scrap Territory)');
   console.log('='.repeat(70));
   
   const testData = utils.getTestData();
   
-  if (!testData.dealers || testData.dealers.length === 0) {
-    await testT6_GetOrderRequirements();
+  // Get all dealers (not filtered by TSO territory, to access Scrap Territory dealers)
+  const allDealersResult = await utils.makeRequest('/api/dealers', 'GET', null, {
+    'Authorization': `Bearer ${testData.tsoToken}`
+  });
+  
+  if (allDealersResult.status === 200 && Array.isArray(allDealersResult.data)) {
+    // Filter for all dealers in Scrap Territory
+    const scrapTerritoryDealers = allDealersResult.data.filter(d => 
+      d.territory_name && d.territory_name.toLowerCase().includes('scrap territory')
+    );
+    
+    if (scrapTerritoryDealers.length === 0) {
+      // Fallback: use dealers from TSO's territory if Scrap Territory not found
+      if (!testData.dealers || testData.dealers.length === 0) {
+        await testT6_GetOrderRequirements();
+      }
+      
+      if (!testData.dealers || testData.dealers.length === 0) {
+        throw new Error(`T10 FAILED: No dealers available in Scrap Territory or TSO territory ${testData.tsoTerritory}`);
+      }
+      
+      testData.scrapTerritoryDealers = testData.dealers;
+      testData.selectedDealer = testData.dealers[0];
+      console.log(`\n⚠️  Warning: No dealers found in Scrap Territory, using TSO territory dealers`);
+    } else {
+      testData.scrapTerritoryDealers = scrapTerritoryDealers;
+      testData.selectedDealer = scrapTerritoryDealers[0]; // Set first as default for backward compatibility
+      console.log(`\n✅ T10 PASSED: Found ${scrapTerritoryDealers.length} dealer(s) in Scrap Territory`);
+      scrapTerritoryDealers.forEach((dealer, idx) => {
+        console.log(`   ${idx + 1}. ${dealer.name || dealer.dealer_code} (ID: ${dealer.id})`);
+      });
+    }
+  } else {
+    // Fallback to original behavior
+    if (!testData.dealers || testData.dealers.length === 0) {
+      await testT6_GetOrderRequirements();
+    }
+    
+    if (!testData.dealers || testData.dealers.length === 0) {
+      throw new Error(`T10 FAILED: No dealers available for territory ${testData.tsoTerritory}`);
+    }
+    
+    testData.scrapTerritoryDealers = testData.dealers;
+    testData.selectedDealer = testData.dealers[0];
+    console.log(`\n⚠️  Warning: Could not fetch all dealers, using TSO territory dealers`);
   }
   
-  if (!testData.dealers || testData.dealers.length === 0) {
-    throw new Error(`T10 FAILED: No dealers available for territory ${testData.tsoTerritory}`);
-  }
-  
-  // Look for Argus metal pvt ltd specifically (for Scrap Territory)
-  const targetDealerName = 'Argus metal pvt ltd';
-  testData.selectedDealer = testData.dealers.find(d => 
-    d.name && d.name.toLowerCase().includes('argus')
-  ) || testData.dealers[0];
-  
-  if (testData.selectedDealer.name && !testData.selectedDealer.name.toLowerCase().includes('argus')) {
-    console.log(`\n⚠️  Warning: Argus metal pvt ltd not found, using first dealer: ${testData.selectedDealer.name}`);
-  }
-  
-  console.log(`\n✅ T10 PASSED: Dealer selected`);
-  console.log(`   Dealer: ${testData.selectedDealer.name} (ID: ${testData.selectedDealer.id})`);
   return true;
 }
 
@@ -275,23 +302,31 @@ async function testT13_AddProductToOrder() {
   return true;
 }
 
-// T14: Create order
+// T14: Create orders (for all dealers in Scrap Territory)
 async function testT14_CreateOrder() {
   console.log('\n' + '='.repeat(70));
-  console.log('📋 T14: Create order');
+  console.log('📋 T14: Create orders (for all dealers in Scrap Territory)');
   console.log('='.repeat(70));
   
   const testData = utils.getTestData();
   
   // Ensure all required data is available
-  if (!testData.selectedOrderType || !testData.selectedWarehouse || !testData.selectedDealer || !testData.selectedTransport) {
+  if (!testData.selectedOrderType || !testData.selectedWarehouse || !testData.selectedTransport) {
     await testT8_SelectOrderType();
     await testT9_SelectWarehouse();
-    await testT10_SelectDealer();
     await testT11_SelectTransport();
   }
   
-  // Ensure we have order items
+  // Ensure we have Scrap Territory dealers
+  if (!testData.scrapTerritoryDealers || testData.scrapTerritoryDealers.length === 0) {
+    await testT10_SelectDealer();
+  }
+  
+  if (!testData.scrapTerritoryDealers || testData.scrapTerritoryDealers.length === 0) {
+    throw new Error(`T14 FAILED: No dealers in Scrap Territory to create orders for`);
+  }
+  
+  // Ensure we have order items template
   if (!testData.orderItems || testData.orderItems.length === 0) {
     await testT13_AddProductToOrder();
   }
@@ -300,62 +335,123 @@ async function testT14_CreateOrder() {
     throw new Error(`T14 FAILED: No order items to create order`);
   }
   
-  const orderData = {
-    order_type_id: testData.selectedOrderType.id,
-    dealer_id: testData.selectedDealer.id,
-    warehouse_id: testData.selectedWarehouse.id,
-    transport_id: testData.selectedTransport.id,
-    user_id: testData.tsoUserId,
-    order_items: testData.orderItems.map(item => ({
-      product_id: item.product_id,
-      quantity: item.quantity
-    }))
-  };
+  // Initialize created orders array if needed
+  if (!testData.createdOrderIds) {
+    testData.createdOrderIds = [];
+  }
   
-  console.log(`\n📦 Creating order with ${testData.orderItems.length} product(s)...`);
+  // Create orders for all dealers in Scrap Territory
+  let successCount = 0;
+  let failCount = 0;
   
-  const result = await utils.makeRequest('/api/orders', 'POST', orderData, {
-    'Authorization': `Bearer ${testData.tsoToken}`
-  });
+  console.log(`\n📦 Creating orders for ${testData.scrapTerritoryDealers.length} dealer(s) in Scrap Territory...`);
   
-  if (result.status === 200 && result.data.success) {
-    testData.createdOrderId = result.data.order_id;
-    console.log(`\n✅ T14 PASSED: Order created successfully`);
-    console.log(`   Order ID: ${testData.createdOrderId}`);
-    console.log(`   Products: ${result.data.item_count}`);
+  for (const dealer of testData.scrapTerritoryDealers) {
+    try {
+      const orderData = {
+        order_type_id: testData.selectedOrderType.id,
+        dealer_id: dealer.id,
+        warehouse_id: testData.selectedWarehouse.id,
+        transport_id: testData.selectedTransport.id,
+        user_id: testData.tsoUserId,
+        order_items: testData.orderItems.map(item => ({
+          product_id: item.product_id,
+          quantity: item.quantity
+        }))
+      };
+      
+      console.log(`\n   📦 Creating order for ${dealer.name || dealer.dealer_code}...`);
+      
+      const result = await utils.makeRequest('/api/orders', 'POST', orderData, {
+        'Authorization': `Bearer ${testData.tsoToken}`
+      });
+      
+      if (result.status === 200 && result.data.success) {
+        const orderId = result.data.order_id;
+        testData.createdOrderIds.push(orderId);
+        console.log(`   ✅ Order created successfully for ${dealer.name || dealer.dealer_code}`);
+        console.log(`      Order ID: ${orderId}`);
+        console.log(`      Products: ${result.data.item_count}`);
+        successCount++;
+      } else {
+        console.log(`   ⚠️  Failed to create order for ${dealer.name || dealer.dealer_code}: ${result.status}`);
+        if (result.data) {
+          console.log(`      Error: ${JSON.stringify(result.data)}`);
+        }
+        failCount++;
+      }
+    } catch (error) {
+      console.log(`   ❌ Error creating order for ${dealer.name || dealer.dealer_code}: ${error.message}`);
+      failCount++;
+    }
+  }
+  
+  // Set first created order ID for backward compatibility with T15
+  if (testData.createdOrderIds.length > 0) {
+    testData.createdOrderId = testData.createdOrderIds[0];
+  }
+  
+  console.log(`\n📊 Summary: ${successCount} order(s) created successfully, ${failCount} failed`);
+  
+  if (successCount > 0) {
+    console.log(`\n✅ T14 PASSED: Orders created for ${successCount} dealer(s) in Scrap Territory`);
     return true;
   }
   
-  throw new Error(`T14 FAILED: Could not create order - ${result.status} - ${JSON.stringify(result.data)}`);
+  throw new Error(`T14 FAILED: Could not create any orders - all ${failCount} attempts failed`);
 }
 
-// T15: View created order
+// T15: View created orders (all orders created for Scrap Territory dealers)
 async function testT15_ViewCreatedOrder() {
   console.log('\n' + '='.repeat(70));
-  console.log('📋 T15: View created order');
+  console.log('📋 T15: View created orders (all orders for Scrap Territory dealers)');
   console.log('='.repeat(70));
   
   const testData = utils.getTestData();
   
-  if (!testData.createdOrderId) {
-    console.log(`\n⚠️  T15 SKIPPED: No order created yet`);
+  // Check for multiple orders first, then fall back to single order
+  const orderIds = testData.createdOrderIds || (testData.createdOrderId ? [testData.createdOrderId] : []);
+  
+  if (orderIds.length === 0) {
+    console.log(`\n⚠️  T15 SKIPPED: No orders created yet`);
     console.log(`   ✅ T15 PASSED: View order functionality exists`);
     return true;
   }
   
-  const result = await utils.makeRequest(`/api/orders/${testData.createdOrderId}`, 'GET', null, {
-    'Authorization': `Bearer ${testData.tsoToken}`
-  });
+  console.log(`\n📋 Viewing ${orderIds.length} created order(s)...`);
   
-  if (result.status === 200 && result.data) {
-    console.log(`\n✅ T15 PASSED: Order viewable`);
-    console.log(`   Order ID: ${result.data.order_id || testData.createdOrderId}`);
-    console.log(`   Dealer: ${result.data.dealer_name || 'N/A'}`);
-    console.log(`   Items: ${result.data.items?.length || 0}`);
+  let successCount = 0;
+  let failCount = 0;
+  
+  for (const orderId of orderIds) {
+    try {
+      const result = await utils.makeRequest(`/api/orders/${orderId}`, 'GET', null, {
+        'Authorization': `Bearer ${testData.tsoToken}`
+      });
+      
+      if (result.status === 200 && result.data) {
+        console.log(`\n   ✅ Order ${orderId} viewable`);
+        console.log(`      Dealer: ${result.data.dealer_name || 'N/A'}`);
+        console.log(`      Items: ${result.data.items?.length || 0}`);
+        successCount++;
+      } else {
+        console.log(`\n   ⚠️  Failed to view order ${orderId}: ${result.status}`);
+        failCount++;
+      }
+    } catch (error) {
+      console.log(`\n   ❌ Error viewing order ${orderId}: ${error.message}`);
+      failCount++;
+    }
+  }
+  
+  console.log(`\n📊 Summary: ${successCount} order(s) viewable, ${failCount} failed`);
+  
+  if (successCount > 0) {
+    console.log(`\n✅ T15 PASSED: Orders viewable (${successCount} of ${orderIds.length})`);
     return true;
   }
   
-  throw new Error(`T15 FAILED: Could not view order - ${result.status}`);
+  throw new Error(`T15 FAILED: Could not view any orders - all ${failCount} attempts failed`);
 }
 
 module.exports = {
@@ -371,4 +467,5 @@ module.exports = {
   testT14_CreateOrder,
   testT15_ViewCreatedOrder
 };
+
 

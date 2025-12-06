@@ -173,7 +173,7 @@ async function testD4_ViewAssignedProducts() {
   }
   
   // Get assigned products for dealer
-  const assignmentsResult = await utils.makeRequest(`/api/dealer-assignments?dealer_id=${testData.dealerId}`, 'GET', null, {
+  const assignmentsResult = await utils.makeRequest(`/api/dealer-assignments/${testData.dealerId}`, 'GET', null, {
     'Authorization': `Bearer ${testData.dealerToken}`
   });
   

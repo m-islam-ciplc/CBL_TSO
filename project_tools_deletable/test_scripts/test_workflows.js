@@ -310,8 +310,8 @@ async function setup_ImportResources() {
   console.log('\n✅ SETUP: Resource import complete');
   console.log('='.repeat(70));
   
-  // Assign products to specific dealers for testing
-  console.log('\n📦 Assigning products to dealers for testing...');
+  // Assign products to all dealers in Scrap Territory for testing
+  console.log('\n📦 Assigning products to all dealers in Scrap Territory for testing...');
   try {
     // Get all dealers
     const dealersResult = await makeRequest('/api/dealers', 'GET', null, {
@@ -319,50 +319,66 @@ async function setup_ImportResources() {
     });
     
     if (dealersResult.status === 200 && Array.isArray(dealersResult.data)) {
-      // Find dealer 00324 by code (needed for future TSO order tests)
-      const dealer00324 = dealersResult.data.find(d => 
-        d.code === '00324' || d.dealer_code === '00324' || (d.name && d.name.includes('00324'))
+      // Find all dealers in Scrap Territory
+      const scrapTerritoryDealers = dealersResult.data.filter(d => 
+        d.territory_name && d.territory_name.toLowerCase().includes('scrap territory')
       );
       
-      // Get all products
-      const productsResult = await makeRequest('/api/products', 'GET', null, {
-        'Authorization': `Bearer ${testData.adminToken}`
-      });
-      
-      if (productsResult.status === 200 && Array.isArray(productsResult.data) && productsResult.data.length > 0) {
-        const allProducts = productsResult.data;
-        
-        // Assign products to dealer 00324 (if found)
-        if (dealer00324) {
-          // Assign 2-5 random products to dealer 00324
-          const numProducts = Math.min(Math.floor(Math.random() * 4) + 2, allProducts.length); // 2-5
-          const shuffledProducts = [...allProducts].sort(() => Math.random() - 0.5);
-          const selectedProducts = shuffledProducts.slice(0, numProducts);
-          const productIds = selectedProducts.map(p => p.id);
-          
-          console.log(`\n   📦 Assigning ${productIds.length} product(s) to dealer 00324...`);
-          
-          const assignmentPayload = {
-            dealer_id: dealer00324.id,
-            product_ids: productIds,
-            product_categories: []
-          };
-          
-          const assignmentResult = await makeRequest('/api/dealer-assignments/bulk', 'POST', assignmentPayload, {
-            'Authorization': `Bearer ${testData.adminToken}`
-          });
-          
-          if (assignmentResult.status === 200 && assignmentResult.data && assignmentResult.data.success) {
-            console.log(`   ✅ Assigned ${productIds.length} product(s) to dealer 00324 (ID: ${dealer00324.id})`);
-          } else {
-            console.log(`   ⚠️  Failed to assign products to dealer 00324: ${assignmentResult.status}`);
-          }
-        } else {
-          console.log(`\n   ⚠️  Dealer 00324 not found - skipping product assignment`);
-          console.log(`   Note: First dealer will get products from tests A17/A19`);
-        }
+      if (scrapTerritoryDealers.length === 0) {
+        console.log(`\n   ⚠️  No dealers found in Scrap Territory - skipping product assignment`);
+        console.log(`   Note: Dealers will get products from tests A17/A19`);
       } else {
-        console.log(`\n   ⚠️  No products available for assignment - skipping`);
+        console.log(`\n   📍 Found ${scrapTerritoryDealers.length} dealer(s) in Scrap Territory`);
+        
+        // Get all products
+        const productsResult = await makeRequest('/api/products', 'GET', null, {
+          'Authorization': `Bearer ${testData.adminToken}`
+        });
+        
+        if (productsResult.status === 200 && Array.isArray(productsResult.data) && productsResult.data.length > 0) {
+          const allProducts = productsResult.data;
+          
+          // Assign products to each dealer in Scrap Territory
+          let successCount = 0;
+          let failCount = 0;
+          
+          for (const dealer of scrapTerritoryDealers) {
+            try {
+              // Assign 2-5 random products to each dealer
+              const numProducts = Math.min(Math.floor(Math.random() * 4) + 2, allProducts.length); // 2-5
+              const shuffledProducts = [...allProducts].sort(() => Math.random() - 0.5);
+              const selectedProducts = shuffledProducts.slice(0, numProducts);
+              const productIds = selectedProducts.map(p => p.id);
+              
+              console.log(`\n   📦 Assigning ${productIds.length} product(s) to ${dealer.name || dealer.dealer_code}...`);
+              
+              const assignmentPayload = {
+                dealer_id: dealer.id,
+                product_ids: productIds,
+                product_categories: []
+              };
+              
+              const assignmentResult = await makeRequest('/api/dealer-assignments/bulk', 'POST', assignmentPayload, {
+                'Authorization': `Bearer ${testData.adminToken}`
+              });
+              
+              if (assignmentResult.status === 200 && assignmentResult.data && assignmentResult.data.success) {
+                console.log(`   ✅ Assigned ${productIds.length} product(s) to ${dealer.name || dealer.dealer_code} (ID: ${dealer.id})`);
+                successCount++;
+              } else {
+                console.log(`   ⚠️  Failed to assign products to ${dealer.name || dealer.dealer_code}: ${assignmentResult.status}`);
+                failCount++;
+              }
+            } catch (dealerError) {
+              console.log(`   ❌ Error assigning products to ${dealer.name || dealer.dealer_code}: ${dealerError.message}`);
+              failCount++;
+            }
+          }
+          
+          console.log(`\n   📊 Summary: ${successCount} dealer(s) assigned successfully, ${failCount} failed`);
+        } else {
+          console.log(`\n   ⚠️  No products available for assignment - skipping`);
+        }
       }
     } else {
       console.log(`\n   ⚠️  Could not fetch dealers - skipping product assignment`);
@@ -412,7 +428,7 @@ async function setup_CreateTestUsers() {
   if (dealersResult.status === 200 && Array.isArray(dealersResult.data)) {
     testData.allDealers = dealersResult.data;
     
-    // Find dealers by name
+    // Find dealers by name (for backward compatibility with existing test config)
     TEST_CONFIG.dealerNames.forEach(dealerName => {
       const dealer = dealersResult.data.find(d => 
         d.name && d.name.toLowerCase().includes(dealerName.toLowerCase())
@@ -982,7 +998,7 @@ async function runAdminTests() {
   console.log('🧪 ADMIN WORKFLOW TESTS');
   console.log('='.repeat(70));
   console.log(`📍 Testing: ${BASE_URL}\n`);
-
+  
   try {
     // Run setup first
     console.log('🔧 Running setup...');
