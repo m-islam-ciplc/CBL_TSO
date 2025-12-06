@@ -25,6 +25,7 @@ import dayjs from 'dayjs';
 import './NewOrdersTablet.css';
 import { DealerProductCard } from '../templates/DealerProductCard';
 import { FILTER_CARD_CONFIG, CONTENT_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_TABS_CONFIG, STANDARD_DATE_PICKER_CONFIG, STANDARD_BUTTON_SIZE } from '../templates/UIElements';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -316,41 +317,41 @@ function DailyDemandMultiDay() {
 
   return (
     <div>
-      <Title level={3} style={{ marginBottom: '8px' }}>
+      <Title {...STANDARD_PAGE_TITLE_CONFIG}>
         <ShoppingCartOutlined /> Daily Demand
       </Title>
-      <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
+      <Text {...STANDARD_PAGE_SUBTITLE_CONFIG}>
         Create your daily product demand orders for multiple days. Select a date, then add products with quantities for that date.
       </Text>
 
       {/* Date Selection Card */}
       <Card title="Add Dates" {...FILTER_CARD_CONFIG}>
         <Space wrap>
-          <Button size="small" onClick={() => handleQuickDateSelect(0)}>
+          <Button size={STANDARD_BUTTON_SIZE} onClick={() => handleQuickDateSelect(0)}>
             Today
           </Button>
-          <Button size="small" onClick={() => handleQuickDateSelect(1)}>
+          <Button size={STANDARD_BUTTON_SIZE} onClick={() => handleQuickDateSelect(1)}>
             Tomorrow
           </Button>
-          <Button size="small" onClick={() => handleQuickDateSelect(2)}>
+          <Button size={STANDARD_BUTTON_SIZE} onClick={() => handleQuickDateSelect(2)}>
             Day After
           </Button>
-          <Button size="small" onClick={() => handleQuickDateSelect(3)}>
+          <Button size={STANDARD_BUTTON_SIZE} onClick={() => handleQuickDateSelect(3)}>
             3 Days
           </Button>
           <DatePicker
+            {...STANDARD_DATE_PICKER_CONFIG}
             placeholder="Or select custom date"
             onChange={handleDateSelect}
             disabledDate={(current) => current && current < dayjs().startOf('day')}
-            size="small"
           />
         </Space>
       </Card>
 
       {/* Date Tabs with Product Cards */}
       {selectedDates.length > 0 && (
-        <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
-          <Tabs
+        <Card {...CONTENT_CARD_CONFIG}>
+          <Tabs {...STANDARD_TABS_CONFIG}
             activeKey={activeDateTab || selectedDates[0]?.format('YYYY-MM-DD')}
             onChange={setActiveDateTab}
             type="editable-card"
@@ -445,7 +446,7 @@ function DailyDemandMultiDay() {
                 icon={<CheckOutlined />}
                 onClick={handleSubmit}
                 loading={loading}
-                size="large"
+                size={STANDARD_BUTTON_SIZE}
               >
                 Submit All Daily Demands ({getTotalItems()} item{getTotalItems() !== 1 ? 's' : ''})
               </Button>

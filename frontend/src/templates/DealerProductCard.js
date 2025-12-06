@@ -1,5 +1,7 @@
 import { Card, Typography, Button, InputNumber, Space, Tag } from 'antd';
 import { ClearOutlined } from '@ant-design/icons';
+import { CONTENT_CARD_CONFIG } from './CardTemplates';
+import { STANDARD_INPUT_NUMBER_SIZE, STANDARD_BUTTON_SIZE, STANDARD_SPACE_SIZE_SMALL, STANDARD_TAG_STYLE } from './UIElements';
 
 const { Text } = Typography;
 
@@ -47,9 +49,10 @@ export function DealerProductCard({
 
   return (
     <Card
+      {...CONTENT_CARD_CONFIG}
       style={{
-        borderRadius: '8px',
         boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+        ...CONTENT_CARD_CONFIG.style,
         ...cardStyle,
       }}
       bodyStyle={{
@@ -62,12 +65,12 @@ export function DealerProductCard({
         <Text strong style={{ fontSize: '14px', display: 'block', marginBottom: '4px' }}>
           {product.name}
         </Text>
-        <Space size="small" style={{ fontSize: '12px' }}>
+        <Space size={STANDARD_SPACE_SIZE_SMALL} style={{ fontSize: '12px' }}>
           <Text type="secondary" style={{ fontSize: '12px' }}>
             {product.product_code}
           </Text>
           {product.unit_tp && (
-            <Tag color="blue" style={{ fontSize: '11px', marginLeft: '4px' }}>
+            <Tag color="blue" style={{ ...STANDARD_TAG_STYLE, fontSize: '11px', marginLeft: '4px' }}>
               TP: {product.unit_tp}
             </Tag>
           )}
@@ -80,7 +83,7 @@ export function DealerProductCard({
           {labelText}
         </Text>
         <InputNumber
-          size="large"
+          size={STANDARD_INPUT_NUMBER_SIZE}
           min={0}
           value={quantity}
           onChange={handleQuantityChange}
@@ -100,7 +103,7 @@ export function DealerProductCard({
             {presetValues.map(presetQty => (
               <Button
                 key={presetQty}
-                size="small"
+                size={STANDARD_BUTTON_SIZE}
                 type={quantity === presetQty ? 'primary' : 'default'}
                 onClick={() => handleQuantityChange(presetQty)}
                 style={{
@@ -122,7 +125,7 @@ export function DealerProductCard({
           icon={<ClearOutlined />}
           onClick={handleClear}
           style={{ width: '100%' }}
-          size="small"
+          size={STANDARD_BUTTON_SIZE}
           disabled={!canEdit}
         >
           Clear

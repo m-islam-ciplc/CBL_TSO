@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useUser } from '../contexts/UserContext';
 import './NewOrdersTablet.css';
+import { CONTENT_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, SINGLE_ROW_GUTTER, STANDARD_MODAL_CONFIG, STANDARD_INPUT_NUMBER_SIZE, STANDARD_INPUT_SIZE, STANDARD_FORM_SIZE, STANDARD_BUTTON_SIZE } from '../templates/UIElements';
 import {
   Card,
   Typography,
@@ -248,17 +250,17 @@ function DailyDemand() {
 
   return (
     <div>
-      <Title level={3} style={{ marginBottom: '8px' }}>
+      <Title {...STANDARD_PAGE_TITLE_CONFIG}>
         <ShoppingCartOutlined /> Daily Demand
       </Title>
-      <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
+      <Text {...STANDARD_PAGE_SUBTITLE_CONFIG}>
         Create your daily product demand orders
       </Text>
 
       {/* Dealer Info Card */}
       {dealerInfo && (
-        <Card style={{ marginBottom: '16px', borderRadius: '8px', background: '#f0f7ff' }}>
-          <Row gutter={16}>
+        <Card {...CONTENT_CARD_CONFIG} style={{ ...CONTENT_CARD_CONFIG.style, background: '#f0f7ff' }}>
+          <Row gutter={SINGLE_ROW_GUTTER}>
             <Col xs={24} md={12}>
               <Text strong>Dealer: </Text>
               <Text>{dealerInfo.name}</Text>
@@ -272,11 +274,11 @@ function DailyDemand() {
       )}
 
       {/* Order Details Card - Fixed Values */}
-      <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
+      <Card {...CONTENT_CARD_CONFIG}>
         <Form
           form={form}
           layout="horizontal"
-          size="small"
+          size={STANDARD_FORM_SIZE}
         >
           <Row gutter={[8, 8]} align="middle">
             <Col xs={24} md={12}>
@@ -311,9 +313,9 @@ function DailyDemand() {
       </Card>
 
       {/* Product Search */}
-      <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
+      <Card {...CONTENT_CARD_CONFIG}>
         <Input
-          size="small"
+          size={STANDARD_INPUT_SIZE}
           placeholder="Search products by name or code..."
           prefix={<SearchOutlined />}
           suffix={
@@ -371,7 +373,7 @@ function DailyDemand() {
 
       {/* Order Items Summary */}
       {orderItems.length > 0 && (
-        <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
+        <Card {...CONTENT_CARD_CONFIG}>
           <Title level={5} style={{ marginBottom: '12px' }}>
             Order Items ({orderItems.length})
           </Title>
@@ -397,7 +399,7 @@ function DailyDemand() {
                 </div>
                 <Button
                   danger
-                  size="small"
+                  size={STANDARD_BUTTON_SIZE}
                   icon={<CloseOutlined />}
                   onClick={() => {
                     const updatedItems = orderItems.filter(i => i.id !== item.id);
@@ -417,7 +419,7 @@ function DailyDemand() {
               icon={<CheckOutlined />}
               onClick={handleSubmit}
               loading={loading}
-              size="large"
+              size={STANDARD_BUTTON_SIZE}
             >
               Submit Daily Demand Order
             </Button>
@@ -427,6 +429,7 @@ function DailyDemand() {
 
       {/* Product Popup Modal */}
       <Modal
+        {...STANDARD_MODAL_CONFIG}
         title={
           <div>
             <Text strong>{selectedProductForPopup?.name}</Text>
@@ -438,29 +441,13 @@ function DailyDemand() {
         }
         open={isPopupVisible}
         onCancel={hideProductPopup}
-        footer={[
-          <Button key="cancel" onClick={hideProductPopup}>
-            Cancel
-          </Button>,
-          <Button
-            key="add"
-            type="primary"
-            onClick={() => {
-              if (addProductToOrder(selectedProductForPopup)) {
-                hideProductPopup();
-              }
-            }}
-          >
-            Add to Order
-          </Button>
-        ]}
       >
         <div style={{ padding: '16px 0' }}>
           <Text strong style={{ display: 'block', marginBottom: '8px' }}>
             Quantity:
           </Text>
           <InputNumber
-            size="large"
+            size={STANDARD_INPUT_NUMBER_SIZE}
             min={1}
             value={productQuantities[selectedProductForPopup?.id] || 1}
             onChange={(value) => {
@@ -477,7 +464,7 @@ function DailyDemand() {
             {[5, 10, 15, 20, 25, 50].map(presetQty => (
               <Button
                 key={presetQty}
-                size="small"
+                size={STANDARD_BUTTON_SIZE}
                 type={productQuantities[selectedProductForPopup?.id] === presetQty ? 'primary' : 'default'}
                 onClick={() => {
                   if (selectedProductForPopup) {
@@ -497,6 +484,21 @@ function DailyDemand() {
               Unit TP: {selectedProductForPopup.unit_tp}
             </Text>
           )}
+          <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+            <Button size={STANDARD_BUTTON_SIZE} onClick={hideProductPopup}>
+              Cancel
+            </Button>
+            <Button
+              type="primary"
+              onClick={() => {
+                if (addProductToOrder(selectedProductForPopup)) {
+                  hideProductPopup();
+                }
+              }}
+            >
+              Add to Order
+            </Button>
+          </div>
         </div>
       </Modal>
     </div>

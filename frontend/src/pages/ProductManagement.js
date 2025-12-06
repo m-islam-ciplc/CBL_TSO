@@ -14,6 +14,8 @@ import {
   Col,
 } from 'antd';
 import { useStandardPagination } from '../templates/useStandardPagination';
+import { CONTENT_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_ROW_GUTTER, STANDARD_UPLOAD_CONFIG, STANDARD_STATISTIC_CONFIG } from '../templates/UIElements';
 import {
   UploadOutlined,
   DownloadOutlined,
@@ -280,13 +282,12 @@ function ProductManagement() {
       </Text>
 
       {/* Import Section */}
-      <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
-        <Row gutter={[16, 16]} align="middle">
+      <Card {...CONTENT_CARD_CONFIG}>
+        <Row gutter={STANDARD_ROW_GUTTER} align="middle">
           <Col>
             <Upload
-              accept=".xlsx,.xls"
+              {...STANDARD_UPLOAD_CONFIG}
               beforeUpload={handleImport}
-              showUploadList={false}
             >
               <Button
                 type="primary"
@@ -309,7 +310,7 @@ function ProductManagement() {
       </Card>
 
       {/* Statistics */}
-      <Row gutter={[16, 16]} style={{ marginBottom: '16px' }}>
+      <Row gutter={STANDARD_ROW_GUTTER} style={{ marginBottom: '16px' }}>
         {stats.map((stat, index) => {
           const gradients = [
             'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', // Purple
@@ -324,10 +325,11 @@ function ProductManagement() {
                 style={{ background: gradients[index % gradients.length], color: 'white' }}
               >
                 <Statistic
+                  {...STANDARD_STATISTIC_CONFIG}
                   title={<span style={{ color: 'white' }}>{stat.title}</span>}
                   value={stat.value}
                   prefix={cloneElement(stat.icon, { style: { color: 'white' } })}
-                  valueStyle={{ color: 'white', fontSize: '20px' }}
+                  valueStyle={{ ...STANDARD_STATISTIC_CONFIG.valueStyle, color: 'white' }}
                 />
               </Card>
             </Col>
@@ -336,8 +338,8 @@ function ProductManagement() {
       </Row>
 
       {/* Filters */}
-      <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
-        <Row gutter={[16, 16]}>
+      <Card {...CONTENT_CARD_CONFIG}>
+        <Row gutter={STANDARD_ROW_GUTTER}>
           <Col xs={24} sm={12} md={8}>
             <Input
               placeholder="Search products..."
@@ -350,7 +352,7 @@ function ProductManagement() {
       </Card>
 
       {/* Products Table */}
-      <Card>
+      <Card {...TABLE_CARD_CONFIG}>
         <div style={{ marginBottom: '16px' }}>
           <Text strong>Products ({filteredProducts.length})</Text>
         </div>

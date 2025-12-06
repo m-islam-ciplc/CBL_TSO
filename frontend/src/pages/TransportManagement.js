@@ -15,6 +15,8 @@ import {
   Statistic
 } from 'antd';
 import { useStandardPagination } from '../templates/useStandardPagination';
+import { CONTENT_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, STANDARD_UPLOAD_CONFIG, STANDARD_STATISTIC_CONFIG } from '../templates/UIElements';
 import {
   UploadOutlined,
   DownloadOutlined,
@@ -182,21 +184,20 @@ function TransportManagement() {
 
   return (
     <div>
-      <Title level={3} style={{ marginBottom: '8px' }}>
+      <Title {...STANDARD_PAGE_TITLE_CONFIG}>
         <TruckOutlined /> Manage Transports
       </Title>
-      <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
+      <Text {...STANDARD_PAGE_SUBTITLE_CONFIG}>
         Import and manage transport database
       </Text>
 
       {/* Import Section */}
-      <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
-        <Row gutter={[16, 16]} align="middle">
+      <Card {...CONTENT_CARD_CONFIG}>
+        <Row gutter={STANDARD_ROW_GUTTER} align="middle">
           <Col>
             <Upload
-              accept=".xlsx,.xls"
+              {...STANDARD_UPLOAD_CONFIG}
               beforeUpload={handleImport}
-              showUploadList={false}
             >
               <Button
                 type="primary"
@@ -219,17 +220,18 @@ function TransportManagement() {
       </Card>
 
       {/* Statistics */}
-      <Row gutter={[16, 16]} style={{ marginBottom: '16px' }}>
+      <Row gutter={STANDARD_ROW_GUTTER} style={{ marginBottom: '16px' }}>
         <Col xs={24} sm={12} md={6}>
           <Card 
             size="small"
             style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}
           >
             <Statistic
+              {...STANDARD_STATISTIC_CONFIG}
               title={<span style={{ color: 'white' }}>Total Transports</span>}
               value={transports.length}
               prefix={<TruckOutlined style={{ color: 'white' }} />}
-              valueStyle={{ color: 'white', fontSize: '20px' }}
+              valueStyle={{ ...STANDARD_STATISTIC_CONFIG.valueStyle, color: 'white' }}
             />
           </Card>
         </Col>
@@ -239,10 +241,11 @@ function TransportManagement() {
             style={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', color: 'white' }}
           >
             <Statistic
+              {...STANDARD_STATISTIC_CONFIG}
               title={<span style={{ color: 'white' }}>Active Transports</span>}
               value={activeCount}
               prefix={<CheckCircleOutlined style={{ color: 'white' }} />}
-              valueStyle={{ color: 'white', fontSize: '20px' }}
+              valueStyle={{ ...STANDARD_STATISTIC_CONFIG.valueStyle, color: 'white' }}
             />
           </Card>
         </Col>
@@ -252,10 +255,11 @@ function TransportManagement() {
             style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', color: 'white' }}
           >
             <Statistic
+              {...STANDARD_STATISTIC_CONFIG}
               title={<span style={{ color: 'white' }}>Inactive Transports</span>}
               value={inactiveCount}
               prefix={<CheckCircleOutlined style={{ color: 'white' }} />}
-              valueStyle={{ color: 'white', fontSize: '20px' }}
+              valueStyle={{ ...STANDARD_STATISTIC_CONFIG.valueStyle, color: 'white' }}
             />
           </Card>
         </Col>
@@ -265,18 +269,19 @@ function TransportManagement() {
             style={{ background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', color: 'white' }}
           >
             <Statistic
+              {...STANDARD_STATISTIC_CONFIG}
               title={<span style={{ color: 'white' }}>Displayed</span>}
               value={filteredTransports.length}
               prefix={<SearchOutlined style={{ color: 'white' }} />}
-              valueStyle={{ color: 'white', fontSize: '20px' }}
+              valueStyle={{ ...STANDARD_STATISTIC_CONFIG.valueStyle, color: 'white' }}
             />
           </Card>
         </Col>
       </Row>
 
       {/* Filters */}
-      <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
-        <Row gutter={[16, 16]}>
+      <Card {...CONTENT_CARD_CONFIG}>
+        <Row gutter={STANDARD_ROW_GUTTER}>
           <Col xs={24} sm={12} md={8}>
             <Input
               placeholder="Search transports..."
@@ -302,7 +307,7 @@ function TransportManagement() {
       </Card>
 
       {/* Transports Table */}
-      <Card>
+      <Card {...TABLE_CARD_CONFIG}>
         <div style={{ marginBottom: '16px' }}>
           <Text strong>Transports ({filteredTransports.length})</Text>
         </div>

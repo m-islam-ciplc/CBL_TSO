@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useUser } from '../contexts/UserContext';
 import './NewOrdersTablet.css';
+import { CONTENT_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, TIGHT_ROW_GUTTER, STANDARD_INPUT_SIZE, STANDARD_SELECT_SIZE, STANDARD_TABLE_SIZE, STANDARD_MODAL_CONFIG, STANDARD_INPUT_NUMBER_SIZE } from '../templates/UIElements';
 import {
   Card,
   Typography,
@@ -481,16 +483,16 @@ function NewOrdersTablet({ onOrderCreated: _onOrderCreated }) {
 
   return (
     <div>
-      <Title level={3} style={{ marginBottom: '8px' }}>
+      <Title {...STANDARD_PAGE_TITLE_CONFIG}>
         <ShoppingCartOutlined /> Place New Orders
       </Title>
-      <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
+      <Text {...STANDARD_PAGE_SUBTITLE_CONFIG}>
         Create new sales orders
       </Text>
 
       {/* Collapsible Order Details - Hide when adding more items to existing order */}
       {!isAddingMore && (
-        <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
+        <Card {...CONTENT_CARD_CONFIG}>
           <div 
             style={{ 
               cursor: 'pointer', 
@@ -524,7 +526,7 @@ function NewOrdersTablet({ onOrderCreated: _onOrderCreated }) {
           <Form
             form={form}
             layout="horizontal"
-            size="small"
+            size={STANDARD_INPUT_SIZE}
             style={{ marginTop: '12px' }}
             onValuesChange={(changedValues, allValues) => {
               setFormValues(allValues);
@@ -558,7 +560,7 @@ function NewOrdersTablet({ onOrderCreated: _onOrderCreated }) {
                 >
                     <Select
                     placeholder={form.getFieldValue('territoryCode') ? "Dealer" : "Select territory first"} 
-                    size="small"
+                    size={STANDARD_INPUT_SIZE}
                     style={{ fontSize: '12px' }}
                     allowClear
                     showSearch
@@ -585,7 +587,7 @@ function NewOrdersTablet({ onOrderCreated: _onOrderCreated }) {
                 >
                     <Select
                      placeholder={form.getFieldValue('dealer') ? "Transport" : "Select dealer first"} 
-                     size="small"
+                     size={STANDARD_INPUT_SIZE}
                      style={{ fontSize: '12px' }}
                      allowClear
                      showSearch
@@ -609,9 +611,9 @@ function NewOrdersTablet({ onOrderCreated: _onOrderCreated }) {
       )}
 
       {/* Compact Product Search */}
-      <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
+      <Card {...CONTENT_CARD_CONFIG}>
         <Input
-          size="small"
+          size={STANDARD_INPUT_SIZE}
           placeholder="Search products by name or code..."
           prefix={<SearchOutlined />}
           suffix={
@@ -794,6 +796,7 @@ function NewOrdersTablet({ onOrderCreated: _onOrderCreated }) {
 
       {/* Product Configuration Popup Modal */}
       <Modal
+        {...STANDARD_MODAL_CONFIG}
         title={
           <div style={{ textAlign: 'center', fontSize: '26px', fontWeight: 'bold' }}>
             {selectedProductForPopup?.product_code} - {selectedProductForPopup?.name}
@@ -801,8 +804,6 @@ function NewOrdersTablet({ onOrderCreated: _onOrderCreated }) {
         }
         open={isPopupVisible}
         onCancel={hideProductPopup}
-        footer={null}
-        width={600}
         centered
         style={{ top: 20 }}
       >

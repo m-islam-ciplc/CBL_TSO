@@ -8,6 +8,8 @@ import { useUser } from '../contexts/UserContext';
 import { StandardExpandableTable, renderStandardExpandedRow } from '../templates/TableTemplate';
 import { createStandardDatePickerConfig } from '../templates/UIConfig';
 import { getStandardPaginationConfig } from '../templates/useStandardPagination';
+import { CONTENT_CARD_CONFIG, FILTER_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, SINGLE_ROW_GUTTER, STANDARD_FORM_LABEL_STYLE, STANDARD_TAG_STYLE, STANDARD_TABS_CONFIG, STANDARD_BADGE_CONFIG, STANDARD_SPIN_SIZE, STANDARD_DATE_PICKER_CONFIG, STANDARD_SPACE_SIZE_MIDDLE } from '../templates/UIElements';
 
 const { Title, Text } = Typography;
 
@@ -480,7 +482,7 @@ function DealerReports() {
       key: 'order_id',
       ellipsis: true,
       render: (orderId) => (
-        <Tag color="blue" style={{ fontSize: '12px' }}>
+        <Tag color="blue" style={STANDARD_TAG_STYLE}>
           {orderId}
         </Tag>
       ),
@@ -509,7 +511,7 @@ function DealerReports() {
       render: (_, record) => {
         return (
           <div>
-            <Tag color="green" style={{ fontSize: '12px' }}>
+            <Tag color="green" style={STANDARD_TAG_STYLE}>
               {record.item_count || 0} item{(record.item_count || 0) !== 1 ? 's' : ''}
             </Tag>
           </div>
@@ -584,9 +586,8 @@ function DealerReports() {
         
         return (
           <Badge 
-            count={itemCount} 
-            showZero={true}
-            overflowCount={999}
+            {...STANDARD_BADGE_CONFIG}
+            count={itemCount}
           >
             <Button
               type="primary"
@@ -639,14 +640,14 @@ function DealerReports() {
 
   return (
     <div style={{ padding: '16px', background: '#f5f5f5', minHeight: '100vh' }}>
-      <Title level={3} style={{ marginBottom: '8px' }}>
+      <Title {...STANDARD_PAGE_TITLE_CONFIG}>
         <FileExcelOutlined /> My Reports
       </Title>
-      <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
+      <Text {...STANDARD_PAGE_SUBTITLE_CONFIG}>
         View your Daily Demand orders and Monthly Forecasts
       </Text>
 
-      <Tabs activeKey={activeTab} onChange={setActiveTab}>
+      <Tabs {...STANDARD_TABS_CONFIG} activeKey={activeTab} onChange={setActiveTab}>
         {/* Daily Demand Orders Tab */}
         <Tabs.TabPane
           tab={
@@ -657,11 +658,12 @@ function DealerReports() {
           }
           key="daily-demand"
         >
-          <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
-            <Row gutter={16} style={{ marginBottom: '16px' }}>
+          <Card {...CONTENT_CARD_CONFIG}>
+            <Row gutter={SINGLE_ROW_GUTTER} style={{ marginBottom: '16px' }}>
               <Col xs={24} md={8}>
                 <Text strong style={{ display: 'block', marginBottom: '8px' }}>Select Date</Text>
                 <DatePicker
+                  {...STANDARD_DATE_PICKER_CONFIG}
                   style={{ width: '100%' }}
                   value={selectedDate}
                   onChange={setSelectedDate}
@@ -674,6 +676,7 @@ function DealerReports() {
                 <Text strong style={{ display: 'block', marginBottom: '8px' }}>Date Range</Text>
                 <Space>
                   <DatePicker
+                    {...STANDARD_DATE_PICKER_CONFIG}
                     placeholder="Start Date"
                     value={rangeStart}
                     onChange={setRangeStart}
@@ -682,6 +685,7 @@ function DealerReports() {
                     dateRender={dateCellRender}
                   />
                   <DatePicker
+                    {...STANDARD_DATE_PICKER_CONFIG}
                     placeholder="End Date"
                     value={rangeEnd}
                     onChange={setRangeEnd}
@@ -797,8 +801,8 @@ function DealerReports() {
           }
           key="monthly-forecast"
         >
-          <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
-            <Row gutter={16} style={{ marginBottom: '16px' }}>
+          <Card {...CONTENT_CARD_CONFIG}>
+            <Row gutter={SINGLE_ROW_GUTTER} style={{ marginBottom: '16px' }}>
               <Col xs={24} md={8}>
                 <Text strong style={{ display: 'block', marginBottom: '8px' }}>Select Period</Text>
                 <Select
@@ -845,7 +849,7 @@ function DealerReports() {
 
             {forecastLoading && (
               <div style={{ textAlign: 'center', padding: '40px' }}>
-                <Spin size="large" />
+                <Spin size={STANDARD_SPIN_SIZE} />
               </div>
             )}
 

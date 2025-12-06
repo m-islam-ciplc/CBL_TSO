@@ -23,6 +23,7 @@ import dayjs from 'dayjs';
 import './NewOrdersTablet.css';
 import { DealerProductCard } from '../templates/DealerProductCard';
 import { FILTER_CARD_CONFIG, CONTENT_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG } from '../templates/UIElements';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -292,10 +293,10 @@ function MonthlyForecastTab() {
 
   return (
     <div>
-      <Title level={3} style={{ marginBottom: '8px' }}>
+      <Title {...STANDARD_PAGE_TITLE_CONFIG}>
         <CalendarOutlined /> Monthly Forecast
       </Title>
-      <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
+      <Text {...STANDARD_PAGE_SUBTITLE_CONFIG}>
         Submit your monthly product forecast for the selected period.
       </Text>
 
@@ -343,7 +344,7 @@ function MonthlyForecastTab() {
       </Card>
 
       {/* Products Card Grid */}
-      <Card style={{ borderRadius: '8px', marginBottom: '16px' }}>
+      <Card {...CONTENT_CARD_CONFIG}>
         {products.length > 0 ? (
           <div className="responsive-product-grid">
             {products.map(product => (

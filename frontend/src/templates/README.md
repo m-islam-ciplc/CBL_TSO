@@ -6,13 +6,15 @@
 
 This folder contains **reusable template code** that is imported into application pages. These templates ensure design consistency across the entire application.
 
-## Key Distinction
+## Key Principle
+
+**EVERY UI element MUST use a template. NO EXCEPTIONS.**
 
 - **Templates** (this folder) = Code imported into application pages  
   Example: `UIConfig.js` imported in PlacedOrders.js, DealerReports.js, etc.
 
-- **Examples** (`frontend/src/pages/examples/`) = Showcase pages that demonstrate templates  
-  These are only accessed via routes, not imported into application code.
+- **UnifiedUITemplate.js** (`frontend/src/pages/examples/UnifiedUITemplate.js`) = Single visual reference showing ALL standardized UI elements  
+  Access via: `/template-ui` route or "Templates > UI Templates" menu
 
 ## Available Templates
 
@@ -54,8 +56,8 @@ This folder contains **reusable template code** that is imported into applicatio
 **Used in application pages:**
 - All pages use these patterns for consistent card styling
 
-**Demo page:**
-- `/template-standard-cards` - See CardTemplatesDemo.js
+**Visual reference:**
+- `/template-ui` - See UnifiedUITemplate.js for all card patterns
 
 ### DealerProductCard.js
 **Type**: Component template  
@@ -86,10 +88,11 @@ This folder contains **reusable template code** that is imported into applicatio
 - Consistent styling matching Monthly Forecast design
 
 **Used in application pages:**
-- (Available for use in any dealer product interface)
+- MonthlyForecastTab.js
+- DailyDemandMultiDay.js
 
-**Demo page:**
-- `/template-dealer-product-card` - See DealerProductCardTemplateDemo.js
+**Visual reference:**
+- `/template-ui` - See UnifiedUITemplate.js for DealerProductCard pattern
 
 ## Import Examples
 

@@ -26,6 +26,8 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { getStandardPaginationConfig } from '../templates/useStandardPagination';
+import { FILTER_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, STANDARD_INPUT_SIZE, STANDARD_TABLE_SIZE, STANDARD_TAG_STYLE, STANDARD_TABS_CONFIG, STANDARD_INPUT_NUMBER_SIZE, STANDARD_DATE_PICKER_CONFIG } from '../templates/UIElements';
 
 const { Title, Text } = Typography;
 
@@ -526,7 +528,7 @@ useEffect(() => {
             icon={<CheckOutlined />}
             onClick={handleConfirmQuotaUpdate}
             disabled={!hasChanged}
-            size="small"
+            size={STANDARD_TABLE_SIZE}
           >
             Update
           </Button>
@@ -541,7 +543,7 @@ useEffect(() => {
       ellipsis: true,
       sorter: (a, b) => (a.sold || 0) - (b.sold || 0),
       render: (sold) => (
-        <Tag color="orange" style={{ fontSize: '12px', padding: '2px 8px' }}>
+        <Tag color="orange" style={STANDARD_TAG_STYLE}>
           {sold || 0}
         </Tag>
       ),
@@ -624,25 +626,25 @@ useEffect(() => {
 
   return (
     <div>
-      <Title level={3} style={{ marginBottom: '8px' }}>
+      <Title {...STANDARD_PAGE_TITLE_CONFIG}>
         <BarChartOutlined /> Daily Quota Management
       </Title>
-      <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
+      <Text {...STANDARD_PAGE_SUBTITLE_CONFIG}>
         Allocate daily sales quotas by territory and monitor consumption in real time.
       </Text>
 
-      <Tabs activeKey={activeTab} onChange={setActiveTab}>
+      <Tabs {...STANDARD_TABS_CONFIG} activeKey={activeTab} onChange={setActiveTab}>
         <TabPane tab="Allocate Daily Quotas" key="allocate">
           {/* Allocation Form */}
-          <Card title="Allocate Daily Quotas" style={{ marginBottom: '16px', borderRadius: '8px' }} bodyStyle={{ padding: '12px' }}>
-            <Row gutter={[16, 16]} align="top">
+          <Card title="Allocate Daily Quotas" {...FILTER_CARD_CONFIG}>
+            <Row gutter={STANDARD_ROW_GUTTER} align="top">
             <Col flex="none" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
               <Space direction="vertical">
                 <Text strong>Date:</Text>
                 <DatePicker
+                  {...STANDARD_DATE_PICKER_CONFIG}
                   value={selectedDate}
                   onChange={(date) => setSelectedDate(date || dayjs())}
-                  format="YYYY-MM-DD"
                   disabledDate={disabledDate}
                 />
               </Space>
@@ -775,7 +777,7 @@ useEffect(() => {
           </Card>
 
           {/* Current Allocations Table */}
-          <Card title="Allocated Daily Quotas" style={{ marginBottom: '16px', borderRadius: '8px' }} bodyStyle={{ padding: '12px' }}>
+          <Card title="Allocated Daily Quotas" {...FILTER_CARD_CONFIG}>
             <Table
               dataSource={getAllocations()}
               columns={allocationColumns}
@@ -783,21 +785,21 @@ useEffect(() => {
               pagination={getStandardPaginationConfig('allocations', 20)}
               scroll={{ x: 'max-content' }}
               locale={{ emptyText: 'No allocations yet. Add allocations using the form above.' }}
-              size="small"
+              size={STANDARD_TABLE_SIZE}
             />
           </Card>
         </TabPane>
 
         <TabPane tab="Previously Allocated Quotas" key="history">
-          <Card title="Previously Allocated Quotas" style={{ marginBottom: '16px', borderRadius: '8px' }} bodyStyle={{ padding: '12px' }}>
+          <Card title="Previously Allocated Quotas" {...FILTER_CARD_CONFIG}>
             <Row gutter={[16, 16]} align="middle">
               <Col xs={24} sm={12} md={8}>
                 <Space direction="vertical" style={{ width: '100%' }}>
                   <Text strong>Select Date</Text>
                   <DatePicker
+                    {...STANDARD_DATE_PICKER_CONFIG}
                     value={historyDate}
                     onChange={(value) => setHistoryDate(value || dayjs())}
-                    format="YYYY-MM-DD"
                     style={{ width: '100%' }}
                     disabledDate={disabledHistoryDate}
                     allowClear={false}
@@ -822,7 +824,7 @@ useEffect(() => {
               rowKey="key"
               pagination={getStandardPaginationConfig('allocations', 20)}
               scroll={{ x: 'max-content' }}
-              size="small"
+              size={STANDARD_TABLE_SIZE}
               loading={historyLoading}
               locale={{ emptyText: 'No quotas found for this date.' }}
             />

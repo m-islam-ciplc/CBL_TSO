@@ -14,6 +14,7 @@ import TransportManagement from './TransportManagement';
 import AdminSettings from './AdminSettings';
 import UserManagement from './UserManagement';
 import { useUser } from '../contexts/UserContext';
+import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_TABS_CONFIG } from '../templates/UIElements';
 
 const { Title, Text } = Typography;
 
@@ -54,10 +55,10 @@ function Settings() {
 
   return (
     <div>
-      <Title level={3} style={{ marginBottom: '8px' }}>
+      <Title {...STANDARD_PAGE_TITLE_CONFIG}>
         <SettingOutlined /> Settings
       </Title>
-      <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
+      <Text {...STANDARD_PAGE_SUBTITLE_CONFIG}>
         Manage users, dealers, products, transports, and application settings
       </Text>
 

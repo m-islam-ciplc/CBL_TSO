@@ -16,6 +16,8 @@ import {
   SettingOutlined,
 } from '@ant-design/icons';
 import axios from 'axios';
+import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, STANDARD_INPUT_NUMBER_SIZE } from '../templates/UIElements';
+import { CONTENT_CARD_CONFIG } from '../templates/CardTemplates';
 
 const { Title, Text } = Typography;
 
@@ -74,24 +76,23 @@ function AdminSettings() {
 
   return (
     <div>
-      <Title level={3} style={{ marginBottom: '8px' }}>
+      <Title {...STANDARD_PAGE_TITLE_CONFIG}>
         <SettingOutlined /> Admin Settings
       </Title>
-      <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
+      <Text {...STANDARD_PAGE_SUBTITLE_CONFIG}>
         Configure application settings and preferences.
       </Text>
 
       <Card 
-        title="Monthly Forecast Period Settings" 
-        style={{ marginBottom: '16px', borderRadius: '8px' }} 
-        bodyStyle={{ padding: '12px' }}
+        {...CONTENT_CARD_CONFIG}
+        title="Monthly Forecast Period Settings"
       >
         <Form
           form={form}
           onFinish={handleSave}
           initialValues={{ start_day: startDay }}
         >
-          <Row gutter={[16, 16]} align="top">
+          <Row gutter={STANDARD_ROW_GUTTER} align="top">
             <Col flex="none" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
               <Space direction="vertical">
                 <Text strong>Forecast Cycle Start Day:</Text>

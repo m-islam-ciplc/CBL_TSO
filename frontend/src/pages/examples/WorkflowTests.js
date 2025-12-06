@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Card, Typography, Button, Space, Divider, Tag, Alert, Collapse, Tabs, message } from 'antd';
 import { PlayCircleOutlined, CopyOutlined, CheckCircleOutlined, DeleteOutlined, WarningOutlined } from '@ant-design/icons';
 import { FILTER_CARD_CONFIG } from '../../templates/CardTemplates';
+import { STANDARD_TABS_CONFIG, STANDARD_DIVIDER_CONFIG } from '../../templates/UIElements';
 
 const { Title, Text, Paragraph } = Typography;
 const { Panel } = Collapse;
@@ -353,7 +354,7 @@ function WorkflowTests() {
         style={{ marginBottom: '24px' }}
       />
 
-      <Tabs defaultActiveKey="admin">
+      <Tabs {...STANDARD_TABS_CONFIG} defaultActiveKey="admin">
         <TabPane tab="Admin Tests (56 tests)" key="admin">
           <Card title="How to Run Admin Tests" {...FILTER_CARD_CONFIG}>
             {renderCommands(adminCommands)}
@@ -375,7 +376,7 @@ function WorkflowTests() {
             </Space>
           </Card>
 
-          <Divider />
+          <Divider {...STANDARD_DIVIDER_CONFIG} />
 
           <Card title="Test Coverage Details" {...FILTER_CARD_CONFIG}>
             <Collapse>
@@ -434,7 +435,7 @@ function WorkflowTests() {
             </Space>
           </Card>
 
-          <Divider />
+          <Divider {...STANDARD_DIVIDER_CONFIG} />
 
           <Card title="Test Coverage Details" {...FILTER_CARD_CONFIG}>
             <Collapse>
@@ -501,7 +502,7 @@ function WorkflowTests() {
             </Space>
           </Card>
 
-          <Divider />
+          <Divider {...STANDARD_DIVIDER_CONFIG} />
 
           <Card title="Test Coverage Details" {...FILTER_CARD_CONFIG}>
             <Collapse>
@@ -617,7 +618,7 @@ function WorkflowTests() {
                   <li><Text code>transports</Text> - All transports</li>
                 </ul>
               </div>
-              <Divider />
+              <Divider {...STANDARD_DIVIDER_CONFIG} />
               <div>
                 <Text strong style={{ color: '#52c41a' }}>Tables Preserved (Data Kept):</Text>
                 <ul>

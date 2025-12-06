@@ -17,6 +17,8 @@ import {
   Col,
 } from 'antd';
 import { useStandardPagination } from '../templates/useStandardPagination';
+import { CONTENT_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, STANDARD_MODAL_CONFIG, STANDARD_POPCONFIRM_CONFIG } from '../templates/UIElements';
 import {
   PlusOutlined,
   EditOutlined,
@@ -227,6 +229,7 @@ function UserManagement() {
             onClick={() => handleEdit(record)}
           />
           <Popconfirm
+            {...STANDARD_POPCONFIRM_CONFIG}
             title={record.is_active ? 'Deactivate this user?' : 'Activate this user?'}
             onConfirm={() => handleToggleActive(record)}
           >
@@ -238,6 +241,7 @@ function UserManagement() {
             </Button>
           </Popconfirm>
           <Popconfirm
+            {...STANDARD_POPCONFIRM_CONFIG}
             title="Are you sure you want to delete this user?"
             onConfirm={() => handleDelete(record.id)}
           >
@@ -254,16 +258,16 @@ function UserManagement() {
 
   return (
     <div>
-      <Title level={3} style={{ marginBottom: '8px' }}>
+      <Title {...STANDARD_PAGE_TITLE_CONFIG}>
         <UserOutlined /> Manage Users
       </Title>
-      <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
+      <Text {...STANDARD_PAGE_SUBTITLE_CONFIG}>
         Manage user accounts and permissions
       </Text>
 
       {/* Add User Button */}
-      <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
-        <Row gutter={[16, 16]} align="middle">
+      <Card {...CONTENT_CARD_CONFIG}>
+        <Row gutter={STANDARD_ROW_GUTTER} align="middle">
           <Col>
             <Button
               type="primary"
@@ -277,7 +281,7 @@ function UserManagement() {
       </Card>
 
       {/* Users Table */}
-      <Card>
+      <Card {...TABLE_CARD_CONFIG}>
         <div style={{ marginBottom: '16px' }}>
           <Text strong>Users ({users.length})</Text>
         </div>
@@ -293,14 +297,13 @@ function UserManagement() {
       </Card>
 
       <Modal
+        {...STANDARD_MODAL_CONFIG}
         title={editingUser ? 'Edit User' : 'Add User'}
         open={modalVisible}
         onCancel={() => {
           setModalVisible(false);
           form.resetFields();
         }}
-        footer={null}
-        width={600}
       >
         <Form
           form={form}

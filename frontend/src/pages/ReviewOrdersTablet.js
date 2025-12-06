@@ -22,6 +22,8 @@ import {
   EditOutlined,
 } from '@ant-design/icons';
 import { useUser } from '../contexts/UserContext';
+import { CONTENT_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, MINIMAL_ROW_GUTTER, TIGHT_ROW_GUTTER, TIGHT_VERTICAL_ROW_GUTTER, STANDARD_FORM_LABEL_STYLE, STANDARD_FORM_SIZE, STANDARD_INPUT_SIZE, STANDARD_SELECT_SIZE, STANDARD_EMPTY_CONFIG, STANDARD_SPIN_SIZE } from '../templates/UIElements';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -338,11 +340,11 @@ const { userId } = useUser();
           Review and submit your orders
         </Text>
 
-        <Card style={{ textAlign: 'center', marginBottom: '16px', borderRadius: '8px' }}>
+        <Card {...CONTENT_CARD_CONFIG} style={{ ...CONTENT_CARD_CONFIG.style, textAlign: 'center' }}>
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
             description="No items in your order"
-            style={{ padding: '40px 0' }}
+            {...STANDARD_EMPTY_CONFIG}
           >
             <Button
               type="primary"
@@ -359,18 +361,18 @@ const { userId } = useUser();
 
   return (
     <div>
-      <Title level={3} style={{ marginBottom: '8px' }}>
+      <Title {...STANDARD_PAGE_TITLE_CONFIG}>
         <EditOutlined /> Review & Edit Order
       </Title>
-      <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
+      <Text {...STANDARD_PAGE_SUBTITLE_CONFIG}>
         Review your order before submitting
       </Text>
 
       {/* Order Form */}
-      <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
+      <Card {...CONTENT_CARD_CONFIG}>
         {dataLoading ? (
           <div style={{ textAlign: 'center', padding: '20px' }}>
-            <Spin size="large" />
+              <Spin size={STANDARD_SPIN_SIZE} />
             <div style={{ marginTop: '10px', color: '#666' }}>Loading form data...</div>
           </div>
         ) : (
@@ -379,9 +381,9 @@ const { userId } = useUser();
         <Form
           form={form}
           layout="horizontal"
-          size="small"
+          size={STANDARD_FORM_SIZE}
         >
-          <Row gutter={[4, 6]} align="middle">
+          <Row gutter={MINIMAL_ROW_GUTTER} align="middle">
             <Form.Item name="orderType" hidden><Input /></Form.Item>
             <Form.Item name="warehouse" hidden><Input /></Form.Item>
             <Form.Item name="territoryCode" hidden><Input /></Form.Item>
@@ -389,13 +391,13 @@ const { userId } = useUser();
             <Col xs={24} sm={24} md={12} lg={12}>
               <Form.Item
                 name="dealer"
-                label={<Text strong style={{ fontSize: '12px' }}>Dealer</Text>}
+                label={<Text strong style={STANDARD_FORM_LABEL_STYLE}>Dealer</Text>}
                 rules={[{ required: true, message: 'Required' }]}
                 style={{ marginBottom: '8px' }}
               >
                   <Select
                   placeholder="Dealer" 
-                  size="small"
+                  size={STANDARD_SELECT_SIZE}
                   style={{ fontSize: '12px' }}
                   disabled
                 >
@@ -417,7 +419,7 @@ const { userId } = useUser();
               >
                   <Select
                   placeholder="Transport" 
-                  size="small"
+                  size={STANDARD_SELECT_SIZE}
                   style={{ fontSize: '12px' }}
                   disabled
                 >
@@ -436,7 +438,7 @@ const { userId } = useUser();
       </Card>
 
       {/* Order Items Review */}
-      <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
+      <Card {...CONTENT_CARD_CONFIG}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <Title level={5} style={{ margin: 0 }}>
             📦 Order Items ({orderItems.length})
@@ -461,7 +463,7 @@ const { userId } = useUser();
                 border: '2px solid #f0f0f0'
               }}
             >
-              <Row gutter={[8, 8]} align="middle">
+              <Row gutter={TIGHT_ROW_GUTTER} align="middle">
                 <Col xs={2} sm={3}>
                   <div style={{ 
                     textAlign: 'center',
@@ -492,7 +494,7 @@ const { userId } = useUser();
                     <Button
                       type="primary"
                       shape="circle"
-                      size="small"
+                      size={STANDARD_SELECT_SIZE}
                       icon={<span style={{ fontSize: '12px' }}>-</span>}
                       onClick={() => updateOrderItem(item.id, 'quantity', Math.max(1, item.quantity - 1))}
                       style={{ 
@@ -518,7 +520,7 @@ const { userId } = useUser();
                     <Button
                       type="primary"
                       shape="circle"
-                      size="small"
+                      size={STANDARD_SELECT_SIZE}
                       icon={<span style={{ fontSize: '12px' }}>+</span>}
                       onClick={() => updateOrderItem(item.id, 'quantity', item.quantity + 1)}
                       style={{ 
@@ -543,8 +545,8 @@ const { userId } = useUser();
       </Card>
 
              {/* Order Summary */}
-       <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
-         <Row gutter={[8, 12]} align="middle">
+       <Card {...CONTENT_CARD_CONFIG}>
+         <Row gutter={TIGHT_VERTICAL_ROW_GUTTER} align="middle">
            <Col xs={24} sm={12}>
              <div>
                <Text strong style={{ fontSize: '16px', color: '#1890ff' }}>

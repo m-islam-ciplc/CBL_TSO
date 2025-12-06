@@ -31,6 +31,8 @@ import {
 import dayjs from 'dayjs';
 import { createStandardDatePickerConfig } from '../templates/UIConfig';
 import { useStandardPagination } from '../templates/useStandardPagination';
+import { FILTER_CARD_CONFIG, CONTENT_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, COMPACT_ROW_GUTTER, STANDARD_FORM_LABEL_STYLE, STANDARD_INPUT_SIZE, STANDARD_SELECT_SIZE, STANDARD_TABLE_SIZE, STANDARD_TAG_STYLE, STANDARD_POPCONFIRM_CONFIG, STANDARD_TOOLTIP_CONFIG, STANDARD_SPIN_SIZE, STANDARD_DATE_PICKER_CONFIG, STANDARD_SPACE_SIZE_SMALL } from '../templates/UIElements';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -233,7 +235,7 @@ function PlacedOrders({ refreshTrigger }) {
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-        <Spin size="large" />
+        <Spin size={STANDARD_SPIN_SIZE} />
       </div>
     );
   }
@@ -267,7 +269,7 @@ function PlacedOrders({ refreshTrigger }) {
       key: 'order_id',
       ellipsis: true,
       render: (orderId) => (
-        <Tag color="blue" style={{ fontSize: '12px' }}>
+        <Tag color="blue" style={STANDARD_TAG_STYLE}>
           {orderId}
         </Tag>
       ),
@@ -302,7 +304,7 @@ function PlacedOrders({ refreshTrigger }) {
       render: (_, record) => {
         return (
           <div>
-            <Tag color="green" style={{ fontSize: '12px' }}>
+            <Tag color="green" style={STANDARD_TAG_STYLE}>
               {record.item_count} item{record.item_count !== 1 ? 's' : ''}
             </Tag>
           </div>
@@ -387,10 +389,10 @@ function PlacedOrders({ refreshTrigger }) {
         
         if (!isToday) {
           return (
-            <Tooltip title="Only today's orders can be deleted">
+            <Tooltip {...STANDARD_TOOLTIP_CONFIG} title="Only today's orders can be deleted">
               <Button
                 type="text"
-                size="small"
+                size={STANDARD_TABLE_SIZE}
                 danger
                 icon={<DeleteOutlined />}
                 disabled
@@ -401,6 +403,7 @@ function PlacedOrders({ refreshTrigger }) {
 
         return (
           <Popconfirm
+            {...STANDARD_POPCONFIRM_CONFIG}
             title="Delete Order"
             description={
               <div>
@@ -413,10 +416,10 @@ function PlacedOrders({ refreshTrigger }) {
             cancelText="Cancel"
             okButtonProps={{ danger: true }}
           >
-            <Tooltip title="Delete Order">
+            <Tooltip {...STANDARD_TOOLTIP_CONFIG} title="Delete Order">
               <Button
                 type="text"
-                size="small"
+                size={STANDARD_TABLE_SIZE}
                 danger
                 icon={<DeleteOutlined />}
               />
@@ -432,25 +435,24 @@ function PlacedOrders({ refreshTrigger }) {
 
   return (
     <div>
-      <Title level={3} style={{ marginBottom: '8px' }}>
+      <Title {...STANDARD_PAGE_TITLE_CONFIG}>
         <OrderedListOutlined /> Placed Orders
       </Title>
-      <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
+      <Text {...STANDARD_PAGE_SUBTITLE_CONFIG}>
         {isTSO ? "View orders you've placed and filter by date, product, dealer, or transport." : 'View and manage all orders placed by TSOs.'}
       </Text>
 
       {/* Filters */}
-      <Card title="Filter Orders" style={{ marginBottom: '16px', borderRadius: '8px' }} bodyStyle={{ padding: '12px' }}>
-        <Row gutter={[12, 12]}>
+      <Card title="Filter Orders" {...FILTER_CARD_CONFIG}>
+        <Row gutter={COMPACT_ROW_GUTTER}>
           <Col xs={24} sm={12} md={6}>
             <Space direction="vertical" style={{ width: '100%' }} size="small">
-              <Text strong style={{ fontSize: '12px' }}>Date</Text>
+              <Text strong style={STANDARD_FORM_LABEL_STYLE}>Date</Text>
               <DatePicker
+                {...STANDARD_DATE_PICKER_CONFIG}
                 value={selectedDate}
                 onChange={setSelectedDate}
-                format="DD MMM YYYY"
                 style={{ width: '100%' }}
-                size="middle"
                 allowClear={false}
                 disabledDate={disabledDate}
                 dateRender={dateCellRender}
@@ -459,13 +461,13 @@ function PlacedOrders({ refreshTrigger }) {
           </Col>
           <Col xs={24} sm={12} md={6}>
             <Space direction="vertical" style={{ width: '100%' }} size="small">
-              <Text strong style={{ fontSize: '12px' }}>Product</Text>
+              <Text strong style={STANDARD_FORM_LABEL_STYLE}>Product</Text>
               <Select
                 placeholder="All Products"
                 value={productFilter}
                 onChange={setProductFilter}
                 style={{ width: '100%' }}
-                size="middle"
+                size={STANDARD_INPUT_SIZE}
                 allowClear
                 showSearch
                 filterOption={(input, option) => {
@@ -483,13 +485,13 @@ function PlacedOrders({ refreshTrigger }) {
           </Col>
           <Col xs={24} sm={12} md={6}>
             <Space direction="vertical" style={{ width: '100%' }} size="small">
-              <Text strong style={{ fontSize: '12px' }}>Dealer</Text>
+              <Text strong style={STANDARD_FORM_LABEL_STYLE}>Dealer</Text>
               <Select
                 placeholder="All Dealers"
                 value={dealerFilter}
                 onChange={setDealerFilter}
                 style={{ width: '100%' }}
-                size="middle"
+                size={STANDARD_INPUT_SIZE}
                 allowClear
                 showSearch
                 filterOption={(input, option) => {
@@ -507,13 +509,13 @@ function PlacedOrders({ refreshTrigger }) {
           </Col>
           <Col xs={24} sm={12} md={6}>
             <Space direction="vertical" style={{ width: '100%' }} size="small">
-              <Text strong style={{ fontSize: '12px' }}>Transport</Text>
+              <Text strong style={STANDARD_FORM_LABEL_STYLE}>Transport</Text>
               <Select
                 placeholder="All Transports"
                 value={transportFilter}
                 onChange={setTransportFilter}
                 style={{ width: '100%' }}
-                size="middle"
+                size={STANDARD_INPUT_SIZE}
                 allowClear
                 showSearch
                 filterOption={(input, option) => {
@@ -531,13 +533,13 @@ function PlacedOrders({ refreshTrigger }) {
           </Col>
           <Col xs={24} sm={12} md={6}>
             <Space direction="vertical" style={{ width: '100%' }} size="small">
-              <Text strong style={{ fontSize: '12px' }}>Status</Text>
+              <Text strong style={STANDARD_FORM_LABEL_STYLE}>Status</Text>
               <Select
                 placeholder="All Status"
                 value={statusFilter}
                 onChange={setStatusFilter}
                 style={{ width: '100%' }}
-                size="middle"
+                size={STANDARD_INPUT_SIZE}
                 allowClear
               >
                 <Option value="all">All Orders</Option>
@@ -550,7 +552,7 @@ function PlacedOrders({ refreshTrigger }) {
           </Col>
           <Col xs={24} sm={12} md={6}>
             <Space direction="vertical" style={{ width: '100%' }} size="small">
-              <Text strong style={{ fontSize: '12px' }}>Actions</Text>
+              <Text strong style={STANDARD_FORM_LABEL_STYLE}>Actions</Text>
               <Space style={{ width: '100%' }}>
                 <Button
                   icon={<ReloadOutlined />}

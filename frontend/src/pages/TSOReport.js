@@ -6,6 +6,8 @@ import dayjs from 'dayjs';
 import { useUser } from '../contexts/UserContext';
 import { createStandardDatePickerConfig } from '../templates/UIConfig';
 import { getStandardPaginationConfig } from '../templates/useStandardPagination';
+import { FILTER_CARD_CONFIG, CONTENT_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, STANDARD_FORM_LABEL_STYLE, STANDARD_TABS_CONFIG, STANDARD_DATE_PICKER_CONFIG, STANDARD_SPIN_SIZE, STANDARD_TABLE_SIZE } from '../templates/UIElements';
 
 const { Title, Text } = Typography;
 
@@ -602,24 +604,24 @@ function TSOReport() {
 
   return (
     <div>
-      <Title level={3} style={{ marginBottom: '8px' }}>
+      <Title {...STANDARD_PAGE_TITLE_CONFIG}>
         <FileTextOutlined /> My Order Reports
       </Title>
-      <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
+      <Text {...STANDARD_PAGE_SUBTITLE_CONFIG}>
         Generate Excel reports for your orders placed on a specific date or across a date range
       </Text>
 
-      <Tabs activeKey={activeTab} onChange={setActiveTab}>
+      <Tabs {...STANDARD_TABS_CONFIG} activeKey={activeTab} onChange={setActiveTab}>
         <Tabs.TabPane tab="Daily Report (Single Date)" key="single">
-          <Card title="Daily Report (Single Date)" style={{ marginBottom: '16px', borderRadius: '8px' }} bodyStyle={{ padding: '12px' }}>
-            <Row gutter={[16, 16]} align="bottom">
+          <Card title="Daily Report (Single Date)" {...FILTER_CARD_CONFIG}>
+            <Row gutter={STANDARD_ROW_GUTTER} align="bottom">
               <Col xs={24} sm={12} md={6}>
                 <Space direction="vertical" style={{ width: '100%' }}>
-                  <Text strong>Select Date</Text>
+                  <Text strong style={STANDARD_FORM_LABEL_STYLE}>Select Date</Text>
                   <DatePicker
+                    {...STANDARD_DATE_PICKER_CONFIG}
                     value={selectedDate}
                     onChange={setSelectedDate}
-                    format="YYYY-MM-DD"
                     style={{ width: '100%' }}
                     placeholder="Select date for report"
                     disabledDate={disabledDate}
@@ -654,15 +656,15 @@ function TSOReport() {
         </Tabs.TabPane>
 
         <Tabs.TabPane tab="Order Summary (Date Range)" key="range">
-          <Card title="Order Summary (Date Range)" style={{ marginBottom: '16px', borderRadius: '8px' }} bodyStyle={{ padding: '12px' }}>
-            <Row gutter={[16, 16]} align="bottom">
+          <Card title="Order Summary (Date Range)" {...FILTER_CARD_CONFIG}>
+            <Row gutter={STANDARD_ROW_GUTTER} align="bottom">
               <Col xs={24} sm={12} md={6}>
                 <Space direction="vertical" style={{ width: '100%' }}>
-                  <Text strong>Start Date</Text>
+                  <Text strong style={STANDARD_FORM_LABEL_STYLE}>Start Date</Text>
                   <DatePicker
+                    {...STANDARD_DATE_PICKER_CONFIG}
                     value={rangeStart}
                     onChange={setRangeStart}
-                    format="YYYY-MM-DD"
                     style={{ width: '100%' }}
                     placeholder="Start date"
                     dateRender={dateCellRender}
@@ -671,11 +673,11 @@ function TSOReport() {
               </Col>
               <Col xs={24} sm={12} md={6}>
                 <Space direction="vertical" style={{ width: '100%' }}>
-                  <Text strong>End Date</Text>
+                  <Text strong style={STANDARD_FORM_LABEL_STYLE}>End Date</Text>
                   <DatePicker
+                    {...STANDARD_DATE_PICKER_CONFIG}
                     value={rangeEnd}
                     onChange={setRangeEnd}
-                    format="YYYY-MM-DD"
                     style={{ width: '100%' }}
                     placeholder="End date"
                     dateRender={dateCellRender}
@@ -711,7 +713,7 @@ function TSOReport() {
 
       {/* Preview Table */}
       {showPreview && previewData.length > 0 && (
-        <Card>
+        <Card {...TABLE_CARD_CONFIG}>
           <div style={{ marginBottom: '16px' }}>
             <Text strong>
               {previewInfo || 'Orders'} ({filteredPreviewData.length})
@@ -719,8 +721,8 @@ function TSOReport() {
           </div>
           
           {/* Filters */}
-          <Card size="small" style={{ marginBottom: '16px', borderRadius: '8px' }}>
-            <Row gutter={[16, 16]} align="middle">
+          <Card size="small" {...CONTENT_CARD_CONFIG}>
+            <Row gutter={STANDARD_ROW_GUTTER} align="middle">
               <Col xs={24} sm={12} md={8}>
                 <Input
                   placeholder={previewMode === 'range' ? 'Search dealers or products...' : 'Search orders...'}
@@ -742,14 +744,14 @@ function TSOReport() {
             }
             pagination={getStandardPaginationConfig(previewMode === 'range' ? 'dealers' : 'orders', 20)}
             scroll={{ x: 'max-content' }}
-            size="small"
+            size={STANDARD_TABLE_SIZE}
           />
         </Card>
       )}
 
       {loading && (
         <div style={{ textAlign: 'center', marginTop: '24px' }}>
-          <Spin size="large" />
+          <Spin size={STANDARD_SPIN_SIZE} />
           <div style={{ marginTop: '16px' }}>
             <Text>Processing your request...</Text>
           </div>

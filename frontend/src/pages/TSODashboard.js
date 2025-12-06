@@ -23,6 +23,8 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { getStandardPaginationConfig } from '../templates/useStandardPagination';
+import { FILTER_CARD_CONFIG, CONTENT_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, STANDARD_TAG_STYLE, STANDARD_ALERT_CONFIG, STANDARD_STATISTIC_CONFIG, STANDARD_SPIN_SIZE, STANDARD_SPACE_SIZE_LARGE } from '../templates/UIElements';
 
 const { Title, Text } = Typography;
 
@@ -104,7 +106,7 @@ function TSODashboard() {
       ellipsis: true,
       sorter: (a, b) => (a.max_quantity || 0) - (b.max_quantity || 0),
       render: (quantity) => (
-        <Tag color="default" style={{ fontSize: '12px', padding: '2px 8px' }}>
+        <Tag color="default" style={STANDARD_TAG_STYLE}>
           {quantity}
         </Tag>
       ),
@@ -117,7 +119,7 @@ function TSODashboard() {
       ellipsis: true,
       sorter: (a, b) => (a.sold_quantity || 0) - (b.sold_quantity || 0),
       render: (sold) => (
-        <Tag color="orange" style={{ fontSize: '12px', padding: '2px 8px' }}>
+        <Tag color="orange" style={STANDARD_TAG_STYLE}>
           {sold || 0}
         </Tag>
       ),
@@ -133,7 +135,7 @@ function TSODashboard() {
         const remaining = quantity !== undefined && quantity !== null ? quantity : 0;
         const isLow = remaining === 0;
         return (
-          <Tag color={isLow ? 'red' : 'green'} style={{ fontSize: '12px', padding: '2px 8px' }}>
+          <Tag color={isLow ? 'red' : 'green'} style={STANDARD_TAG_STYLE}>
             {remaining}
           </Tag>
         );
@@ -146,32 +148,32 @@ function TSODashboard() {
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-        <Spin size="large" />
+        <Spin size={STANDARD_SPIN_SIZE} />
       </div>
     );
   }
 
   return (
     <div>
-      <Title level={3} style={{ marginBottom: '8px' }}><DashboardOutlined /> Welcome, {userName}!</Title>
-      <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
+      <Title {...STANDARD_PAGE_TITLE_CONFIG}><DashboardOutlined /> Welcome, {userName}!</Title>
+      <Text {...STANDARD_PAGE_SUBTITLE_CONFIG}>
         Territory: <Text strong>{territoryName}</Text>
       </Text>
-      <Space direction="vertical" style={{ width: '100%' }} size="large">
+      <Space direction="vertical" style={{ width: '100%' }} size={STANDARD_SPACE_SIZE_LARGE}>
 
         <Alert
+          {...STANDARD_ALERT_CONFIG}
           message={<span style={{ color: 'white', fontSize: '14px' }}>{`Your quota allocations for ${dayjs().format('MMMM D, YYYY')}`}</span>}
           type="info"
-          showIcon
           icon={<InfoCircleOutlined style={{ color: 'white', fontSize: '16px' }} />}
           style={{
-            padding: '12px',
+            ...STANDARD_ALERT_CONFIG.style,
             background: 'linear-gradient(135deg, #2c3e50 0%, #34495e 100%)',
             border: 'none',
           }}
         />
 
-        <Row gutter={[16, 16]}>
+        <Row gutter={STANDARD_ROW_GUTTER}>
           <Col xs={24} sm={8}>
             <Card
               style={{
@@ -182,11 +184,12 @@ function TSODashboard() {
               bodyStyle={{ padding: '12px' }}
             >
               <Statistic
+                {...STANDARD_STATISTIC_CONFIG}
                 title={<span style={{ color: 'white' }}>Products Allocated</span>}
                 value={quotas.length}
                 prefix={<GiftOutlined />}
                 suffix="items"
-                valueStyle={{ color: 'white', fontSize: '24px' }}
+                valueStyle={{ ...STANDARD_STATISTIC_CONFIG.valueStyle, color: 'white' }}
               />
               <div
                 style={{
@@ -226,11 +229,12 @@ function TSODashboard() {
               bodyStyle={{ padding: '12px' }}
             >
               <Statistic
+                {...STANDARD_STATISTIC_CONFIG}
                 title={<span style={{ color: 'white' }}>Sold Quantity</span>}
                 value={quotas.reduce((sum, q) => sum + Number(q.sold_quantity || 0), 0)}
                 prefix={<ShoppingCartOutlined />}
                 suffix="units"
-                valueStyle={{ color: 'white', fontSize: '24px' }}
+                valueStyle={{ ...STANDARD_STATISTIC_CONFIG.valueStyle, color: 'white' }}
               />
               <div
                 style={{
@@ -270,11 +274,12 @@ function TSODashboard() {
               bodyStyle={{ padding: '12px' }}
             >
               <Statistic
+                {...STANDARD_STATISTIC_CONFIG}
                 title={<span style={{ color: 'white' }}>Remaining Quantity</span>}
                 value={quotas.reduce((sum, q) => sum + Number(q.remaining_quantity !== undefined && q.remaining_quantity !== null ? q.remaining_quantity : 0), 0)}
                 prefix={<CheckCircleOutlined />}
                 suffix="units"
-                valueStyle={{ color: 'white', fontSize: '24px' }}
+                valueStyle={{ ...STANDARD_STATISTIC_CONFIG.valueStyle, color: 'white' }}
               />
               <div
                 style={{
@@ -312,7 +317,7 @@ function TSODashboard() {
           </Col>
         </Row>
 
-        <Card title="Product Allocations" style={{ marginBottom: '16px', borderRadius: '8px' }} bodyStyle={{ padding: '12px' }}>
+        <Card title="Product Allocations" {...FILTER_CARD_CONFIG}>
           {quotas.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 0' }}>
               <InfoCircleOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />

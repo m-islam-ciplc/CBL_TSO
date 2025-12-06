@@ -19,6 +19,7 @@ import {
   TableOutlined,
   DownOutlined,
   PlayCircleOutlined,
+  LayoutOutlined,
 } from '@ant-design/icons';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -34,11 +35,7 @@ import MonthlyForecastTab from './pages/MonthlyForecastTab';
 import DailyDemandMultiDay from './pages/DailyDemandMultiDay';
 import DealerReports from './pages/DealerReports';
 import DebugPanel from './components/DebugPanel';
-import ExpandableTableTemplateDemo from './pages/examples/ExpandableTableTemplateDemo';
-import CalendarWidgetDemo from './pages/examples/ui-components/CalendarWidgetDemo';
-import StandardTablesDemo from './pages/examples/ui-components/StandardTablesDemo';
-import DealerProductCardTemplateDemo from './pages/examples/DealerProductCardTemplateDemo';
-import CardTemplatesDemo from './pages/examples/CardTemplatesDemo';
+import UnifiedUITemplate from './pages/examples/UnifiedUITemplate';
 import WorkflowTests from './pages/examples/WorkflowTests';
 
 const { Header, Content } = Layout;
@@ -462,62 +459,16 @@ function AppContent() {
               menu={{
                 items: [
                   {
-                    key: 'template-tables',
-                    label: 'Table Templates',
-                    icon: <TableOutlined />,
-                    children: [
-                      {
-                        key: 'standard-tables',
-                        label: 'Standard Tables',
-                        onClick: () => navigate('/template-standard-tables')
-                      },
-                      {
-                        key: 'expandable-table',
-                        label: 'Expandable Tables',
-                        onClick: () => navigate('/template-expandable-tables')
-                      },
-                    ]
+                    key: 'ui-templates',
+                    label: 'UI Templates',
+                    icon: <LayoutOutlined />,
+                    onClick: () => navigate('/template-ui')
                   },
                   {
-                    key: 'template-calendars',
-                    label: 'Calendar Templates',
-                    icon: <CalendarOutlined />,
-                    children: [
-                      {
-                        key: 'calendar',
-                        label: 'Calendar Widget',
-                        onClick: () => navigate('/template-calendar-widget')
-                      },
-                    ]
-                  },
-                  {
-                    key: 'template-cards',
-                    label: 'Card Templates',
-                    icon: <ShoppingCartOutlined />,
-                    children: [
-                      {
-                        key: 'standard-cards',
-                        label: 'Standard Cards',
-                        onClick: () => navigate('/template-standard-cards')
-                      },
-                      {
-                        key: 'dealer-product-card',
-                        label: 'Dealer Product Card',
-                        onClick: () => navigate('/template-dealer-product-card')
-                      },
-                    ]
-                  },
-                  {
-                    key: 'template-tests',
-                    label: 'Tests',
+                    key: 'workflow-tests',
+                    label: 'Workflow Tests',
                     icon: <PlayCircleOutlined />,
-                    children: [
-                      {
-                        key: 'workflow-tests',
-                        label: 'Workflow Tests',
-                        onClick: () => navigate('/template-workflow-tests')
-                      },
-                    ]
+                    onClick: () => navigate('/template-workflow-tests')
                   },
                 ]
               }}
@@ -646,11 +597,7 @@ function AppContent() {
             <Dashboard setStats={setStats} />
           } />
           {/* Template Routes - accessible without login */}
-          <Route path="/template-standard-tables" element={<StandardTablesDemo />} />
-          <Route path="/template-expandable-tables" element={<ExpandableTableTemplateDemo />} />
-          <Route path="/template-calendar-widget" element={<CalendarWidgetDemo />} />
-          <Route path="/template-standard-cards" element={<CardTemplatesDemo />} />
-          <Route path="/template-dealer-product-card" element={<DealerProductCardTemplateDemo />} />
+          <Route path="/template-ui" element={<UnifiedUITemplate />} />
           <Route path="/template-workflow-tests" element={<WorkflowTests />} />
         </Routes>
       </Content>

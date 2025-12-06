@@ -8,6 +8,8 @@ import { useUser } from '../contexts/UserContext';
 import { createStandardDatePickerConfig } from '../templates/UIConfig';
 import { getStandardPaginationConfig } from '../templates/useStandardPagination';
 import { STANDARD_EXPANDABLE_TABLE_CONFIG } from '../templates/TableTemplate';
+import { FILTER_CARD_CONFIG, CONTENT_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, SINGLE_ROW_GUTTER, TIGHT_ROW_GUTTER, STANDARD_FORM_LABEL_STYLE, STANDARD_INPUT_SIZE, STANDARD_TABLE_SIZE, STANDARD_TAG_STYLE, STANDARD_TABS_CONFIG, STANDARD_BADGE_CONFIG, STANDARD_STATISTIC_CONFIG, STANDARD_SPIN_SIZE, STANDARD_DATE_PICKER_CONFIG, STANDARD_SPACE_SIZE_MIDDLE } from '../templates/UIElements';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -635,7 +637,7 @@ function DailyReport() {
       key: 'order_id',
       ellipsis: true,
       render: (orderId) => (
-        <Tag color="blue" style={{ fontSize: '12px' }}>
+        <Tag color="blue" style={STANDARD_TAG_STYLE}>
           {orderId}
         </Tag>
       ),
@@ -670,7 +672,7 @@ function DailyReport() {
       render: (_, record) => {
         return (
           <div>
-            <Tag color="green" style={{ fontSize: '12px' }}>
+            <Tag color="green" style={STANDARD_TAG_STYLE}>
               {record.item_count} item{record.item_count !== 1 ? 's' : ''}
             </Tag>
           </div>
@@ -1108,11 +1110,11 @@ function DailyReport() {
       render: (_text, record) => {
         const isExpanded = expandedRowKeys.byDealer.includes(record.dealer_id);
         return (
-          <Badge count={record.total_products} showZero overflowCount={999}>
+          <Badge {...STANDARD_BADGE_CONFIG} count={record.total_products}>
             <Button
               type="primary"
               icon={<AppstoreOutlined />}
-              size="small"
+              size={STANDARD_TABLE_SIZE}
               onClick={(e) => {
                 e.stopPropagation();
                 if (isExpanded) {
@@ -1174,11 +1176,11 @@ function DailyReport() {
       render: (_text, record) => {
         const isExpanded = expandedRowKeys.byProduct.includes(record.product_code);
         return (
-          <Badge count={record.dealer_count} showZero overflowCount={999}>
+          <Badge {...STANDARD_BADGE_CONFIG} count={record.dealer_count}>
             <Button
               type="primary"
               icon={<AppstoreOutlined />}
-              size="small"
+              size={STANDARD_TABLE_SIZE}
               onClick={(e) => {
                 e.stopPropagation();
                 if (isExpanded) {
@@ -1242,11 +1244,11 @@ function DailyReport() {
       render: (_text, record) => {
         const isExpanded = expandedRowKeys.byTerritory.includes(record.territory_name);
         return (
-          <Badge count={record.dealer_count} showZero overflowCount={999}>
+          <Badge {...STANDARD_BADGE_CONFIG} count={record.dealer_count}>
             <Button
               type="primary"
               icon={<AppstoreOutlined />}
-              size="small"
+              size={STANDARD_TABLE_SIZE}
               onClick={(e) => {
                 e.stopPropagation();
                 if (isExpanded) {
@@ -1300,7 +1302,7 @@ function DailyReport() {
           columns={productColumns}
           dataSource={record.products}
           pagination={false}
-          size="small"
+          size={STANDARD_TABLE_SIZE}
           rowKey="product_code"
         />
       </div>
@@ -1343,7 +1345,7 @@ function DailyReport() {
           columns={dealerColumns}
           dataSource={record.dealers}
           pagination={false}
-          size="small"
+          size={STANDARD_TABLE_SIZE}
           rowKey="dealer_code"
         />
       </div>
@@ -1396,11 +1398,11 @@ function DailyReport() {
       render: (_text, record) => {
         const isExpanded = forecastReportExpandedKeys.dealers.includes(record.dealer_id);
         return (
-          <Badge count={record.total_products} showZero overflowCount={999}>
+          <Badge {...STANDARD_BADGE_CONFIG} count={record.total_products}>
             <Button
               type="primary"
               icon={<AppstoreOutlined />}
-              size="small"
+              size={STANDARD_TABLE_SIZE}
               onClick={(e) => {
                 e.stopPropagation();
                 if (isExpanded) {
@@ -1462,11 +1464,11 @@ function DailyReport() {
       render: (_text, record) => {
         const isExpanded = forecastReportExpandedKeys.products.includes(record.product_code);
         return (
-          <Badge count={record.dealer_count} showZero overflowCount={999}>
+          <Badge {...STANDARD_BADGE_CONFIG} count={record.dealer_count}>
             <Button
               type="primary"
               icon={<AppstoreOutlined />}
-              size="small"
+              size={STANDARD_TABLE_SIZE}
               onClick={(e) => {
                 e.stopPropagation();
                 if (isExpanded) {
@@ -1530,11 +1532,11 @@ function DailyReport() {
       render: (_text, record) => {
         const isExpanded = forecastReportExpandedKeys.territories.includes(record.territory_name);
         return (
-          <Badge count={record.dealer_count} showZero overflowCount={999}>
+          <Badge {...STANDARD_BADGE_CONFIG} count={record.dealer_count}>
             <Button
               type="primary"
               icon={<AppstoreOutlined />}
-              size="small"
+              size={STANDARD_TABLE_SIZE}
               onClick={(e) => {
                 e.stopPropagation();
                 if (isExpanded) {
@@ -1578,7 +1580,7 @@ function DailyReport() {
         key: 'total_products',
         width: 100,
         align: 'center',
-        render: (text) => <Tag color="blue" style={{ fontSize: STANDARD_EXPANDABLE_TABLE_CONFIG.fontSizes.tag }}>{text}</Tag>,
+        render: (text) => <Tag color="blue" style={STANDARD_TAG_STYLE}>{text}</Tag>,
       },
       {
         title: 'Total Quantity',
@@ -1596,7 +1598,7 @@ function DailyReport() {
           columns={dealerColumns}
           dataSource={record.dealers}
           pagination={false}
-          size="small"
+          size={STANDARD_TABLE_SIZE}
           rowKey="dealer_code"
         />
       </div>
@@ -1605,14 +1607,14 @@ function DailyReport() {
 
   return (
     <div>
-      <Title level={3} style={{ marginBottom: '8px' }}>
+      <Title {...STANDARD_PAGE_TITLE_CONFIG}>
         <BarChartOutlined /> Reports
       </Title>
-      <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
+      <Text {...STANDARD_PAGE_SUBTITLE_CONFIG}>
         Generate reports for orders and view dealer forecasts
       </Text>
 
-      <Tabs activeKey={activeTab} onChange={setActiveTab}>
+      <Tabs {...STANDARD_TABS_CONFIG} activeKey={activeTab} onChange={setActiveTab}>
         {/* Daily Order Report Tab */}
         <Tabs.TabPane
           tab={
@@ -1623,15 +1625,15 @@ function DailyReport() {
           }
           key="daily-report"
         >
-          <Card title="Daily Order Report" style={{ marginBottom: '16px', borderRadius: '8px' }} bodyStyle={{ padding: '12px' }}>
-        <Row gutter={[16, 16]} align="bottom">
+          <Card title="Daily Order Report" {...FILTER_CARD_CONFIG}>
+        <Row gutter={STANDARD_ROW_GUTTER} align="bottom">
           <Col xs={24} sm={12} md={6}>
             <Space direction="vertical" style={{ width: '100%' }}>
               <Text strong>Select Date</Text>
               <DatePicker
+                {...STANDARD_DATE_PICKER_CONFIG}
                 value={selectedDate}
                 onChange={setSelectedDate}
-                format="YYYY-MM-DD"
                 style={{ width: '100%' }}
                 placeholder="Select date for report"
                 disabledDate={disabledDate}
@@ -1684,7 +1686,7 @@ function DailyReport() {
               </div>
               
               {/* Filters */}
-              <Card size="small" style={{ marginBottom: '16px', borderRadius: '8px' }}>
+              <Card size="small" {...CONTENT_CARD_CONFIG}>
                 <Row gutter={[16, 16]} align="middle">
                   <Col xs={24} sm={12} md={8}>
                     <Input
@@ -1723,14 +1725,14 @@ function DailyReport() {
                 rowKey={(record) => record.order_id || record.id}
                 pagination={getStandardPaginationConfig('orders', 20)}
                 scroll={{ x: 'max-content' }}
-                size="small"
+                size={STANDARD_TABLE_SIZE}
               />
             </Card>
           )}
 
           {loading && activeTab === 'daily-report' && (
             <div style={{ textAlign: 'center', marginTop: '24px' }}>
-              <Spin size="large" />
+              <Spin size={STANDARD_SPIN_SIZE} />
               <div style={{ marginTop: '16px' }}>
                 <Text>Processing your request...</Text>
               </div>
@@ -1748,15 +1750,15 @@ function DailyReport() {
           }
           key="order-summary"
         >
-          <Card title="Order Summary Report" style={{ marginBottom: '16px', borderRadius: '8px' }} bodyStyle={{ padding: '12px' }}>
-            <Row gutter={[16, 16]} align="bottom">
+          <Card title="Order Summary Report" {...FILTER_CARD_CONFIG}>
+            <Row gutter={STANDARD_ROW_GUTTER} align="bottom">
               <Col xs={24} sm={12} md={6}>
             <Space direction="vertical" style={{ width: '100%' }}>
               <Text strong>Start Date</Text>
               <DatePicker
+                {...STANDARD_DATE_PICKER_CONFIG}
                 value={rangeStart}
                 onChange={setRangeStart}
-                format="YYYY-MM-DD"
                 style={{ width: '100%' }}
                 placeholder="Start date"
                 dateRender={dateCellRender}
@@ -1767,9 +1769,9 @@ function DailyReport() {
             <Space direction="vertical" style={{ width: '100%' }}>
               <Text strong>End Date</Text>
               <DatePicker
+                {...STANDARD_DATE_PICKER_CONFIG}
                 value={rangeEnd}
                 onChange={setRangeEnd}
-                format="YYYY-MM-DD"
                 style={{ width: '100%' }}
                 placeholder="End date"
                 dateRender={dateCellRender}
@@ -1811,7 +1813,7 @@ function DailyReport() {
           </div>
           
           {/* Filters */}
-              <Card size="small" style={{ marginBottom: '16px', borderRadius: '8px' }}>
+              <Card size="small" {...CONTENT_CARD_CONFIG}>
             <Row gutter={[16, 16]} align="middle">
               <Col xs={24} sm={12} md={8}>
                 <Input
@@ -1830,14 +1832,14 @@ function DailyReport() {
                 rowKey={(record) => record.id}
             pagination={getStandardPaginationConfig('dealers', 20)}
             scroll={{ x: 'max-content' }}
-            size="small"
+            size={STANDARD_TABLE_SIZE}
           />
         </Card>
       )}
 
           {loading && activeTab === 'order-summary' && (
             <div style={{ textAlign: 'center', marginTop: '24px' }}>
-              <Spin size="large" />
+              <Spin size={STANDARD_SPIN_SIZE} />
               <div style={{ marginTop: '16px' }}>
                 <Text>Processing your request...</Text>
               </div>
@@ -1856,7 +1858,7 @@ function DailyReport() {
           key="forecasts-by-dealer"
         >
           {/* Filters and Actions */}
-          <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
+          <Card {...CONTENT_CARD_CONFIG}>
             <Row gutter={[8, 8]} align="middle" style={{ display: 'flex', flexWrap: 'nowrap' }}>
               <Col flex="1">
                 <Text strong>Period:</Text>
@@ -1949,10 +1951,11 @@ function DailyReport() {
           </Card>
 
           {/* Summary Statistics */}
-          <Row gutter={16} style={{ marginBottom: '16px' }}>
+          <Row gutter={SINGLE_ROW_GUTTER} style={{ marginBottom: '16px' }}>
             <Col xs={24} sm={8}>
               <Card>
                 <Statistic
+                  {...STANDARD_STATISTIC_CONFIG}
                   title="Total Dealers"
                   value={totalDealers}
                   prefix={<BarChartOutlined />}
@@ -1962,6 +1965,7 @@ function DailyReport() {
             <Col xs={24} sm={8}>
               <Card>
                 <Statistic
+                  {...STANDARD_STATISTIC_CONFIG}
                   title="Total Products"
                   value={totalProducts}
                   prefix={<FileExcelOutlined />}
@@ -1971,6 +1975,7 @@ function DailyReport() {
             <Col xs={24} sm={8}>
               <Card>
                 <Statistic
+                  {...STANDARD_STATISTIC_CONFIG}
                   title="Total Forecast Quantity"
                   value={totalQuantity}
                   prefix={<CalendarOutlined />}
@@ -2012,7 +2017,7 @@ function DailyReport() {
           key="forecasts-by-product"
         >
           {/* Filters and Actions - Same as by Dealer */}
-          <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
+          <Card {...CONTENT_CARD_CONFIG}>
             <Row gutter={[16, 16]} align="middle">
               <Col xs={24} sm={12} md={6}>
                 <Text strong>Period:</Text>
@@ -2085,10 +2090,11 @@ function DailyReport() {
           </Card>
 
           {/* Summary Statistics */}
-          <Row gutter={16} style={{ marginBottom: '16px' }}>
+          <Row gutter={SINGLE_ROW_GUTTER} style={{ marginBottom: '16px' }}>
             <Col xs={24} sm={8}>
               <Card>
                 <Statistic
+                  {...STANDARD_STATISTIC_CONFIG}
                   title="Total Dealers"
                   value={totalDealers}
                   prefix={<BarChartOutlined />}
@@ -2098,6 +2104,7 @@ function DailyReport() {
             <Col xs={24} sm={8}>
               <Card>
                 <Statistic
+                  {...STANDARD_STATISTIC_CONFIG}
                   title="Total Products"
                   value={totalProducts}
                   prefix={<FileExcelOutlined />}
@@ -2107,6 +2114,7 @@ function DailyReport() {
             <Col xs={24} sm={8}>
               <Card>
                 <Statistic
+                  {...STANDARD_STATISTIC_CONFIG}
                   title="Total Forecast Quantity"
                   value={totalQuantity}
                   prefix={<CalendarOutlined />}
@@ -2148,7 +2156,7 @@ function DailyReport() {
           key="forecasts-by-territory"
         >
           {/* Filters and Actions - Same as by Dealer */}
-          <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
+          <Card {...CONTENT_CARD_CONFIG}>
             <Row gutter={[16, 16]} align="middle">
               <Col xs={24} sm={12} md={6}>
                 <Text strong>Period:</Text>
@@ -2221,10 +2229,11 @@ function DailyReport() {
           </Card>
 
           {/* Summary Statistics */}
-          <Row gutter={16} style={{ marginBottom: '16px' }}>
+          <Row gutter={SINGLE_ROW_GUTTER} style={{ marginBottom: '16px' }}>
             <Col xs={24} sm={8}>
               <Card>
                 <Statistic
+                  {...STANDARD_STATISTIC_CONFIG}
                   title="Total Dealers"
                   value={totalDealers}
                   prefix={<BarChartOutlined />}
@@ -2234,6 +2243,7 @@ function DailyReport() {
             <Col xs={24} sm={8}>
               <Card>
                 <Statistic
+                  {...STANDARD_STATISTIC_CONFIG}
                   title="Total Products"
                   value={totalProducts}
                   prefix={<FileExcelOutlined />}
@@ -2243,6 +2253,7 @@ function DailyReport() {
             <Col xs={24} sm={8}>
               <Card>
                 <Statistic
+                  {...STANDARD_STATISTIC_CONFIG}
                   title="Total Forecast Quantity"
                   value={totalQuantity}
                   prefix={<CalendarOutlined />}
@@ -2284,7 +2295,7 @@ function DailyReport() {
           key="forecast-report"
         >
           {/* Filters */}
-          <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
+          <Card {...CONTENT_CARD_CONFIG}>
             <Row gutter={[8, 8]} align="middle" style={{ display: 'flex', flexWrap: 'nowrap' }}>
               <Col flex="1">
                 <Text strong>Period:</Text>
@@ -2434,7 +2445,7 @@ function DailyReport() {
 
           {/* View Type Indicator */}
           {forecastReportPeriod && (
-            <Card size="small" style={{ marginBottom: '16px', borderRadius: '8px' }}>
+            <Card size="small" {...CONTENT_CARD_CONFIG}>
               <Text strong>
                 Viewing: 
                 <Tag color={getForecastReportViewType() === 'product' ? 'blue' : getForecastReportViewType() === 'territory' ? 'green' : 'default'} style={{ marginLeft: '8px' }}>
@@ -2446,7 +2457,7 @@ function DailyReport() {
 
           {/* Summary Statistics */}
           {forecastReportPeriod && (
-            <Row gutter={16} style={{ marginBottom: '16px' }}>
+            <Row gutter={SINGLE_ROW_GUTTER} style={{ marginBottom: '16px' }}>
               <Col xs={24} sm={8}>
                 <Card>
                   <Statistic
@@ -2458,8 +2469,9 @@ function DailyReport() {
               </Col>
               <Col xs={24} sm={8}>
                 <Card>
-                  <Statistic
-                    title="Total Products"
+                <Statistic
+                  {...STANDARD_STATISTIC_CONFIG}
+                  title="Total Products"
                     value={filteredForecastReportData.reduce((sum, f) => sum + f.total_products, 0)}
                     prefix={<FileExcelOutlined />}
                   />
@@ -2467,8 +2479,9 @@ function DailyReport() {
               </Col>
               <Col xs={24} sm={8}>
                 <Card>
-                  <Statistic
-                    title="Total Forecast Quantity"
+                <Statistic
+                  {...STANDARD_STATISTIC_CONFIG}
+                  title="Total Forecast Quantity"
                     value={filteredForecastReportData.reduce((sum, f) => sum + f.total_quantity, 0)}
                     prefix={<CalendarOutlined />}
                   />
@@ -2612,7 +2625,7 @@ function DailyReport() {
 
       {loading && (
         <div style={{ textAlign: 'center', marginTop: '24px' }}>
-          <Spin size="large" />
+          <Spin size={STANDARD_SPIN_SIZE} />
           <div style={{ marginTop: '16px' }}>
             <Text>Processing your request...</Text>
           </div>

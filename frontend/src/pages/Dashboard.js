@@ -12,6 +12,8 @@ import {
   FileTextOutlined,
   DashboardOutlined,
 } from '@ant-design/icons';
+import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, COMPACT_ROW_GUTTER, STANDARD_INPUT_SIZE, STANDARD_RADIO_SIZE, STANDARD_STATISTIC_CONFIG, STANDARD_SPIN_SIZE, STANDARD_DATE_PICKER_CONFIG, STANDARD_SPACE_SIZE_MIDDLE } from '../templates/UIElements';
+import { CONTENT_CARD_CONFIG } from '../templates/CardTemplates';
 
 const { Title, Text } = Typography;
 
@@ -110,17 +112,17 @@ function Dashboard({ setStats }) {
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-        <Spin size="large" />
+        <Spin size={STANDARD_SPIN_SIZE} />
       </div>
     );
   }
 
   return (
     <div>
-      <Title level={3} style={{ marginBottom: '8px' }}>
+      <Title {...STANDARD_PAGE_TITLE_CONFIG}>
         <DashboardOutlined /> Welcome, {userName}!
       </Title>
-      <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
+      <Text {...STANDARD_PAGE_SUBTITLE_CONFIG}>
         Overview of products, users, dealers, transports, and recent orders
       </Text>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
@@ -128,68 +130,70 @@ function Dashboard({ setStats }) {
           <Radio.Group 
             value={dateFilter} 
             onChange={(e) => setDateFilter(e.target.value)}
-            size="small"
+            size={STANDARD_RADIO_SIZE}
           >
             <Radio.Button value="today">Today</Radio.Button>
             <Radio.Button value="all">All Orders</Radio.Button>
           </Radio.Group>
           {dateFilter === 'today' && (
             <DatePicker
+              {...STANDARD_DATE_PICKER_CONFIG}
               value={selectedDate}
               onChange={(date) => setSelectedDate(date || dayjs())}
-              format="YYYY-MM-DD"
-              size="small"
             />
           )}
         </Space>
       </div>
 
       {/* Statistics Cards */}
-      <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
+      <Row gutter={STANDARD_ROW_GUTTER} style={{ marginBottom: '24px' }}>
         <Col xs={24} sm={12} md={6}>
           <Card style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', color: 'white', borderRadius: '8px' }}>
             <Statistic
               title={<span style={{ color: 'white' }}>Products</span>}
               value={data.products.length}
               prefix={<AppstoreOutlined />}
-              valueStyle={{ color: 'white', fontSize: '24px' }}
+              valueStyle={{ ...STANDARD_STATISTIC_CONFIG.valueStyle, color: 'white' }}
             />
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
           <Card style={{ background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', color: 'white', borderRadius: '8px' }}>
             <Statistic
+              {...STANDARD_STATISTIC_CONFIG}
               title={<span style={{ color: 'white' }}>Total Orders</span>}
               value={data.orders.length}
               prefix={<ShoppingCartOutlined />}
-              valueStyle={{ color: 'white', fontSize: '24px' }}
+              valueStyle={{ ...STANDARD_STATISTIC_CONFIG.valueStyle, color: 'white' }}
             />
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
           <Card style={{ background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', color: 'white', borderRadius: '8px' }}>
             <Statistic
+              {...STANDARD_STATISTIC_CONFIG}
               title={<span style={{ color: 'white' }}>Total Quantity</span>}
               value={stats.totalQuantity}
               prefix={<ShoppingCartOutlined />}
-              valueStyle={{ color: 'white', fontSize: '24px' }}
+              valueStyle={{ ...STANDARD_STATISTIC_CONFIG.valueStyle, color: 'white' }}
             />
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
           <Card style={{ background: 'linear-gradient(135deg, #30cfd0 0%, #330867 100%)', color: 'white', borderRadius: '8px' }}>
             <Statistic
+              {...STANDARD_STATISTIC_CONFIG}
               title={<span style={{ color: 'white' }}>Total Value</span>}
               value={stats.totalValue.toLocaleString('en-BD', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               prefix="৳"
-              valueStyle={{ color: 'white', fontSize: '24px' }}
+              valueStyle={{ ...STANDARD_STATISTIC_CONFIG.valueStyle, color: 'white' }}
             />
           </Card>
         </Col>
       </Row>
 
       {/* System Status Cards */}
-      <Row gutter={[12, 12]} style={{ marginBottom: '24px' }}>
+      <Row gutter={COMPACT_ROW_GUTTER} style={{ marginBottom: '24px' }}>
         <Col xs={24} sm={8} md={8}>
           <Card 
             style={{ 
@@ -257,6 +261,7 @@ function Dashboard({ setStats }) {
 
       {/* Recent Orders Grid */}
       <Card
+        {...CONTENT_CARD_CONFIG}
         title={
           <Space>
             <BarChartOutlined />
@@ -276,7 +281,7 @@ function Dashboard({ setStats }) {
             </Text>
           </div>
         ) : (
-          <Row gutter={[16, 16]} className="order-cards-row">
+          <Row gutter={STANDARD_ROW_GUTTER} className="order-cards-row">
             {data.orders.slice(0, 10).map(order => (
               <Col 
                 xs={24} 

@@ -22,6 +22,8 @@ import {
 } from 'antd';
 import { useStandardPagination, getStandardPaginationConfig } from '../templates/useStandardPagination';
 import { STANDARD_EXPANDABLE_TABLE_CONFIG } from '../templates/TableTemplate';
+import { CONTENT_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, STANDARD_BADGE_CONFIG, STANDARD_POPCONFIRM_CONFIG, STANDARD_STATISTIC_CONFIG, STANDARD_UPLOAD_CONFIG, STANDARD_BUTTON_SIZE } from '../templates/UIElements';
 import {
   UploadOutlined,
   DownloadOutlined,
@@ -110,10 +112,10 @@ const ExpandedRowContent = ({
 
               <Form.Item>
                 <Space>
-                  <Button type="primary" htmlType="submit" size="small">
+                  <Button type="primary" htmlType="submit" size={STANDARD_BUTTON_SIZE}>
                     Add Assignment
                   </Button>
-                  <Button size="small" onClick={() => {
+                  <Button size={STANDARD_BUTTON_SIZE} onClick={() => {
                     form.resetFields();
                     onToggleForm();
                   }}>
@@ -637,9 +639,8 @@ function DealerManagement() {
         
         return (
           <Badge 
-            count={count} 
-            showZero={true}
-            overflowCount={999}
+            {...STANDARD_BADGE_CONFIG}
+            count={count}
           >
             <Button
               type="primary"
@@ -687,21 +688,20 @@ function DealerManagement() {
 
   return (
     <div>
-      <Title level={3} style={{ marginBottom: '8px' }}>
+      <Title {...STANDARD_PAGE_TITLE_CONFIG}>
         <ShopOutlined /> Manage Dealers
       </Title>
-      <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
+      <Text {...STANDARD_PAGE_SUBTITLE_CONFIG}>
         Import and manage dealer database. Click &quot;Manage Products&quot; to assign products to dealers.
       </Text>
 
       {/* Import Section */}
-      <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
-        <Row gutter={[16, 16]} align="middle">
+      <Card {...CONTENT_CARD_CONFIG}>
+        <Row gutter={STANDARD_ROW_GUTTER} align="middle">
           <Col>
             <Upload
-              accept=".xlsx,.xls"
+              {...STANDARD_UPLOAD_CONFIG}
               beforeUpload={handleImport}
-              showUploadList={false}
             >
               <Button
                 type="primary"
@@ -724,17 +724,18 @@ function DealerManagement() {
       </Card>
 
       {/* Statistics */}
-      <Row gutter={[16, 16]} style={{ marginBottom: '16px' }}>
+      <Row gutter={STANDARD_ROW_GUTTER} style={{ marginBottom: '16px' }}>
         <Col xs={24} sm={12} md={6}>
           <Card 
             size="small"
             style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}
           >
             <Statistic
+              {...STANDARD_STATISTIC_CONFIG}
               title={<span style={{ color: 'white' }}>Total Dealers</span>}
               value={dealers.length}
               prefix={<UserOutlined style={{ color: 'white' }} />}
-              valueStyle={{ color: 'white', fontSize: '20px' }}
+              valueStyle={{ ...STANDARD_STATISTIC_CONFIG.valueStyle, color: 'white' }}
             />
           </Card>
         </Col>
@@ -744,10 +745,11 @@ function DealerManagement() {
             style={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', color: 'white' }}
           >
             <Statistic
+              {...STANDARD_STATISTIC_CONFIG}
               title={<span style={{ color: 'white' }}>Active Dealers</span>}
               value={dealers.filter(d => d.active_status === 'A').length}
               prefix={<ShopOutlined style={{ color: 'white' }} />}
-              valueStyle={{ color: 'white', fontSize: '20px' }}
+              valueStyle={{ ...STANDARD_STATISTIC_CONFIG.valueStyle, color: 'white' }}
             />
           </Card>
         </Col>
@@ -757,10 +759,11 @@ function DealerManagement() {
             style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', color: 'white' }}
           >
             <Statistic
+              {...STANDARD_STATISTIC_CONFIG}
               title={<span style={{ color: 'white' }}>Territories</span>}
               value={territories.length}
               prefix={<EnvironmentOutlined style={{ color: 'white' }} />}
-              valueStyle={{ color: 'white', fontSize: '20px' }}
+              valueStyle={{ ...STANDARD_STATISTIC_CONFIG.valueStyle, color: 'white' }}
             />
           </Card>
         </Col>
@@ -770,18 +773,19 @@ function DealerManagement() {
             style={{ background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', color: 'white' }}
           >
             <Statistic
+              {...STANDARD_STATISTIC_CONFIG}
               title={<span style={{ color: 'white' }}>With Contact</span>}
               value={dealers.filter(d => d.contact).length}
               prefix={<PhoneOutlined style={{ color: 'white' }} />}
-              valueStyle={{ color: 'white', fontSize: '20px' }}
+              valueStyle={{ ...STANDARD_STATISTIC_CONFIG.valueStyle, color: 'white' }}
             />
           </Card>
         </Col>
       </Row>
 
       {/* Filters */}
-      <Card style={{ marginBottom: '16px', borderRadius: '8px' }}>
-        <Row gutter={[16, 16]}>
+      <Card {...CONTENT_CARD_CONFIG}>
+        <Row gutter={STANDARD_ROW_GUTTER}>
           <Col xs={24} sm={12} md={8}>
             <Input
               placeholder="Search dealers..."
