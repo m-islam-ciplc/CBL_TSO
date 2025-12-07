@@ -26,7 +26,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { getStandardPaginationConfig } from '../templates/useStandardPagination';
-import { FILTER_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_CARD_CONFIG, FILTER_CARD_CONFIG, DATE_SELECTION_CARD_CONFIG, FORM_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
 import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, STANDARD_INPUT_SIZE, STANDARD_TABLE_SIZE, STANDARD_TAG_STYLE, STANDARD_TABS_CONFIG, STANDARD_INPUT_NUMBER_SIZE, STANDARD_DATE_PICKER_CONFIG } from '../templates/UIElements';
 
 const { Title, Text } = Typography;
@@ -466,7 +466,7 @@ useEffect(() => {
       sorter: (a, b) => (a.territoryName || '').localeCompare(b.territoryName || ''),
     },
     {
-      title: 'Date',
+      title: 'Date Added',
       dataIndex: 'date',
       key: 'date',
       ellipsis: true,
@@ -506,7 +506,7 @@ useEffect(() => {
             max={999999}
             value={displayValue}
             onChange={(value) => handleQuotaInputChange(record.productId, record.territoryName, value)}
-            style={{ width: '100%' }}
+            style={{ width: '100%', textAlign: 'right' }}
           />
         );
       },
@@ -636,7 +636,7 @@ useEffect(() => {
       <Tabs {...STANDARD_TABS_CONFIG} activeKey={activeTab} onChange={setActiveTab}>
         <TabPane tab="Allocate Daily Quotas" key="allocate">
           {/* Allocation Form */}
-          <Card title="Allocate Daily Quotas" {...FILTER_CARD_CONFIG}>
+          <Card title="Allocate Daily Quotas" {...FORM_CARD_CONFIG}>
             <Row gutter={STANDARD_ROW_GUTTER} align="top">
             <Col flex="none" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
               <Space direction="vertical">
@@ -777,7 +777,7 @@ useEffect(() => {
           </Card>
 
           {/* Current Allocations Table */}
-          <Card title="Allocated Daily Quotas" {...FILTER_CARD_CONFIG}>
+          <Card title="Allocated Daily Quotas" {...TABLE_CARD_CONFIG}>
             <Table
               dataSource={getAllocations()}
               columns={allocationColumns}
@@ -791,7 +791,7 @@ useEffect(() => {
         </TabPane>
 
         <TabPane tab="Previously Allocated Quotas" key="history">
-          <Card title="Previously Allocated Quotas" {...FILTER_CARD_CONFIG}>
+          <Card title="Previously Allocated Quotas" {...DATE_SELECTION_CARD_CONFIG}>
             <Row gutter={[16, 16]} align="middle">
               <Col xs={24} sm={12} md={8}>
                 <Space direction="vertical" style={{ width: '100%' }}>
@@ -818,16 +818,18 @@ useEffect(() => {
                 </Button>
               </Col>
             </Row>
-            <Table
-              dataSource={historyAllocations}
-              columns={historyColumns}
-              rowKey="key"
-              pagination={getStandardPaginationConfig('allocations', 20)}
-              scroll={{ x: 'max-content' }}
-              size={STANDARD_TABLE_SIZE}
-              loading={historyLoading}
-              locale={{ emptyText: 'No quotas found for this date.' }}
-            />
+            <Card {...TABLE_CARD_CONFIG} style={{ marginTop: '16px' }}>
+              <Table
+                dataSource={historyAllocations}
+                columns={historyColumns}
+                rowKey="key"
+                pagination={getStandardPaginationConfig('allocations', 20)}
+                scroll={{ x: 'max-content' }}
+                size={STANDARD_TABLE_SIZE}
+                loading={historyLoading}
+                locale={{ emptyText: 'No quotas found for this date.' }}
+              />
+            </Card>
           </Card>
         </TabPane>
       </Tabs>

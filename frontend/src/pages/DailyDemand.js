@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useUser } from '../contexts/UserContext';
 import './NewOrdersTablet.css';
-import { CONTENT_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_CARD_CONFIG } from '../templates/CardTemplates';
 import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, SINGLE_ROW_GUTTER, STANDARD_MODAL_CONFIG, STANDARD_INPUT_NUMBER_SIZE, STANDARD_INPUT_SIZE, STANDARD_FORM_SIZE, STANDARD_BUTTON_SIZE } from '../templates/UIElements';
 import {
   Card,
@@ -26,7 +26,7 @@ import {
 const { Title, Text } = Typography;
 
 function DailyDemand() {
-  const { dealerId, userId, territoryName } = useUser();
+  const { dealerId, userId, territoryName, isDealer } = useUser();
   const [form] = Form.useForm();
   const [dropdownData, setDropdownData] = useState({
     orderTypes: [],
@@ -259,7 +259,7 @@ function DailyDemand() {
 
       {/* Dealer Info Card */}
       {dealerInfo && (
-        <Card {...CONTENT_CARD_CONFIG} style={{ ...CONTENT_CARD_CONFIG.style, background: '#f0f7ff' }}>
+        <Card title="Dealer Information" {...STANDARD_CARD_CONFIG}>
           <Row gutter={SINGLE_ROW_GUTTER}>
             <Col xs={24} md={12}>
               <Text strong>Dealer: </Text>
@@ -274,7 +274,7 @@ function DailyDemand() {
       )}
 
       {/* Order Details Card - Fixed Values */}
-      <Card {...CONTENT_CARD_CONFIG}>
+      <Card {...STANDARD_CARD_CONFIG}>
         <Form
           form={form}
           layout="horizontal"
@@ -313,7 +313,7 @@ function DailyDemand() {
       </Card>
 
       {/* Product Search */}
-      <Card {...CONTENT_CARD_CONFIG}>
+      <Card {...STANDARD_CARD_CONFIG}>
         <Input
           size={STANDARD_INPUT_SIZE}
           placeholder="Search products by name or code..."
@@ -356,7 +356,7 @@ function DailyDemand() {
                     {product.product_code}
                   </Text>
                 </div>
-                {product.unit_tp && (
+                {!isDealer && product.unit_tp && (
                   <Text style={{ fontSize: '11px', color: '#1890ff' }}>
                     TP: {product.unit_tp}
                   </Text>
@@ -373,7 +373,7 @@ function DailyDemand() {
 
       {/* Order Items Summary */}
       {orderItems.length > 0 && (
-        <Card {...CONTENT_CARD_CONFIG}>
+        <Card {...STANDARD_CARD_CONFIG}>
           <Title level={5} style={{ marginBottom: '12px' }}>
             Order Items ({orderItems.length})
           </Title>
@@ -479,7 +479,7 @@ function DailyDemand() {
               </Button>
             ))}
           </div>
-          {selectedProductForPopup?.unit_tp && (
+          {!isDealer && selectedProductForPopup?.unit_tp && (
             <Text type="secondary" style={{ fontSize: '12px' }}>
               Unit TP: {selectedProductForPopup.unit_tp}
             </Text>

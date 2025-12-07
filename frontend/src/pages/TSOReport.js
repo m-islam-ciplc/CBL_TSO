@@ -4,10 +4,10 @@ import { DownloadOutlined, FileExcelOutlined, EyeOutlined, SearchOutlined, FileT
 import axios from 'axios';
 import dayjs from 'dayjs';
 import { useUser } from '../contexts/UserContext';
-import { createStandardDatePickerConfig } from '../templates/UIConfig';
+import { createStandardDatePickerConfig, createStandardDateRangePicker } from '../templates/UIConfig';
 import { getStandardPaginationConfig } from '../templates/useStandardPagination';
-import { FILTER_CARD_CONFIG, CONTENT_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
-import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, STANDARD_FORM_LABEL_STYLE, STANDARD_TABS_CONFIG, STANDARD_DATE_PICKER_CONFIG, STANDARD_SPIN_SIZE, STANDARD_TABLE_SIZE } from '../templates/UIElements';
+import { STANDARD_CARD_CONFIG, FILTER_CARD_CONFIG, DATE_SELECTION_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, STANDARD_FORM_LABEL_STYLE, STANDARD_TABS_CONFIG, STANDARD_DATE_PICKER_CONFIG, STANDARD_SPIN_SIZE, STANDARD_TABLE_SIZE, renderTableHeaderWithSearch } from '../templates/UIElements';
 
 const { Title, Text } = Typography;
 
@@ -456,14 +456,6 @@ function TSOReport() {
         return statusA.localeCompare(statusB);
       },
     },
-    {
-      title: 'Created',
-      dataIndex: 'created_at',
-      key: 'created_at',
-      ellipsis: true,
-      render: (date) => new Date(date).toLocaleString(),
-      sorter: (a, b) => new Date(a.created_at) - new Date(b.created_at),
-    },
   ];
 
   const rangeColumns = [
@@ -613,7 +605,7 @@ function TSOReport() {
 
       <Tabs {...STANDARD_TABS_CONFIG} activeKey={activeTab} onChange={setActiveTab}>
         <Tabs.TabPane tab="Daily Report (Single Date)" key="single">
-          <Card title="Daily Report (Single Date)" {...FILTER_CARD_CONFIG}>
+          <Card title="Daily Report (Single Date)" {...DATE_SELECTION_CARD_CONFIG}>
             <Row gutter={STANDARD_ROW_GUTTER} align="bottom">
               <Col xs={24} sm={12} md={6}>
                 <Space direction="vertical" style={{ width: '100%' }}>
@@ -658,32 +650,16 @@ function TSOReport() {
         <Tabs.TabPane tab="Order Summary (Date Range)" key="range">
           <Card title="Order Summary (Date Range)" {...FILTER_CARD_CONFIG}>
             <Row gutter={STANDARD_ROW_GUTTER} align="bottom">
-              <Col xs={24} sm={12} md={6}>
-                <Space direction="vertical" style={{ width: '100%' }}>
-                  <Text strong style={STANDARD_FORM_LABEL_STYLE}>Start Date</Text>
-                  <DatePicker
-                    {...STANDARD_DATE_PICKER_CONFIG}
-                    value={rangeStart}
-                    onChange={setRangeStart}
-                    style={{ width: '100%' }}
-                    placeholder="Start date"
-                    dateRender={dateCellRender}
-                  />
-                </Space>
-              </Col>
-              <Col xs={24} sm={12} md={6}>
-                <Space direction="vertical" style={{ width: '100%' }}>
-                  <Text strong style={STANDARD_FORM_LABEL_STYLE}>End Date</Text>
-                  <DatePicker
-                    {...STANDARD_DATE_PICKER_CONFIG}
-                    value={rangeEnd}
-                    onChange={setRangeEnd}
-                    style={{ width: '100%' }}
-                    placeholder="End date"
-                    dateRender={dateCellRender}
-                  />
-                </Space>
-              </Col>
+              {createStandardDateRangePicker({
+                startDate: rangeStart,
+                setStartDate: setRangeStart,
+                endDate: rangeEnd,
+                setEndDate: setRangeEnd,
+                disabledDate,
+                dateCellRender,
+                availableDates,
+                colSpan: { xs: 24, sm: 12, md: 6 }
+              })}
               <Col xs={24} sm={24} md={6}>
                 <Button
                   type="default"
@@ -714,25 +690,13 @@ function TSOReport() {
       {/* Preview Table */}
       {showPreview && previewData.length > 0 && (
         <Card {...TABLE_CARD_CONFIG}>
-          <div style={{ marginBottom: '16px' }}>
-            <Text strong>
-              {previewInfo || 'Orders'} ({filteredPreviewData.length})
-            </Text>
-          </div>
-          
-          {/* Filters */}
-          <Card size="small" {...CONTENT_CARD_CONFIG}>
-            <Row gutter={STANDARD_ROW_GUTTER} align="middle">
-              <Col xs={24} sm={12} md={8}>
-                <Input
-                  placeholder={previewMode === 'range' ? 'Search dealers or products...' : 'Search orders...'}
-                  prefix={<SearchOutlined />}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </Col>
-            </Row>
-          </Card>
+          {renderTableHeaderWithSearch({
+            title: previewInfo || 'Orders',
+            count: filteredPreviewData.length,
+            searchTerm: searchTerm,
+            onSearchChange: (e) => setSearchTerm(e.target.value),
+            searchPlaceholder: previewMode === 'range' ? 'Search dealers or products...' : 'Search orders...'
+          })}
 
           <Table
             columns={previewMode === 'range' ? rangeColumns : singleColumns}

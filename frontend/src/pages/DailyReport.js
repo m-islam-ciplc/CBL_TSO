@@ -5,11 +5,12 @@ import axios from 'axios';
 import dayjs from 'dayjs';
 import * as XLSX from 'xlsx';
 import { useUser } from '../contexts/UserContext';
-import { createStandardDatePickerConfig } from '../templates/UIConfig';
+import { createStandardDatePickerConfig, createStandardDateRangePicker } from '../templates/UIConfig';
 import { getStandardPaginationConfig } from '../templates/useStandardPagination';
 import { STANDARD_EXPANDABLE_TABLE_CONFIG } from '../templates/TableTemplate';
-import { FILTER_CARD_CONFIG, CONTENT_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
-import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, SINGLE_ROW_GUTTER, TIGHT_ROW_GUTTER, STANDARD_FORM_LABEL_STYLE, STANDARD_INPUT_SIZE, STANDARD_TABLE_SIZE, STANDARD_TAG_STYLE, STANDARD_TABS_CONFIG, STANDARD_BADGE_CONFIG, STANDARD_STATISTIC_CONFIG, STANDARD_SPIN_SIZE, STANDARD_DATE_PICKER_CONFIG, STANDARD_SPACE_SIZE_MIDDLE } from '../templates/UIElements';
+import { STANDARD_CARD_CONFIG, FILTER_CARD_CONFIG, DATE_SELECTION_CARD_CONFIG, TABLE_CARD_CONFIG, EXPANDABLE_TABLE_CARD_CONFIG } from '../templates/CardTemplates';
+// All cards now use STANDARD_CARD_CONFIG
+import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, SINGLE_ROW_GUTTER, TIGHT_ROW_GUTTER, STANDARD_FORM_LABEL_STYLE, STANDARD_INPUT_SIZE, STANDARD_TABLE_SIZE, STANDARD_TAG_STYLE, STANDARD_TABS_CONFIG, STANDARD_BADGE_CONFIG, STANDARD_STATISTIC_CONFIG, STANDARD_SPIN_SIZE, STANDARD_DATE_PICKER_CONFIG, STANDARD_SPACE_SIZE_MIDDLE, renderTableHeaderWithSearch } from '../templates/UIElements';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -22,7 +23,7 @@ const removeMSPrefix = (name) => {
 };
 
 function DailyReport() {
-  const { territoryName, isTSO } = useUser();
+  const { territoryName, isTSO, isAdmin, isSalesManager } = useUser();
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [loading, setLoading] = useState(false);
   const [availableDates, setAvailableDates] = useState([]);
@@ -144,15 +145,21 @@ function DailyReport() {
 
     setLoading(true);
     try {
+      // Add territory filter for TSO users
+      const params = {
+        startDate,
+        endDate,
+      };
+      if (isTSO && territoryName) {
+        params.territory_name = territoryName;
+      }
+      
       const response = await axios.get('/api/orders/tso-report-range', {
         responseType: 'blob',
         headers: {
           'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         },
-        params: {
-          startDate,
-          endDate,
-        },
+        params,
       });
 
       const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -195,12 +202,16 @@ function DailyReport() {
 
     setLoading(true);
     try {
-      const response = await axios.get('/api/orders/range', {
-        params: {
+      // Add territory filter for TSO users
+      const params = {
           startDate,
           endDate,
-        },
-      });
+      };
+      if (isTSO && territoryName) {
+        params.territory_name = territoryName;
+      }
+      
+      const response = await axios.get('/api/orders/range', { params });
 
       const {
         orders,
@@ -266,12 +277,19 @@ function DailyReport() {
         return;
       }
       
+      // Add territory filter for TSO users
+      const params = {};
+      if (isTSO && territoryName) {
+        params.territory_name = territoryName;
+      }
+      
       // Generate Excel report
       const response = await axios.get(`/api/orders/tso-report/${dateString}`, {
         responseType: 'blob', // Important for file download
         headers: {
           'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        }
+        },
+        params,
       });
 
       // Create blob link to download
@@ -355,7 +373,13 @@ function DailyReport() {
         message.error('Please select a valid date');
         return;
       }
-      const response = await axios.get(`/api/orders/date/${dateString}`);
+      // Add territory filter for TSO users
+      const params = {};
+      if (isTSO && territoryName) {
+        params.territory_name = territoryName;
+      }
+      
+      const response = await axios.get(`/api/orders/date/${dateString}`, { params });
       
       const { orders, total_orders, total_items } = response.data;
       
@@ -713,7 +737,7 @@ function DailyReport() {
                 <span style={{ color: '#52c41a', marginLeft: '8px' }}>
                   (Qty: {product.quantity})
                 </span>
-                {product.unit_tp && (
+                {!isTSO && product.unit_tp && (
                   <span style={{ color: '#1890ff', marginLeft: '8px' }}>
                     @৳{product.unit_tp.toLocaleString()}
                   </span>
@@ -765,14 +789,6 @@ function DailyReport() {
         const statusB = b.status || 'new';
         return statusA.localeCompare(statusB);
       },
-    },
-    {
-      title: 'Created',
-      dataIndex: 'created_at',
-      key: 'created_at',
-      ellipsis: true,
-      render: (date) => new Date(date).toLocaleString(),
-      sorter: (a, b) => new Date(a.created_at) - new Date(b.created_at),
     },
   ];
 
@@ -848,7 +864,7 @@ function DailyReport() {
                 <span style={{ color: '#52c41a', marginLeft: '8px' }}>
                   (Qty: {product.quantity})
                 </span>
-                {product.unit_tp != null && (
+                {!isTSO && product.unit_tp != null && (
                   <span style={{ color: '#1890ff', marginLeft: '8px' }}>
                     @৳{Number(product.unit_tp).toLocaleString()}
                   </span>
@@ -1641,7 +1657,7 @@ function DailyReport() {
           }
           key="daily-report"
         >
-          <Card title="Daily Order Report" {...FILTER_CARD_CONFIG}>
+          <Card title="Daily Order Report" {...DATE_SELECTION_CARD_CONFIG}>
         <Row gutter={STANDARD_ROW_GUTTER} align="bottom">
           <Col xs={24} sm={12} md={6}>
             <Space direction="vertical" style={{ width: '100%' }}>
@@ -1694,24 +1710,18 @@ function DailyReport() {
 
           {/* Preview Table */}
           {showPreview && previewMode === 'single' && previewData.length > 0 && (
-            <Card>
-              <div style={{ marginBottom: '16px' }}>
-                <Text strong>
-                  {previewInfo || 'Orders'} ({filteredPreviewData.length})
-                </Text>
-              </div>
+            <Card {...TABLE_CARD_CONFIG}>
+              {renderTableHeaderWithSearch({
+                title: previewInfo || 'Orders',
+                count: filteredPreviewData.length,
+                searchTerm: searchTerm,
+                onSearchChange: (e) => setSearchTerm(e.target.value),
+                searchPlaceholder: 'Search orders...'
+              })}
               
               {/* Filters */}
-              <Card size="small" {...CONTENT_CARD_CONFIG}>
+              <Card title="Filter Orders" {...FILTER_CARD_CONFIG} style={{ marginTop: '16px' }}>
                 <Row gutter={[16, 16]} align="middle">
-                  <Col xs={24} sm={12} md={8}>
-                    <Input
-                      placeholder="Search orders..."
-                      prefix={<SearchOutlined />}
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </Col>
                   <Col xs={24} sm={12} md={8}>
                     <Select
                       placeholder="Filter by status"
@@ -1768,32 +1778,16 @@ function DailyReport() {
         >
           <Card title="Order Summary Report" {...FILTER_CARD_CONFIG}>
             <Row gutter={STANDARD_ROW_GUTTER} align="bottom">
-              <Col xs={24} sm={12} md={6}>
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Text strong>Start Date</Text>
-              <DatePicker
-                {...STANDARD_DATE_PICKER_CONFIG}
-                value={rangeStart}
-                onChange={setRangeStart}
-                style={{ width: '100%' }}
-                placeholder="Start date"
-                dateRender={dateCellRender}
-              />
-            </Space>
-          </Col>
-              <Col xs={24} sm={12} md={6}>
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Text strong>End Date</Text>
-              <DatePicker
-                {...STANDARD_DATE_PICKER_CONFIG}
-                value={rangeEnd}
-                onChange={setRangeEnd}
-                style={{ width: '100%' }}
-                placeholder="End date"
-                dateRender={dateCellRender}
-              />
-            </Space>
-          </Col>
+              {createStandardDateRangePicker({
+                startDate: rangeStart,
+                setStartDate: setRangeStart,
+                endDate: rangeEnd,
+                setEndDate: setRangeEnd,
+                disabledDate,
+                dateCellRender,
+                availableDates,
+                colSpan: { xs: 24, sm: 12, md: 6 }
+              })}
               <Col xs={24} sm={24} md={6}>
               <Button
                 type="default"
@@ -1821,26 +1815,14 @@ function DailyReport() {
 
       {/* Preview Table */}
           {showPreview && previewMode === 'range' && previewData.length > 0 && (
-        <Card>
-          <div style={{ marginBottom: '16px' }}>
-            <Text strong>
-              {previewInfo || 'Orders'} ({filteredPreviewData.length})
-            </Text>
-          </div>
-          
-          {/* Filters */}
-              <Card size="small" {...CONTENT_CARD_CONFIG}>
-            <Row gutter={[16, 16]} align="middle">
-              <Col xs={24} sm={12} md={8}>
-                <Input
-                      placeholder="Search dealers or products..."
-                  prefix={<SearchOutlined />}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </Col>
-            </Row>
-          </Card>
+        <Card {...TABLE_CARD_CONFIG}>
+          {renderTableHeaderWithSearch({
+            title: previewInfo || 'Orders',
+            count: filteredPreviewData.length,
+            searchTerm: searchTerm,
+            onSearchChange: (e) => setSearchTerm(e.target.value),
+            searchPlaceholder: 'Search dealers or products...'
+          })}
 
           <Table
                 columns={rangeColumns}
@@ -1874,8 +1856,8 @@ function DailyReport() {
           key="forecasts-by-dealer"
         >
           {/* Filters and Actions */}
-          <Card {...CONTENT_CARD_CONFIG}>
-            <Row gutter={[8, 8]} align="middle" style={{ display: 'flex', flexWrap: 'nowrap' }}>
+          <Card title="Filter Orders" {...FILTER_CARD_CONFIG}>
+            <Row gutter={[8, 8]} align="middle">
               <Col flex="1">
                 <Text strong>Period:</Text>
                 <Select
@@ -2000,26 +1982,28 @@ function DailyReport() {
             </Col>
           </Row>
 
-          <Table
-            columns={dealerColumns}
-            dataSource={filteredForecasts}
-            rowKey="dealer_id"
-            loading={forecastLoading}
-            expandable={{
-              expandedRowRender: renderDealerExpandedRow,
-              expandedRowKeys: expandedRowKeys.byDealer,
-              onExpandedRowsChange: (keys) => {
-                setExpandedRowKeys({
-                  ...expandedRowKeys,
-                  byDealer: keys,
-                });
-              },
-              expandRowByClick: false,
-              showExpandColumn: false,
-            }}
-            pagination={getStandardPaginationConfig('dealers', 20)}
-            scroll={{ x: 800 }}
-          />
+          <Card {...EXPANDABLE_TABLE_CARD_CONFIG}>
+            <Table
+              columns={dealerColumns}
+              dataSource={filteredForecasts}
+              rowKey="dealer_id"
+              loading={forecastLoading}
+              expandable={{
+                expandedRowRender: renderDealerExpandedRow,
+                expandedRowKeys: expandedRowKeys.byDealer,
+                onExpandedRowsChange: (keys) => {
+                  setExpandedRowKeys({
+                    ...expandedRowKeys,
+                    byDealer: keys,
+                  });
+                },
+                expandRowByClick: false,
+                showExpandColumn: false,
+              }}
+              pagination={getStandardPaginationConfig('dealers', 20)}
+              scroll={{ x: 800 }}
+            />
+          </Card>
         </Tabs.TabPane>
 
         {/* Forecasts by Product Tab */}
@@ -2033,7 +2017,7 @@ function DailyReport() {
           key="forecasts-by-product"
         >
           {/* Filters and Actions - Same as by Dealer */}
-          <Card {...CONTENT_CARD_CONFIG}>
+          <Card title="Filter Forecasts" {...FILTER_CARD_CONFIG}>
             <Row gutter={[16, 16]} align="middle">
               <Col xs={24} sm={12} md={6}>
                 <Text strong>Period:</Text>
@@ -2139,26 +2123,28 @@ function DailyReport() {
             </Col>
           </Row>
 
-          <Table
-            columns={productColumns}
-            dataSource={productSummaryData}
-            rowKey="product_code"
-            loading={forecastLoading}
-            expandable={{
-              expandedRowRender: renderProductExpandedRow,
-              expandedRowKeys: expandedRowKeys.byProduct,
-              onExpandedRowsChange: (keys) => {
-                setExpandedRowKeys({
-                  ...expandedRowKeys,
-                  byProduct: keys,
-                });
-              },
-              expandRowByClick: false,
-              showExpandColumn: false,
-            }}
-            pagination={getStandardPaginationConfig('products', 20)}
-            scroll={{ x: 800 }}
-          />
+          <Card {...EXPANDABLE_TABLE_CARD_CONFIG}>
+            <Table
+              columns={productColumns}
+              dataSource={productSummaryData}
+              rowKey="product_code"
+              loading={forecastLoading}
+              expandable={{
+                expandedRowRender: renderProductExpandedRow,
+                expandedRowKeys: expandedRowKeys.byProduct,
+                onExpandedRowsChange: (keys) => {
+                  setExpandedRowKeys({
+                    ...expandedRowKeys,
+                    byProduct: keys,
+                  });
+                },
+                expandRowByClick: false,
+                showExpandColumn: false,
+              }}
+              pagination={getStandardPaginationConfig('products', 20)}
+              scroll={{ x: 800 }}
+            />
+          </Card>
         </Tabs.TabPane>
 
         {/* Forecasts by Territory Tab */}
@@ -2172,7 +2158,7 @@ function DailyReport() {
           key="forecasts-by-territory"
         >
           {/* Filters and Actions - Same as by Dealer */}
-          <Card {...CONTENT_CARD_CONFIG}>
+          <Card title="Filter Forecasts" {...FILTER_CARD_CONFIG}>
             <Row gutter={[16, 16]} align="middle">
               <Col xs={24} sm={12} md={6}>
                 <Text strong>Period:</Text>
@@ -2278,26 +2264,28 @@ function DailyReport() {
             </Col>
           </Row>
 
-          <Table
-            columns={territoryColumns}
-            dataSource={territorySummaryData}
-            rowKey="territory_name"
-            loading={forecastLoading}
-            expandable={{
-              expandedRowRender: renderTerritoryExpandedRow,
-              expandedRowKeys: expandedRowKeys.byTerritory,
-              onExpandedRowsChange: (keys) => {
-                setExpandedRowKeys({
-                  ...expandedRowKeys,
-                  byTerritory: keys,
-                });
-              },
-              expandRowByClick: false,
-              showExpandColumn: false,
-            }}
-            pagination={false}
-            scroll={{ x: 800 }}
-          />
+          <Card {...EXPANDABLE_TABLE_CARD_CONFIG}>
+            <Table
+              columns={territoryColumns}
+              dataSource={territorySummaryData}
+              rowKey="territory_name"
+              loading={forecastLoading}
+              expandable={{
+                expandedRowRender: renderTerritoryExpandedRow,
+                expandedRowKeys: expandedRowKeys.byTerritory,
+                onExpandedRowsChange: (keys) => {
+                  setExpandedRowKeys({
+                    ...expandedRowKeys,
+                    byTerritory: keys,
+                  });
+                },
+                expandRowByClick: false,
+                showExpandColumn: false,
+              }}
+              pagination={false}
+              scroll={{ x: 800 }}
+            />
+          </Card>
         </Tabs.TabPane>
 
         {/* Forecast Report Tab - Hierarchical Filtering */}
@@ -2311,8 +2299,8 @@ function DailyReport() {
           key="forecast-report"
         >
           {/* Filters */}
-          <Card {...CONTENT_CARD_CONFIG}>
-            <Row gutter={[8, 8]} align="middle" style={{ display: 'flex', flexWrap: 'nowrap' }}>
+          <Card title="Filter Forecasts" {...FILTER_CARD_CONFIG}>
+            <Row gutter={[8, 8]} align="middle">
               <Col flex="1">
                 <Text strong>Period:</Text>
                 <Select
@@ -2477,7 +2465,7 @@ function DailyReport() {
 
           {/* View Type Indicator */}
           {forecastReportPeriod && (
-            <Card size="small" {...CONTENT_CARD_CONFIG}>
+            <Card title="View Type" {...STANDARD_CARD_CONFIG}>
               <Text strong>
                 Viewing: 
                 <Tag color={getForecastReportViewType() === 'product' ? 'blue' : getForecastReportViewType() === 'territory' ? 'green' : 'default'} style={{ marginLeft: '8px' }}>
@@ -2526,126 +2514,132 @@ function DailyReport() {
           {forecastReportPeriod ? (
             getForecastReportViewType() === 'product' ? (
               // Product View: Show products as rows, dealers in expanded rows
-              <Table
-                columns={forecastReportProductColumns}
-                dataSource={(() => {
-                  const productSummary = {};
-                  filteredForecastReportData.forEach((forecast) => {
-                    forecast.products.forEach((product) => {
-                      if (!productSummary[product.product_code]) {
-                        productSummary[product.product_code] = {
-                          product_code: product.product_code,
-                          product_name: product.product_name,
+              <Card {...EXPANDABLE_TABLE_CARD_CONFIG}>
+                <Table
+                  columns={forecastReportProductColumns}
+                  dataSource={(() => {
+                    const productSummary = {};
+                    filteredForecastReportData.forEach((forecast) => {
+                      forecast.products.forEach((product) => {
+                        if (!productSummary[product.product_code]) {
+                          productSummary[product.product_code] = {
+                            product_code: product.product_code,
+                            product_name: product.product_name,
+                            total_quantity: 0,
+                            dealer_count: new Set(),
+                            dealers: [],
+                          };
+                        }
+                        productSummary[product.product_code].total_quantity += product.quantity;
+                        productSummary[product.product_code].dealer_count.add(forecast.dealer_id);
+                        productSummary[product.product_code].dealers.push({
+                          dealer_code: forecast.dealer_code,
+                          dealer_name: forecast.dealer_name,
+                          territory_name: forecast.territory_name,
+                          quantity: product.quantity,
+                        });
+                      });
+                    });
+                    return Object.values(productSummary).map((p) => ({
+                      ...p,
+                      dealer_count: p.dealer_count.size,
+                    }));
+                  })()}
+                  rowKey="product_code"
+                  loading={forecastReportLoading}
+                  expandable={{
+                    expandedRowRender: renderProductExpandedRow,
+                    expandedRowKeys: forecastReportExpandedKeys.products,
+                    onExpandedRowsChange: (keys) => {
+                      setForecastReportExpandedKeys({
+                        ...forecastReportExpandedKeys,
+                        products: keys,
+                      });
+                    },
+                    expandRowByClick: false,
+                    showExpandColumn: false,
+                  }}
+                  pagination={getStandardPaginationConfig('products', 20)}
+                  scroll={{ x: 800 }}
+                />
+              </Card>
+            ) : getForecastReportViewType() === 'territory' ? (
+              // Territory View: Show territories as rows, dealers in expanded rows
+              <Card {...EXPANDABLE_TABLE_CARD_CONFIG}>
+                <Table
+                  columns={forecastReportTerritoryColumns}
+                  dataSource={(() => {
+                    const territorySummary = {};
+                    filteredForecastReportData.forEach((forecast) => {
+                      if (!territorySummary[forecast.territory_name]) {
+                        territorySummary[forecast.territory_name] = {
+                          territory_name: forecast.territory_name,
                           total_quantity: 0,
-                          dealer_count: new Set(),
+                          dealer_count: 0,
+                          product_count: new Set(),
                           dealers: [],
                         };
                       }
-                      productSummary[product.product_code].total_quantity += product.quantity;
-                      productSummary[product.product_code].dealer_count.add(forecast.dealer_id);
-                      productSummary[product.product_code].dealers.push({
+                      territorySummary[forecast.territory_name].total_quantity += forecast.total_quantity;
+                      territorySummary[forecast.territory_name].dealer_count += 1;
+                      forecast.products.forEach((p) => {
+                        territorySummary[forecast.territory_name].product_count.add(p.product_code);
+                      });
+                      territorySummary[forecast.territory_name].dealers.push({
                         dealer_code: forecast.dealer_code,
                         dealer_name: forecast.dealer_name,
-                        territory_name: forecast.territory_name,
-                        quantity: product.quantity,
+                        total_products: forecast.total_products,
+                        total_quantity: forecast.total_quantity,
+                        products: forecast.products,
                       });
                     });
-                  });
-                  return Object.values(productSummary).map((p) => ({
-                    ...p,
-                    dealer_count: p.dealer_count.size,
-                  }));
-                })()}
-                rowKey="product_code"
-                loading={forecastReportLoading}
-                expandable={{
-                  expandedRowRender: renderProductExpandedRow,
-                  expandedRowKeys: forecastReportExpandedKeys.products,
-                  onExpandedRowsChange: (keys) => {
-                    setForecastReportExpandedKeys({
-                      ...forecastReportExpandedKeys,
-                      products: keys,
-                    });
-                  },
-                  expandRowByClick: false,
-                  showExpandColumn: false,
-                }}
-                pagination={getStandardPaginationConfig('products', 20)}
-                scroll={{ x: 800 }}
-              />
-            ) : getForecastReportViewType() === 'territory' ? (
-              // Territory View: Show territories as rows, dealers in expanded rows
-              <Table
-                columns={forecastReportTerritoryColumns}
-                dataSource={(() => {
-                  const territorySummary = {};
-                  filteredForecastReportData.forEach((forecast) => {
-                    if (!territorySummary[forecast.territory_name]) {
-                      territorySummary[forecast.territory_name] = {
-                        territory_name: forecast.territory_name,
-                        total_quantity: 0,
-                        dealer_count: 0,
-                        product_count: new Set(),
-                        dealers: [],
-                      };
-                    }
-                    territorySummary[forecast.territory_name].total_quantity += forecast.total_quantity;
-                    territorySummary[forecast.territory_name].dealer_count += 1;
-                    forecast.products.forEach((p) => {
-                      territorySummary[forecast.territory_name].product_count.add(p.product_code);
-                    });
-                    territorySummary[forecast.territory_name].dealers.push({
-                      dealer_code: forecast.dealer_code,
-                      dealer_name: forecast.dealer_name,
-                      total_products: forecast.total_products,
-                      total_quantity: forecast.total_quantity,
-                      products: forecast.products,
-                    });
-                  });
-                  return Object.values(territorySummary).map((t) => ({
-                    ...t,
-                    product_count: t.product_count.size,
-                  }));
-                })()}
-                rowKey="territory_name"
-                loading={forecastReportLoading}
-                expandable={{
-                  expandedRowRender: renderTerritoryExpandedRow,
-                  expandedRowKeys: forecastReportExpandedKeys.territories,
-                  onExpandedRowsChange: (keys) => {
-                    setForecastReportExpandedKeys({
-                      ...forecastReportExpandedKeys,
-                      territories: keys,
-                    });
-                  },
-                  expandRowByClick: false,
-                  showExpandColumn: false,
-                }}
-                pagination={false}
-                scroll={{ x: 800 }}
-              />
+                    return Object.values(territorySummary).map((t) => ({
+                      ...t,
+                      product_count: t.product_count.size,
+                    }));
+                  })()}
+                  rowKey="territory_name"
+                  loading={forecastReportLoading}
+                  expandable={{
+                    expandedRowRender: renderTerritoryExpandedRow,
+                    expandedRowKeys: forecastReportExpandedKeys.territories,
+                    onExpandedRowsChange: (keys) => {
+                      setForecastReportExpandedKeys({
+                        ...forecastReportExpandedKeys,
+                        territories: keys,
+                      });
+                    },
+                    expandRowByClick: false,
+                    showExpandColumn: false,
+                  }}
+                  pagination={false}
+                  scroll={{ x: 800 }}
+                />
+              </Card>
             ) : (
               // Dealer View: Show dealers as rows, products in expanded rows (default)
-              <Table
-                columns={forecastReportDealerColumns}
-                dataSource={filteredForecastReportData}
-                rowKey="dealer_id"
-                loading={forecastReportLoading}
-                expandable={{
-                  expandedRowRender: renderDealerExpandedRow,
-                  expandedRowKeys: forecastReportExpandedKeys.dealers,
-                  onExpandedRowsChange: (keys) => {
-                    setForecastReportExpandedKeys({
-                      ...forecastReportExpandedKeys,
-                      dealers: keys,
-                    });
-                  },
-                  expandRowByClick: false,
-                  showExpandColumn: false,
-                }}
-                pagination={getStandardPaginationConfig('dealers', 20)}
-                scroll={{ x: 800 }}
-              />
+              <Card {...EXPANDABLE_TABLE_CARD_CONFIG}>
+                <Table
+                  columns={forecastReportDealerColumns}
+                  dataSource={filteredForecastReportData}
+                  rowKey="dealer_id"
+                  loading={forecastReportLoading}
+                  expandable={{
+                    expandedRowRender: renderDealerExpandedRow,
+                    expandedRowKeys: forecastReportExpandedKeys.dealers,
+                    onExpandedRowsChange: (keys) => {
+                      setForecastReportExpandedKeys({
+                        ...forecastReportExpandedKeys,
+                        dealers: keys,
+                      });
+                    },
+                    expandRowByClick: false,
+                    showExpandColumn: false,
+                  }}
+                  pagination={getStandardPaginationConfig('dealers', 20)}
+                  scroll={{ x: 800 }}
+                />
+              </Card>
             )
           ) : (
             <Card>

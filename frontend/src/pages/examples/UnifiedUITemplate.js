@@ -50,12 +50,13 @@ import {
   GiftOutlined,
   InfoCircleOutlined,
   UploadOutlined,
+  DownloadOutlined,
   UserOutlined,
   DeleteOutlined,
   ArrowLeftOutlined,
 } from '@ant-design/icons';
 import { DealerProductCard } from '../../templates/DealerProductCard';
-import { FILTER_CARD_CONFIG, CONTENT_CARD_CONFIG, TABLE_CARD_CONFIG } from '../../templates/CardTemplates';
+import { STANDARD_CARD_CONFIG, FILTER_CARD_CONFIG, DATE_SELECTION_CARD_CONFIG, FORM_CARD_CONFIG, IMPORT_CARD_CONFIG, ACTION_CARD_CONFIG, TABLE_CARD_CONFIG, EXPANDABLE_TABLE_CARD_CONFIG } from '../../templates/CardTemplates';
 import { 
   STANDARD_ROW_GUTTER, 
   STANDARD_TAG_STYLE, 
@@ -79,9 +80,11 @@ import {
   STANDARD_DIVIDER_CONFIG,
   STANDARD_MODAL_CONFIG,
   STANDARD_BUTTON_SIZE,
+  renderTableHeaderWithSearch,
+  renderTableHeaderWithSearchAndFilter,
 } from '../../templates/UIElements';
 import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG } from '../../templates/UIElements';
-import { createStandardDatePickerConfig } from '../../templates/UIConfig';
+import { createStandardDatePickerConfig, createStandardDateRangePicker } from '../../templates/UIConfig';
 import { getStandardPagination } from '../../templates/UIConfig';
 import { renderStandardExpandedRow, StandardExpandableTable } from '../../templates/TableTemplate';
 import '../../App.css';
@@ -96,6 +99,8 @@ function UnifiedUITemplate() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedMenuItem, setSelectedMenuItem] = useState('dashboard');
   const [selectedDate, setSelectedDate] = useState(null);
+  const [rangeStart, setRangeStart] = useState(null);
+  const [rangeEnd, setRangeEnd] = useState(null);
   const [quantities, setQuantities] = useState({});
   const [expandedRowKeys, setExpandedRowKeys] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
@@ -134,12 +139,84 @@ function UnifiedUITemplate() {
       key: '1',
       order_id: 'ORD-001',
       created_at: '2024-12-16T10:30:00',
+      order_date: '2024-12-16',
       order_type: 'Daily Demand',
       item_count: 3,
       total_quantity: 25,
       items: [
         { product_code: '6DGA-225(H)', product_name: 'Kingshuk Power', quantity: 10, unit_tp: 1250 },
+        { product_code: '6DGA-180(H)', product_name: 'Kingshuk Power 180', quantity: 8, unit_tp: 1100 },
+        { product_code: '6DGA-200(H)', product_name: 'Kingshuk Power 200', quantity: 7, unit_tp: 1200 },
       ]
+    },
+  ];
+
+  const expandableColumns = [
+    {
+      title: 'Order ID',
+      dataIndex: 'order_id',
+      key: 'order_id',
+      ellipsis: true,
+      render: (id) => <Tag color="blue" style={STANDARD_TAG_STYLE}>{id}</Tag>,
+    },
+    {
+      title: 'Date',
+      dataIndex: 'order_date',
+      key: 'order_date',
+      ellipsis: true,
+    },
+    {
+      title: 'Order Type',
+      dataIndex: 'order_type',
+      key: 'order_type',
+      ellipsis: true,
+      render: (type) => <Tag color="green" style={STANDARD_TAG_STYLE}>{type}</Tag>,
+    },
+    {
+      title: 'Products',
+      key: 'products',
+      ellipsis: true,
+      render: (_, record) => (
+        <Tag color="green" style={STANDARD_TAG_STYLE}>
+          {record.item_count || 0} item{(record.item_count || 0) !== 1 ? 's' : ''}
+        </Tag>
+      ),
+    },
+    {
+      title: 'Total Quantity',
+      dataIndex: 'total_quantity',
+      key: 'total_quantity',
+      ellipsis: true,
+      render: (qty) => <Text strong>{qty || 0}</Text>,
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      width: 180,
+      align: 'center',
+      fixed: 'right',
+      render: (_, record) => {
+        const isExpanded = expandedRowKeys.includes(record.order_id);
+        return (
+          <Badge {...STANDARD_BADGE_CONFIG} count={record.item_count || 0}>
+            <Button
+              type="primary"
+              icon={<AppstoreOutlined />}
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (isExpanded) {
+                  setExpandedRowKeys(expandedRowKeys.filter(key => key !== record.order_id));
+                } else {
+                  setExpandedRowKeys([...expandedRowKeys, record.order_id]);
+                }
+              }}
+            >
+              {isExpanded ? 'Hide Details' : 'View Details'}
+            </Button>
+          </Badge>
+        );
+      },
     },
   ];
 
@@ -153,7 +230,11 @@ function UnifiedUITemplate() {
       </Text>
 
       {/* 1. NAVBAR TEMPLATE */}
-      <Card {...CONTENT_CARD_CONFIG} title="1. Navigation Bar" style={{ marginBottom: '16px' }}>
+      <Card {...STANDARD_CARD_CONFIG} title="1. Navigation Bar">
+        <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: '12px' }}>
+          This is the navigation bar template used across all pages in App.js.
+          Includes menu items, drawer for overflow, and user actions. Used in all pages with navigation.
+        </Text>
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
           <Select
             value={selectedRole}
@@ -212,7 +293,11 @@ function UnifiedUITemplate() {
       </Card>
 
       {/* 2. PAGE TITLE & SUBTITLE */}
-      <Card {...CONTENT_CARD_CONFIG} title="2. Page Title & Subtitle" style={{ marginBottom: '16px' }}>
+      <Card {...STANDARD_CARD_CONFIG} title="2. Page Title & Subtitle">
+        <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: '12px' }}>
+          Standard page title and subtitle pattern used on all pages.
+          Title includes icon, subtitle provides context below the title. Used in PlacedOrders page, Orders & Demands section.
+        </Text>
         <Title {...STANDARD_PAGE_TITLE_CONFIG}>
           <TableOutlined /> Page Title
         </Title>
@@ -222,10 +307,14 @@ function UnifiedUITemplate() {
       </Card>
 
       {/* 3. CARD TEMPLATES */}
-      <Card {...CONTENT_CARD_CONFIG} title="3. Card Templates" style={{ marginBottom: '16px' }}>
+      <Card {...STANDARD_CARD_CONFIG} title="3. Card Templates">
+        <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: '12px' }}>
+          Standard card templates from CardTemplates.js used throughout the application.
+          Each card type has a specific background color and styling. Table Card uses light indigo background (#f0f0ff).
+          Expandable Table Card uses very light purple background (#faf5ff). Used in Dealer My Reports page, View Orders section, and Manage Dealers page.
+        </Text>
         <Space direction="vertical" style={{ width: '100%' }} size={STANDARD_SPACE_SIZE_LARGE}>
           <div>
-            <Text strong style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>Filter Card</Text>
             <Card {...FILTER_CARD_CONFIG} title="Filter Card">
               <Row gutter={STANDARD_ROW_GUTTER}>
                 <Col span={8}>
@@ -241,9 +330,57 @@ function UnifiedUITemplate() {
           </div>
 
           <div>
-            <Text strong style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>Content Card</Text>
-            <Card {...CONTENT_CARD_CONFIG}>
-              <Text>This is a content card with standard padding and spacing.</Text>
+            <Card {...DATE_SELECTION_CARD_CONFIG} title="Date Selection Card">
+              <Row gutter={STANDARD_ROW_GUTTER}>
+                <Col span={12}>
+                  <Text strong style={STANDARD_FORM_LABEL_STYLE}>Select Date</Text>
+                  <DatePicker {...STANDARD_DATE_PICKER_CONFIG} style={{ width: '100%' }} />
+                </Col>
+              </Row>
+            </Card>
+          </div>
+
+          <div>
+            <Card {...FORM_CARD_CONFIG} title="Form Card">
+              <Row gutter={STANDARD_ROW_GUTTER}>
+                <Col span={12}>
+                  <Text strong style={STANDARD_FORM_LABEL_STYLE}>Date</Text>
+                  <DatePicker {...STANDARD_DATE_PICKER_CONFIG} style={{ width: '100%' }} />
+                </Col>
+                <Col span={12}>
+                  <Text strong style={STANDARD_FORM_LABEL_STYLE}>Quantity</Text>
+                  <InputNumber style={{ width: '100%' }} placeholder="Enter quantity" />
+                </Col>
+              </Row>
+            </Card>
+          </div>
+
+          <div>
+            <Card {...IMPORT_CARD_CONFIG} title="Import Card">
+              <Row gutter={STANDARD_ROW_GUTTER} align="middle">
+                <Col>
+                  <Button type="primary" icon={<UploadOutlined />}>
+                    Import Data (Excel)
+                  </Button>
+                </Col>
+                <Col>
+                  <Button icon={<DownloadOutlined />}>
+                    Download Template
+                  </Button>
+                </Col>
+              </Row>
+            </Card>
+          </div>
+
+          <div>
+            <Card {...ACTION_CARD_CONFIG} title="Action Card">
+              <Row gutter={STANDARD_ROW_GUTTER} align="middle">
+                <Col>
+                  <Button type="primary" icon={<PlusOutlined />}>
+                    Add User
+                  </Button>
+                </Col>
+              </Row>
             </Card>
           </div>
 
@@ -262,51 +399,129 @@ function UnifiedUITemplate() {
               />
             </Card>
           </div>
+
+          <div>
+            <Text strong style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>Table Card with Inline Search</Text>
+            <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: '8px' }}>
+              Table header with inline search box. This is the template design used in PlacedOrders.js "Orders & Demands" table.
+            </Text>
+            <Card {...TABLE_CARD_CONFIG}>
+              {renderTableHeaderWithSearch({
+                title: 'Orders',
+                count: 25,
+                searchTerm: '',
+                onSearchChange: () => {},
+                searchPlaceholder: 'Search orders...'
+              })}
+              <Table
+                dataSource={tableData.slice(0, 2)}
+                columns={[
+                  { title: 'ID', dataIndex: 'id', key: 'id' },
+                  { title: 'Dealer', dataIndex: 'dealer', key: 'dealer' },
+                  { title: 'Qty', dataIndex: 'qty', key: 'qty' },
+                ]}
+                pagination={false}
+                size="small"
+              />
+            </Card>
+          </div>
+
+          <div>
+            <Text strong style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>Table Card with Inline Search and Filter</Text>
+            <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: '8px' }}>
+              Table header with inline filter dropdown and search box. This is the template design used in DealerManagement.js "Dealers" table.
+              Filter appears first, then search box. Both are aligned to the right, title on the left.
+            </Text>
+            <Card {...TABLE_CARD_CONFIG}>
+              {renderTableHeaderWithSearchAndFilter({
+                title: 'Dealers',
+                count: 15,
+                searchTerm: '',
+                onSearchChange: () => {},
+                searchPlaceholder: 'Search by dealer name or code...',
+                filter: {
+                  value: null,
+                  onChange: () => {},
+                  placeholder: 'Filter by territory',
+                  options: [
+                    { value: 'T1', label: 'Territory 1' },
+                    { value: 'T2', label: 'Territory 2' },
+                    { value: 'T3', label: 'Territory 3' }
+                  ],
+                  width: '200px',
+                  showSearch: true
+                }
+              })}
+              <Table
+                dataSource={tableData.slice(0, 2)}
+                columns={[
+                  { title: 'ID', dataIndex: 'id', key: 'id' },
+                  { title: 'Dealer', dataIndex: 'dealer', key: 'dealer' },
+                  { title: 'Qty', dataIndex: 'qty', key: 'qty' },
+                ]}
+                pagination={false}
+                size="small"
+              />
+            </Card>
+          </div>
+
+          <div>
+            <Text strong style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>Expandable Table Card</Text>
+            <StandardExpandableTable
+              columns={expandableColumns}
+              dataSource={expandableData}
+              loading={false}
+              rowKey="order_id"
+              expandedRowKeys={expandedRowKeys}
+              onExpand={(expanded, record) => {
+                if (expanded) {
+                  setExpandedRowKeys([...expandedRowKeys, record.order_id]);
+                } else {
+                  setExpandedRowKeys(expandedRowKeys.filter(key => key !== record.order_id));
+                }
+              }}
+              expandedRowRender={(record) => {
+                const items = record.items || [];
+                return renderStandardExpandedRow(
+                  record,
+                  items,
+                  (item) => (
+                    <>
+                      <Text strong>{item.product_code}</Text> - {item.product_name}
+                      <br />
+                      <Text type="secondary" style={{ fontSize: '12px' }}>
+                        Quantity: {item.quantity}
+                      </Text>
+                      {item.unit_tp && (
+                        <Text type="secondary" style={{ fontSize: '12px' }}>
+                          {' | '}Unit TP: ৳{item.unit_tp}
+                        </Text>
+                      )}
+                    </>
+                  ),
+                  'Order Items:'
+                );
+              }}
+              pagination={getStandardPagination('orders', 10)}
+            />
+          </div>
         </Space>
       </Card>
 
       {/* 4. TABLE TEMPLATES */}
-      <Card {...CONTENT_CARD_CONFIG} title="4. Table Templates" style={{ marginBottom: '16px' }}>
-        <Space direction="vertical" style={{ width: '100%' }} size={STANDARD_SPACE_SIZE_LARGE}>
-          <div>
-            <Text strong style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>Standard Table</Text>
-            <Table
-              dataSource={tableData}
-              columns={[
-                {
-                  title: 'Order ID',
-                  dataIndex: 'id',
-                  key: 'id',
-                  render: (id) => <Tag color="blue" style={STANDARD_TAG_STYLE}>{id}</Tag>,
-                },
-                { title: 'Dealer', dataIndex: 'dealer', key: 'dealer', ellipsis: true },
-                { title: 'Territory', dataIndex: 'territory', key: 'territory' },
-                {
-                  title: 'Status',
-                  dataIndex: 'status',
-                  key: 'status',
-                  render: (status) => <Tag color={status === 'new' ? 'blue' : 'green'} style={STANDARD_TAG_STYLE}>{status}</Tag>,
-                },
-              ]}
-              pagination={getStandardPagination('orders')}
-              size="small"
-            />
-          </div>
-
-          <div>
-            <Text strong style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>Expandable Table</Text>
-            <StandardExpandableTable
-              dataSource={expandableData}
-              expandedRowKeys={expandedRowKeys}
-              onExpandedRowsChange={setExpandedRowKeys}
-              loading={false}
-            />
-          </div>
-        </Space>
+      <Card {...STANDARD_CARD_CONFIG} title="4. Table Templates">
+        <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: '12px' }}>
+          Standard table templates with pagination from UIConfig.js and expandable rows from TableTemplate.js.
+          Used in Dealer My Reports page, View Orders section, and Manage Dealers page.
+        </Text>
       </Card>
 
       {/* 5. CALENDAR WIDGET */}
-      <Card {...CONTENT_CARD_CONFIG} title="5. Calendar Widget" style={{ marginBottom: '16px' }}>
+      <Card {...STANDARD_CARD_CONFIG} title="5. Calendar Widget">
+        <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: '12px' }}>
+          Standard date picker with disabled dates and custom date cell rendering from UIConfig.js.
+          Only dates with available data are selectable. Used in TSO My Reports page, Order Summary section.
+        </Text>
         <Row gutter={STANDARD_ROW_GUTTER}>
           <Col xs={24} md={12}>
             <Text strong style={STANDARD_FORM_LABEL_STYLE}>Select Date</Text>
@@ -327,7 +542,11 @@ function UnifiedUITemplate() {
       </Card>
 
       {/* 6. DEALER PRODUCT CARD */}
-      <Card {...CONTENT_CARD_CONFIG} title="6. Dealer Product Card" style={{ marginBottom: '16px' }}>
+      <Card {...STANDARD_CARD_CONFIG} title="6. Dealer Product Card">
+        <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: '12px' }}>
+          Dealer product card template from DealerProductCard.js used in DailyDemandMultiDay.js and MonthlyForecastTab.js.
+          Displays product information with quantity input and preset values. Used in Dealer Daily Demand page, Multi-Day Orders section.
+        </Text>
         <div className="responsive-product-grid">
           {sampleProducts.map(product => (
             <DealerProductCard
@@ -349,7 +568,11 @@ function UnifiedUITemplate() {
       </Card>
 
       {/* 7. TABS */}
-      <Card {...CONTENT_CARD_CONFIG} title="7. Tabs" style={{ marginBottom: '16px' }}>
+      <Card {...STANDARD_CARD_CONFIG} title="7. Tabs">
+        <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: '12px' }}>
+          Standard tabs configuration from UIElements.js used in TSOReport.js, DailyReport.js, and DealerReports.js.
+          Provides consistent tab styling and behavior across the application. Used in Dealer My Reports page, Daily Demand Orders and Monthly Forecasts tabs.
+        </Text>
         <Tabs {...STANDARD_TABS_CONFIG} defaultActiveKey="tab1">
           <Tabs.TabPane tab="Tab 1" key="tab1">
             <Card {...FILTER_CARD_CONFIG} title="Filter Card in Tab">
@@ -362,13 +585,17 @@ function UnifiedUITemplate() {
             </Card>
           </Tabs.TabPane>
           <Tabs.TabPane tab="Tab 2" key="tab2">
-            <Card {...CONTENT_CARD_CONFIG}>Content in Tab 2</Card>
+            <Card {...STANDARD_CARD_CONFIG}>Content in Tab 2</Card>
           </Tabs.TabPane>
         </Tabs>
       </Card>
 
       {/* 8. INLINE FILTERS */}
-      <Card {...CONTENT_CARD_CONFIG} title="8. Inline Filters (Dashboard Pattern)" style={{ marginBottom: '16px' }}>
+      <Card {...FILTER_CARD_CONFIG} title="8. Inline Filters (Dashboard Pattern)">
+        <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: '12px' }}>
+          Inline filter pattern used in Dashboard.js and TSODashboard.js.
+          Radio buttons for quick filters combined with date picker for date-based filtering. Used in TSO Dashboard page, Orders section.
+        </Text>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
           <Space>
             <Radio.Group size={STANDARD_RADIO_SIZE}>
@@ -381,7 +608,11 @@ function UnifiedUITemplate() {
       </Card>
 
       {/* 9. ALERT / INFO SECTIONS */}
-      <Card {...CONTENT_CARD_CONFIG} title="9. Alert / Info Sections" style={{ marginBottom: '16px' }}>
+      <Card {...STANDARD_CARD_CONFIG} title="9. Alert / Info Sections">
+        <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: '12px' }}>
+          Standard alert configuration from UIElements.js used for info messages and notifications.
+          Supports gradient backgrounds and custom styling for different alert types. Used in TSO Dashboard page, Quota alerts section.
+        </Text>
         <Alert
           {...STANDARD_ALERT_CONFIG}
           message={<span style={{ color: 'white', fontSize: '14px' }}>Info Alert with Gradient Background</span>}
@@ -396,7 +627,11 @@ function UnifiedUITemplate() {
       </Card>
 
       {/* 10. STATISTICS CARDS */}
-      <Card {...CONTENT_CARD_CONFIG} title="10. Statistics Cards" style={{ marginBottom: '16px' }}>
+      <Card {...STANDARD_CARD_CONFIG} title="10. Statistics Cards">
+        <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: '12px' }}>
+          Statistics cards with gradient backgrounds used in Dashboard.js and TSODashboard.js.
+          Displays key metrics with icons and formatted numbers using STANDARD_STATISTIC_CONFIG. Used in TSO Dashboard page, Statistics section.
+        </Text>
         <Row gutter={[16, 16]}>
           <Col xs={24} sm={12} md={6}>
             <Card style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', color: 'white', borderRadius: '8px' }}>
@@ -435,51 +670,12 @@ function UnifiedUITemplate() {
         </Row>
       </Card>
 
-      {/* 11. IMPORT SECTION CARDS */}
-      <Card {...CONTENT_CARD_CONFIG} title="11. Import Section Cards" style={{ marginBottom: '16px' }}>
-        <Card {...CONTENT_CARD_CONFIG}>
-          <Row gutter={[16, 16]} align="middle">
-            <Col>
-              <Upload accept=".xlsx,.xls" beforeUpload={() => false}>
-                <Button size={STANDARD_BUTTON_SIZE} icon={<UploadOutlined />}>Import Excel</Button>
-              </Upload>
-            </Col>
-            <Col>
-              <Button size={STANDARD_BUTTON_SIZE} icon={<FileExcelOutlined />}>Download Template</Button>
-            </Col>
-          </Row>
-        </Card>
-      </Card>
-
-      {/* 12. BUTTON SECTIONS IN CONTENT CARDS */}
-      <Card {...CONTENT_CARD_CONFIG} title="12. Button Sections in Content Cards" style={{ marginBottom: '16px' }}>
-        <Card {...CONTENT_CARD_CONFIG}>
-          <Row gutter={[16, 16]} align="middle">
-            <Col>
-              <Button size={STANDARD_BUTTON_SIZE} type="primary" icon={<PlusOutlined />}>Add User</Button>
-            </Col>
-          </Row>
-        </Card>
-      </Card>
-
-      {/* 13. SEARCH IN CONTENT CARDS */}
-      <Card {...CONTENT_CARD_CONFIG} title="13. Search in Content Cards" style={{ marginBottom: '16px' }}>
-        <Card {...CONTENT_CARD_CONFIG}>
-          <Row gutter={[16, 16]}>
-            <Col xs={24} sm={12} md={8}>
-              <Input
-                placeholder="Search products..."
-                prefix={<SearchOutlined />}
-                allowClear
-                size={STANDARD_INPUT_SIZE}
-              />
-            </Col>
-          </Row>
-        </Card>
-      </Card>
-
-      {/* 14. UI ELEMENTS */}
-      <Card {...CONTENT_CARD_CONFIG} title="14. UI Elements" style={{ marginBottom: '16px' }}>
+      {/* 11. UI ELEMENTS */}
+      <Card {...STANDARD_CARD_CONFIG} title="11. UI ELEMENTS">
+        <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: '12px' }}>
+          Standard UI element configurations from UIElements.js used throughout the application.
+          Includes row gutters, tags, form elements, and other reusable component configurations. Used in Admin Orders & Demands page, Filter section.
+        </Text>
         <Space direction="vertical" style={{ width: '100%' }} size={STANDARD_SPACE_SIZE_LARGE}>
           <div>
             <Text strong style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>Row Gutter</Text>
@@ -516,10 +712,14 @@ function UnifiedUITemplate() {
         </Space>
       </Card>
 
-      {/* 15. EMPTY STATES */}
-      <Card {...CONTENT_CARD_CONFIG} title="15. Empty States" style={{ marginBottom: '16px' }}>
+      {/* 12. EMPTY STATES */}
+      <Card {...STANDARD_CARD_CONFIG} title="12. Empty States">
+        <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: '12px' }}>
+          Empty state patterns used when no data is available. Includes Empty component from Ant Design with STANDARD_EMPTY_CONFIG.
+          Used in ProductManagement.js, DealerManagement.js, and other pages with conditional content. Used in Admin Product Management page, Empty state section.
+        </Text>
         <Space direction="vertical" style={{ width: '100%' }} size={STANDARD_SPACE_SIZE_LARGE}>
-          <Card {...CONTENT_CARD_CONFIG} style={{ textAlign: 'center' }}>
+          <Card {...STANDARD_CARD_CONFIG} style={{ textAlign: 'center' }}>
             <Empty
               image={Empty.PRESENTED_IMAGE_SIMPLE}
               description="No items found"
@@ -528,7 +728,7 @@ function UnifiedUITemplate() {
               <Button size={STANDARD_BUTTON_SIZE} type="primary" icon={<PlusOutlined />}>Add Item</Button>
             </Empty>
           </Card>
-          <Card {...CONTENT_CARD_CONFIG}>
+          <Card {...STANDARD_CARD_CONFIG}>
             <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
               No products assigned
             </div>
@@ -536,8 +736,12 @@ function UnifiedUITemplate() {
         </Space>
       </Card>
 
-      {/* 16. LOADING STATES */}
-      <Card {...CONTENT_CARD_CONFIG} title="16. Loading States" style={{ marginBottom: '16px' }}>
+      {/* 13. LOADING STATES */}
+      <Card {...STANDARD_CARD_CONFIG} title="13. Loading States">
+        <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: '12px' }}>
+          Loading state patterns using Spin component with STANDARD_SPIN_SIZE from UIElements.js.
+          Used for full page loading, inline loading, and table loading states across all pages. Used in Dealer My Reports page, Loading states section.
+        </Text>
         <Space direction="vertical" style={{ width: '100%' }} size={STANDARD_SPACE_SIZE_LARGE}>
           <div>
             <Text strong style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>Full Page Loading</Text>
@@ -564,8 +768,12 @@ function UnifiedUITemplate() {
         </Space>
       </Card>
 
-      {/* 17. MODALS */}
-      <Card {...CONTENT_CARD_CONFIG} title="17. Modals" style={{ marginBottom: '16px' }}>
+      {/* 14. MODALS */}
+      <Card {...STANDARD_CARD_CONFIG} title="14. Modals">
+        <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: '12px' }}>
+          Standard modal configuration from UIElements.js used in PlacedOrders.js, UserManagement.js, and other pages.
+          Provides consistent modal styling and behavior for forms and confirmations. Used in Admin Orders & Demands page, Edit Order modal.
+        </Text>
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
           <Button size={STANDARD_BUTTON_SIZE} type="primary" onClick={() => setModalVisible(true)}>Open Modal</Button>
           <Modal
@@ -587,8 +795,12 @@ function UnifiedUITemplate() {
         </Space>
       </Card>
 
-      {/* 18. POPCONFIRM / CONFIRMATION DIALOGS */}
-      <Card {...CONTENT_CARD_CONFIG} title="18. Popconfirm / Confirmation Dialogs" style={{ marginBottom: '16px' }}>
+      {/* 15. POPCONFIRM / CONFIRMATION DIALOGS */}
+      <Card {...STANDARD_CARD_CONFIG} title="15. Popconfirm / Confirmation Dialogs">
+        <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: '12px' }}>
+          Popconfirm component with STANDARD_POPCONFIRM_CONFIG from UIElements.js used for delete confirmations.
+          Used in PlacedOrders.js, UserManagement.js, and other pages requiring user confirmation before actions. Used in Admin Orders & Demands page, Delete confirmation.
+        </Text>
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
           <div>
             <Text strong style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>Simple Popconfirm</Text>
@@ -616,8 +828,12 @@ function UnifiedUITemplate() {
         </Space>
       </Card>
 
-      {/* 19. BADGE */}
-      <Card {...CONTENT_CARD_CONFIG} title="19. Badge" style={{ marginBottom: '16px' }}>
+      {/* 16. BADGE */}
+      <Card {...STANDARD_CARD_CONFIG} title="16. Badge">
+        <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: '12px' }}>
+          Badge component with STANDARD_BADGE_CONFIG from UIElements.js used in DealerReports.js and other pages.
+          Displays counts and notifications on buttons and other UI elements. Used in Dealer My Reports page, View Details button.
+        </Text>
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
           <div>
             <Text strong style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>Badge on Button</Text>
@@ -636,8 +852,12 @@ function UnifiedUITemplate() {
         </Space>
       </Card>
 
-      {/* 20. TOOLTIP */}
-      <Card {...CONTENT_CARD_CONFIG} title="20. Tooltip" style={{ marginBottom: '16px' }}>
+      {/* 17. TOOLTIP */}
+      <Card {...STANDARD_CARD_CONFIG} title="17. Tooltip">
+        <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: '12px' }}>
+          Tooltip component with STANDARD_TOOLTIP_CONFIG from UIElements.js used throughout the application.
+          Provides helpful hints and explanations on hover, especially for disabled buttons and icons. Used in Admin Orders & Demands page, Action buttons.
+        </Text>
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
           <div>
             <Text strong style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>Tooltip on Button</Text>
@@ -654,8 +874,12 @@ function UnifiedUITemplate() {
         </Space>
       </Card>
 
-      {/* 21. RADIO */}
-      <Card {...CONTENT_CARD_CONFIG} title="21. Radio" style={{ marginBottom: '16px' }}>
+      {/* 18. RADIO */}
+      <Card {...STANDARD_CARD_CONFIG} title="18. Radio">
+        <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: '12px' }}>
+          Radio button group with STANDARD_RADIO_SIZE from UIElements.js used in Dashboard.js and filter sections.
+          Provides toggle options for filtering and selection with consistent sizing. Used in TSO Dashboard page, Filter section.
+        </Text>
         <Space direction="vertical" style={{ width: '100%' }} size={STANDARD_SPACE_SIZE_MIDDLE}>
           <div>
             <Text strong style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>Radio Group</Text>
@@ -667,8 +891,12 @@ function UnifiedUITemplate() {
         </Space>
       </Card>
 
-      {/* 22. DATE PICKER */}
-      <Card {...CONTENT_CARD_CONFIG} title="22. Date Picker" style={{ marginBottom: '16px' }}>
+      {/* 19. DATE PICKER */}
+      <Card {...STANDARD_CARD_CONFIG} title="19. Date Picker">
+        <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: '12px' }}>
+          Standard single date picker with STANDARD_DATE_PICKER_CONFIG from UIElements.js used throughout the application.
+          Used in ProductQuotaManagement.js, Dashboard.js, and other pages requiring single date selection. Used in Admin Product Quota Management page, Date selection.
+        </Text>
         <Space direction="vertical" style={{ width: '100%' }} size={STANDARD_SPACE_SIZE_MIDDLE}>
           <div>
             <Text strong style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>Standard Date Picker</Text>
@@ -677,8 +905,37 @@ function UnifiedUITemplate() {
         </Space>
       </Card>
 
-      {/* 23. INPUT NUMBER */}
-      <Card {...CONTENT_CARD_CONFIG} title="23. Input Number" style={{ marginBottom: '16px' }}>
+      {/* 19.5. DATE RANGE PICKER TEMPLATE */}
+      <Card {...STANDARD_CARD_CONFIG} title="19.5. Date Range Picker Template">
+        <Space direction="vertical" style={{ width: '100%' }} size={STANDARD_SPACE_SIZE_MIDDLE}>
+          <div>
+            <Text strong style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>
+              Standard Date Range Picker (Template from DealerReports.js)
+            </Text>
+            <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: '12px' }}>
+              This is the template design used in DealerReports.js "Daily Demand Orders" tab.
+              End Date is optional - leave blank for single date filtering.
+            </Text>
+            <Card {...STANDARD_CARD_CONFIG}>
+              <Row gutter={STANDARD_ROW_GUTTER} align="bottom">
+                {createStandardDateRangePicker({
+                  startDate: rangeStart,
+                  setStartDate: setRangeStart,
+                  endDate: rangeEnd,
+                  setEndDate: setRangeEnd,
+                  disabledDate,
+                  dateCellRender,
+                  availableDates,
+                  colSpan: { xs: 24, sm: 12, md: 6 }
+                })}
+              </Row>
+            </Card>
+          </div>
+        </Space>
+      </Card>
+
+      {/* 20. INPUT NUMBER */}
+      <Card {...STANDARD_CARD_CONFIG} title="20. Input Number">
         <Space direction="vertical" style={{ width: '100%' }} size={STANDARD_SPACE_SIZE_MIDDLE}>
           <div>
             <Text strong style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>Standard Input Number</Text>
@@ -687,8 +944,8 @@ function UnifiedUITemplate() {
         </Space>
       </Card>
 
-      {/* 24. SPACE */}
-      <Card {...CONTENT_CARD_CONFIG} title="24. Space" style={{ marginBottom: '16px' }}>
+      {/* 21. SPACE */}
+      <Card {...STANDARD_CARD_CONFIG} title="21. Space">
         <Space direction="vertical" style={{ width: '100%' }} size={STANDARD_SPACE_SIZE_MIDDLE}>
           <div>
             <Text strong style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>Space - Small</Text>
@@ -717,8 +974,8 @@ function UnifiedUITemplate() {
         </Space>
       </Card>
 
-      {/* 25. DIVIDER */}
-      <Card {...CONTENT_CARD_CONFIG} title="25. Divider" style={{ marginBottom: '16px' }}>
+      {/* 22. DIVIDER */}
+      <Card {...STANDARD_CARD_CONFIG} title="22. Divider">
         <Space direction="vertical" style={{ width: '100%' }} size={STANDARD_SPACE_SIZE_MIDDLE}>
           <div>
             <Text>Content above divider</Text>

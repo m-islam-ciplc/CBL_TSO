@@ -13,6 +13,7 @@
  */
 
 import { Table, Card, Typography, Tag, Spin } from 'antd';
+import { EXPANDABLE_TABLE_CARD_CONFIG } from './CardTemplates';
 
 const { Text } = Typography;
 
@@ -22,10 +23,13 @@ const { Text } = Typography;
  * Standard configuration for expandable tables
  */
 export const STANDARD_EXPANDABLE_TABLE_CONFIG = {
-  // Table wrapper styling
+  // Table wrapper styling - uses EXPANDABLE_TABLE_CARD_CONFIG
   cardStyle: {
+    ...EXPANDABLE_TABLE_CARD_CONFIG.style,
     marginBottom: '16px',
-    borderRadius: '8px'
+  },
+  cardBodyStyle: {
+    ...EXPANDABLE_TABLE_CARD_CONFIG.bodyStyle,
   },
 
   // Standard pagination configuration
@@ -211,6 +215,7 @@ export const StandardExpandableTable = ({
   expandedRowKeys,
   onExpand,
   pagination = STANDARD_EXPANDABLE_TABLE_CONFIG.pagination,
+  header,
   ...otherProps
 }) => {
   // Default expandable configuration - uses action column instead of plus icon
@@ -224,7 +229,11 @@ export const StandardExpandableTable = ({
   };
 
   return (
-    <Card style={STANDARD_EXPANDABLE_TABLE_CONFIG.cardStyle}>
+    <Card 
+      style={STANDARD_EXPANDABLE_TABLE_CONFIG.cardStyle}
+      bodyStyle={STANDARD_EXPANDABLE_TABLE_CONFIG.cardBodyStyle}
+    >
+      {header}
       {loading && (
         <div style={{ textAlign: 'center', padding: '40px' }}>
           <Spin size="large" />

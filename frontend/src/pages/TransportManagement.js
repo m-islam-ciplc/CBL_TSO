@@ -11,18 +11,15 @@ import {
   Select,
   message,
   Row,
-  Col,
-  Statistic
+  Col
 } from 'antd';
 import { useStandardPagination } from '../templates/useStandardPagination';
-import { CONTENT_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
-import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, STANDARD_UPLOAD_CONFIG, STANDARD_STATISTIC_CONFIG } from '../templates/UIElements';
+import { STANDARD_CARD_CONFIG, IMPORT_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, STANDARD_UPLOAD_CONFIG, renderTableHeaderWithSearchAndFilter } from '../templates/UIElements';
 import {
   UploadOutlined,
   DownloadOutlined,
   TruckOutlined,
-  SearchOutlined,
-  CheckCircleOutlined
 } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
@@ -34,7 +31,7 @@ function TransportManagement() {
   const [loading, setLoading] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [idFilter, setIdFilter] = useState(null);
   const { pagination, setPagination, handleTableChange } = useStandardPagination('transports', 20);
 
   useEffect(() => {
@@ -43,7 +40,7 @@ function TransportManagement() {
 
   useEffect(() => {
     filterTransports();
-  }, [transports, searchTerm, statusFilter]);
+  }, [transports, searchTerm, idFilter]);
 
   const fetchTransports = async () => {
     setLoading(true);
@@ -61,19 +58,16 @@ function TransportManagement() {
   const filterTransports = () => {
     let filtered = transports;
 
+    // Search by Truck Details only
     if (searchTerm) {
       filtered = filtered.filter(transport =>
-        transport.truck_details?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        transport.driver_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        transport.truck_no?.toLowerCase().includes(searchTerm.toLowerCase())
+        transport.truck_details?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(transport => {
-        const status = transport.transport_status || transport.status;
-        return status === statusFilter;
-      });
+    // Filter by ID
+    if (idFilter) {
+      filtered = filtered.filter(transport => transport.id === idFilter);
     }
 
     setFilteredTransports(filtered);
@@ -179,9 +173,6 @@ function TransportManagement() {
     },
   ];
 
-  const activeCount = transports.filter(t => t.transport_status === 'A').length;
-  const inactiveCount = transports.filter(t => t.transport_status === 'I').length;
-
   return (
     <div>
       <Title {...STANDARD_PAGE_TITLE_CONFIG}>
@@ -192,7 +183,7 @@ function TransportManagement() {
       </Text>
 
       {/* Import Section */}
-      <Card {...CONTENT_CARD_CONFIG}>
+      <Card title="Import Transports" {...IMPORT_CARD_CONFIG}>
         <Row gutter={STANDARD_ROW_GUTTER} align="middle">
           <Col>
             <Upload
@@ -219,98 +210,26 @@ function TransportManagement() {
         </Row>
       </Card>
 
-      {/* Statistics */}
-      <Row gutter={STANDARD_ROW_GUTTER} style={{ marginBottom: '16px' }}>
-        <Col xs={24} sm={12} md={6}>
-          <Card 
-            size="small"
-            style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}
-          >
-            <Statistic
-              {...STANDARD_STATISTIC_CONFIG}
-              title={<span style={{ color: 'white' }}>Total Transports</span>}
-              value={transports.length}
-              prefix={<TruckOutlined style={{ color: 'white' }} />}
-              valueStyle={{ ...STANDARD_STATISTIC_CONFIG.valueStyle, color: 'white' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card 
-            size="small"
-            style={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', color: 'white' }}
-          >
-            <Statistic
-              {...STANDARD_STATISTIC_CONFIG}
-              title={<span style={{ color: 'white' }}>Active Transports</span>}
-              value={activeCount}
-              prefix={<CheckCircleOutlined style={{ color: 'white' }} />}
-              valueStyle={{ ...STANDARD_STATISTIC_CONFIG.valueStyle, color: 'white' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card 
-            size="small"
-            style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', color: 'white' }}
-          >
-            <Statistic
-              {...STANDARD_STATISTIC_CONFIG}
-              title={<span style={{ color: 'white' }}>Inactive Transports</span>}
-              value={inactiveCount}
-              prefix={<CheckCircleOutlined style={{ color: 'white' }} />}
-              valueStyle={{ ...STANDARD_STATISTIC_CONFIG.valueStyle, color: 'white' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card 
-            size="small"
-            style={{ background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', color: 'white' }}
-          >
-            <Statistic
-              {...STANDARD_STATISTIC_CONFIG}
-              title={<span style={{ color: 'white' }}>Displayed</span>}
-              value={filteredTransports.length}
-              prefix={<SearchOutlined style={{ color: 'white' }} />}
-              valueStyle={{ ...STANDARD_STATISTIC_CONFIG.valueStyle, color: 'white' }}
-            />
-          </Card>
-        </Col>
-      </Row>
-
-      {/* Filters */}
-      <Card {...CONTENT_CARD_CONFIG}>
-        <Row gutter={STANDARD_ROW_GUTTER}>
-          <Col xs={24} sm={12} md={8}>
-            <Input
-              placeholder="Search transports..."
-              prefix={<SearchOutlined />}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </Col>
-          <Col xs={24} sm={12} md={8}>
-            <Select
-              placeholder="Filter by status"
-              value={statusFilter}
-              onChange={setStatusFilter}
-              style={{ width: '100%' }}
-              allowClear
-            >
-              <Option value="all">All Status</Option>
-              <Option value="A">Active</Option>
-              <Option value="I">Inactive</Option>
-            </Select>
-          </Col>
-        </Row>
-      </Card>
-
       {/* Transports Table */}
       <Card {...TABLE_CARD_CONFIG}>
-        <div style={{ marginBottom: '16px' }}>
-          <Text strong>Transports ({filteredTransports.length})</Text>
-        </div>
+        {renderTableHeaderWithSearchAndFilter({
+          title: 'Transports',
+          count: filteredTransports.length,
+          searchTerm: searchTerm,
+          onSearchChange: (e) => setSearchTerm(e.target.value),
+          searchPlaceholder: 'Search by truck details...',
+          filter: {
+            value: idFilter,
+            onChange: setIdFilter,
+            placeholder: 'Filter by ID',
+            options: transports.map(transport => ({
+              value: transport.id,
+              label: `ID: ${transport.id}`
+            })),
+            width: '200px',
+            showSearch: true
+          }
+        })}
 
         <Table
           columns={columns}

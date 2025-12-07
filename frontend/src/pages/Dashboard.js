@@ -13,7 +13,7 @@ import {
   DashboardOutlined,
 } from '@ant-design/icons';
 import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, COMPACT_ROW_GUTTER, STANDARD_INPUT_SIZE, STANDARD_RADIO_SIZE, STANDARD_STATISTIC_CONFIG, STANDARD_SPIN_SIZE, STANDARD_DATE_PICKER_CONFIG, STANDARD_SPACE_SIZE_MIDDLE } from '../templates/UIElements';
-import { CONTENT_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_CARD_CONFIG } from '../templates/CardTemplates';
 
 const { Title, Text } = Typography;
 
@@ -261,7 +261,7 @@ function Dashboard({ setStats }) {
 
       {/* Recent Orders Grid */}
       <Card
-        {...CONTENT_CARD_CONFIG}
+        {...STANDARD_CARD_CONFIG}
         title={
           <Space>
             <BarChartOutlined />

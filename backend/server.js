@@ -215,7 +215,7 @@ async function generateExcelReport(orders, options = {}) {
     }
 }
 
-async function fetchOrdersWithItemsBetween(startDate, endDate, user_id = null) {
+async function fetchOrdersWithItemsBetween(startDate, endDate, user_id = null, territory_name = null) {
     let ordersQuery = `
         SELECT 
             o.*, 
@@ -228,19 +228,24 @@ async function fetchOrdersWithItemsBetween(startDate, endDate, user_id = null) {
             w.name AS warehouse_name,
             w.alias AS warehouse_alias,
             t.truck_details AS transport_name,
-            DATE(o.created_at) AS order_date
+            COALESCE(o.order_date, DATE(o.created_at)) AS order_date
         FROM orders o
         LEFT JOIN order_types ot ON o.order_type_id = ot.id
         LEFT JOIN dealers d ON o.dealer_id = d.id
         LEFT JOIN warehouses w ON o.warehouse_id = w.id
         LEFT JOIN transports t ON o.transport_id = t.id
-        WHERE DATE(o.created_at) BETWEEN ? AND ?
+        WHERE COALESCE(o.order_date, DATE(o.created_at)) BETWEEN ? AND ?
     `;
     
     const params = [startDate, endDate];
     if (user_id) {
         ordersQuery += ' AND o.user_id = ?';
         params.push(user_id);
+    }
+    // Add territory filter if provided (for TSO users - only show dealers in their territory)
+    if (territory_name) {
+        ordersQuery += ' AND d.territory_name = ?';
+        params.push(territory_name);
     }
     ordersQuery += ' ORDER BY o.created_at ASC';
 
@@ -3197,7 +3202,7 @@ app.get('/api/orders/available-dates', (req, res) => {
 // Get aggregated orders for a date range
 app.get('/api/orders/range', async (req, res) => {
     try {
-        const { startDate, endDate } = req.query;
+        const { startDate, endDate, territory_name } = req.query; // Optional territory filter for TSO users
 
         if (!startDate || !endDate) {
             return res.status(400).json({ error: 'startDate and endDate are required' });
@@ -3212,7 +3217,7 @@ app.get('/api/orders/range', async (req, res) => {
             return res.status(400).json({ error: 'startDate cannot be after endDate' });
         }
 
-        const ordersWithItems = await fetchOrdersWithItemsBetween(startDate, endDate);
+        const ordersWithItems = await fetchOrdersWithItemsBetween(startDate, endDate, null, territory_name);
         if (!ordersWithItems.length) {
             return res.status(404).json({ error: `No orders found between ${startDate} and ${endDate}` });
         }
@@ -3236,6 +3241,7 @@ app.get('/api/orders/range', async (req, res) => {
 app.get('/api/orders/date/:date', async (req, res) => {
     try {
         const { date } = req.params;
+        const { territory_name } = req.query; // Optional territory filter for TSO users
         
         // Validate date format (YYYY-MM-DD)
         const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
@@ -3244,7 +3250,8 @@ app.get('/api/orders/date/:date', async (req, res) => {
         }
         
         // Get orders for the specific date with item_count and quantity
-        const ordersQuery = `
+        // Include both TSO orders (warehouse_id IS NOT NULL) and dealer daily demand orders (warehouse_id IS NULL, order_source='dealer')
+        let ordersQuery = `
             SELECT 
                 o.*, 
                 ot.name as order_type, 
@@ -3269,11 +3276,22 @@ app.get('/api/orders/date/:date', async (req, res) => {
             LEFT JOIN transports t ON o.transport_id = t.id
             LEFT JOIN order_items oi ON o.order_id = oi.order_id
             WHERE COALESCE(o.order_date, DATE(o.created_at)) = ?
+        `;
+        
+        const params = [date];
+        
+        // Add territory filter if provided (for TSO users - only show dealers in their territory)
+        if (territory_name) {
+            ordersQuery += ` AND d.territory_name = ?`;
+            params.push(territory_name);
+        }
+        
+        ordersQuery += `
             GROUP BY o.id, o.order_id, o.order_type_id, o.dealer_id, o.warehouse_id, o.created_at, o.user_id, ot.name, d.name, d.territory_name, d.address, d.contact, w.name, w.alias
             ORDER BY o.created_at DESC
         `;
 
-        const orders = await dbPromise.query(ordersQuery, [date]);
+        const orders = await dbPromise.query(ordersQuery, params);
 
         if (orders[0].length === 0) {
             return res.json({ 
@@ -3315,6 +3333,7 @@ app.get('/api/orders/date/:date', async (req, res) => {
 app.get('/api/orders/tso-report/:date', async (req, res) => {
     try {
         const { date } = req.params;
+        const { territory_name } = req.query; // Optional territory filter for TSO users
         
         // Validate date format (YYYY-MM-DD)
         const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
@@ -3322,8 +3341,8 @@ app.get('/api/orders/tso-report/:date', async (req, res) => {
             return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
         }
         
-        // Get orders for the specific date (same query as above)
-        const ordersQuery = `
+        // Get orders for the specific date (includes both TSO orders and dealer daily demand orders)
+        let ordersQuery = `
             SELECT 
                 o.*, 
                 ot.name as order_type, 
@@ -3334,17 +3353,26 @@ app.get('/api/orders/tso-report/:date', async (req, res) => {
                 w.name as warehouse_name,
                 w.alias as warehouse_alias,
                 t.truck_details as transport_name,
-                DATE(o.created_at) as order_date
+                COALESCE(o.order_date, DATE(o.created_at)) as order_date
             FROM orders o
             LEFT JOIN order_types ot ON o.order_type_id = ot.id
             LEFT JOIN dealers d ON o.dealer_id = d.id
             LEFT JOIN warehouses w ON o.warehouse_id = w.id
             LEFT JOIN transports t ON o.transport_id = t.id
-            WHERE DATE(o.created_at) = ?
-            ORDER BY o.created_at ASC
+            WHERE COALESCE(o.order_date, DATE(o.created_at)) = ?
         `;
         
-        const orders = await dbPromise.query(ordersQuery, [date]);
+        const params = [date];
+        
+        // Add territory filter if provided (for TSO users - only show dealers in their territory)
+        if (territory_name) {
+            ordersQuery += ` AND d.territory_name = ?`;
+            params.push(territory_name);
+        }
+        
+        ordersQuery += ` ORDER BY o.created_at ASC`;
+        
+        const orders = await dbPromise.query(ordersQuery, params);
         
         if (orders[0].length === 0) {
             return res.status(404).json({ 
@@ -3404,8 +3432,8 @@ app.get('/api/orders/tso-report-range', async (req, res) => {
             return res.status(400).json({ error: 'startDate cannot be after endDate' });
         }
 
-        const ordersWithItems = await fetchOrdersWithItemsBetween(startDate, endDate);
-        console.log('Range Excel request', { startDate, endDate, ordersCount: ordersWithItems.length });
+        const ordersWithItems = await fetchOrdersWithItemsBetween(startDate, endDate, null, territory_name);
+        console.log('Range Excel request', { startDate, endDate, territory_name, ordersCount: ordersWithItems.length });
         if (!ordersWithItems.length) {
             return res.status(404).json({ error: `No orders found between ${startDate} and ${endDate}` });
         }

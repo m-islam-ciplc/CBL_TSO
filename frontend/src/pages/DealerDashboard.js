@@ -22,7 +22,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { getStandardPaginationConfig } from '../templates/useStandardPagination';
-import { FILTER_CARD_CONFIG, CONTENT_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
 import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, STANDARD_TAG_STYLE, STANDARD_ALERT_CONFIG, STANDARD_STATISTIC_CONFIG, STANDARD_SPIN_SIZE, STANDARD_SPACE_SIZE_LARGE } from '../templates/UIElements';
 
 const { Title, Text } = Typography;
@@ -261,7 +261,7 @@ function DealerDashboard() {
           </Col>
         </Row>
 
-        <Card title="Assigned Products" {...FILTER_CARD_CONFIG}>
+        <Card title="Assigned Products" {...TABLE_CARD_CONFIG}>
           {assignedProducts.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 0' }}>
               <InfoCircleOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />
@@ -283,7 +283,7 @@ function DealerDashboard() {
           )}
         </Card>
 
-        <Card title="Recent Orders" {...FILTER_CARD_CONFIG}>
+        <Card title="Recent Orders" {...TABLE_CARD_CONFIG}>
           {recentOrders.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 0' }}>
               <ShoppingCartOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />

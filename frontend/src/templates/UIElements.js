@@ -6,6 +6,12 @@
  * Only elements that exist in production pages are included here.
  */
 
+import { Input, Typography, Select } from 'antd';
+import { SearchOutlined } from '@ant-design/icons';
+
+const { Text } = Typography;
+const { Option } = Select;
+
 /**
  * STANDARD ROW GUTTER CONFIGURATIONS
  * Based on actual usage in frontend/src/pages
@@ -94,6 +100,14 @@ export const STANDARD_TABLE_CARD_CONFIG = {
   style: {
     borderRadius: '8px',
   },
+};
+
+/**
+ * STANDARD TABLE HEADER STYLE
+ * Light grey background for table headers in table cards
+ */
+export const STANDARD_TABLE_HEADER_STYLE = {
+  backgroundColor: '#f5f5f5',
 };
 
 /**
@@ -302,6 +316,235 @@ export const STANDARD_SPACE_SIZE_LARGE = 'large';
  */
 export const STANDARD_DIVIDER_CONFIG = {};
 
+/**
+ * TABLE HEADER WITH INLINE SEARCH
+ * 
+ * Standard table header component with title and inline search box.
+ * This template works for BOTH static tables and expandable tables - the header content is identical.
+ * This is the template design used in PlacedOrders.js "Orders & Demands" table.
+ * 
+ * USAGE PATTERNS:
+ * 
+ * 1. Static Table (using TABLE_CARD_CONFIG):
+ *    <Card {...TABLE_CARD_CONFIG}>
+ *      {renderTableHeaderWithSearch({...})}
+ *      <Table ... />
+ *    </Card>
+ * 
+ * 2. Expandable Table (using EXPANDABLE_TABLE_CARD_CONFIG):
+ *    <Card {...EXPANDABLE_TABLE_CARD_CONFIG}>
+ *      {renderTableHeaderWithSearch({...})}
+ *      <Table expandable={{...}} ... />
+ *    </Card>
+ * 
+ * 3. Expandable Table (using StandardExpandableTable component):
+ *    <StandardExpandableTable
+ *      header={renderTableHeaderWithSearch({...})}
+ *      ...
+ *    />
+ * 
+ * @param {Object} props
+ * @param {string} props.title - Table title (e.g., "Orders", "Users")
+ * @param {number} props.count - Item count to display (e.g., filteredOrders.length)
+ * @param {string} props.searchTerm - Current search term value
+ * @param {Function} props.onSearchChange - Search input onChange handler: (e) => setSearchTerm(e.target.value)
+ * @param {string} props.searchPlaceholder - Placeholder text for search input (default: "Search...")
+ * @param {boolean} props.showCount - Whether to show count in title (default: true)
+ * 
+ * @example
+ * // Static Table
+ * import { renderTableHeaderWithSearch } from '../templates/UIElements';
+ * import { TABLE_CARD_CONFIG } from '../templates/CardTemplates';
+ * 
+ * <Card {...TABLE_CARD_CONFIG}>
+ *   {renderTableHeaderWithSearch({
+ *     title: 'Orders',
+ *     count: filteredOrders.length,
+ *     searchTerm: searchTerm,
+ *     onSearchChange: (e) => setSearchTerm(e.target.value),
+ *     searchPlaceholder: 'Search orders...'
+ *   })}
+ *   <Table ... />
+ * </Card>
+ * 
+ * @example
+ * // Expandable Table
+ * import { renderTableHeaderWithSearch } from '../templates/UIElements';
+ * import { StandardExpandableTable } from '../templates/TableTemplate';
+ * 
+ * <StandardExpandableTable
+ *   header={renderTableHeaderWithSearch({
+ *     title: 'Orders',
+ *     count: filteredOrders.length,
+ *     searchTerm: searchTerm,
+ *     onSearchChange: (e) => setSearchTerm(e.target.value),
+ *     searchPlaceholder: 'Search orders...'
+ *   })}
+ *   ...
+ * />
+ */
+export const renderTableHeaderWithSearch = ({
+  title,
+  count,
+  searchTerm,
+  onSearchChange,
+  searchPlaceholder = 'Search...',
+  showCount = true
+}) => {
+  return (
+    <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <Text strong>{showCount ? `${title} (${count})` : title}</Text>
+      <Input
+        placeholder={searchPlaceholder}
+        prefix={<SearchOutlined />}
+        value={searchTerm}
+        onChange={onSearchChange}
+        size="middle"
+        allowClear
+        style={{ width: '300px' }}
+      />
+    </div>
+  );
+};
+
+/**
+ * TABLE HEADER WITH INLINE SEARCH AND FILTER
+ * 
+ * Standard table header component with title, inline filter dropdown, and inline search box.
+ * This template works for BOTH static tables and expandable tables - the header content is identical.
+ * This is the template design used in DealerManagement.js "Dealers" table.
+ * 
+ * USAGE PATTERNS:
+ * 
+ * 1. Static Table (using TABLE_CARD_CONFIG):
+ *    <Card {...TABLE_CARD_CONFIG}>
+ *      {renderTableHeaderWithSearchAndFilter({...})}
+ *      <Table ... />
+ *    </Card>
+ * 
+ * 2. Expandable Table (using EXPANDABLE_TABLE_CARD_CONFIG):
+ *    <Card {...EXPANDABLE_TABLE_CARD_CONFIG}>
+ *      {renderTableHeaderWithSearchAndFilter({...})}
+ *      <Table expandable={{...}} ... />
+ *    </Card>
+ * 
+ * 3. Expandable Table (using StandardExpandableTable component):
+ *    <StandardExpandableTable
+ *      header={renderTableHeaderWithSearchAndFilter({...})}
+ *      ...
+ *    />
+ * 
+ * @param {Object} props
+ * @param {string} props.title - Table title (e.g., "Dealers", "Orders")
+ * @param {number} props.count - Item count to display (e.g., filteredItems.length)
+ * @param {string} props.searchTerm - Current search term value
+ * @param {Function} props.onSearchChange - Search input onChange handler: (e) => setSearchTerm(e.target.value)
+ * @param {string} props.searchPlaceholder - Placeholder text for search input (default: "Search...")
+ * @param {boolean} props.showCount - Whether to show count in title (default: true)
+ * @param {Object} props.filter - Optional filter configuration
+ * @param {string} props.filter.value - Current filter value
+ * @param {Function} props.filter.onChange - Filter onChange handler: (value) => setFilter(value)
+ * @param {string} props.filter.placeholder - Filter placeholder text
+ * @param {Array} props.filter.options - Filter options array: [{ value: 'val', label: 'Label' }]
+ * @param {string} props.filter.width - Filter dropdown width (default: '200px')
+ * @param {boolean} props.filter.showSearch - Whether filter dropdown is searchable (default: true)
+ * 
+ * @example
+ * // Static Table
+ * import { renderTableHeaderWithSearchAndFilter } from '../templates/UIElements';
+ * import { TABLE_CARD_CONFIG } from '../templates/CardTemplates';
+ * 
+ * <Card {...TABLE_CARD_CONFIG}>
+ *   {renderTableHeaderWithSearchAndFilter({
+ *     title: 'Products',
+ *     count: filteredProducts.length,
+ *     searchTerm: searchTerm,
+ *     onSearchChange: (e) => setSearchTerm(e.target.value),
+ *     searchPlaceholder: 'Search products...',
+ *     filter: {
+ *       value: categoryFilter,
+ *       onChange: setCategoryFilter,
+ *       placeholder: 'Filter by category',
+ *       options: categories.map(c => ({ value: c.id, label: c.name })),
+ *       width: '200px',
+ *       showSearch: true
+ *     }
+ *   })}
+ *   <Table ... />
+ * </Card>
+ * 
+ * @example
+ * // Expandable Table
+ * import { renderTableHeaderWithSearchAndFilter } from '../templates/UIElements';
+ * import { EXPANDABLE_TABLE_CARD_CONFIG } from '../templates/CardTemplates';
+ * 
+ * <Card {...EXPANDABLE_TABLE_CARD_CONFIG}>
+ *   {renderTableHeaderWithSearchAndFilter({
+ *     title: 'Dealers',
+ *     count: filteredDealers.length,
+ *     searchTerm: searchTerm,
+ *     onSearchChange: (e) => setSearchTerm(e.target.value),
+ *     searchPlaceholder: 'Search by dealer name or code...',
+ *     filter: {
+ *       value: territoryFilter,
+ *       onChange: setTerritoryFilter,
+ *       placeholder: 'Filter by territory',
+ *       options: territories.map(t => ({ value: t.code, label: t.name })),
+ *       width: '200px',
+ *       showSearch: true
+ *     }
+ *   })}
+ *   <Table expandable={{...}} ... />
+ * </Card>
+ */
+export const renderTableHeaderWithSearchAndFilter = ({
+  title,
+  count,
+  searchTerm,
+  onSearchChange,
+  searchPlaceholder = 'Search...',
+  showCount = true,
+  filter
+}) => {
+  return (
+    <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+      <Text strong>{showCount ? `${title} (${count})` : title}</Text>
+      <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+        {filter && (
+          <Select
+            placeholder={filter.placeholder}
+            value={filter.value}
+            onChange={filter.onChange}
+            size="middle"
+            style={{ width: filter.width || '200px' }}
+            allowClear
+            showSearch={filter.showSearch !== false}
+            filterOption={filter.showSearch !== false ? (input, option) => {
+              const optionText = option?.children?.toString() || '';
+              return optionText.toLowerCase().includes(input.toLowerCase());
+            } : undefined}
+          >
+            {filter.options.map(option => (
+              <Option key={option.value} value={option.value}>
+                {option.label}
+              </Option>
+            ))}
+          </Select>
+        )}
+        <Input
+          placeholder={searchPlaceholder}
+          prefix={<SearchOutlined />}
+          value={searchTerm}
+          onChange={onSearchChange}
+          size="middle"
+          allowClear
+          style={{ width: '300px' }}
+        />
+      </div>
+    </div>
+  );
+};
+
 export default {
   // Row Gutters (actual values from codebase)
   STANDARD_ROW_GUTTER,
@@ -326,6 +569,7 @@ export default {
   
   // Table Config (actual pattern from codebase)
   STANDARD_TABLE_CARD_CONFIG,
+  STANDARD_TABLE_HEADER_STYLE,
   
   // Typography (actual patterns from codebase)
   STANDARD_PAGE_TITLE_CONFIG,
@@ -377,4 +621,8 @@ export default {
   
   // Divider (actual pattern from codebase)
   STANDARD_DIVIDER_CONFIG,
+  
+  // Table Header Templates
+  renderTableHeaderWithSearch,
+  renderTableHeaderWithSearchAndFilter,
 };

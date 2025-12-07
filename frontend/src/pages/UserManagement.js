@@ -17,8 +17,8 @@ import {
   Col,
 } from 'antd';
 import { useStandardPagination } from '../templates/useStandardPagination';
-import { CONTENT_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
-import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, STANDARD_MODAL_CONFIG, STANDARD_POPCONFIRM_CONFIG } from '../templates/UIElements';
+import { STANDARD_CARD_CONFIG, ACTION_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, STANDARD_MODAL_CONFIG, STANDARD_POPCONFIRM_CONFIG, renderTableHeaderWithSearchAndFilter } from '../templates/UIElements';
 import {
   PlusOutlined,
   EditOutlined,
@@ -38,6 +38,8 @@ function UserManagement() {
   const [editingUser, setEditingUser] = useState(null);
   const [form] = Form.useForm();
   const [selectedRole, setSelectedRole] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState(null);
   const { pagination, setPagination, handleTableChange } = useStandardPagination('users', 20);
 
   useEffect(() => {
@@ -181,13 +183,6 @@ function UserManagement() {
         };
         return <Tag color={colors[role] || 'default'}>{role.toUpperCase()}</Tag>;
       },
-      filters: [
-        { text: 'Admin', value: 'admin' },
-        { text: 'Sales Manager', value: 'sales_manager' },
-        { text: 'TSO', value: 'tso' },
-        { text: 'Dealer', value: 'dealer' },
-      ],
-      onFilter: (value, record) => record.role === value,
     },
     {
       title: 'Territory',
@@ -256,6 +251,17 @@ function UserManagement() {
     },
   ];
 
+  // Filter users based on search term and role filter
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = !searchTerm || 
+      user.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.full_name?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesRole = !roleFilter || user.role === roleFilter;
+    
+    return matchesSearch && matchesRole;
+  });
+
   return (
     <div>
       <Title {...STANDARD_PAGE_TITLE_CONFIG}>
@@ -266,7 +272,7 @@ function UserManagement() {
       </Text>
 
       {/* Add User Button */}
-      <Card {...CONTENT_CARD_CONFIG}>
+      <Card title="Actions" {...ACTION_CARD_CONFIG}>
         <Row gutter={STANDARD_ROW_GUTTER} align="middle">
           <Col>
             <Button
@@ -282,12 +288,29 @@ function UserManagement() {
 
       {/* Users Table */}
       <Card {...TABLE_CARD_CONFIG}>
-        <div style={{ marginBottom: '16px' }}>
-          <Text strong>Users ({users.length})</Text>
-        </div>
+        {renderTableHeaderWithSearchAndFilter({
+          title: 'Users',
+          count: filteredUsers.length,
+          searchTerm: searchTerm,
+          onSearchChange: (e) => setSearchTerm(e.target.value),
+          searchPlaceholder: 'Search by username or full name...',
+          filter: {
+            value: roleFilter,
+            onChange: setRoleFilter,
+            placeholder: 'Filter by role',
+            options: [
+              { value: 'admin', label: 'Admin' },
+              { value: 'sales_manager', label: 'Sales Manager' },
+              { value: 'tso', label: 'TSO' },
+              { value: 'dealer', label: 'Dealer' }
+            ],
+            width: '200px',
+            showSearch: true
+          }
+        })}
         <Table
           columns={columns}
-          dataSource={users}
+          dataSource={filteredUsers}
           rowKey="id"
           loading={loading}
           pagination={pagination}

@@ -239,8 +239,8 @@ async function testD22_SubmitMonthlyForecast() {
   const tokenToUse = testData.adminToken || testData.dealerToken;
   const allDealersResult = await utils.makeRequest('/api/dealers', 'GET', null, {
     'Authorization': `Bearer ${tokenToUse}`
-  });
-  
+    });
+    
   if (allDealersResult.status !== 200 || !Array.isArray(allDealersResult.data)) {
     throw new Error(`D22 FAILED: Could not fetch dealers - ${allDealersResult.status}`);
   }
@@ -253,8 +253,8 @@ async function testD22_SubmitMonthlyForecast() {
   if (scrapTerritoryDealers.length === 0) {
     console.log(`\n⚠️  D22 SKIPPED: No dealers found in Scrap Territory`);
     console.log(`   ✅ D22 PASSED: Submit forecast functionality exists (no dealers)`);
-    return true;
-  }
+      return true;
+    }
   
   console.log(`\n📋 Found ${scrapTerritoryDealers.length} dealer(s) in Scrap Territory`);
   
@@ -335,29 +335,29 @@ async function testD22_SubmitMonthlyForecast() {
         console.log(`   ⚠️  Skipping ${dealer.name || dealer.dealer_code}: Forecast already exists for this period`);
         skippedCount++;
         continue;
-      }
-      
-      // Create forecast for first assigned product
+  }
+  
+  // Create forecast for first assigned product
       const product = assignedProducts[0];
-      const forecastData = {
+  const forecastData = {
         dealer_id: dealer.id,
-        product_id: product.product_id,
-        quantity: 10
-      };
-      
+      product_id: product.product_id,
+      quantity: 10
+  };
+  
       console.log(`   📦 Submitting forecast for ${dealer.name || dealer.dealer_code}...`);
-      
-      const result = await utils.makeRequest('/api/monthly-forecast', 'POST', forecastData, {
+  
+  const result = await utils.makeRequest('/api/monthly-forecast', 'POST', forecastData, {
         'Authorization': `Bearer ${dealerToken}`
-      });
-      
-      if (result.status === 200 && result.data && result.data.success) {
+  });
+  
+  if (result.status === 200 && result.data && result.data.success) {
         console.log(`   ✅ Forecast submitted successfully for ${dealer.name || dealer.dealer_code}`);
         console.log(`      Product: ${product.product_code || 'N/A'}`);
         console.log(`      Quantity: 10`);
         successCount++;
-      } else if (result.status === 403) {
-        // Forecast already submitted - this is expected behavior
+  } else if (result.status === 403) {
+    // Forecast already submitted - this is expected behavior
         console.log(`   ⚠️  Skipping ${dealer.name || dealer.dealer_code}: Forecast already submitted (403 - by design)`);
         skippedCount++;
       } else {

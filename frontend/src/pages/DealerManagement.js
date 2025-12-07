@@ -11,7 +11,6 @@ import {
   Input,
   Select,
   message,
-  Statistic,
   Row,
   Col,
   Form,
@@ -22,8 +21,8 @@ import {
 } from 'antd';
 import { useStandardPagination, getStandardPaginationConfig } from '../templates/useStandardPagination';
 import { STANDARD_EXPANDABLE_TABLE_CONFIG } from '../templates/TableTemplate';
-import { CONTENT_CARD_CONFIG } from '../templates/CardTemplates';
-import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, STANDARD_BADGE_CONFIG, STANDARD_POPCONFIRM_CONFIG, STANDARD_STATISTIC_CONFIG, STANDARD_UPLOAD_CONFIG, STANDARD_BUTTON_SIZE } from '../templates/UIElements';
+import { STANDARD_CARD_CONFIG, FILTER_CARD_CONFIG, IMPORT_CARD_CONFIG, EXPANDABLE_TABLE_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, STANDARD_BADGE_CONFIG, STANDARD_POPCONFIRM_CONFIG, STANDARD_UPLOAD_CONFIG, STANDARD_BUTTON_SIZE, renderTableHeaderWithSearchAndFilter } from '../templates/UIElements';
 import {
   UploadOutlined,
   DownloadOutlined,
@@ -34,6 +33,7 @@ import {
   AppstoreOutlined,
   PlusOutlined,
   DeleteOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
@@ -176,8 +176,7 @@ function DealerManagement() {
   const [loading, setLoading] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [territoryFilter, setTerritoryFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [territoryFilter, setTerritoryFilter] = useState(null);
   const [territories, setTerritories] = useState([]);
   const [expandedRowKeys, setExpandedRowKeys] = useState([]);
   
@@ -197,7 +196,7 @@ function DealerManagement() {
 
   useEffect(() => {
     filterDealers();
-  }, [dealers, searchTerm, territoryFilter, statusFilter]);
+  }, [dealers, searchTerm, territoryFilter]);
 
   // Load product counts for all dealers (batched loading)
   useEffect(() => {
@@ -498,10 +497,6 @@ function DealerManagement() {
       filtered = filtered.filter(dealer => dealer.territory_code === territoryFilter);
     }
 
-    if (statusFilter) {
-      filtered = filtered.filter(dealer => dealer.active_status === statusFilter);
-    }
-
     setFilteredDealers(filtered);
     // Reset pagination when filters change
     setPagination(prev => ({ ...prev, current: 1 }));
@@ -696,7 +691,7 @@ function DealerManagement() {
       </Text>
 
       {/* Import Section */}
-      <Card {...CONTENT_CARD_CONFIG}>
+      <Card title="Import Dealers" {...IMPORT_CARD_CONFIG}>
         <Row gutter={STANDARD_ROW_GUTTER} align="middle">
           <Col>
             <Upload
@@ -723,122 +718,23 @@ function DealerManagement() {
         </Row>
       </Card>
 
-      {/* Statistics */}
-      <Row gutter={STANDARD_ROW_GUTTER} style={{ marginBottom: '16px' }}>
-        <Col xs={24} sm={12} md={6}>
-          <Card 
-            size="small"
-            style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}
-          >
-            <Statistic
-              {...STANDARD_STATISTIC_CONFIG}
-              title={<span style={{ color: 'white' }}>Total Dealers</span>}
-              value={dealers.length}
-              prefix={<UserOutlined style={{ color: 'white' }} />}
-              valueStyle={{ ...STANDARD_STATISTIC_CONFIG.valueStyle, color: 'white' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card 
-            size="small"
-            style={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', color: 'white' }}
-          >
-            <Statistic
-              {...STANDARD_STATISTIC_CONFIG}
-              title={<span style={{ color: 'white' }}>Active Dealers</span>}
-              value={dealers.filter(d => d.active_status === 'A').length}
-              prefix={<ShopOutlined style={{ color: 'white' }} />}
-              valueStyle={{ ...STANDARD_STATISTIC_CONFIG.valueStyle, color: 'white' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card 
-            size="small"
-            style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', color: 'white' }}
-          >
-            <Statistic
-              {...STANDARD_STATISTIC_CONFIG}
-              title={<span style={{ color: 'white' }}>Territories</span>}
-              value={territories.length}
-              prefix={<EnvironmentOutlined style={{ color: 'white' }} />}
-              valueStyle={{ ...STANDARD_STATISTIC_CONFIG.valueStyle, color: 'white' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card 
-            size="small"
-            style={{ background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', color: 'white' }}
-          >
-            <Statistic
-              {...STANDARD_STATISTIC_CONFIG}
-              title={<span style={{ color: 'white' }}>With Contact</span>}
-              value={dealers.filter(d => d.contact).length}
-              prefix={<PhoneOutlined style={{ color: 'white' }} />}
-              valueStyle={{ ...STANDARD_STATISTIC_CONFIG.valueStyle, color: 'white' }}
-            />
-          </Card>
-        </Col>
-      </Row>
-
-      {/* Filters */}
-      <Card {...CONTENT_CARD_CONFIG}>
-        <Row gutter={STANDARD_ROW_GUTTER}>
-          <Col xs={24} sm={12} md={8}>
-            <Input
-              placeholder="Search dealers..."
-              prefix={<UserOutlined />}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </Col>
-          <Col xs={24} sm={12} md={8}>
-            <Select
-              placeholder="Filter by territory"
-              value={territoryFilter}
-              onChange={setTerritoryFilter}
-              style={{ width: '100%' }}
-              allowClear
-              showSearch
-              filterOption={(input, option) => {
-                const optionText = option?.children?.toString() || '';
-                return optionText.toLowerCase().includes(input.toLowerCase());
-              }}
-            >
-              {territories.map(territory => (
-                <Option key={territory.code} value={territory.code}>
-                  {territory.name}
-                </Option>
-              ))}
-            </Select>
-          </Col>
-          <Col xs={24} sm={12} md={8}>
-            <Select
-              placeholder="Filter by status"
-              value={statusFilter}
-              onChange={setStatusFilter}
-              style={{ width: '100%' }}
-              allowClear
-              showSearch
-              filterOption={(input, option) => {
-                const optionText = option?.children?.toString() || '';
-                return optionText.toLowerCase().includes(input.toLowerCase());
-              }}
-            >
-              <Option value="A">Active</Option>
-              <Option value="N">Inactive</Option>
-            </Select>
-          </Col>
-        </Row>
-      </Card>
-
       {/* Dealers Table */}
-      <Card>
-        <div style={{ marginBottom: '16px' }}>
-          <Text strong>Dealers ({filteredDealers.length})</Text>
-        </div>
+      <Card {...EXPANDABLE_TABLE_CARD_CONFIG}>
+        {renderTableHeaderWithSearchAndFilter({
+          title: 'Dealers',
+          count: filteredDealers.length,
+          searchTerm: searchTerm,
+          onSearchChange: (e) => setSearchTerm(e.target.value),
+          searchPlaceholder: 'Search by dealer name or code...',
+          filter: {
+            value: territoryFilter,
+            onChange: setTerritoryFilter,
+            placeholder: 'Filter by territory',
+            options: territories.map(territory => ({ value: territory.code, label: territory.name })),
+            width: '200px',
+            showSearch: true
+          }
+        })}
 
         <Table
           columns={columns}

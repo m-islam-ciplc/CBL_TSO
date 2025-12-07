@@ -33,10 +33,10 @@ import {
   EditOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { createStandardDatePickerConfig } from '../templates/UIConfig';
+import { createStandardDatePickerConfig, createStandardDateRangePicker } from '../templates/UIConfig';
 import { useStandardPagination } from '../templates/useStandardPagination';
-import { FILTER_CARD_CONFIG, CONTENT_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
-import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, COMPACT_ROW_GUTTER, STANDARD_FORM_LABEL_STYLE, STANDARD_INPUT_SIZE, STANDARD_SELECT_SIZE, STANDARD_TABLE_SIZE, STANDARD_TAG_STYLE, STANDARD_POPCONFIRM_CONFIG, STANDARD_TOOLTIP_CONFIG, STANDARD_SPIN_SIZE, STANDARD_DATE_PICKER_CONFIG, STANDARD_SPACE_SIZE_SMALL, STANDARD_MODAL_CONFIG, STANDARD_INPUT_NUMBER_SIZE, STANDARD_BUTTON_SIZE } from '../templates/UIElements';
+import { FILTER_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, COMPACT_ROW_GUTTER, STANDARD_FORM_LABEL_STYLE, STANDARD_INPUT_SIZE, STANDARD_SELECT_SIZE, STANDARD_TABLE_SIZE, STANDARD_TAG_STYLE, STANDARD_POPCONFIRM_CONFIG, STANDARD_TOOLTIP_CONFIG, STANDARD_SPIN_SIZE, STANDARD_DATE_PICKER_CONFIG, STANDARD_SPACE_SIZE_SMALL, STANDARD_MODAL_CONFIG, STANDARD_INPUT_NUMBER_SIZE, STANDARD_BUTTON_SIZE, renderTableHeaderWithSearch } from '../templates/UIElements';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -54,15 +54,18 @@ function PlacedOrders({ refreshTrigger }) {
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [orderTypeFilter, setOrderTypeFilter] = useState('tso'); // 'tso' = TSO Orders, 'dd' = Daily Demands, 'all' = All
-  const [selectedDate, setSelectedDate] = useState(dayjs()); // Default to today
+  const [orderTypeFilter, setOrderTypeFilter] = useState('tso'); // 'tso' = Sales Orders, 'dd' = Daily Demands, 'all' = All
+  const [startDate, setStartDate] = useState(dayjs()); // Start date filter
+  const [endDate, setEndDate] = useState(null); // End date filter (blank by default, optional)
   const [productFilter, setProductFilter] = useState(null);
   const [dealerFilter, setDealerFilter] = useState(null);
-  const [transportFilter, setTransportFilter] = useState(null);
+  const [territoryFilter, setTerritoryFilter] = useState(null);
+  const [tsoUserFilter, setTsoUserFilter] = useState(null);
   const [orderProducts, setOrderProducts] = useState({});
   const [productsList, setProductsList] = useState([]);
   const [dealersList, setDealersList] = useState([]);
-  const [transportsList, setTransportsList] = useState([]);
+  const [territoriesList, setTerritoriesList] = useState([]);
+  const [tsoUsersList, setTsoUsersList] = useState([]);
   const { pagination, setPagination, handleTableChange } = useStandardPagination('orders', 20);
   const [availableDates, setAvailableDates] = useState([]);
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -74,14 +77,28 @@ function PlacedOrders({ refreshTrigger }) {
 
   const loadDropdownData = async () => {
     try {
-      const [productsRes, dealersRes, transportsRes] = await Promise.all([
+      const [productsRes, dealersRes, usersRes] = await Promise.all([
         axios.get('/api/products'),
         axios.get('/api/dealers'),
-        axios.get('/api/transports')
+        axios.get('/api/users')
       ]);
       setProductsList(productsRes.data || []);
       setDealersList(dealersRes.data || []);
-      setTransportsList(transportsRes.data || []);
+      
+      // Extract unique territories from dealers
+      const dealersData = dealersRes.data || [];
+      const territories = [...new Set(dealersData
+        .map(d => d?.territory_name)
+        .filter(t => t && t.trim()))].sort();
+      setTerritoriesList(territories);
+      
+      // Extract TSO users
+      const usersData = usersRes.data || [];
+      const tsoUsers = usersData
+        .filter(u => u?.role === 'tso' && (u.is_active === 1 || u.is_active === true))
+        .map(u => ({ id: u.id, name: u.full_name || u.username || 'Unknown' }))
+        .filter(u => u.id); // Remove any entries without id
+      setTsoUsersList(tsoUsers);
     } catch (_error) {
       console.error('Failed to load dropdown data:', _error);
     }
@@ -136,7 +153,7 @@ function PlacedOrders({ refreshTrigger }) {
 
   useEffect(() => {
     filterOrders();
-  }, [orders, searchTerm, orderTypeFilter, selectedDate, productFilter, dealerFilter, transportFilter]);
+  }, [orders, searchTerm, orderTypeFilter, startDate, endDate, productFilter, dealerFilter, territoryFilter, tsoUserFilter]);
 
   // Load dropdown data
   useEffect(() => {
@@ -173,13 +190,39 @@ function PlacedOrders({ refreshTrigger }) {
   const filterOrders = () => {
     let filtered = orders;
 
-    // Date filter - default to today
-    if (selectedDate) {
-      const selectedDateStr = selectedDate.format('YYYY-MM-DD');
-      filtered = filtered.filter(order => {
-        const orderDate = dayjs(order.created_at).format('YYYY-MM-DD');
-        return orderDate === selectedDateStr;
-      });
+    // Date range filter - use order_date if available, otherwise created_at
+    // If only startDate is provided, filter for that single date
+    // If both startDate and endDate are provided, filter for the range
+    if (startDate) {
+      try {
+        const start = dayjs(startDate).startOf('day');
+        if (start.isValid()) {
+          if (endDate) {
+            // Date range filter
+            const end = dayjs(endDate).endOf('day');
+            if (end.isValid()) {
+              filtered = filtered.filter(order => {
+                const dateToCheck = order.order_date 
+                  ? dayjs(order.order_date)
+                  : dayjs(order.created_at);
+                if (!dateToCheck.isValid()) return false;
+                return dateToCheck.isSameOrAfter(start) && dateToCheck.isSameOrBefore(end);
+              });
+            }
+          } else {
+            // Single date filter (only startDate)
+            filtered = filtered.filter(order => {
+              const dateToCheck = order.order_date 
+                ? dayjs(order.order_date)
+                : dayjs(order.created_at);
+              if (!dateToCheck.isValid()) return false;
+              return dateToCheck.isSame(start, 'day');
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error filtering by date range:', error);
+      }
     }
 
     // Product filter
@@ -190,14 +233,21 @@ function PlacedOrders({ refreshTrigger }) {
       });
     }
 
-    // Dealer/Vendor filter
+    // Dealer filter
     if (dealerFilter) {
       filtered = filtered.filter(order => order.dealer_id === dealerFilter);
     }
 
-    // Transport filter
-    if (transportFilter) {
-      filtered = filtered.filter(order => order.transport_id === transportFilter);
+    // Territory filter
+    if (territoryFilter) {
+      filtered = filtered.filter(order => order.dealer_territory === territoryFilter);
+    }
+
+    // TSO User filter (only for Sales Orders)
+    if (tsoUserFilter && (orderTypeFilter === 'tso' || orderTypeFilter === 'all')) {
+      filtered = filtered.filter(order => 
+        order.warehouse_id !== null && order.user_id === tsoUserFilter
+      );
     }
 
     // Search filter
@@ -209,7 +259,7 @@ function PlacedOrders({ refreshTrigger }) {
       );
     }
 
-    // Order Type filter: TSO Orders (warehouse_id IS NOT NULL) vs Daily Demands (warehouse_id IS NULL)
+    // Order Type filter: Sales Orders (warehouse_id IS NOT NULL) vs Daily Demands (warehouse_id IS NULL)
     if (orderTypeFilter === 'tso') {
       filtered = filtered.filter(order => order.warehouse_id !== null);
     } else if (orderTypeFilter === 'dd') {
@@ -223,12 +273,14 @@ function PlacedOrders({ refreshTrigger }) {
   };
 
   const clearFilters = () => {
-    setSelectedDate(dayjs()); // Reset to today
+    setStartDate(dayjs()); // Reset to today
+    setEndDate(null); // Reset to blank (optional)
     setProductFilter(null);
     setDealerFilter(null);
-    setTransportFilter(null);
+    setTerritoryFilter(null);
+    setTsoUserFilter(null);
     setSearchTerm('');
-    setOrderTypeFilter('tso'); // Default to TSO Orders
+    setOrderTypeFilter('tso'); // Default to Sales Orders
   };
 
 
@@ -375,6 +427,22 @@ function PlacedOrders({ refreshTrigger }) {
       sorter: (a, b) => a.order_id.localeCompare(b.order_id),
     },
     {
+      title: 'Order Date',
+      key: 'order_date',
+      ellipsis: true,
+      render: (_, record) => {
+        const dateToShow = record.order_date 
+          ? dayjs(record.order_date).format('YYYY-MM-DD')
+          : dayjs(record.created_at).format('YYYY-MM-DD');
+        return dateToShow;
+      },
+      sorter: (a, b) => {
+        const dateA = a.order_date || a.created_at;
+        const dateB = b.order_date || b.created_at;
+        return new Date(dateA) - new Date(dateB);
+      },
+    },
+    {
       title: 'Dealer',
       dataIndex: 'dealer_name',
       key: 'dealer_name',
@@ -464,7 +532,7 @@ function PlacedOrders({ refreshTrigger }) {
         const isTSOOrder = record.warehouse_id !== null;
         return (
           <Tag color={isTSOOrder ? 'blue' : 'green'} style={STANDARD_TAG_STYLE}>
-            {isTSOOrder ? 'TSO Order' : 'Daily Demand'}
+            {isTSOOrder ? 'Sales Order' : 'Daily Demand'}
           </Tag>
         );
       },
@@ -474,14 +542,6 @@ function PlacedOrders({ refreshTrigger }) {
         if (aIsTSO === bIsTSO) return 0;
         return aIsTSO ? 1 : -1;
       },
-    },
-    {
-      title: 'Created',
-      dataIndex: 'created_at',
-      key: 'created_at',
-      ellipsis: true,
-      render: (date) => new Date(date).toLocaleString(),
-      sorter: (a, b) => new Date(a.created_at) - new Date(b.created_at),
     },
     ...(!isTSO ? [{
       title: 'Actions',
@@ -557,33 +617,30 @@ function PlacedOrders({ refreshTrigger }) {
         <OrderedListOutlined /> Placed Orders
       </Title>
       <Text {...STANDARD_PAGE_SUBTITLE_CONFIG}>
-        {isTSO ? "View orders you've placed and filter by date, product, dealer, or transport." : 'View and manage all orders placed by TSOs.'}
+        {isTSO ? "View orders you've placed and filter by date range, territory, dealer, product, and order type." : 'View and manage all Sales Orders and Daily Demands. Filter by date range, territory, dealer, product, and order type.'}
       </Text>
 
       {/* Filters */}
       <Card title="Filter Orders" {...FILTER_CARD_CONFIG}>
-        <Row gutter={COMPACT_ROW_GUTTER}>
+        {/* Row 1: Primary Filters */}
+        <Row gutter={COMPACT_ROW_GUTTER} align="bottom" style={{ marginBottom: '12px' }}>
+          {createStandardDateRangePicker({
+            startDate,
+            setStartDate,
+            endDate,
+            setEndDate,
+            disabledDate,
+            dateCellRender,
+            availableDates,
+            colSpan: { xs: 24, sm: 12, md: 6 }
+          })}
           <Col xs={24} sm={12} md={6}>
-            <Space direction="vertical" style={{ width: '100%' }} size="small">
-              <Text strong style={STANDARD_FORM_LABEL_STYLE}>Date</Text>
-              <DatePicker
-                {...STANDARD_DATE_PICKER_CONFIG}
-                value={selectedDate}
-                onChange={setSelectedDate}
-                style={{ width: '100%' }}
-                allowClear={false}
-                disabledDate={disabledDate}
-                dateRender={dateCellRender}
-              />
-            </Space>
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <Space direction="vertical" style={{ width: '100%' }} size="small">
-              <Text strong style={STANDARD_FORM_LABEL_STYLE}>Product</Text>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Text strong style={STANDARD_FORM_LABEL_STYLE}>Territory</Text>
               <Select
-                placeholder="All Products"
-                value={productFilter}
-                onChange={setProductFilter}
+                placeholder="All Territories"
+                value={territoryFilter}
+                onChange={setTerritoryFilter}
                 style={{ width: '100%' }}
                 size={STANDARD_INPUT_SIZE}
                 allowClear
@@ -593,16 +650,62 @@ function PlacedOrders({ refreshTrigger }) {
                   return optionText.toLowerCase().includes(input.toLowerCase());
                 }}
               >
-                {productsList.map(product => (
-                  <Option key={product.id} value={product.id}>
-                    {product.product_code} - {product.name}
+                {territoriesList && territoriesList.length > 0 ? territoriesList.map(territory => (
+                  <Option key={territory} value={territory}>
+                    {territory}
                   </Option>
-                ))}
+                )) : null}
               </Select>
             </Space>
           </Col>
           <Col xs={24} sm={12} md={6}>
-            <Space direction="vertical" style={{ width: '100%' }} size="small">
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Text strong style={STANDARD_FORM_LABEL_STYLE}>Order Type</Text>
+              <Select
+                placeholder="Select Type"
+                value={orderTypeFilter}
+                onChange={setOrderTypeFilter}
+                style={{ width: '100%' }}
+                size={STANDARD_INPUT_SIZE}
+              >
+                <Option value="tso">Sales Orders</Option>
+                <Option value="dd">Daily Demands</Option>
+                <Option value="all">All Orders</Option>
+              </Select>
+            </Space>
+          </Col>
+        </Row>
+
+        {/* Row 2: Secondary Filters */}
+        <Row gutter={COMPACT_ROW_GUTTER} align="bottom" style={{ marginBottom: '12px' }}>
+          {(orderTypeFilter === 'tso' || orderTypeFilter === 'all') && (
+            <Col xs={24} sm={12} md={6}>
+              <Space direction="vertical" style={{ width: '100%' }}>
+                <Text strong style={STANDARD_FORM_LABEL_STYLE}>TSO User</Text>
+                <Select
+                  placeholder="All TSOs"
+                  value={tsoUserFilter}
+                  onChange={setTsoUserFilter}
+                  style={{ width: '100%' }}
+                  size={STANDARD_INPUT_SIZE}
+                  allowClear
+                  showSearch
+                  filterOption={(input, option) => {
+                    const optionText = option?.children?.toString() || '';
+                    return optionText.toLowerCase().includes(input.toLowerCase());
+                  }}
+                >
+                  {tsoUsersList && tsoUsersList.length > 0 ? tsoUsersList.map(tso => (
+                    <Option key={tso.id} value={tso.id}>
+                      {tso.name}
+                    </Option>
+                  )) : null}
+                </Select>
+              </Space>
+            </Col>
+          )}
+          <Col xs={24} sm={12} md={6}>
+            <Space direction="vertical" style={{ width: '100%' }}>
               <Text strong style={STANDARD_FORM_LABEL_STYLE}>Dealer</Text>
               <Select
                 placeholder="All Dealers"
@@ -626,12 +729,12 @@ function PlacedOrders({ refreshTrigger }) {
             </Space>
           </Col>
           <Col xs={24} sm={12} md={6}>
-            <Space direction="vertical" style={{ width: '100%' }} size="small">
-              <Text strong style={STANDARD_FORM_LABEL_STYLE}>Transport</Text>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Text strong style={STANDARD_FORM_LABEL_STYLE}>Product</Text>
               <Select
-                placeholder="All Transports"
-                value={transportFilter}
-                onChange={setTransportFilter}
+                placeholder="All Products"
+                value={productFilter}
+                onChange={setProductFilter}
                 style={{ width: '100%' }}
                 size={STANDARD_INPUT_SIZE}
                 allowClear
@@ -641,38 +744,40 @@ function PlacedOrders({ refreshTrigger }) {
                   return optionText.toLowerCase().includes(input.toLowerCase());
                 }}
               >
-                {transportsList.map(transport => (
-                  <Option key={transport.id} value={transport.id}>
-                    {transport.truck_details || transport.truck_no || `Transport #${transport.id}`}
+                {productsList.map(product => (
+                  <Option key={product.id} value={product.id}>
+                    {product.product_code} - {product.name}
                   </Option>
                 ))}
               </Select>
             </Space>
           </Col>
           <Col xs={24} sm={12} md={6}>
-            <Space direction="vertical" style={{ width: '100%' }} size="small">
-              <Text strong style={STANDARD_FORM_LABEL_STYLE}>Order Type</Text>
-              <Select
-                placeholder="Select Order Type"
-                value={orderTypeFilter}
-                onChange={setOrderTypeFilter}
-                style={{ width: '100%' }}
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Text strong style={STANDARD_FORM_LABEL_STYLE}>Search</Text>
+              <Input
+                placeholder="Search Order ID, Dealer, Product..."
+                prefix={<SearchOutlined />}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 size={STANDARD_INPUT_SIZE}
-              >
-                <Option value="tso">TSO Orders</Option>
-                <Option value="dd">Daily Demands</Option>
-                <Option value="all">All Orders</Option>
-              </Select>
+                allowClear
+              />
             </Space>
           </Col>
+        </Row>
+
+        {/* Row 3: Actions */}
+        <Row gutter={COMPACT_ROW_GUTTER} align="bottom">
           <Col xs={24} sm={12} md={6}>
-            <Space direction="vertical" style={{ width: '100%' }} size="small">
+            <Space direction="vertical" style={{ width: '100%' }}>
               <Text strong style={STANDARD_FORM_LABEL_STYLE}>Actions</Text>
               <Space style={{ width: '100%' }}>
                 <Button
                   icon={<ReloadOutlined />}
                   onClick={loadOrders}
                   style={{ flex: 1 }}
+                  size={STANDARD_INPUT_SIZE}
                 >
                   Refresh
                 </Button>
@@ -680,6 +785,7 @@ function PlacedOrders({ refreshTrigger }) {
                   icon={<ClearOutlined />}
                   onClick={clearFilters}
                   style={{ flex: 1 }}
+                  size={STANDARD_INPUT_SIZE}
                 >
                   Clear
                 </Button>
@@ -690,19 +796,14 @@ function PlacedOrders({ refreshTrigger }) {
       </Card>
 
       {/* Orders Table */}
-      <Card>
-        <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text strong>{isTSO ? `Today's Orders (${filteredOrders.length})` : `Today's Orders Placed by TSOs (${filteredOrders.length})`}</Text>
-          <Input
-            placeholder="Search orders..."
-            prefix={<SearchOutlined />}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            size="middle"
-            allowClear
-            style={{ width: '300px' }}
-          />
-        </div>
+      <Card {...TABLE_CARD_CONFIG}>
+        {renderTableHeaderWithSearch({
+          title: isTSO ? 'Orders' : 'Orders & Demands',
+          count: filteredOrders.length,
+          searchTerm: searchTerm,
+          onSearchChange: (e) => setSearchTerm(e.target.value),
+          searchPlaceholder: 'Search orders...'
+        })}
 
         {filteredOrders.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px 0' }}>

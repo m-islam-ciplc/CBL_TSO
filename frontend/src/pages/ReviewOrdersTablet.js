@@ -22,7 +22,7 @@ import {
   EditOutlined,
 } from '@ant-design/icons';
 import { useUser } from '../contexts/UserContext';
-import { CONTENT_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_CARD_CONFIG } from '../templates/CardTemplates';
 import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, MINIMAL_ROW_GUTTER, TIGHT_ROW_GUTTER, TIGHT_VERTICAL_ROW_GUTTER, STANDARD_FORM_LABEL_STYLE, STANDARD_FORM_SIZE, STANDARD_INPUT_SIZE, STANDARD_SELECT_SIZE, STANDARD_EMPTY_CONFIG, STANDARD_SPIN_SIZE } from '../templates/UIElements';
 
 const { Title, Text } = Typography;
@@ -340,7 +340,7 @@ const { userId } = useUser();
           Review and submit your orders
         </Text>
 
-        <Card {...CONTENT_CARD_CONFIG} style={{ ...CONTENT_CARD_CONFIG.style, textAlign: 'center' }}>
+        <Card title="Empty Order" {...STANDARD_CARD_CONFIG}>
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
             description="No items in your order"
@@ -369,7 +369,7 @@ const { userId } = useUser();
       </Text>
 
       {/* Order Form */}
-      <Card {...CONTENT_CARD_CONFIG}>
+      <Card {...STANDARD_CARD_CONFIG}>
         {dataLoading ? (
           <div style={{ textAlign: 'center', padding: '20px' }}>
               <Spin size={STANDARD_SPIN_SIZE} />
@@ -438,7 +438,7 @@ const { userId } = useUser();
       </Card>
 
       {/* Order Items Review */}
-      <Card {...CONTENT_CARD_CONFIG}>
+      <Card {...STANDARD_CARD_CONFIG}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <Title level={5} style={{ margin: 0 }}>
             📦 Order Items ({orderItems.length})
@@ -545,7 +545,7 @@ const { userId } = useUser();
       </Card>
 
              {/* Order Summary */}
-       <Card {...CONTENT_CARD_CONFIG}>
+       <Card {...STANDARD_CARD_CONFIG}>
          <Row gutter={TIGHT_VERTICAL_ROW_GUTTER} align="middle">
            <Col xs={24} sm={12}>
              <div>

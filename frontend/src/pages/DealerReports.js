@@ -6,15 +6,15 @@ import dayjs from 'dayjs';
 import * as XLSX from 'xlsx';
 import { useUser } from '../contexts/UserContext';
 import { StandardExpandableTable, renderStandardExpandedRow } from '../templates/TableTemplate';
-import { createStandardDatePickerConfig } from '../templates/UIConfig';
+import { createStandardDatePickerConfig, createStandardDateRangePicker } from '../templates/UIConfig';
 import { getStandardPaginationConfig } from '../templates/useStandardPagination';
-import { CONTENT_CARD_CONFIG, FILTER_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
-import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, SINGLE_ROW_GUTTER, STANDARD_ROW_GUTTER, STANDARD_FORM_LABEL_STYLE, STANDARD_TAG_STYLE, STANDARD_TABS_CONFIG, STANDARD_BADGE_CONFIG, STANDARD_SPIN_SIZE, STANDARD_DATE_PICKER_CONFIG, STANDARD_SPACE_SIZE_MIDDLE, STANDARD_BUTTON_SIZE, STANDARD_INPUT_SIZE } from '../templates/UIElements';
+import { STANDARD_CARD_CONFIG, FILTER_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, SINGLE_ROW_GUTTER, STANDARD_ROW_GUTTER, STANDARD_FORM_LABEL_STYLE, STANDARD_TAG_STYLE, STANDARD_TABS_CONFIG, STANDARD_BADGE_CONFIG, STANDARD_SPIN_SIZE, STANDARD_DATE_PICKER_CONFIG, STANDARD_SPACE_SIZE_MIDDLE, STANDARD_BUTTON_SIZE, STANDARD_INPUT_SIZE, renderTableHeaderWithSearch } from '../templates/UIElements';
 
 const { Title, Text } = Typography;
 
 function DealerReports() {
-  const { dealerId } = useUser();
+  const { dealerId, isDealer } = useUser();
   const [loading, setLoading] = useState(false);
   const [availableDates, setAvailableDates] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -511,6 +511,8 @@ function DealerReports() {
       title: 'Order Type',
       dataIndex: 'order_type',
       key: 'order_type',
+      width: 120,
+      align: 'center',
       ellipsis: true,
       render: (type) => <Tag color="green">{type || 'DD'}</Tag>,
       sorter: (a, b) => (a.order_type || 'DD').localeCompare(b.order_type || 'DD'),
@@ -578,17 +580,9 @@ function DealerReports() {
       sorter: (a, b) => (a.quantity || 0) - (b.quantity || 0),
     },
     {
-      title: 'Created',
-      dataIndex: 'created_at',
-      key: 'created_at',
-      ellipsis: true,
-      render: (date) => new Date(date).toLocaleString(),
-      sorter: (a, b) => new Date(a.created_at) - new Date(b.created_at),
-    },
-    {
       title: 'Actions',
       key: 'actions',
-      width: 180,
+      width: 120,
       align: 'center',
       fixed: 'right',
       render: (_, record) => {
@@ -680,44 +674,16 @@ function DealerReports() {
         >
           <Card title="View Orders" {...FILTER_CARD_CONFIG}>
             <Row gutter={STANDARD_ROW_GUTTER} align="bottom">
-              <Col xs={24} sm={12} md={6}>
-                <Space direction="vertical" style={{ width: '100%' }}>
-                  <Text strong style={STANDARD_FORM_LABEL_STYLE}>Start Date</Text>
-                  <DatePicker
-                    {...STANDARD_DATE_PICKER_CONFIG}
-                    value={rangeStart}
-                    onChange={setRangeStart}
-                    style={{ width: '100%' }}
-                    placeholder="Start date"
-                    disabledDate={disabledDate}
-                    dateRender={dateCellRender}
-                  />
-                </Space>
-              </Col>
-              <Col xs={24} sm={12} md={6}>
-                <Space direction="vertical" style={{ width: '100%' }}>
-                  <Text strong style={STANDARD_FORM_LABEL_STYLE}>End Date (Optional)</Text>
-                  <DatePicker
-                    {...STANDARD_DATE_PICKER_CONFIG}
-                    value={rangeEnd}
-                    onChange={setRangeEnd}
-                    style={{ width: '100%' }}
-                    placeholder="End date (optional)"
-                    disabledDate={(current) => {
-                      if (!current) return false;
-                      // Disable dates before start date
-                      if (rangeStart && current < rangeStart.startOf('day')) {
-                        return true;
-                      }
-                      // Disable dates that don't have data
-                      const dateString = current.format('YYYY-MM-DD');
-                      return !availableDates.includes(dateString);
-                    }}
-                    dateRender={dateCellRender}
-                    allowClear
-                  />
-                </Space>
-              </Col>
+              {createStandardDateRangePicker({
+                startDate: rangeStart,
+                setStartDate: setRangeStart,
+                endDate: rangeEnd,
+                setEndDate: setRangeEnd,
+                disabledDate,
+                dateCellRender,
+                availableDates,
+                colSpan: { xs: 24, sm: 12, md: 6 }
+              })}
               <Col xs={24} sm={12} md={6}>
                 <Button
                   type="default"
@@ -746,61 +712,57 @@ function DealerReports() {
           </Card>
 
           {previewInfo && (
-            <Card {...CONTENT_CARD_CONFIG} style={{ background: '#f0f7ff', border: '1px solid #d4edda', marginTop: '16px' }}>
+            <Card title="Preview Info" {...STANDARD_CARD_CONFIG}>
               <Text type="secondary" style={{ fontSize: '12px' }}>
                 {previewInfo}
               </Text>
             </Card>
           )}
           
-          <Card {...CONTENT_CARD_CONFIG} style={{ marginTop: '16px' }}>
-            <Input
-              size={STANDARD_INPUT_SIZE}
-              placeholder="Search orders by Order ID or Product..."
-              prefix={<SearchOutlined />}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ marginBottom: '16px' }}
-            />
-
-            <StandardExpandableTable
-              columns={orderColumns}
-              dataSource={filteredOrders}
-              loading={loading}
-              rowKey="order_id"
-              expandedRowKeys={expandedRowKeys}
-              onExpand={(expanded, record) => {
-                if (expanded) {
-                  setExpandedRowKeys([...expandedRowKeys, record.order_id]);
-                } else {
-                  setExpandedRowKeys(expandedRowKeys.filter(key => key !== record.order_id));
-                }
-              }}
-              expandedRowRender={(record) => {
-                const products = orderProducts[record.order_id] || [];
-                return renderStandardExpandedRow(
-                  record,
-                  products,
-                  (item) => (
-                    <>
-                      <Text strong>{item.product_code}</Text> - {item.product_name}
-                      <br />
+          <StandardExpandableTable
+            columns={orderColumns}
+            dataSource={filteredOrders}
+            loading={loading}
+            rowKey="order_id"
+            expandedRowKeys={expandedRowKeys}
+            onExpand={(expanded, record) => {
+              if (expanded) {
+                setExpandedRowKeys([...expandedRowKeys, record.order_id]);
+              } else {
+                setExpandedRowKeys(expandedRowKeys.filter(key => key !== record.order_id));
+              }
+            }}
+            expandedRowRender={(record) => {
+              const products = orderProducts[record.order_id] || [];
+              return renderStandardExpandedRow(
+                record,
+                products,
+                (item) => (
+                  <>
+                    <Text strong>{item.product_code}</Text> - {item.product_name}
+                    <br />
+                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                      Quantity: {item.quantity}
+                    </Text>
+                    {!isDealer && item.unit_tp && (
                       <Text type="secondary" style={{ fontSize: '12px' }}>
-                        Quantity: {item.quantity}
+                        {' | '}Unit TP: ৳{item.unit_tp}
                       </Text>
-                      {item.unit_tp && (
-                        <Text type="secondary" style={{ fontSize: '12px' }}>
-                          {' | '}Unit TP: ৳{item.unit_tp}
-                        </Text>
-                      )}
-                    </>
-                  ),
-                  'Order Items:'
-                );
-              }}
-              pagination={getStandardPaginationConfig('orders', 10)}
-            />
-          </Card>
+                    )}
+                  </>
+                ),
+                'Order Items:'
+              );
+            }}
+            pagination={getStandardPaginationConfig('orders', 10)}
+            header={renderTableHeaderWithSearch({
+              title: 'Orders',
+              count: filteredOrders.length,
+              searchTerm: searchTerm,
+              onSearchChange: (e) => setSearchTerm(e.target.value),
+              searchPlaceholder: 'Search orders by Order ID or Product...'
+            })}
+          />
         </Tabs.TabPane>
 
         {/* Monthly Forecasts Tab */}
@@ -813,7 +775,7 @@ function DealerReports() {
           }
           key="monthly-forecast"
         >
-          <Card {...CONTENT_CARD_CONFIG}>
+          <Card {...STANDARD_CARD_CONFIG}>
             <Row gutter={SINGLE_ROW_GUTTER} style={{ marginBottom: '16px' }}>
               <Col xs={24} md={8}>
                 <Text strong style={{ display: 'block', marginBottom: '8px' }}>Select Period</Text>
@@ -866,12 +828,14 @@ function DealerReports() {
             )}
 
             {!forecastLoading && selectedPeriod && (
-              <Table
-                columns={forecastColumns}
-                dataSource={filteredForecasts}
-                rowKey="product_id"
-                pagination={getStandardPaginationConfig('products', 20)}
-              />
+              <Card {...TABLE_CARD_CONFIG} style={{ marginTop: '16px' }}>
+                <Table
+                  columns={forecastColumns}
+                  dataSource={filteredForecasts}
+                  rowKey="product_id"
+                  pagination={getStandardPaginationConfig('products', 20)}
+                />
+              </Card>
             )}
 
             {!selectedPeriod && (

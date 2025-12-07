@@ -22,7 +22,7 @@ import { useUser } from '../contexts/UserContext';
 import dayjs from 'dayjs';
 import './NewOrdersTablet.css';
 import { DealerProductCard } from '../templates/DealerProductCard';
-import { FILTER_CARD_CONFIG, CONTENT_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_CARD_CONFIG, FILTER_CARD_CONFIG, DATE_SELECTION_CARD_CONFIG } from '../templates/CardTemplates';
 import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG } from '../templates/UIElements';
 
 const { Title, Text } = Typography;
@@ -301,7 +301,7 @@ function MonthlyForecastTab() {
       </Text>
 
       {/* Period Selection Card */}
-      <Card title="Select Period" {...FILTER_CARD_CONFIG}>
+      <Card title="Select Period" {...DATE_SELECTION_CARD_CONFIG}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <Select
             style={{ width: 280 }}
@@ -344,7 +344,7 @@ function MonthlyForecastTab() {
       </Card>
 
       {/* Products Card Grid */}
-      <Card {...CONTENT_CARD_CONFIG}>
+      <Card {...STANDARD_CARD_CONFIG}>
         {products.length > 0 ? (
           <div className="responsive-product-grid">
             {products.map(product => (
@@ -370,7 +370,7 @@ function MonthlyForecastTab() {
 
       {/* Footer Actions */}
       {isCurrentPeriod && canEdit && (
-        <Card {...CONTENT_CARD_CONFIG}>
+        <Card {...STANDARD_CARD_CONFIG}>
           <Row justify="end">
             <Col>
               <Space>

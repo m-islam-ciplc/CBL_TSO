@@ -192,14 +192,14 @@ async function testT10_SelectDealer() {
     }
   } else {
     // Fallback to original behavior
-    if (!testData.dealers || testData.dealers.length === 0) {
-      await testT6_GetOrderRequirements();
-    }
-    
-    if (!testData.dealers || testData.dealers.length === 0) {
-      throw new Error(`T10 FAILED: No dealers available for territory ${testData.tsoTerritory}`);
-    }
-    
+  if (!testData.dealers || testData.dealers.length === 0) {
+    await testT6_GetOrderRequirements();
+  }
+  
+  if (!testData.dealers || testData.dealers.length === 0) {
+    throw new Error(`T10 FAILED: No dealers available for territory ${testData.tsoTerritory}`);
+  }
+  
     testData.scrapTerritoryDealers = testData.dealers;
     testData.selectedDealer = testData.dealers[0];
     console.log(`\n⚠️  Warning: Could not fetch all dealers, using TSO territory dealers`);
@@ -348,25 +348,25 @@ async function testT14_CreateOrder() {
   
   for (const dealer of testData.scrapTerritoryDealers) {
     try {
-      const orderData = {
-        order_type_id: testData.selectedOrderType.id,
+  const orderData = {
+    order_type_id: testData.selectedOrderType.id,
         dealer_id: dealer.id,
-        warehouse_id: testData.selectedWarehouse.id,
-        transport_id: testData.selectedTransport.id,
-        user_id: testData.tsoUserId,
-        order_items: testData.orderItems.map(item => ({
-          product_id: item.product_id,
-          quantity: item.quantity
-        }))
-      };
-      
+    warehouse_id: testData.selectedWarehouse.id,
+    transport_id: testData.selectedTransport.id,
+    user_id: testData.tsoUserId,
+    order_items: testData.orderItems.map(item => ({
+      product_id: item.product_id,
+      quantity: item.quantity
+    }))
+  };
+  
       console.log(`\n   📦 Creating order for ${dealer.name || dealer.dealer_code}...`);
-      
-      const result = await utils.makeRequest('/api/orders', 'POST', orderData, {
-        'Authorization': `Bearer ${testData.tsoToken}`
-      });
-      
-      if (result.status === 200 && result.data.success) {
+  
+  const result = await utils.makeRequest('/api/orders', 'POST', orderData, {
+    'Authorization': `Bearer ${testData.tsoToken}`
+  });
+  
+  if (result.status === 200 && result.data.success) {
         const orderId = result.data.order_id;
         testData.createdOrderIds.push(orderId);
         console.log(`   ✅ Order created successfully for ${dealer.name || dealer.dealer_code}`);
@@ -426,10 +426,10 @@ async function testT15_ViewCreatedOrder() {
   for (const orderId of orderIds) {
     try {
       const result = await utils.makeRequest(`/api/orders/${orderId}`, 'GET', null, {
-        'Authorization': `Bearer ${testData.tsoToken}`
-      });
-      
-      if (result.status === 200 && result.data) {
+    'Authorization': `Bearer ${testData.tsoToken}`
+  });
+  
+  if (result.status === 200 && result.data) {
         console.log(`\n   ✅ Order ${orderId} viewable`);
         console.log(`      Dealer: ${result.data.dealer_name || 'N/A'}`);
         console.log(`      Items: ${result.data.items?.length || 0}`);

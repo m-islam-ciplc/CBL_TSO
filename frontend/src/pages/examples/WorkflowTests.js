@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card, Typography, Button, Space, Divider, Tag, Alert, Collapse, Tabs, message } from 'antd';
 import { PlayCircleOutlined, CopyOutlined, CheckCircleOutlined, DeleteOutlined, WarningOutlined } from '@ant-design/icons';
-import { FILTER_CARD_CONFIG } from '../../templates/CardTemplates';
+import { STANDARD_CARD_CONFIG } from '../../templates/CardTemplates';
 import { STANDARD_TABS_CONFIG, STANDARD_DIVIDER_CONFIG } from '../../templates/UIElements';
 
 const { Title, Text, Paragraph } = Typography;
@@ -356,11 +356,11 @@ function WorkflowTests() {
 
       <Tabs {...STANDARD_TABS_CONFIG} defaultActiveKey="admin">
         <TabPane tab="Admin Tests (56 tests)" key="admin">
-          <Card title="How to Run Admin Tests" {...FILTER_CARD_CONFIG}>
+          <Card title="How to Run Admin Tests" {...STANDARD_CARD_CONFIG}>
             {renderCommands(adminCommands)}
           </Card>
 
-          <Card title="Configuration" {...FILTER_CARD_CONFIG}>
+          <Card title="Configuration" {...STANDARD_CARD_CONFIG}>
             <Space direction="vertical" style={{ width: '100%' }}>
               <div>
                 <Text strong>Default API URL: </Text>
@@ -378,7 +378,7 @@ function WorkflowTests() {
 
           <Divider {...STANDARD_DIVIDER_CONFIG} />
 
-          <Card title="Test Coverage Details" {...FILTER_CARD_CONFIG}>
+          <Card title="Test Coverage Details" {...STANDARD_CARD_CONFIG}>
             <Collapse>
               {adminTestCategories.map((category, idx) => (
                 <Panel header={category.title} key={idx}>
@@ -392,7 +392,7 @@ function WorkflowTests() {
             </Collapse>
           </Card>
 
-          <Card title="What the Test Does" {...FILTER_CARD_CONFIG}>
+          <Card title="What the Test Does" {...STANDARD_CARD_CONFIG}>
             <Paragraph>
               The Admin test script will:
             </Paragraph>
@@ -407,7 +407,7 @@ function WorkflowTests() {
         </TabPane>
 
         <TabPane tab="TSO Tests (28 tests)" key="tso">
-          <Card title="How to Run TSO Tests" {...FILTER_CARD_CONFIG}>
+          <Card title="How to Run TSO Tests" {...STANDARD_CARD_CONFIG}>
             {renderCommands(tsoCommands)}
           </Card>
 
@@ -419,7 +419,7 @@ function WorkflowTests() {
             style={{ marginBottom: '24px' }}
           />
 
-          <Card title="Configuration" {...FILTER_CARD_CONFIG}>
+          <Card title="Configuration" {...STANDARD_CARD_CONFIG}>
             <Space direction="vertical" style={{ width: '100%' }}>
               <div>
                 <Text strong>Default API URL: </Text>
@@ -437,7 +437,7 @@ function WorkflowTests() {
 
           <Divider {...STANDARD_DIVIDER_CONFIG} />
 
-          <Card title="Test Coverage Details" {...FILTER_CARD_CONFIG}>
+          <Card title="Test Coverage Details" {...STANDARD_CARD_CONFIG}>
             <Collapse>
               {tsoTestCategories.map((category, idx) => (
                 <Panel header={category.title} key={idx}>
@@ -451,7 +451,7 @@ function WorkflowTests() {
             </Collapse>
           </Card>
 
-          <Card title="What the Test Does" {...FILTER_CARD_CONFIG}>
+          <Card title="What the Test Does" {...STANDARD_CARD_CONFIG}>
             <Paragraph>
               The TSO test script will:
             </Paragraph>
@@ -466,7 +466,7 @@ function WorkflowTests() {
         </TabPane>
 
         <TabPane tab="Dealer Tests (23 tests)" key="dealer">
-          <Card title="How to Run Dealer Tests" {...FILTER_CARD_CONFIG}>
+          <Card title="How to Run Dealer Tests" {...STANDARD_CARD_CONFIG}>
             {renderCommands(dealerCommands)}
           </Card>
 
@@ -478,7 +478,7 @@ function WorkflowTests() {
             style={{ marginBottom: '24px' }}
           />
 
-          <Card title="Configuration" {...FILTER_CARD_CONFIG}>
+          <Card title="Configuration" {...STANDARD_CARD_CONFIG}>
             <Space direction="vertical" style={{ width: '100%' }}>
               <div>
                 <Text strong>Default API URL: </Text>
@@ -504,7 +504,7 @@ function WorkflowTests() {
 
           <Divider {...STANDARD_DIVIDER_CONFIG} />
 
-          <Card title="Test Coverage Details" {...FILTER_CARD_CONFIG}>
+          <Card title="Test Coverage Details" {...STANDARD_CARD_CONFIG}>
             <Collapse>
               {dealerTestCategories.map((category, idx) => (
                 <Panel header={category.title} key={idx}>
@@ -518,7 +518,7 @@ function WorkflowTests() {
             </Collapse>
           </Card>
 
-          <Card title="What the Test Does" {...FILTER_CARD_CONFIG}>
+          <Card title="What the Test Does" {...STANDARD_CARD_CONFIG}>
             <Paragraph>
               The Dealer test script will:
             </Paragraph>
@@ -536,11 +536,11 @@ function WorkflowTests() {
         </TabPane>
 
         <TabPane tab="Setup" key="setup">
-          <Card title="How to Run Setup" {...FILTER_CARD_CONFIG}>
+          <Card title="How to Run Setup" {...STANDARD_CARD_CONFIG}>
             {renderCommands(setupCommands)}
           </Card>
 
-          <Card title="What Setup Does" {...FILTER_CARD_CONFIG}>
+          <Card title="What Setup Does" {...STANDARD_CARD_CONFIG}>
             <Paragraph>
               The setup script will:
             </Paragraph>
@@ -599,11 +599,11 @@ function WorkflowTests() {
             style={{ marginBottom: '24px' }}
           />
 
-          <Card title="How to Run" {...FILTER_CARD_CONFIG}>
+          <Card title="How to Run" {...STANDARD_CARD_CONFIG}>
             {renderCommands(truncateCommands)}
           </Card>
 
-          <Card title="What Gets Truncated" {...FILTER_CARD_CONFIG}>
+          <Card title="What Gets Truncated" {...STANDARD_CARD_CONFIG}>
             <Space direction="vertical" style={{ width: '100%' }}>
               <div>
                 <Text strong style={{ color: '#ff4d4f' }}>Tables Deleted (All Data Removed):</Text>
@@ -631,7 +631,7 @@ function WorkflowTests() {
             </Space>
           </Card>
 
-          <Card title="When to Run" {...FILTER_CARD_CONFIG}>
+          <Card title="When to Run" {...STANDARD_CARD_CONFIG}>
             <Paragraph>
               Run the truncate script when you need to:
             </Paragraph>
@@ -645,7 +645,7 @@ function WorkflowTests() {
             </Paragraph>
           </Card>
 
-          <Card title="File Location" {...FILTER_CARD_CONFIG}>
+          <Card title="File Location" {...STANDARD_CARD_CONFIG}>
             <Space direction="vertical" style={{ width: '100%' }}>
               <div>
                 <Text strong>Node.js Script: </Text>
@@ -660,7 +660,7 @@ function WorkflowTests() {
         </TabPane>
       </Tabs>
 
-      <Card title="File Location" {...FILTER_CARD_CONFIG}>
+      <Card title="File Location" {...STANDARD_CARD_CONFIG}>
         <Text code>
           project_tools_deletable/test_scripts/test_workflows.js
         </Text>

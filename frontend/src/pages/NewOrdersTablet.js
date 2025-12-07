@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useUser } from '../contexts/UserContext';
 import './NewOrdersTablet.css';
-import { CONTENT_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_CARD_CONFIG, FILTER_CARD_CONFIG } from '../templates/CardTemplates';
 import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, TIGHT_ROW_GUTTER, STANDARD_INPUT_SIZE, STANDARD_SELECT_SIZE, STANDARD_TABLE_SIZE, STANDARD_MODAL_CONFIG, STANDARD_INPUT_NUMBER_SIZE } from '../templates/UIElements';
 import {
   Card,
@@ -492,7 +492,7 @@ function NewOrdersTablet({ onOrderCreated: _onOrderCreated }) {
 
       {/* Collapsible Order Details - Hide when adding more items to existing order */}
       {!isAddingMore && (
-        <Card {...CONTENT_CARD_CONFIG}>
+        <Card title="Order Details" {...STANDARD_CARD_CONFIG}>
           <div 
             style={{ 
               cursor: 'pointer', 
@@ -611,7 +611,7 @@ function NewOrdersTablet({ onOrderCreated: _onOrderCreated }) {
       )}
 
       {/* Compact Product Search */}
-      <Card {...CONTENT_CARD_CONFIG}>
+      <Card title="Search Products" {...FILTER_CARD_CONFIG}>
         <Input
           size={STANDARD_INPUT_SIZE}
           placeholder="Search products by name or code..."

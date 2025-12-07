@@ -329,15 +329,15 @@ async function setup_ImportResources() {
         console.log(`   Note: Dealers will get products from tests A17/A19`);
       } else {
         console.log(`\n   📍 Found ${scrapTerritoryDealers.length} dealer(s) in Scrap Territory`);
+      
+      // Get all products
+      const productsResult = await makeRequest('/api/products', 'GET', null, {
+        'Authorization': `Bearer ${testData.adminToken}`
+      });
+      
+      if (productsResult.status === 200 && Array.isArray(productsResult.data) && productsResult.data.length > 0) {
+        const allProducts = productsResult.data;
         
-        // Get all products
-        const productsResult = await makeRequest('/api/products', 'GET', null, {
-          'Authorization': `Bearer ${testData.adminToken}`
-        });
-        
-        if (productsResult.status === 200 && Array.isArray(productsResult.data) && productsResult.data.length > 0) {
-          const allProducts = productsResult.data;
-          
           // Assign products to each dealer in Scrap Territory
           let successCount = 0;
           let failCount = 0;
@@ -345,30 +345,30 @@ async function setup_ImportResources() {
           for (const dealer of scrapTerritoryDealers) {
             try {
               // Assign 2-5 random products to each dealer
-              const numProducts = Math.min(Math.floor(Math.random() * 4) + 2, allProducts.length); // 2-5
-              const shuffledProducts = [...allProducts].sort(() => Math.random() - 0.5);
-              const selectedProducts = shuffledProducts.slice(0, numProducts);
-              const productIds = selectedProducts.map(p => p.id);
-              
+          const numProducts = Math.min(Math.floor(Math.random() * 4) + 2, allProducts.length); // 2-5
+          const shuffledProducts = [...allProducts].sort(() => Math.random() - 0.5);
+          const selectedProducts = shuffledProducts.slice(0, numProducts);
+          const productIds = selectedProducts.map(p => p.id);
+          
               console.log(`\n   📦 Assigning ${productIds.length} product(s) to ${dealer.name || dealer.dealer_code}...`);
-              
-              const assignmentPayload = {
+          
+          const assignmentPayload = {
                 dealer_id: dealer.id,
-                product_ids: productIds,
-                product_categories: []
-              };
-              
-              const assignmentResult = await makeRequest('/api/dealer-assignments/bulk', 'POST', assignmentPayload, {
-                'Authorization': `Bearer ${testData.adminToken}`
-              });
-              
-              if (assignmentResult.status === 200 && assignmentResult.data && assignmentResult.data.success) {
+            product_ids: productIds,
+            product_categories: []
+          };
+          
+          const assignmentResult = await makeRequest('/api/dealer-assignments/bulk', 'POST', assignmentPayload, {
+            'Authorization': `Bearer ${testData.adminToken}`
+          });
+          
+          if (assignmentResult.status === 200 && assignmentResult.data && assignmentResult.data.success) {
                 console.log(`   ✅ Assigned ${productIds.length} product(s) to ${dealer.name || dealer.dealer_code} (ID: ${dealer.id})`);
                 successCount++;
-              } else {
+          } else {
                 console.log(`   ⚠️  Failed to assign products to ${dealer.name || dealer.dealer_code}: ${assignmentResult.status}`);
                 failCount++;
-              }
+          }
             } catch (dealerError) {
               console.log(`   ❌ Error assigning products to ${dealer.name || dealer.dealer_code}: ${dealerError.message}`);
               failCount++;
@@ -376,8 +376,8 @@ async function setup_ImportResources() {
           }
           
           console.log(`\n   📊 Summary: ${successCount} dealer(s) assigned successfully, ${failCount} failed`);
-        } else {
-          console.log(`\n   ⚠️  No products available for assignment - skipping`);
+      } else {
+        console.log(`\n   ⚠️  No products available for assignment - skipping`);
         }
       }
     } else {
@@ -998,7 +998,7 @@ async function runAdminTests() {
   console.log('🧪 ADMIN WORKFLOW TESTS');
   console.log('='.repeat(70));
   console.log(`📍 Testing: ${BASE_URL}\n`);
-  
+
   try {
     // Run setup first
     console.log('🔧 Running setup...');

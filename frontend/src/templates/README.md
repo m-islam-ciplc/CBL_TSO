@@ -48,10 +48,11 @@ This folder contains **reusable template code** that is imported into applicatio
 **Purpose**: Standard card configurations and patterns for consistent card styling across the application.
 
 **Configurations:**
-- `FILTER_CARD_CONFIG` - For filter/input cards with title
-- `CONTENT_CARD_CONFIG` - For content cards without title
+- `STANDARD_CARD_CONFIG` - Unified card configuration for all cards (with or without title, with or without buttons)
 - `TABLE_CARD_CONFIG` - For table cards
 - `STANDARD_CARD_STYLES` - Standard styling constants
+- `FILTER_CARD_CONFIG` - @deprecated Use `STANDARD_CARD_CONFIG` instead
+- `CONTENT_CARD_CONFIG` - @deprecated Use `STANDARD_CARD_CONFIG` instead
 
 **Used in application pages:**
 - All pages use these patterns for consistent card styling
@@ -100,7 +101,7 @@ This folder contains **reusable template code** that is imported into applicatio
 // From application pages (frontend/src/pages/)
 import { getStandardPagination } from '../templates/UIConfig';
 import { StandardExpandableTable } from '../templates/TableTemplate';
-import { FILTER_CARD_CONFIG, CONTENT_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_CARD_CONFIG } from '../templates/CardTemplates';
 import { DealerProductCard } from '../templates/DealerProductCard';
 
 // From example pages (frontend/src/pages/examples/)

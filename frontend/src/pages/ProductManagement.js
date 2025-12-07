@@ -1,4 +1,4 @@
-import { useState, useEffect, cloneElement } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 import {
@@ -9,13 +9,12 @@ import {
   Table,
   Input,
   message,
-  Statistic,
   Row,
   Col,
 } from 'antd';
 import { useStandardPagination } from '../templates/useStandardPagination';
-import { CONTENT_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
-import { STANDARD_ROW_GUTTER, STANDARD_UPLOAD_CONFIG, STANDARD_STATISTIC_CONFIG } from '../templates/UIElements';
+import { STANDARD_CARD_CONFIG, FILTER_CARD_CONFIG, IMPORT_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_ROW_GUTTER, STANDARD_UPLOAD_CONFIG, renderTableHeaderWithSearchAndFilter } from '../templates/UIElements';
 import {
   UploadOutlined,
   DownloadOutlined,
@@ -30,6 +29,7 @@ function ProductManagement() {
   const [loading, setLoading] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [brandFilter, setBrandFilter] = useState(null);
   const { pagination, setPagination, handleTableChange } = useStandardPagination('products', 20);
 
   useEffect(() => {
@@ -38,7 +38,7 @@ function ProductManagement() {
 
   useEffect(() => {
     filterProducts();
-  }, [products, searchTerm]);
+  }, [products, searchTerm, brandFilter]);
 
   const loadProducts = async () => {
     setLoading(true);
@@ -63,6 +63,12 @@ function ProductManagement() {
         product.brand_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.brand_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.application_name?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    if (brandFilter) {
+      filtered = filtered.filter(product => 
+        product.brand_code === brandFilter || product.brand_name === brandFilter
       );
     }
 
@@ -264,14 +270,6 @@ function ProductManagement() {
     },
   ];
 
-  const stats = [
-    {
-      title: 'Total Products',
-      value: products.length,
-      icon: <ShopOutlined style={{ color: '#1890ff' }} />,
-    },
-  ];
-
   return (
     <div>
       <Title level={3} style={{ marginBottom: '8px' }}>
@@ -282,7 +280,7 @@ function ProductManagement() {
       </Text>
 
       {/* Import Section */}
-      <Card {...CONTENT_CARD_CONFIG}>
+      <Card title="Import Products" {...IMPORT_CARD_CONFIG}>
         <Row gutter={STANDARD_ROW_GUTTER} align="middle">
           <Col>
             <Upload
@@ -309,53 +307,26 @@ function ProductManagement() {
         </Row>
       </Card>
 
-      {/* Statistics */}
-      <Row gutter={STANDARD_ROW_GUTTER} style={{ marginBottom: '16px' }}>
-        {stats.map((stat, index) => {
-          const gradients = [
-            'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', // Purple
-            'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', // Pink/Red
-            'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', // Blue/Cyan
-            'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', // Green/Teal
-          ];
-          return (
-            <Col xs={24} sm={12} md={6} key={index}>
-              <Card 
-                size="small"
-                style={{ background: gradients[index % gradients.length], color: 'white' }}
-              >
-                <Statistic
-                  {...STANDARD_STATISTIC_CONFIG}
-                  title={<span style={{ color: 'white' }}>{stat.title}</span>}
-                  value={stat.value}
-                  prefix={cloneElement(stat.icon, { style: { color: 'white' } })}
-                  valueStyle={{ ...STANDARD_STATISTIC_CONFIG.valueStyle, color: 'white' }}
-                />
-              </Card>
-            </Col>
-          );
-        })}
-      </Row>
-
-      {/* Filters */}
-      <Card {...CONTENT_CARD_CONFIG}>
-        <Row gutter={STANDARD_ROW_GUTTER}>
-          <Col xs={24} sm={12} md={8}>
-            <Input
-              placeholder="Search products..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              allowClear
-            />
-          </Col>
-        </Row>
-      </Card>
-
       {/* Products Table */}
       <Card {...TABLE_CARD_CONFIG}>
-        <div style={{ marginBottom: '16px' }}>
-          <Text strong>Products ({filteredProducts.length})</Text>
-        </div>
+        {renderTableHeaderWithSearchAndFilter({
+          title: 'Products',
+          count: filteredProducts.length,
+          searchTerm: searchTerm,
+          onSearchChange: (e) => setSearchTerm(e.target.value),
+          searchPlaceholder: 'Search products...',
+          filter: {
+            value: brandFilter,
+            onChange: setBrandFilter,
+            placeholder: 'Filter by brand',
+            options: [...new Set(products.map(p => p.brand_name).filter(Boolean))].map(brand => ({
+              value: brand,
+              label: brand
+            })),
+            width: '200px',
+            showSearch: true
+          }
+        })}
 
         <Table
           columns={columns}

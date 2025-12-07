@@ -24,7 +24,7 @@ import {
 import dayjs from 'dayjs';
 import './NewOrdersTablet.css';
 import { DealerProductCard } from '../templates/DealerProductCard';
-import { FILTER_CARD_CONFIG, CONTENT_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_CARD_CONFIG, FILTER_CARD_CONFIG, DATE_SELECTION_CARD_CONFIG } from '../templates/CardTemplates';
 import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_TABS_CONFIG, STANDARD_DATE_PICKER_CONFIG, STANDARD_BUTTON_SIZE } from '../templates/UIElements';
 
 const { Title, Text } = Typography;
@@ -336,7 +336,7 @@ function DailyDemandMultiDay() {
       </Text>
 
       {/* Date Selection Card */}
-      <Card title="Add Dates" {...FILTER_CARD_CONFIG}>
+      <Card title="Add Dates" {...DATE_SELECTION_CARD_CONFIG}>
         <Space wrap>
           <Button size={STANDARD_BUTTON_SIZE} onClick={() => handleQuickDateSelect(0)}>
             Today
@@ -361,7 +361,7 @@ function DailyDemandMultiDay() {
 
       {/* Date Tabs with Product Cards */}
       {selectedDates.length > 0 && (
-        <Card {...CONTENT_CARD_CONFIG}>
+        <Card {...STANDARD_CARD_CONFIG}>
           <Tabs {...STANDARD_TABS_CONFIG}
             activeKey={activeDateTab || selectedDates[0]?.format('YYYY-MM-DD')}
             onChange={setActiveDateTab}

@@ -34,7 +34,6 @@ import DealerDashboard from './pages/DealerDashboard';
 import ProductQuotaManagement from './pages/ProductQuotaManagement';
 import MonthlyForecastTab from './pages/MonthlyForecastTab';
 import DailyDemandMultiDay from './pages/DailyDemandMultiDay';
-import DailyDemandManagement from './pages/DailyDemandManagement';
 import DealerReports from './pages/DealerReports';
 import DebugPanel from './components/DebugPanel';
 import UnifiedUITemplate from './pages/examples/UnifiedUITemplate';
@@ -301,6 +300,11 @@ function AppContent() {
       label: 'Placed Orders',
     },
     {
+      key: 'reports',
+      icon: <BarChartOutlined />,
+      label: 'Daily Demands',
+    },
+    {
       key: 'tso-report',
       icon: <FileExcelOutlined />,
       label: 'My Reports',
@@ -335,12 +339,7 @@ function AppContent() {
     {
       key: 'placed-orders',
       icon: <OrderedListOutlined />,
-      label: 'Placed Orders',
-    },
-    {
-      key: 'daily-demand-management',
-      icon: <ShoppingCartOutlined />,
-      label: 'Daily Demand',
+      label: 'Orders & Demands',
     },
     ...(userRole === 'admin' ? [{
       key: 'manage-quotas',
@@ -562,11 +561,6 @@ function AppContent() {
           <Route path="/new-orders" element={<NewOrdersTablet onOrderCreated={refreshOrders} />} />
           <Route path="/review-orders" element={<ReviewOrdersTablet onOrderCreated={refreshOrders} />} />
           <Route path="/placed-orders" element={<PlacedOrders refreshTrigger={refreshTrigger} />} />
-          <Route path="/daily-demand-management" element={
-            (isAdmin || isSalesManager) ? 
-            <DailyDemandManagement /> :
-            <Dashboard setStats={setStats} />
-          } />
           <Route path="/settings" element={
             isTSO ? 
             <NewOrdersTablet onOrderCreated={refreshOrders} /> : 
@@ -589,9 +583,9 @@ function AppContent() {
             <Settings />
           } />
           <Route path="/reports" element={
-            isTSO ? 
-            <NewOrdersTablet onOrderCreated={refreshOrders} /> : 
-            <DailyReport />
+            (isTSO || isAdmin || isSalesManager) ? 
+            <DailyReport /> : 
+            <Dashboard setStats={setStats} />
           } />
           <Route path="/tso-report" element={
             isTSO ? 

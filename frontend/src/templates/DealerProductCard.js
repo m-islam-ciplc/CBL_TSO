@@ -1,6 +1,6 @@
 import { Card, Typography, Button, InputNumber, Space, Tag } from 'antd';
 import { ClearOutlined } from '@ant-design/icons';
-import { CONTENT_CARD_CONFIG } from './CardTemplates';
+import { STANDARD_CARD_CONFIG } from './CardTemplates';
 import { STANDARD_INPUT_NUMBER_SIZE, STANDARD_BUTTON_SIZE, STANDARD_SPACE_SIZE_SMALL, STANDARD_TAG_STYLE } from './UIElements';
 
 const { Text } = Typography;
@@ -49,10 +49,10 @@ export function DealerProductCard({
 
   return (
     <Card
-      {...CONTENT_CARD_CONFIG}
+      {...STANDARD_CARD_CONFIG}
       style={{
         boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-        ...CONTENT_CARD_CONFIG.style,
+        ...STANDARD_CARD_CONFIG.style,
         ...cardStyle,
       }}
       bodyStyle={{

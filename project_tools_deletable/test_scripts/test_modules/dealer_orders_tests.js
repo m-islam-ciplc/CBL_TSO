@@ -290,22 +290,22 @@ async function testD10_CreateSingleDayOrder() {
         product_id: assignedProducts[0].product_id,
         quantity: 1
       }];
-      
-      const orderData = {
-        order_type_id: testData.ddOrderTypeId,
+  
+  const orderData = {
+    order_type_id: testData.ddOrderTypeId,
         dealer_id: dealer.id,
         territory_name: dealer.territory_name || 'Scrap Territory',
         order_items: orderItems,
         user_id: dealerUserId
-      };
-      
+  };
+  
       console.log(`   📦 Creating order for ${dealer.name || dealer.dealer_code}...`);
-      
-      const result = await utils.makeRequest('/api/orders/dealer', 'POST', orderData, {
+  
+  const result = await utils.makeRequest('/api/orders/dealer', 'POST', orderData, {
         'Authorization': `Bearer ${dealerToken}`
-      });
-      
-      if (result.status === 200 && result.data.success) {
+  });
+  
+  if (result.status === 200 && result.data.success) {
         const orderId = result.data.order_id;
         testData.createdOrderIds.push(orderId);
         console.log(`   ✅ Order created successfully for ${dealer.name || dealer.dealer_code}`);
@@ -452,37 +452,37 @@ async function testD11_CreateMultiDayOrder() {
       
       // Create demands for today and tomorrow using first assigned product
       const product = assignedProducts[0];
-      const demands = [
-        {
-          date: today,
-          order_items: [{
-            product_id: product.product_id,
-            quantity: 1
-          }]
-        },
-        {
-          date: tomorrowStr,
-          order_items: [{
-            product_id: product.product_id,
-            quantity: 2
-          }]
-        }
-      ];
-      
-      const orderData = {
+  const demands = [
+    {
+      date: today,
+      order_items: [{
+        product_id: product.product_id,
+        quantity: 1
+      }]
+    },
+    {
+      date: tomorrowStr,
+      order_items: [{
+        product_id: product.product_id,
+        quantity: 2
+      }]
+    }
+  ];
+  
+  const orderData = {
         dealer_id: dealer.id,
         territory_name: dealer.territory_name || 'Scrap Territory',
-        demands: demands,
+    demands: demands,
         user_id: dealerUserId
-      };
-      
+  };
+  
       console.log(`   📦 Creating multi-day orders for ${dealer.name || dealer.dealer_code}...`);
-      
-      const result = await utils.makeRequest('/api/orders/dealer/multi-day', 'POST', orderData, {
+  
+  const result = await utils.makeRequest('/api/orders/dealer/multi-day', 'POST', orderData, {
         'Authorization': `Bearer ${dealerToken}`
-      });
-      
-      if (result.status === 200 && result.data.success) {
+  });
+  
+  if (result.status === 200 && result.data.success) {
         const orderIds = result.data.orders?.map(o => o.order_id) || result.data.order_ids || [];
         testData.createdMultiDayOrders.push(...orderIds);
         console.log(`   ✅ Multi-day orders created successfully for ${dealer.name || dealer.dealer_code}`);
