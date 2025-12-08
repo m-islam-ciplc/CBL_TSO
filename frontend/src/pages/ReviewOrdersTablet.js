@@ -554,7 +554,7 @@ const { userId } = useUser();
                </Text>
                <div style={{ fontSize: '14px', color: '#666', marginTop: '4px' }}>
                  {orderItems.length} item{orderItems.length !== 1 ? 's' : ''} • 
-                 Total Quantity: {orderItems.reduce((sum, item) => sum + item.quantity, 0)}
+                 Total Quantity: {orderItems.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)}
                </div>
              </div>
            </Col>

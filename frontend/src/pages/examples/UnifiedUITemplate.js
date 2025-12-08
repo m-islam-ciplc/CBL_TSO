@@ -423,7 +423,7 @@ function UnifiedUITemplate() {
                 pagination={false}
                 size="small"
               />
-            </Card>
+      </Card>
           </div>
 
           <div>
@@ -452,16 +452,16 @@ function UnifiedUITemplate() {
                   showSearch: true
                 }
               })}
-              <Table
+            <Table
                 dataSource={tableData.slice(0, 2)}
-                columns={[
+              columns={[
                   { title: 'ID', dataIndex: 'id', key: 'id' },
                   { title: 'Dealer', dataIndex: 'dealer', key: 'dealer' },
                   { title: 'Qty', dataIndex: 'qty', key: 'qty' },
-                ]}
+              ]}
                 pagination={false}
-                size="small"
-              />
+              size="small"
+            />
             </Card>
           </div>
 

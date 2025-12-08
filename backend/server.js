@@ -216,64 +216,110 @@ async function generateExcelReport(orders, options = {}) {
 }
 
 async function fetchOrdersWithItemsBetween(startDate, endDate, user_id = null, territory_name = null) {
-    let ordersQuery = `
+    // Query sales_orders (TSO orders)
+    let salesOrdersQuery = `
         SELECT 
-            o.*, 
-            ot.name AS order_type,
-            d.id AS dealer_id,
-            d.name AS dealer_name, 
-            d.territory_name AS dealer_territory,
-            d.address AS dealer_address,
-            d.contact AS dealer_contact,
-            w.name AS warehouse_name,
-            w.alias AS warehouse_alias,
-            t.truck_details AS transport_name,
-            COALESCE(o.order_date, DATE(o.created_at)) AS order_date
-        FROM orders o
-        LEFT JOIN order_types ot ON o.order_type_id = ot.id
-        LEFT JOIN dealers d ON o.dealer_id = d.id
-        LEFT JOIN warehouses w ON o.warehouse_id = w.id
-        LEFT JOIN transports t ON o.transport_id = t.id
-        WHERE COALESCE(o.order_date, DATE(o.created_at)) BETWEEN ? AND ?
+            so.*, 
+            'SO' AS order_type,
+            so.dealer_id,
+            so.dealer_name, 
+            so.territory_name AS dealer_territory,
+            NULL AS dealer_address,
+            NULL AS dealer_contact,
+            so.warehouse_name,
+            so.warehouse_name AS warehouse_alias,
+            so.transport_name,
+            so.order_date
+        FROM sales_orders so
+        WHERE so.order_date BETWEEN ? AND ?
+    `;
+    
+    // Query demand_orders (Dealer orders)
+    let demandQuery = `
+        SELECT 
+            do.*,
+            'DD' AS order_type,
+            do.dealer_id,
+            do.dealer_name,
+            do.territory_name AS dealer_territory,
+            NULL AS dealer_address,
+            NULL AS dealer_contact,
+            NULL AS warehouse_name,
+            NULL AS warehouse_alias,
+            NULL AS transport_name,
+            do.order_date
+        FROM demand_orders do
+        WHERE do.order_date BETWEEN ? AND ?
     `;
     
     const params = [startDate, endDate];
+    const salesParams = [...params];
+    const demandParams = [...params];
+    
     if (user_id) {
-        ordersQuery += ' AND o.user_id = ?';
-        params.push(user_id);
+        salesOrdersQuery += ' AND so.user_id = ?';
+        demandQuery += ' AND do.user_id = ?';
+        salesParams.push(user_id);
+        demandParams.push(user_id);
     }
-    // Add territory filter if provided (for TSO users - only show dealers in their territory)
+    
+    // Add territory filter if provided
     if (territory_name) {
-        ordersQuery += ' AND d.territory_name = ?';
-        params.push(territory_name);
+        salesOrdersQuery += ' AND so.territory_name = ?';
+        demandQuery += ' AND do.territory_name = ?';
+        salesParams.push(territory_name);
+        demandParams.push(territory_name);
     }
-    ordersQuery += ' ORDER BY o.created_at ASC';
+    
+    salesOrdersQuery += ' ORDER BY so.created_at ASC';
+    demandQuery += ' ORDER BY do.created_at ASC';
 
-    const [orders] = await dbPromise.query(ordersQuery, params);
+    // Execute both queries
+    const [salesOrders] = await dbPromise.query(salesOrdersQuery, salesParams);
+    const [demandOrders] = await dbPromise.query(demandQuery, demandParams);
+    
+    const orders = [...salesOrders, ...demandOrders];
+    
     if (!orders.length) {
         return [];
     }
 
     const orderIds = orders.map(order => order.order_id);
-    const [items] = await dbPromise.query(`
+    
+    // Get items from both tables
+    const [salesItems] = await dbPromise.query(`
         SELECT 
-            oi.*, 
-            p.name AS product_name, 
-            p.product_code, 
-            p.unit_tp, 
-            p.unit_trade_price,
-            p.mrp
-        FROM order_items oi
-        LEFT JOIN products p ON oi.product_id = p.id
-        WHERE oi.order_id IN (?)
-        ORDER BY oi.order_id, oi.id
+            soi.*, 
+            soi.product_name, 
+            soi.product_code, 
+            soi.unit_tp, 
+            soi.unit_trade_price,
+            NULL AS mrp
+        FROM sales_order_items soi
+        WHERE soi.order_id IN (?)
+        ORDER BY soi.order_id, soi.id
     `, [orderIds]);
+    
+    const [ddItems] = await dbPromise.query(`
+        SELECT 
+            doi.*,
+            doi.product_name,
+            doi.product_code,
+            NULL AS unit_tp,
+            NULL AS unit_trade_price,
+            NULL AS mrp
+        FROM demand_order_items doi
+        WHERE doi.order_id IN (?)
+        ORDER BY doi.order_id, doi.id
+    `, [orderIds]);
+    
+    const allItems = [...salesItems, ...ddItems];
 
     const itemsByOrder = {};
     orderIds.forEach(id => {
         itemsByOrder[id] = [];
     });
-    items.forEach(item => {
+    allItems.forEach(item => {
         if (!itemsByOrder[item.order_id]) {
             itemsByOrder[item.order_id] = [];
         }
@@ -1708,6 +1754,85 @@ app.delete('/api/users/:id', (req, res) => {
 // All UI displays (Daily Quota Management, TSO Dashboard, Product Cards) read from
 // these calculated values via the API endpoints below.
 // ======================================================================================
+
+/**
+ * CRITICAL: Centralized function to calculate sold_quantity for quota management
+ * 
+ * BUSINESS RULE: Only TSO Sales Orders (SO) count towards quota sold quantity.
+ * Daily Demand (DD) orders MUST be excluded - they are separate from quota system.
+ * 
+ * This function ensures consistency across all quota calculations and prevents
+ * dangerous mixups where DD orders are incorrectly counted as sold quantity.
+ * 
+ * @param {number} productId - Product ID
+ * @param {string} territoryName - Territory name
+ * @param {string} date - Date in YYYY-MM-DD format
+ * @param {Function} callback - Callback function (err, soldQuantity)
+ * 
+ * @returns {void} - Uses callback pattern for database queries
+ */
+/**
+ * CRITICAL: Calculate sold_quantity for quota management
+ * 
+ * BUSINESS RULE: Only queries sales_orders table - demand_orders are completely separate
+ * This ensures ZERO risk of mixing up sales orders with daily demand orders.
+ * 
+ * @param {number} productId - Product ID
+ * @param {string} territoryName - Territory name
+ * @param {string} date - Date in YYYY-MM-DD format
+ * @param {Function} callback - Callback function (err, soldQuantity)
+ * 
+ * @returns {void} - Uses callback pattern for database queries
+ */
+function calculateSoldQuantityForQuota(productId, territoryName, date, callback) {
+  // CRITICAL: Only query sales_orders - demand_orders are in separate table
+  const query = `
+    SELECT COALESCE(SUM(soi.quantity), 0) as sold_quantity
+    FROM sales_orders so
+    JOIN sales_order_items soi ON so.order_id = soi.order_id
+    JOIN dealers d ON d.id = so.dealer_id
+    WHERE soi.product_id = ? 
+      AND d.territory_name = ?
+      AND COALESCE(so.order_date, DATE(so.created_at)) = ?
+  `;
+  
+  db.query(query, [productId, territoryName, date], (err, results) => {
+    if (err) {
+      return callback(err, null);
+    }
+    const soldQuantity = results[0]?.sold_quantity || 0;
+    callback(null, soldQuantity);
+  });
+}
+
+/**
+ * CRITICAL: SQL subquery for sold_quantity calculation (for use in SELECT statements)
+ * 
+ * BUSINESS RULE: Only queries sales_orders table - demand_orders are completely separate
+ * This ensures ZERO risk of mixing up sales orders with daily demand orders.
+ * 
+ * Use this in SELECT queries where you need sold_quantity as a column.
+ * 
+ * @param {string} productIdColumn - Column name for product_id (e.g., 'pc.product_id')
+ * @param {string} territoryColumn - Column name for territory (e.g., 'pc.territory_name')
+ * @param {string} dateColumn - Column name for date (e.g., 'pc.date')
+ * 
+ * @returns {string} - SQL subquery string
+ */
+function getSoldQuantitySubquery(productIdColumn, territoryColumn, dateColumn) {
+  // CRITICAL: Only query sales_orders - demand_orders are in separate table
+  return `
+    COALESCE((
+      SELECT SUM(soi.quantity)
+      FROM sales_orders so
+      INNER JOIN sales_order_items soi ON so.order_id = soi.order_id
+      INNER JOIN dealers d ON d.id = so.dealer_id
+      WHERE soi.product_id = ${productIdColumn}
+        AND d.territory_name = ${territoryColumn}
+        AND COALESCE(so.order_date, DATE(so.created_at)) = ${dateColumn}
+    ), 0)
+  `;
+}
 app.post('/api/product-caps/upload', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
@@ -1739,19 +1864,36 @@ app.post('/api/product-caps/upload', upload.single('file'), async (req, res) => 
           
           const productId = productResults[0].id;
           
-          // Insert or update cap
-          const insertQuery = `
-            INSERT INTO daily_quotas (date, product_id, territory_name, max_quantity)
-            VALUES (?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE max_quantity = VALUES(max_quantity)
-          `;
-          
-          db.query(insertQuery, [date, productId, territoryName, maxQty], (err) => {
+          // CRITICAL: Use centralized function to calculate sold_quantity
+          // This ensures DD orders are NEVER counted (prevents dangerous mixups)
+          calculateSoldQuantityForQuota(productId, territoryName, date, (err, soldQuantity) => {
             if (err) {
-              errors.push(`Error importing cap for ${productCode}`);
-            } else {
-              imported++;
+              errors.push(`Error checking sold quantity for ${productCode}`);
+              return;
             }
+            
+            const maxQtyNum = Number(maxQty) || 0;
+            
+            // Validate that new max_quantity is not less than sold_quantity
+            if (maxQtyNum < soldQuantity) {
+              errors.push(`Product ${productCode}: Cannot set quota (${maxQtyNum}) below already sold quantity (${soldQuantity} units)`);
+              return;
+            }
+            
+            // Insert or update cap
+            const insertQuery = `
+              INSERT INTO daily_quotas (date, product_id, territory_name, max_quantity)
+              VALUES (?, ?, ?, ?)
+              ON DUPLICATE KEY UPDATE max_quantity = VALUES(max_quantity)
+            `;
+            
+            db.query(insertQuery, [date, productId, territoryName, maxQtyNum], (err) => {
+              if (err) {
+                errors.push(`Error importing cap for ${productCode}`);
+              } else {
+                imported++;
+              }
+            });
           });
         });
       } catch (error) {
@@ -1777,23 +1919,25 @@ app.get('/api/product-caps', (req, res) => {
     SELECT pc.*, 
            p.product_code, 
            p.name as product_name,
+           -- ⚠️ CRITICAL: Only query sales_orders table - demand_orders are in separate table
+           -- This ensures ZERO risk of mixing up sales orders with daily demand orders
            COALESCE((
-             SELECT SUM(oi.quantity)
-             FROM order_items oi
-             INNER JOIN orders o ON o.order_id = oi.order_id
-             INNER JOIN dealers d ON d.id = o.dealer_id
-             WHERE oi.product_id = pc.product_id
+             SELECT SUM(soi.quantity)
+             FROM sales_orders so
+             INNER JOIN sales_order_items soi ON so.order_id = soi.order_id
+             INNER JOIN dealers d ON d.id = so.dealer_id
+             WHERE soi.product_id = pc.product_id
                AND d.territory_name = pc.territory_name
-               AND DATE(o.created_at) = pc.date
+               AND COALESCE(so.order_date, DATE(so.created_at)) = pc.date
            ), 0) as sold_quantity,
            pc.max_quantity - COALESCE((
-             SELECT SUM(oi.quantity)
-             FROM order_items oi
-             INNER JOIN orders o ON o.order_id = oi.order_id
-             INNER JOIN dealers d ON d.id = o.dealer_id
-             WHERE oi.product_id = pc.product_id
+             SELECT SUM(soi.quantity)
+             FROM sales_orders so
+             INNER JOIN sales_order_items soi ON so.order_id = soi.order_id
+             INNER JOIN dealers d ON d.id = so.dealer_id
+             WHERE soi.product_id = pc.product_id
                AND d.territory_name = pc.territory_name
-               AND DATE(o.created_at) = pc.date
+               AND COALESCE(so.order_date, DATE(so.created_at)) = pc.date
            ), 0) as remaining_quantity
     FROM daily_quotas pc
     JOIN products p ON pc.product_id = p.id
@@ -1838,33 +1982,25 @@ app.get('/api/product-caps', (req, res) => {
       SELECT pc.*,
              p.product_code,
              p.name as product_name,
+             -- ⚠️ CRITICAL: Only query sales_orders table - demand_orders are in separate table
+             -- This ensures ZERO risk of mixing up sales orders with daily demand orders
              COALESCE((
-               SELECT SUM(oi.quantity)
-               FROM order_items oi
-               JOIN orders o ON o.order_id = oi.order_id
-               JOIN order_types ot ON o.order_type_id = ot.id
-               JOIN dealers d ON d.id = o.dealer_id
-               WHERE oi.product_id = pc.product_id
+               SELECT SUM(soi.quantity)
+               FROM sales_orders so
+               INNER JOIN sales_order_items soi ON so.order_id = soi.order_id
+               INNER JOIN dealers d ON d.id = so.dealer_id
+               WHERE soi.product_id = pc.product_id
                  AND d.territory_name = pc.territory_name
-                 AND COALESCE(o.order_date, DATE(o.created_at)) = pc.date
-                 AND o.warehouse_id IS NOT NULL
-                 AND o.dealer_id IS NOT NULL
-                 AND ot.name != 'DD'
-                 AND (o.order_source = 'tso' OR o.order_source IS NULL)
+                 AND COALESCE(so.order_date, DATE(so.created_at)) = pc.date
              ), 0) as sold_quantity,
              pc.max_quantity - COALESCE((
-               SELECT SUM(oi.quantity)
-               FROM order_items oi
-               JOIN orders o ON o.order_id = oi.order_id
-               JOIN order_types ot ON o.order_type_id = ot.id
-               JOIN dealers d ON d.id = o.dealer_id
-               WHERE oi.product_id = pc.product_id
+               SELECT SUM(soi.quantity)
+               FROM sales_orders so
+               INNER JOIN sales_order_items soi ON so.order_id = soi.order_id
+               INNER JOIN dealers d ON d.id = so.dealer_id
+               WHERE soi.product_id = pc.product_id
                  AND d.territory_name = pc.territory_name
-                 AND COALESCE(o.order_date, DATE(o.created_at)) = pc.date
-                 AND o.warehouse_id IS NOT NULL
-                 AND o.dealer_id IS NOT NULL
-                 AND ot.name != 'DD'
-                 AND (o.order_source = 'tso' OR o.order_source IS NULL)
+                 AND COALESCE(so.order_date, DATE(so.created_at)) = pc.date
              ), 0) as remaining_quantity
       FROM daily_quotas pc
       JOIN products p ON pc.product_id = p.id
@@ -1941,24 +2077,13 @@ app.put('/api/product-caps/:date/:productId/:territoryName', (req, res) => {
     return res.status(400).json({ error: 'max_quantity is required' });
   }
   
-  // Check current sold quantity before updating
-  const checkSoldQuery = `
-    SELECT COALESCE(SUM(oi.quantity), 0) as sold_quantity
-    FROM orders o
-    JOIN order_items oi ON o.order_id = oi.order_id
-    JOIN dealers d ON d.id = o.dealer_id
-    WHERE oi.product_id = ? 
-      AND d.territory_name = ?
-      AND DATE(o.created_at) = ?
-  `;
-  
-  db.query(checkSoldQuery, [productId, territoryName, date], (err, results) => {
+  // CRITICAL: Use centralized function to calculate sold_quantity
+  // This ensures DD orders are NEVER counted (prevents dangerous mixups)
+  calculateSoldQuantityForQuota(productId, territoryName, date, (err, soldQuantity) => {
     if (err) {
       console.error('Error checking sold quantity:', err);
       return res.status(500).json({ error: 'Database error' });
     }
-    
-    const soldQuantity = results[0]?.sold_quantity || 0;
     
     // Validate that new max_quantity is not less than sold_quantity
     if (max_quantity < soldQuantity) {
@@ -1997,24 +2122,13 @@ app.put('/api/product-caps/:date/:productId/:territoryName', (req, res) => {
 app.delete('/api/product-caps/:date/:productId/:territoryName', (req, res) => {
   const { date, productId, territoryName } = req.params;
   
-  // Check current sold quantity before deleting
-  const checkSoldQuery = `
-    SELECT COALESCE(SUM(oi.quantity), 0) as sold_quantity
-    FROM orders o
-    JOIN order_items oi ON o.order_id = oi.order_id
-    JOIN dealers d ON d.id = o.dealer_id
-    WHERE oi.product_id = ? 
-      AND d.territory_name = ?
-      AND DATE(o.created_at) = ?
-  `;
-  
-  db.query(checkSoldQuery, [productId, territoryName, date], (err, results) => {
+  // CRITICAL: Use centralized function to calculate sold_quantity
+  // This ensures DD orders are NEVER counted (prevents dangerous mixups)
+  calculateSoldQuantityForQuota(productId, territoryName, date, (err, soldQuantity) => {
     if (err) {
       console.error('Error checking sold quantity:', err);
       return res.status(500).json({ error: 'Database error' });
     }
-    
-    const soldQuantity = results[0]?.sold_quantity || 0;
     
     // Validate that we're not deleting a quota with sold items
     if (soldQuantity > 0) {
@@ -2563,7 +2677,7 @@ app.post('/api/orders/dealer', async (req, res) => {
                 // Check if product is assigned to this dealer
                 const [assignmentRows] = await connection.query(`
                     SELECT COUNT(*) as count
-                    FROM dealer_product_assignments dpa
+                    FROM dealer_products dpa
                     WHERE dpa.dealer_id = ?
                       AND dpa.assignment_type = 'product' 
                       AND dpa.product_id = ?
@@ -2585,21 +2699,48 @@ app.post('/api/orders/dealer', async (req, res) => {
                 throw validationError;
             }
             
-            // Insert order with NULL warehouse_id and transport_id for dealer orders
+            // Get dealer and user names for denormalization
+            const [dealerRows] = await connection.query('SELECT name, territory_name FROM dealers WHERE id = ?', [dealer_id]);
+            const [userRows] = await connection.query('SELECT full_name FROM users WHERE id = ?', [user_id || null]);
+            
+            const dealer = dealerRows[0];
+            const user = userRows[0];
+            
+            // CRITICAL: Insert into demand_orders table (not orders table)
             // For single-day dealer orders, order_date defaults to today (CURDATE())
             await connection.query(`
-                INSERT INTO orders (order_id, order_type_id, dealer_id, warehouse_id, transport_id, user_id, order_date) 
-                VALUES (?, ?, ?, NULL, NULL, ?, CURDATE())
-            `, [order_id, order_type_id, dealer_id, user_id || null]);
+                INSERT INTO demand_orders (
+                    order_id, dealer_id, dealer_name, territory_name, 
+                    user_id, user_name, order_date
+                ) 
+                VALUES (?, ?, ?, ?, ?, ?, CURDATE())
+            `, [
+                order_id, 
+                dealer_id, 
+                dealer?.name || null,
+                dealer?.territory_name || territory_name || null,
+                user_id || null,
+                user?.full_name || null
+            ]);
             
-            // Add order items
+            // Add order items to demand_order_items table
             for (const item of order_items) {
-                await connection.query(`
-                    INSERT INTO order_items (order_id, product_id, quantity) 
-                    VALUES (?, ?, ?)
-                `, [order_id, item.product_id, item.quantity]);
+                // Get product details
+                const [productRows] = await connection.query('SELECT name, product_code FROM products WHERE id = ?', [item.product_id]);
+                const product = productRows[0];
                 
-                console.log('✅ Added order item:', { product_id: item.product_id, quantity: item.quantity });
+                await connection.query(`
+                    INSERT INTO demand_order_items (order_id, product_id, product_name, product_code, quantity) 
+                    VALUES (?, ?, ?, ?, ?)
+                `, [
+                    order_id, 
+                    item.product_id, 
+                    product?.name || null,
+                    product?.product_code || null,
+                    item.quantity
+                ]);
+                
+                console.log('✅ Added daily demand order item:', { product_id: item.product_id, quantity: item.quantity });
             }
         });
 
@@ -2689,7 +2830,7 @@ app.post('/api/orders/dealer/multi-day', async (req, res) => {
                 // Check if product is assigned to this dealer
                 const [assignmentRows] = await connection.query(`
                     SELECT COUNT(*) as count
-                    FROM dealer_product_assignments dpa
+                    FROM dealer_products dpa
                     WHERE dpa.dealer_id = ?
                       AND dpa.assignment_type = 'product' 
                       AND dpa.product_id = ?
@@ -2711,16 +2852,23 @@ app.post('/api/orders/dealer/multi-day', async (req, res) => {
                 throw validationError;
             }
 
+            // Get dealer and user names for denormalization
+            const [dealerRows] = await connection.query('SELECT name FROM dealers WHERE id = ?', [dealer_id]);
+            const [userRows] = await connection.query('SELECT full_name FROM users WHERE id = ?', [user_id || null]);
+            
+            const dealer = dealerRows[0];
+            const user = userRows[0];
+            
             // Check for existing orders before creating new ones
+            // CRITICAL: Query demand_orders table (not orders table)
             const existingOrders = [];
             for (const demand of demands) {
                 const [existingOrderRows] = await connection.query(`
                     SELECT order_id, order_date
-                    FROM orders
+                    FROM demand_orders
                     WHERE dealer_id = ?
-                      AND order_type_id = ?
                       AND order_date = ?
-                `, [dealer_id, ddOrderTypeId, demand.date]);
+                `, [dealer_id, demand.date]);
                 
                 if (existingOrderRows.length > 0) {
                     existingOrders.push({
@@ -2743,19 +2891,40 @@ app.post('/api/orders/dealer/multi-day', async (req, res) => {
             for (const demand of demands) {
                 const order_id = uuidv4().substring(0, 8).toUpperCase();
                 
-                // Insert order with NULL warehouse_id and transport_id for dealer orders
+                // CRITICAL: Insert into demand_orders table (not orders table)
                 // Store demand.date as order_date (the date the order is for, not when it was created)
                 await connection.query(`
-                    INSERT INTO orders (order_id, order_type_id, dealer_id, territory_name, warehouse_id, transport_id, user_id, order_date) 
-                    VALUES (?, ?, ?, ?, NULL, NULL, ?, ?)
-                `, [order_id, ddOrderTypeId, dealer_id, territory_name, user_id || null, demand.date]);
+                    INSERT INTO demand_orders (
+                        order_id, dealer_id, dealer_name, territory_name, 
+                        user_id, user_name, order_date
+                    ) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                `, [
+                    order_id, 
+                    dealer_id, 
+                    dealer?.name || null,
+                    territory_name,
+                    user_id || null,
+                    user?.full_name || null,
+                    demand.date
+                ]);
                 
-                // Add order items
+                // Add order items to demand_order_items table
                 for (const item of demand.order_items) {
+                    // Get product details
+                    const [productRows] = await connection.query('SELECT name, product_code FROM products WHERE id = ?', [item.product_id]);
+                    const product = productRows[0];
                     await connection.query(`
-                        INSERT INTO order_items (order_id, product_id, quantity) 
-                        VALUES (?, ?, ?)
-                    `, [order_id, item.product_id, item.quantity]);
+                        INSERT INTO demand_order_items (order_id, product_id, product_name, product_code, quantity) 
+                        VALUES (?, ?, ?, ?, ?)
+                    `, [
+                        order_id, 
+                        item.product_id, 
+                        product?.name || null,
+                        product?.product_code || null,
+                        item.quantity
+                    ]);
+                    totalItems += item.quantity;
                 }
                 
                 createdOrders.push({
@@ -2837,12 +3006,11 @@ app.put('/api/orders/dealer/:orderId', async (req, res) => {
             }
         }
         
-        // Get order to verify it exists and is a dealer order
+        // Get order to verify it exists - query demand_orders table
         const [orderRows] = await dbPromise.query(`
-            SELECT o.*, ot.name as order_type_name
-            FROM orders o
-            JOIN order_types ot ON o.order_type_id = ot.id
-            WHERE o.order_id = ?
+            SELECT *
+            FROM demand_orders
+            WHERE order_id = ?
         `, [orderId]);
         
         if (orderRows.length === 0) {
@@ -2850,20 +3018,6 @@ app.put('/api/orders/dealer/:orderId', async (req, res) => {
         }
         
         const order = orderRows[0];
-        
-        // Verify it's a DD order (dealer daily demand)
-        if (order.order_type_name !== 'DD') {
-            return res.status(400).json({ 
-                error: 'Only daily demand orders can be edited' 
-            });
-        }
-        
-        // Verify it's a dealer order (has dealer_id, no warehouse_id)
-        if (!order.dealer_id || order.warehouse_id !== null) {
-            return res.status(400).json({ 
-                error: 'Only dealer orders can be edited' 
-            });
-        }
         
         await withTransaction(async (connection) => {
             // Validate all products are assigned to dealer
@@ -2873,7 +3027,7 @@ app.put('/api/orders/dealer/:orderId', async (req, res) => {
             for (const productId of allProductIds) {
                 const [assignmentRows] = await connection.query(`
                     SELECT COUNT(*) as count
-                    FROM dealer_product_assignments dpa
+                    FROM dealer_products dpa
                     WHERE dpa.dealer_id = ?
                       AND dpa.assignment_type = 'product' 
                       AND dpa.product_id = ?
@@ -2895,15 +3049,25 @@ app.put('/api/orders/dealer/:orderId', async (req, res) => {
                 throw validationError;
             }
             
-            // Delete existing order items
-            await connection.query('DELETE FROM order_items WHERE order_id = ?', [orderId]);
+            // Delete existing order items from demand_order_items
+            await connection.query('DELETE FROM demand_order_items WHERE order_id = ?', [orderId]);
             
-            // Insert new order items
+            // Insert new order items into demand_order_items
             for (const item of order_items) {
+                // Get product details
+                const [productRows] = await connection.query('SELECT name, product_code FROM products WHERE id = ?', [item.product_id]);
+                const product = productRows[0];
+                
                 await connection.query(`
-                    INSERT INTO order_items (order_id, product_id, quantity) 
-                    VALUES (?, ?, ?)
-                `, [orderId, item.product_id, item.quantity]);
+                    INSERT INTO demand_order_items (order_id, product_id, product_name, product_code, quantity) 
+                    VALUES (?, ?, ?, ?, ?)
+                `, [
+                    orderId, 
+                    item.product_id, 
+                    product?.name || null,
+                    product?.product_code || null,
+                    item.quantity
+                ]);
             }
         });
         
@@ -2962,11 +3126,11 @@ app.post('/api/orders', async (req, res) => {
             const user_id = req.body.user_id || null;
             
             // Get dealer's territory for quota tracking and validation
-            const [dealerRows] = await connection.query(`
+            const [dealerTerritoryRows] = await connection.query(`
                 SELECT territory_name FROM dealers WHERE id = ?
             `, [dealer_id]);
             
-            const territory_name = dealerRows[0]?.territory_name;
+            const territory_name = dealerTerritoryRows[0]?.territory_name;
             if (!territory_name) {
                 console.warn('⚠️ Territory not found for dealer:', dealer_id);
             }
@@ -2984,17 +3148,15 @@ app.post('/api/orders', async (req, res) => {
                             pc.max_quantity,
                             pc.date,
                             pc.territory_name as quota_territory,
+                            -- ⚠️ CRITICAL: Only query sales_orders table - demand_orders are in separate table
                             COALESCE((
-                                SELECT SUM(oi.quantity)
-                                FROM order_items oi
-                                JOIN orders o ON o.order_id = oi.order_id
-                                JOIN order_types ot ON o.order_type_id = ot.id
-                                JOIN dealers d ON d.id = o.dealer_id
-                                WHERE oi.product_id = pc.product_id
+                                SELECT SUM(soi.quantity)
+                                FROM sales_orders so
+                                INNER JOIN sales_order_items soi ON so.order_id = soi.order_id
+                                INNER JOIN dealers d ON d.id = so.dealer_id
+                                WHERE soi.product_id = pc.product_id
                                   AND d.territory_name = pc.territory_name
-                                  AND COALESCE(o.order_date, DATE(o.created_at)) = pc.date
-                                  AND o.warehouse_id IS NOT NULL
-                                  AND ot.name != 'DD'
+                                  AND COALESCE(so.order_date, DATE(so.created_at)) = pc.date
                             ), 0) as sold_quantity
                         FROM daily_quotas pc
                         WHERE pc.product_id = ? 
@@ -3064,20 +3226,59 @@ app.post('/api/orders', async (req, res) => {
                 }
             }
             
-            // For TSO orders, order_date is the same as creation date (CURDATE())
-            await connection.query(`
-                INSERT INTO orders (order_id, order_type_id, dealer_id, warehouse_id, transport_id, user_id, order_date) 
-                VALUES (?, ?, ?, ?, ?, ?, CURDATE())
-            `, [order_id, order_type_id, dealer_id, warehouse_id, transport_id, user_id]);
+            // Get dealer and warehouse names for denormalization
+            const [dealerRows] = await connection.query('SELECT name, territory_name FROM dealers WHERE id = ?', [dealer_id]);
+            const [warehouseRows] = await connection.query('SELECT name, alias FROM warehouses WHERE id = ?', [warehouse_id]);
+            const [transportRows] = await connection.query('SELECT truck_details FROM transports WHERE id = ?', [transport_id]);
+            const [userRows] = await connection.query('SELECT full_name FROM users WHERE id = ?', [user_id]);
             
-            // Add order items
+            const dealer = dealerRows[0];
+            const warehouse = warehouseRows[0];
+            const transport = transportRows[0];
+            const user = userRows[0];
+            
+            // For TSO orders, order_date is the same as creation date (CURDATE())
+            // CRITICAL: Insert into sales_orders table (not orders table)
+            await connection.query(`
+                INSERT INTO sales_orders (
+                    order_id, dealer_id, dealer_name, territory_name, 
+                    warehouse_id, warehouse_name, transport_id, transport_name,
+                    user_id, user_name, order_date
+                ) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURDATE())
+            `, [
+                order_id, 
+                dealer_id, 
+                dealer?.name || null,
+                dealer?.territory_name || null,
+                warehouse_id, 
+                warehouse?.name || null,
+                transport_id,
+                transport?.truck_details || null,
+                user_id,
+                user?.full_name || null
+            ]);
+            
+            // Add order items to sales_order_items table
             for (const item of order_items) {
-                await connection.query(`
-                    INSERT INTO order_items (order_id, product_id, quantity) 
-                    VALUES (?, ?, ?)
-                `, [order_id, item.product_id, item.quantity]);
+                // Get product details
+                const [productRows] = await connection.query('SELECT name, product_code, unit_tp, unit_trade_price FROM products WHERE id = ?', [item.product_id]);
+                const product = productRows[0];
                 
-                console.log('✅ Added order item:', { product_id: item.product_id, quantity: item.quantity });
+                await connection.query(`
+                    INSERT INTO sales_order_items (order_id, product_id, product_name, product_code, quantity, unit_tp, unit_trade_price) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                `, [
+                    order_id, 
+                    item.product_id, 
+                    product?.name || null,
+                    product?.product_code || null,
+                    item.quantity,
+                    product?.unit_tp || null,
+                    product?.unit_trade_price || null
+                ]);
+                
+                console.log('✅ Added sales order item:', { product_id: item.product_id, quantity: item.quantity });
             }
         });
 
@@ -3108,76 +3309,168 @@ app.post('/api/orders', async (req, res) => {
     }
 });
 
-// Get all orders with their items
+// Get all orders with their items (combines sales_orders and demand_orders)
 app.get('/api/orders', (req, res) => {
     // Get query parameters
     const user_id = req.query.user_id;
-    const order_source = req.query.order_source; // Optional: filter by 'tso', 'dealer', or 'admin'
+    const order_source = req.query.order_source; // Optional: filter by 'tso' or 'dealer'
     
-    let query = `
+    // Build query for sales_orders (TSO orders)
+    // CRITICAL: Must explicitly select columns to match demand_orders for UNION
+    let salesOrdersQuery = `
         SELECT 
-            o.*, 
-            ot.name as order_type, 
-            d.name as dealer_name, 
-            d.territory_name as dealer_territory, 
-            w.name as warehouse_name,
-            w.alias as warehouse_alias,
-            COUNT(oi.id) as item_count,
-            COALESCE(SUM(oi.quantity), 0) as quantity,
-            (SELECT p.name FROM order_items oi2 
-             JOIN products p ON oi2.product_id = p.id 
-             WHERE oi2.order_id = o.order_id 
-             ORDER BY oi2.id LIMIT 1) as product_name
-        FROM orders o
-        LEFT JOIN order_types ot ON o.order_type_id = ot.id
-        LEFT JOIN dealers d ON o.dealer_id = d.id
-        LEFT JOIN warehouses w ON o.warehouse_id = w.id
-        LEFT JOIN order_items oi ON o.order_id = oi.order_id
+            so.id,
+            so.order_id,
+            so.dealer_id,
+            so.dealer_name,
+            so.territory_id,
+            so.territory_name,
+            so.warehouse_id,
+            so.warehouse_name,
+            so.transport_id,
+            so.transport_name,
+            so.user_id,
+            so.user_name,
+            so.created_at,
+            so.order_date,
+            so.total_quantity,
+            'SO' as order_type,
+            so.territory_name as dealer_territory,
+            so.warehouse_name as warehouse_alias,
+            COUNT(soi.id) as item_count,
+            COALESCE(SUM(soi.quantity), 0) as quantity,
+            (SELECT soi2.product_name FROM sales_order_items soi2 
+             WHERE soi2.order_id = so.order_id 
+             ORDER BY soi2.id LIMIT 1) as product_name,
+            'tso' as order_source
+        FROM sales_orders so
+        LEFT JOIN sales_order_items soi ON so.order_id = soi.order_id
+    `;
+    
+    // Build query for demand_orders (Dealer orders)
+    // CRITICAL: Must explicitly select columns to match sales_orders for UNION
+    let demandQuery = `
+        SELECT 
+            do.id,
+            do.order_id,
+            do.dealer_id,
+            do.dealer_name,
+            do.territory_id,
+            do.territory_name,
+            NULL as warehouse_id,
+            NULL as warehouse_name,
+            NULL as transport_id,
+            NULL as transport_name,
+            do.user_id,
+            do.user_name,
+            do.created_at,
+            do.order_date,
+            do.total_quantity,
+            'DD' as order_type,
+            do.territory_name as dealer_territory,
+            NULL as warehouse_alias,
+            COUNT(doi.id) as item_count,
+            COALESCE(SUM(doi.quantity), 0) as quantity,
+            (SELECT doi2.product_name FROM demand_order_items doi2 
+             WHERE doi2.order_id = do.order_id 
+             ORDER BY doi2.id LIMIT 1) as product_name,
+            'dealer' as order_source
+        FROM demand_orders do
+        LEFT JOIN demand_order_items doi ON do.order_id = doi.order_id
     `;
     
     const params = [];
-    const conditions = [];
+    const salesConditions = [];
+    const demandConditions = [];
     
-    // Filter by user_id if provided (for TSO users to see only their orders)
+    // Filter by user_id if provided
     if (user_id) {
-        conditions.push('o.user_id = ?');
+        salesConditions.push('so.user_id = ?');
+        demandConditions.push('do.user_id = ?');
         params.push(user_id);
     }
     
-    // Filter by order_source if provided (for filtering TSO vs Dealer orders)
-    if (order_source && ['tso', 'dealer', 'admin'].includes(order_source)) {
-        conditions.push('o.order_source = ?');
-        params.push(order_source);
+    // Filter by order_source if provided
+    if (order_source === 'tso') {
+        // Only return sales_orders
+        if (salesConditions.length > 0) {
+            salesOrdersQuery += ' WHERE ' + salesConditions.join(' AND ');
+        }
+        salesOrdersQuery += `
+            GROUP BY so.id, so.order_id, so.dealer_id, so.warehouse_id, so.created_at, so.user_id
+            ORDER BY so.created_at DESC
+        `;
+        
+        db.query(salesOrdersQuery, params, (err, results) => {
+            if (err) {
+                console.error('Error fetching sales orders:', err);
+                res.status(500).json({ error: 'Database error' });
+            } else {
+                res.json(results);
+            }
+        });
+        return;
+    } else if (order_source === 'dealer') {
+        // Only return demand_orders
+        if (demandConditions.length > 0) {
+            demandQuery += ' WHERE ' + demandConditions.join(' AND ');
+        }
+        demandQuery += `
+            GROUP BY do.id, do.order_id, do.dealer_id, do.created_at, do.user_id
+            ORDER BY do.created_at DESC
+        `;
+        
+        db.query(demandQuery, params, (err, results) => {
+            if (err) {
+                console.error('Error fetching daily demand orders:', err);
+                res.status(500).json({ error: 'Database error' });
+            } else {
+                res.json(results);
+            }
+        });
+        return;
     }
     
-    if (conditions.length > 0) {
-        query += ' WHERE ' + conditions.join(' AND ');
+    // Return both types combined
+    if (salesConditions.length > 0) {
+        salesOrdersQuery += ' WHERE ' + salesConditions.join(' AND ');
+    }
+    if (demandConditions.length > 0) {
+        demandQuery += ' WHERE ' + demandConditions.join(' AND ');
     }
     
-    query += `
-        GROUP BY o.id, o.order_id, o.order_type_id, o.dealer_id, o.warehouse_id, o.created_at, o.user_id, o.order_source, ot.name, d.name, d.territory_name, w.name, w.alias
-        ORDER BY o.created_at DESC
+    salesOrdersQuery += `
+        GROUP BY so.id, so.order_id, so.dealer_id, so.warehouse_id, so.created_at, so.user_id
+    `;
+    demandQuery += `
+        GROUP BY do.id, do.order_id, do.dealer_id, do.created_at, do.user_id
     `;
     
-    db.query(query, params, (err, results) => {
+    // UNION both queries and order by created_at
+    const combinedQuery = `
+        (${salesOrdersQuery})
+        UNION ALL
+        (${demandQuery})
+        ORDER BY created_at DESC
+    `;
+    
+    db.query(combinedQuery, [...params, ...params], (err, results) => {
         if (err) {
-            res.status(500).json({ error: err.message });
+            console.error('Error fetching orders:', err);
+            res.status(500).json({ error: 'Database error' });
         } else {
             res.json(results);
         }
     });
 });
 
-// Get available dates with orders
+// Get available dates with orders (from demand_orders)
 app.get('/api/orders/available-dates', (req, res) => {
-    // Get distinct order_date values (the date the order is FOR, not when it was created)
-    // Filter for dealer daily demand orders (has dealer_id, warehouse_id is null)
+    // Get distinct order_date values from demand_orders
     const query = `
-        SELECT DISTINCT COALESCE(order_date, DATE(created_at)) as date
-        FROM orders 
-        WHERE dealer_id IS NOT NULL 
-          AND warehouse_id IS NULL
-          AND (order_date IS NOT NULL OR created_at IS NOT NULL)
+        SELECT DISTINCT order_date as date
+        FROM demand_orders 
+        WHERE order_date IS NOT NULL
         ORDER BY date DESC
     `;
     
@@ -3249,51 +3542,80 @@ app.get('/api/orders/date/:date', async (req, res) => {
             return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
         }
         
-        // Get orders for the specific date with item_count and quantity
-        // Include both TSO orders (warehouse_id IS NOT NULL) and dealer daily demand orders (warehouse_id IS NULL, order_source='dealer')
-        let ordersQuery = `
+        // Get orders for the specific date - query both sales_orders and demand_orders
+        // Sales orders query
+        let salesOrdersQuery = `
             SELECT 
-                o.*, 
-                ot.name as order_type, 
-                d.name as dealer_name, 
-                d.territory_name as dealer_territory,
-                d.address as dealer_address,
-                d.contact as dealer_contact,
-                w.name as warehouse_name,
-                w.alias as warehouse_alias,
-                t.truck_details as transport_name,
-                COALESCE(o.order_date, DATE(o.created_at)) as order_date,
-                COUNT(oi.id) as item_count,
-                COALESCE(SUM(oi.quantity), 0) as quantity,
-                (SELECT p.name FROM order_items oi2 
-                 JOIN products p ON oi2.product_id = p.id 
-                 WHERE oi2.order_id = o.order_id 
-                 ORDER BY oi2.id LIMIT 1) as product_name
-            FROM orders o
-            LEFT JOIN order_types ot ON o.order_type_id = ot.id
-            LEFT JOIN dealers d ON o.dealer_id = d.id
-            LEFT JOIN warehouses w ON o.warehouse_id = w.id
-            LEFT JOIN transports t ON o.transport_id = t.id
-            LEFT JOIN order_items oi ON o.order_id = oi.order_id
-            WHERE COALESCE(o.order_date, DATE(o.created_at)) = ?
+                so.*, 
+                'SO' as order_type,
+                so.dealer_name,
+                so.territory_name as dealer_territory,
+                NULL as dealer_address,
+                NULL as dealer_contact,
+                so.warehouse_name,
+                so.warehouse_name as warehouse_alias,
+                so.transport_name,
+                so.order_date,
+                COUNT(soi.id) as item_count,
+                COALESCE(SUM(soi.quantity), 0) as quantity,
+                (SELECT soi2.product_name FROM sales_order_items soi2 
+                 WHERE soi2.order_id = so.order_id 
+                 ORDER BY soi2.id LIMIT 1) as product_name
+            FROM sales_orders so
+            LEFT JOIN sales_order_items soi ON so.order_id = soi.order_id
+            WHERE so.order_date = ?
+        `;
+        
+        // Daily demand orders query
+        let demandQuery = `
+            SELECT 
+                do.*,
+                'DD' as order_type,
+                do.dealer_name,
+                do.territory_name as dealer_territory,
+                NULL as dealer_address,
+                NULL as dealer_contact,
+                NULL as warehouse_name,
+                NULL as warehouse_alias,
+                NULL as transport_name,
+                do.order_date,
+                COUNT(doi.id) as item_count,
+                COALESCE(SUM(doi.quantity), 0) as quantity,
+                (SELECT doi2.product_name FROM demand_order_items doi2 
+                 WHERE doi2.order_id = do.order_id 
+                 ORDER BY doi2.id LIMIT 1) as product_name
+            FROM demand_orders do
+            LEFT JOIN demand_order_items doi ON do.order_id = doi.order_id
+            WHERE do.order_date = ?
         `;
         
         const params = [date];
+        const salesParams = [date];
+        const demandParams = [date];
         
-        // Add territory filter if provided (for TSO users - only show dealers in their territory)
+        // Add territory filter if provided
         if (territory_name) {
-            ordersQuery += ` AND d.territory_name = ?`;
-            params.push(territory_name);
+            salesOrdersQuery += ` AND so.territory_name = ?`;
+            demandQuery += ` AND do.territory_name = ?`;
+            salesParams.push(territory_name);
+            demandParams.push(territory_name);
         }
         
-        ordersQuery += `
-            GROUP BY o.id, o.order_id, o.order_type_id, o.dealer_id, o.warehouse_id, o.created_at, o.user_id, ot.name, d.name, d.territory_name, d.address, d.contact, w.name, w.alias
-            ORDER BY o.created_at DESC
+        salesOrdersQuery += `
+            GROUP BY so.id, so.order_id, so.dealer_id, so.warehouse_id, so.created_at, so.user_id
+            ORDER BY so.created_at DESC
+        `;
+        
+        demandQuery += `
+            GROUP BY do.id, do.order_id, do.dealer_id, do.created_at, do.user_id
+            ORDER BY do.created_at DESC
         `;
 
-        const orders = await dbPromise.query(ordersQuery, params);
+        const [salesOrders] = await dbPromise.query(salesOrdersQuery, salesParams);
+        const [demandOrders] = await dbPromise.query(demandQuery, demandParams);
+        const orders = [...salesOrders, ...demandOrders];
 
-        if (orders[0].length === 0) {
+        if (orders.length === 0) {
             return res.json({ 
                 orders: [], 
                 message: `No orders found for date: ${date}` 
@@ -3302,17 +3624,30 @@ app.get('/api/orders/date/:date', async (req, res) => {
 
         // Get order items for each order
         const ordersWithItems = [];
-        for (const order of orders[0]) {
-            const itemsQuery = `
-                SELECT oi.*, p.name as product_name, p.product_code, p.unit_tp, p.mrp, p.unit_trade_price
-                FROM order_items oi
-                LEFT JOIN products p ON oi.product_id = p.id
-                WHERE oi.order_id = ?
-                ORDER BY oi.id
-            `;
-
-            const items = await dbPromise.query(itemsQuery, [order.order_id]);
-            order.items = items[0];
+        for (const order of orders) {
+            let items;
+            if (order.order_type === 'SO') {
+                // Sales order items
+                const itemsQuery = `
+                    SELECT soi.*, soi.product_name, soi.product_code, soi.unit_tp, NULL as mrp, soi.unit_trade_price
+                    FROM sales_order_items soi
+                    WHERE soi.order_id = ?
+                    ORDER BY soi.id
+                `;
+                const result = await dbPromise.query(itemsQuery, [order.order_id]);
+                items = result[0];
+            } else {
+                // Daily demand order items
+                const itemsQuery = `
+                    SELECT doi.*, doi.product_name, doi.product_code, NULL as unit_tp, NULL as mrp, NULL as unit_trade_price
+                    FROM demand_order_items doi
+                    WHERE doi.order_id = ?
+                    ORDER BY doi.id
+                `;
+                const result = await dbPromise.query(itemsQuery, [order.order_id]);
+                items = result[0];
+            }
+            order.items = items;
             ordersWithItems.push(order);
         }
 
@@ -3341,36 +3676,32 @@ app.get('/api/orders/tso-report/:date', async (req, res) => {
             return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
         }
         
-        // Get orders for the specific date (includes both TSO orders and dealer daily demand orders)
+        // Get sales orders for the specific date (TSO orders only - from sales_orders table)
         let ordersQuery = `
             SELECT 
-                o.*, 
-                ot.name as order_type, 
-                d.name as dealer_name, 
-                d.territory_name as dealer_territory,
-                d.address as dealer_address,
-                d.contact as dealer_contact,
-                w.name as warehouse_name,
-                w.alias as warehouse_alias,
-                t.truck_details as transport_name,
-                COALESCE(o.order_date, DATE(o.created_at)) as order_date
-            FROM orders o
-            LEFT JOIN order_types ot ON o.order_type_id = ot.id
-            LEFT JOIN dealers d ON o.dealer_id = d.id
-            LEFT JOIN warehouses w ON o.warehouse_id = w.id
-            LEFT JOIN transports t ON o.transport_id = t.id
-            WHERE COALESCE(o.order_date, DATE(o.created_at)) = ?
+                so.*, 
+                'SO' as order_type,
+                so.dealer_name, 
+                so.territory_name as dealer_territory,
+                NULL as dealer_address,
+                NULL as dealer_contact,
+                so.warehouse_name,
+                so.warehouse_name as warehouse_alias,
+                so.transport_name,
+                so.order_date
+            FROM sales_orders so
+            WHERE so.order_date = ?
         `;
         
         const params = [date];
         
         // Add territory filter if provided (for TSO users - only show dealers in their territory)
         if (territory_name) {
-            ordersQuery += ` AND d.territory_name = ?`;
+            ordersQuery += ` AND so.territory_name = ?`;
             params.push(territory_name);
         }
         
-        ordersQuery += ` ORDER BY o.created_at ASC`;
+        ordersQuery += ` ORDER BY so.created_at ASC`;
         
         const orders = await dbPromise.query(ordersQuery, params);
         
@@ -3380,15 +3711,14 @@ app.get('/api/orders/tso-report/:date', async (req, res) => {
             });
         }
         
-        // Get order items for each order
+        // Get order items for each order from sales_order_items
         const ordersWithItems = [];
         for (const order of orders[0]) {
             const itemsQuery = `
-                SELECT oi.*, p.name as product_name, p.product_code, p.unit_tp, p.mrp, p.unit_trade_price
-                FROM order_items oi
-                LEFT JOIN products p ON oi.product_id = p.id
-                WHERE oi.order_id = ?
-                ORDER BY oi.id
+                SELECT soi.*, soi.product_name, soi.product_code, soi.unit_tp, NULL as mrp, soi.unit_trade_price
+                FROM sales_order_items soi
+                WHERE soi.order_id = ?
+                ORDER BY soi.id
             `;
             
             const items = await dbPromise.query(itemsQuery, [order.order_id]);
@@ -3471,26 +3801,22 @@ app.get('/api/orders/tso/my-report/:date', async (req, res) => {
             return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
         }
         
-        // Get orders for the specific date filtered by user_id
+        // Get sales orders for the specific date filtered by user_id (TSO orders only)
         const ordersQuery = `
             SELECT 
-                o.*, 
-                ot.name as order_type, 
-                d.name as dealer_name, 
-                d.territory_name as dealer_territory,
-                d.address as dealer_address,
-                d.contact as dealer_contact,
-                w.name as warehouse_name,
-                w.alias as warehouse_alias,
-                t.truck_details as transport_name,
-                DATE(o.created_at) as order_date
-            FROM orders o
-            LEFT JOIN order_types ot ON o.order_type_id = ot.id
-            LEFT JOIN dealers d ON o.dealer_id = d.id
-            LEFT JOIN warehouses w ON o.warehouse_id = w.id
-            LEFT JOIN transports t ON o.transport_id = t.id
-            WHERE DATE(o.created_at) = ? AND o.user_id = ?
-            ORDER BY o.created_at ASC
+                so.*, 
+                'SO' as order_type,
+                so.dealer_name, 
+                so.territory_name as dealer_territory,
+                NULL as dealer_address,
+                NULL as dealer_contact,
+                so.warehouse_name,
+                so.warehouse_name as warehouse_alias,
+                so.transport_name,
+                so.order_date
+            FROM sales_orders so
+            WHERE so.order_date = ? AND so.user_id = ?
+            ORDER BY so.created_at ASC
         `;
 
         const orders = await dbPromise.query(ordersQuery, [date, user_id]);
@@ -3501,15 +3827,14 @@ app.get('/api/orders/tso/my-report/:date', async (req, res) => {
             });
         }
 
-        // Get order items for each order (without prices)
+        // Get order items for each order from sales_order_items (without prices)
         const ordersWithItems = [];
         for (const order of orders[0]) {
             const itemsQuery = `
-                SELECT oi.*, p.name as product_name, p.product_code
-                FROM order_items oi
-                LEFT JOIN products p ON oi.product_id = p.id
-                WHERE oi.order_id = ?
-                ORDER BY oi.id
+                SELECT soi.*, soi.product_name, soi.product_code
+                FROM sales_order_items soi
+                WHERE soi.order_id = ?
+                ORDER BY soi.id
             `;
 
             const items = await dbPromise.query(itemsQuery, [order.order_id]);
@@ -3557,27 +3882,23 @@ app.get('/api/orders/tso/my-report-range', async (req, res) => {
             return res.status(400).json({ error: 'startDate cannot be after endDate' });
         }
 
-        // Fetch orders filtered by user_id
+        // Fetch sales orders filtered by user_id (TSO orders only)
         const ordersQuery = `
             SELECT 
-                o.*, 
-                ot.name AS order_type,
-                d.id AS dealer_id,
-                d.name AS dealer_name, 
-                d.territory_name AS dealer_territory,
-                d.address AS dealer_address,
-                d.contact AS dealer_contact,
-                w.name AS warehouse_name,
-                w.alias AS warehouse_alias,
-                t.truck_details AS transport_name,
-                DATE(o.created_at) AS order_date
-        FROM orders o
-        LEFT JOIN order_types ot ON o.order_type_id = ot.id
-        LEFT JOIN dealers d ON o.dealer_id = d.id
-        LEFT JOIN warehouses w ON o.warehouse_id = w.id
-            LEFT JOIN transports t ON o.transport_id = t.id
-            WHERE DATE(o.created_at) BETWEEN ? AND ? AND o.user_id = ?
-            ORDER BY o.created_at ASC
+                so.*, 
+                'SO' AS order_type,
+                so.dealer_id,
+                so.dealer_name, 
+                so.territory_name AS dealer_territory,
+                NULL AS dealer_address,
+                NULL AS dealer_contact,
+                so.warehouse_name,
+                so.warehouse_name AS warehouse_alias,
+                so.transport_name,
+                so.order_date
+        FROM sales_orders so
+            WHERE so.order_date BETWEEN ? AND ? AND so.user_id = ?
+            ORDER BY so.created_at ASC
         `;
 
         const [orders] = await dbPromise.query(ordersQuery, [startDate, endDate, user_id]);
@@ -3588,13 +3909,12 @@ app.get('/api/orders/tso/my-report-range', async (req, res) => {
         const orderIds = orders.map(order => order.order_id);
         const [items] = await dbPromise.query(`
             SELECT 
-                oi.*, 
-                p.name AS product_name, 
-                p.product_code
-            FROM order_items oi
-            LEFT JOIN products p ON oi.product_id = p.id
-            WHERE oi.order_id IN (?)
-            ORDER BY oi.order_id, oi.id
+                soi.*, 
+                soi.product_name, 
+                soi.product_code
+            FROM sales_order_items soi
+            WHERE soi.order_id IN (?)
+            ORDER BY soi.order_id, soi.id
         `, [orderIds]);
 
         const itemsByOrder = {};
@@ -3639,9 +3959,9 @@ app.get('/api/orders/tso/available-dates', async (req, res) => {
         }
         
         const query = `
-            SELECT DISTINCT DATE(created_at) as order_date
-            FROM orders
-            WHERE user_id = ?
+            SELECT DISTINCT order_date
+            FROM sales_orders
+            WHERE user_id = ? AND order_date IS NOT NULL
             ORDER BY order_date DESC
         `;
         
@@ -3671,30 +3991,26 @@ app.get('/api/orders/tso/date/:date', async (req, res) => {
             return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
         }
         
-        // Get orders for the specific date filtered by user_id
+        // Get sales orders for the specific date filtered by user_id (TSO orders only)
         const ordersQuery = `
             SELECT 
-                o.*, 
-                ot.name as order_type, 
-                d.name as dealer_name, 
-                d.territory_name as dealer_territory,
-                d.address as dealer_address,
-                d.contact as dealer_contact,
-                w.name as warehouse_name,
-                w.alias as warehouse_alias,
-                t.truck_details as transport_name,
-                COALESCE(o.order_date, DATE(o.created_at)) as order_date,
-                COUNT(oi.id) as item_count,
-                COALESCE(SUM(oi.quantity), 0) as quantity
-            FROM orders o
-            LEFT JOIN order_types ot ON o.order_type_id = ot.id
-            LEFT JOIN dealers d ON o.dealer_id = d.id
-            LEFT JOIN warehouses w ON o.warehouse_id = w.id
-            LEFT JOIN transports t ON o.transport_id = t.id
-            LEFT JOIN order_items oi ON o.order_id = oi.order_id
-            WHERE COALESCE(o.order_date, DATE(o.created_at)) = ? AND o.user_id = ?
-            GROUP BY o.id, o.order_id, o.order_type_id, o.dealer_id, o.warehouse_id, o.created_at, o.user_id, ot.name, d.name, d.territory_name, d.address, d.contact, w.name, w.alias
-            ORDER BY o.created_at DESC
+                so.*, 
+                'SO' as order_type,
+                so.dealer_name, 
+                so.territory_name as dealer_territory,
+                NULL as dealer_address,
+                NULL as dealer_contact,
+                so.warehouse_name,
+                so.warehouse_name as warehouse_alias,
+                so.transport_name,
+                so.order_date,
+                COUNT(soi.id) as item_count,
+                COALESCE(SUM(soi.quantity), 0) as quantity
+            FROM sales_orders so
+            LEFT JOIN sales_order_items soi ON so.order_id = soi.order_id
+            WHERE so.order_date = ? AND so.user_id = ?
+            GROUP BY so.id, so.order_id, so.dealer_id, so.warehouse_id, so.created_at, so.user_id
+            ORDER BY so.created_at DESC
         `;
         
         const orders = await dbPromise.query(ordersQuery, [date, user_id]);
@@ -3706,15 +4022,14 @@ app.get('/api/orders/tso/date/:date', async (req, res) => {
             });
         }
         
-        // Get order items for each order (without prices)
+        // Get order items for each order from sales_order_items (without prices)
         const ordersWithItems = [];
         for (const order of orders[0]) {
             const itemsQuery = `
-                SELECT oi.*, p.name as product_name, p.product_code
-                FROM order_items oi
-                LEFT JOIN products p ON oi.product_id = p.id
-                WHERE oi.order_id = ?
-                ORDER BY oi.id
+                SELECT soi.*, soi.product_name, soi.product_code
+                FROM sales_order_items soi
+                WHERE soi.order_id = ?
+                ORDER BY soi.id
             `;
             
             const items = await dbPromise.query(itemsQuery, [order.order_id]);
@@ -3790,9 +4105,9 @@ app.get('/api/orders/dealer/available-dates', async (req, res) => {
         }
         
         const query = `
-            SELECT DISTINCT COALESCE(order_date, DATE(created_at)) as order_date
-            FROM orders
-            WHERE dealer_id = ? AND order_source = 'dealer'
+            SELECT DISTINCT order_date
+            FROM demand_orders
+            WHERE dealer_id = ? AND order_date IS NOT NULL
             ORDER BY order_date DESC
         `;
         
@@ -3825,23 +4140,21 @@ app.get('/api/orders/dealer/date', async (req, res) => {
             return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
         }
         
-        // Get orders for the specific date filtered by dealer_id and order_source='dealer'
+        // Get daily demand orders for the specific date filtered by dealer_id (Dealer orders only)
         const ordersQuery = `
             SELECT 
-                o.*, 
-                ot.name as order_type, 
-                d.name as dealer_name, 
-                d.territory_name as dealer_territory,
-                COALESCE(o.order_date, DATE(o.created_at)) as order_date,
-                COUNT(oi.id) as item_count,
-                COALESCE(SUM(oi.quantity), 0) as quantity
-            FROM orders o
-            LEFT JOIN order_types ot ON o.order_type_id = ot.id
-            LEFT JOIN dealers d ON o.dealer_id = d.id
-            LEFT JOIN order_items oi ON o.order_id = oi.order_id
-            WHERE COALESCE(o.order_date, DATE(o.created_at)) = ? AND o.dealer_id = ? AND o.order_source = 'dealer'
-            GROUP BY o.id, o.order_id, o.order_type_id, o.dealer_id, o.warehouse_id, o.order_source, o.created_at, o.user_id, ot.name, d.name, d.territory_name, COALESCE(o.order_date, DATE(o.created_at))
-            ORDER BY o.created_at DESC
+                do.*, 
+                'DD' as order_type,
+                do.dealer_name, 
+                do.territory_name as dealer_territory,
+                do.order_date,
+                COUNT(doi.id) as item_count,
+                COALESCE(SUM(doi.quantity), 0) as quantity
+            FROM demand_orders do
+            LEFT JOIN demand_order_items doi ON do.order_id = doi.order_id
+            WHERE do.order_date = ? AND do.dealer_id = ?
+            GROUP BY do.id, do.order_id, do.dealer_id, do.created_at, do.user_id
+            ORDER BY do.created_at DESC
         `;
         
         const orders = await dbPromise.query(ordersQuery, [date, dealer_id]);
@@ -3890,22 +4203,19 @@ app.get('/api/orders/dealer/range', async (req, res) => {
 
         const query = `
             SELECT 
-                o.*, 
-                ot.name as order_type, 
-                d.name as dealer_name, 
-                d.territory_name as dealer_territory,
-                COALESCE(o.order_date, DATE(o.created_at)) as date,
-                COUNT(oi.id) as item_count,
-                COALESCE(SUM(oi.quantity), 0) as quantity
-            FROM orders o
-            LEFT JOIN order_types ot ON o.order_type_id = ot.id
-            LEFT JOIN dealers d ON o.dealer_id = d.id
-            LEFT JOIN order_items oi ON o.order_id = oi.order_id
-            WHERE COALESCE(o.order_date, DATE(o.created_at)) BETWEEN ? AND ? 
-              AND o.dealer_id = ? 
-              AND o.order_source = 'dealer'
-            GROUP BY o.id, o.order_id, o.order_type_id, o.dealer_id, o.warehouse_id, o.order_source, o.created_at, o.user_id, ot.name, d.name, d.territory_name, COALESCE(o.order_date, DATE(o.created_at))
-            ORDER BY o.created_at DESC
+                do.*, 
+                'DD' as order_type,
+                do.dealer_name, 
+                do.territory_name as dealer_territory,
+                do.order_date as date,
+                COUNT(doi.id) as item_count,
+                COALESCE(SUM(doi.quantity), 0) as quantity
+            FROM demand_orders do
+            LEFT JOIN demand_order_items doi ON do.order_id = doi.order_id
+            WHERE do.order_date BETWEEN ? AND ? 
+              AND do.dealer_id = ?
+            GROUP BY do.id, do.order_id, do.dealer_id, do.created_at, do.user_id
+            ORDER BY do.created_at DESC
         `;
         
         const orders = await dbPromise.query(query, [startDate, endDate, dealer_id]);
@@ -3937,21 +4247,19 @@ app.get('/api/orders/dealer/my-report/:date', async (req, res) => {
             return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
         }
         
-        // Get orders for the specific date filtered by dealer_id and order_source='dealer'
+        // Get daily demand orders for the specific date filtered by dealer_id (Dealer orders only)
         const ordersQuery = `
             SELECT 
-                o.*, 
-                ot.name as order_type, 
-                d.name as dealer_name, 
-                d.territory_name as dealer_territory,
-                d.address as dealer_address,
-                d.contact as dealer_contact,
-                COALESCE(o.order_date, DATE(o.created_at)) as order_date
-            FROM orders o
-            LEFT JOIN order_types ot ON o.order_type_id = ot.id
-            LEFT JOIN dealers d ON o.dealer_id = d.id
-            WHERE COALESCE(o.order_date, DATE(o.created_at)) = ? AND o.dealer_id = ? AND o.order_source = 'dealer'
-            ORDER BY o.created_at ASC
+                do.*, 
+                'DD' as order_type,
+                do.dealer_name, 
+                do.territory_name as dealer_territory,
+                NULL as dealer_address,
+                NULL as dealer_contact,
+                do.order_date
+            FROM demand_orders do
+            WHERE do.order_date = ? AND do.dealer_id = ?
+            ORDER BY do.created_at ASC
         `;
 
         const orders = await dbPromise.query(ordersQuery, [date, dealer_id]);
@@ -3962,15 +4270,14 @@ app.get('/api/orders/dealer/my-report/:date', async (req, res) => {
             });
         }
 
-        // Get order items for each order
+        // Get order items for each order from demand_order_items
         const ordersWithItems = [];
         for (const order of orders[0]) {
             const itemsQuery = `
-                SELECT oi.*, p.name as product_name, p.product_code
-                FROM order_items oi
-                LEFT JOIN products p ON oi.product_id = p.id
-                WHERE oi.order_id = ?
-                ORDER BY oi.id
+                SELECT doi.*, doi.product_name, doi.product_code
+                FROM demand_order_items doi
+                WHERE doi.order_id = ?
+                ORDER BY doi.id
             `;
 
             const items = await dbPromise.query(itemsQuery, [order.order_id]);
@@ -4018,24 +4325,21 @@ app.get('/api/orders/dealer/my-report-range', async (req, res) => {
             return res.status(400).json({ error: 'startDate cannot be after endDate' });
         }
 
-        // Fetch orders filtered by dealer_id and order_source='dealer'
+        // Fetch daily demand orders filtered by dealer_id (Dealer orders only)
         const ordersQuery = `
             SELECT 
-                o.*, 
-                ot.name AS order_type,
-                d.id AS dealer_id,
-                d.name AS dealer_name, 
-                d.territory_name AS dealer_territory,
-                d.address AS dealer_address,
-                d.contact AS dealer_contact,
-                COALESCE(o.order_date, DATE(o.created_at)) AS order_date
-        FROM orders o
-        LEFT JOIN order_types ot ON o.order_type_id = ot.id
-        LEFT JOIN dealers d ON o.dealer_id = d.id
-            WHERE COALESCE(o.order_date, DATE(o.created_at)) BETWEEN ? AND ? 
-              AND o.dealer_id = ? 
-              AND o.order_source = 'dealer'
-            ORDER BY o.created_at ASC
+                do.*, 
+                'DD' AS order_type,
+                do.dealer_id,
+                do.dealer_name, 
+                do.territory_name AS dealer_territory,
+                NULL AS dealer_address,
+                NULL AS dealer_contact,
+                do.order_date
+        FROM demand_orders do
+            WHERE do.order_date BETWEEN ? AND ? 
+              AND do.dealer_id = ?
+            ORDER BY do.created_at ASC
         `;
 
         const [orders] = await dbPromise.query(ordersQuery, [startDate, endDate, dealer_id]);
@@ -4046,13 +4350,12 @@ app.get('/api/orders/dealer/my-report-range', async (req, res) => {
         const orderIds = orders.map(order => order.order_id);
         const [items] = await dbPromise.query(`
             SELECT 
-                oi.*, 
-                p.name AS product_name, 
-                p.product_code
-            FROM order_items oi
-            LEFT JOIN products p ON oi.product_id = p.id
-            WHERE oi.order_id IN (?)
-            ORDER BY oi.order_id, oi.id
+                doi.*, 
+                doi.product_name, 
+                doi.product_code
+            FROM demand_order_items doi
+            WHERE doi.order_id IN (?)
+            ORDER BY doi.order_id, doi.id
         `, [orderIds]);
 
         const itemsByOrder = {};
@@ -4118,7 +4421,7 @@ app.get('/api/orders/dealer/daily-demand-report/:date', async (req, res) => {
         const [allocatedSegments] = await dbPromise.query(`
             SELECT DISTINCT 
                 p.application_name
-            FROM dealer_product_assignments dpa
+            FROM dealer_products dpa
             INNER JOIN products p ON dpa.product_id = p.id
             WHERE dpa.dealer_id = ?
               AND dpa.assignment_type = 'product'
@@ -4133,33 +4436,32 @@ app.get('/api/orders/dealer/daily-demand-report/:date', async (req, res) => {
             applicationTotals.set(appName, 0);
         });
         
-        // Get all orders for this dealer on this date
+        // Get all daily demand orders for this dealer on this date
         const [orders] = await dbPromise.query(`
-            SELECT o.order_id, o.created_at
-            FROM orders o
-            WHERE COALESCE(o.order_date, DATE(o.created_at)) = ? 
-              AND o.dealer_id = ? 
-              AND o.order_source = 'dealer'
-            ORDER BY o.created_at ASC
+            SELECT do.order_id, do.created_at
+            FROM demand_orders do
+            WHERE do.order_date = ? 
+              AND do.dealer_id = ?
+            ORDER BY do.created_at ASC
         `, [date, dealer_id]);
         
         const orderIds = orders.length > 0 ? orders.map(o => o.order_id) : [];
         
-        // Get all order items with product details (if orders exist)
+        // Get all order items with product details from demand_order_items (if orders exist)
         let items = [];
         if (orderIds.length > 0) {
             const [itemsResult] = await dbPromise.query(`
                 SELECT 
-                    oi.order_id,
-                    oi.product_id,
-                    oi.quantity,
-                    p.product_code,
-                    p.name as product_name,
+                    doi.order_id,
+                    doi.product_id,
+                    doi.quantity,
+                    doi.product_code,
+                    doi.product_name,
                     p.application_name
-                FROM order_items oi
-                LEFT JOIN products p ON oi.product_id = p.id
-                WHERE oi.order_id IN (?)
-                ORDER BY p.application_name, p.product_code
+                FROM demand_order_items doi
+                LEFT JOIN products p ON doi.product_id = p.id
+                WHERE doi.order_id IN (?)
+                ORDER BY p.application_name, doi.product_code
             `, [orderIds]);
             items = itemsResult;
         }
@@ -4214,7 +4516,7 @@ app.get('/api/orders/dealer/daily-demand-report/:date', async (req, res) => {
             WHERE p.status = 'A'
               AND p.id IN (
                     SELECT product_id 
-                    FROM dealer_product_assignments 
+                    FROM dealer_products 
                     WHERE dealer_id = ? AND assignment_type = 'product' AND product_id IS NOT NULL
                 )
             ORDER BY p.application_name, p.product_code
@@ -4448,24 +4750,20 @@ app.get('/api/orders/mr-report/:date', async (req, res) => {
     try {
         console.log(`📊 Generating MR Order Report CSV for date: ${date}`);
         
-        // Get orders for the specified date with order items
+        // Get sales orders for the specified date (TSO orders only - from sales_orders table)
         const ordersQuery = `
             SELECT DISTINCT
-                o.order_id,
-                ot.name as order_type, 
-                d.name as dealer_name, 
-                d.territory_name as dealer_territory, 
-                w.name as warehouse_name,
-                w.alias as warehouse_alias,
-                COALESCE(o.order_date, DATE(o.created_at)) as order_date,
-                o.created_at
-            FROM orders o
-            LEFT JOIN order_types ot ON o.order_type_id = ot.id
-            LEFT JOIN dealers d ON o.dealer_id = d.id
-            LEFT JOIN warehouses w ON o.warehouse_id = w.id
-            WHERE COALESCE(o.order_date, DATE(o.created_at)) = ?
-              AND o.order_source = 'tso'
-            ORDER BY o.created_at ASC
+                so.order_id,
+                'SO' as order_type,
+                so.dealer_name, 
+                so.territory_name as dealer_territory, 
+                so.warehouse_name,
+                so.warehouse_name as warehouse_alias,
+                so.order_date,
+                so.created_at
+            FROM sales_orders so
+            WHERE so.order_date = ?
+            ORDER BY so.created_at ASC
         `;
         
         const orders = await dbPromise.query(ordersQuery, [date]);
@@ -4474,12 +4772,11 @@ app.get('/api/orders/mr-report/:date', async (req, res) => {
             return res.status(404).json({ error: 'No orders found for the specified date' });
         }
         
-        // Get order items for all orders
+        // Get order items for all orders from sales_order_items
         const orderItemsQuery = `
-            SELECT oi.order_id, p.name as product_name, oi.quantity
-            FROM order_items oi
-            LEFT JOIN products p ON oi.product_id = p.id
-            WHERE oi.order_id IN (${orders[0].map(() => '?').join(',')})
+            SELECT soi.order_id, soi.product_name, soi.quantity
+            FROM sales_order_items soi
+            WHERE soi.order_id IN (${orders[0].map(() => '?').join(',')})
         `;
         const orderItems = await dbPromise.query(orderItemsQuery, orders[0].map(order => order.order_id));
         
@@ -4538,50 +4835,81 @@ app.get('/api/orders/mr-report/:date', async (req, res) => {
     }
 });
 
-// Get order details with items
+// Get order details with items (checks both sales_orders and demand_orders)
 app.get('/api/orders/:orderId', (req, res) => {
     const { orderId } = req.params;
     
-    // Get order details
-    const orderQuery = `
-        SELECT o.*, ot.name as order_type, d.name as dealer_name, d.territory_name as dealer_territory, w.name as warehouse_name
-            FROM orders o
-            LEFT JOIN order_types ot ON o.order_type_id = ot.id
-            LEFT JOIN dealers d ON o.dealer_id = d.id
-            LEFT JOIN warehouses w ON o.warehouse_id = w.id
-        WHERE o.order_id = ?
+    // Try sales_orders first
+    const salesOrderQuery = `
+        SELECT so.*, 'SO' as order_type, so.dealer_name, so.territory_name as dealer_territory, so.warehouse_name
+        FROM sales_orders so
+        WHERE so.order_id = ?
     `;
     
-    db.query(orderQuery, [orderId], (err, orderResults) => {
+    db.query(salesOrderQuery, [orderId], (err, salesOrderResults) => {
         if (err) {
             res.status(500).json({ error: err.message });
             return;
         }
         
-        if (orderResults.length === 0) {
-            res.status(404).json({ error: 'Order not found' });
+        if (salesOrderResults.length > 0) {
+            // Found in sales_orders - get items from sales_order_items
+            const itemsQuery = `
+                SELECT soi.*, soi.product_name, soi.product_code, soi.unit_tp, NULL as mrp, soi.unit_trade_price
+                FROM sales_order_items soi
+                WHERE soi.order_id = ?
+                ORDER BY soi.id
+            `;
+            
+            db.query(itemsQuery, [orderId], (err, itemsResults) => {
+                if (err) {
+                    res.status(500).json({ error: err.message });
+                    return;
+                }
+                
+                const order = salesOrderResults[0];
+                order.items = itemsResults;
+                res.json(order);
+            });
             return;
         }
         
-        // Get order items
-            const itemsQuery = `
-                SELECT oi.*, p.name as product_name, p.product_code, p.unit_tp, p.mrp, p.unit_trade_price
-                FROM order_items oi
-                LEFT JOIN products p ON oi.product_id = p.id
-                WHERE oi.order_id = ?
-                ORDER BY oi.id
-            `;
-            
-        db.query(itemsQuery, [orderId], (err, itemsResults) => {
+        // Not found in sales_orders, try demand_orders
+        const ddOrderQuery = `
+            SELECT do.*, 'DD' as order_type, do.dealer_name, do.territory_name as dealer_territory, NULL as warehouse_name
+            FROM demand_orders do
+            WHERE do.order_id = ?
+        `;
+        
+        db.query(ddOrderQuery, [orderId], (err, ddOrderResults) => {
             if (err) {
                 res.status(500).json({ error: err.message });
                 return;
             }
             
-            const order = orderResults[0];
-            order.items = itemsResults;
+            if (ddOrderResults.length === 0) {
+                res.status(404).json({ error: 'Order not found' });
+                return;
+            }
             
-            res.json(order);
+            // Found in demand_orders - get items from demand_order_items
+            const itemsQuery = `
+                SELECT doi.*, doi.product_name, doi.product_code, NULL as unit_tp, NULL as mrp, NULL as unit_trade_price
+                FROM demand_order_items doi
+                WHERE doi.order_id = ?
+                ORDER BY doi.id
+            `;
+            
+            db.query(itemsQuery, [orderId], (err, itemsResults) => {
+                if (err) {
+                    res.status(500).json({ error: err.message });
+                    return;
+                }
+                
+                const order = ddOrderResults[0];
+                order.items = itemsResults;
+                res.json(order);
+            });
         });
     });
 });
@@ -4795,28 +5123,57 @@ app.delete('/api/orders/:id', async (req, res) => {
 
     try {
         await withTransaction(async (connection) => {
-            const [orderRows] = await connection.query(
-                'SELECT order_id FROM orders WHERE id = ?',
+            // Try to find order in sales_orders first
+            let [orderRows] = await connection.query(
+                'SELECT order_id FROM sales_orders WHERE id = ?',
                 [orderId]
             );
-
-            if (!orderRows || orderRows.length === 0) {
-                const error = new Error('Order not found');
-                error.status = 404;
-                throw error;
+            
+            let orderUUID = null;
+            let isSalesOrder = false;
+            
+            if (orderRows && orderRows.length > 0) {
+                orderUUID = orderRows[0].order_id;
+                isSalesOrder = true;
+            } else {
+                // Try demand_orders
+                [orderRows] = await connection.query(
+                    'SELECT order_id FROM demand_orders WHERE id = ?',
+                    [orderId]
+                );
+                
+                if (!orderRows || orderRows.length === 0) {
+                    const error = new Error('Order not found');
+                    error.status = 404;
+                    throw error;
+                }
+                
+                orderUUID = orderRows[0].order_id;
+                isSalesOrder = false;
             }
 
-            const orderUUID = orderRows[0].order_id;
-
-            await connection.query(
-                'DELETE FROM order_items WHERE order_id = ?',
-                [orderUUID]
-            );
-
-            const [deleteResult] = await connection.query(
-                'DELETE FROM orders WHERE id = ?',
-                [orderId]
-            );
+            // Delete items from appropriate table
+            if (isSalesOrder) {
+                await connection.query(
+                    'DELETE FROM sales_order_items WHERE order_id = ?',
+                    [orderUUID]
+                );
+                await connection.query(
+                    'DELETE FROM sales_orders WHERE id = ?',
+                    [orderId]
+                );
+            } else {
+                await connection.query(
+                    'DELETE FROM demand_order_items WHERE order_id = ?',
+                    [orderUUID]
+                );
+                await connection.query(
+                    'DELETE FROM demand_orders WHERE id = ?',
+                    [orderId]
+                );
+            }
+            
+            const deleteResult = { affectedRows: 1 }; // Both deletes succeeded if we got here
 
             if (!deleteResult || deleteResult.affectedRows === 0) {
                 const error = new Error('Order not found');
@@ -5155,7 +5512,7 @@ app.post('/api/monthly-forecast', (req, res) => {
             WHERE p.id = ? 
             AND p.id IN (
                 SELECT product_id 
-                FROM dealer_product_assignments 
+                FROM dealer_products 
                 WHERE dealer_id = ? AND assignment_type = 'product' AND product_id IS NOT NULL
             )
         `;
@@ -5338,7 +5695,7 @@ app.post('/api/monthly-forecast/bulk', (req, res) => {
                 WHERE p.id IN (${productIds.map(() => '?').join(',')})
                 AND p.id IN (
                     SELECT product_id 
-                    FROM dealer_product_assignments 
+                    FROM dealer_products 
                     WHERE dealer_id = ? AND assignment_type = 'product' AND product_id IS NOT NULL
                 )
             `;
@@ -5499,7 +5856,7 @@ app.get('/api/monthly-forecast/all', (req, res) => {
                     product_name: row.product_name,
                     quantity: row.quantity,
                 });
-                dealerMap[row.dealer_id].total_quantity += row.quantity;
+                dealerMap[row.dealer_id].total_quantity += Number(row.quantity) || 0;
             });
             
             // Calculate total_products for each dealer
@@ -5578,7 +5935,7 @@ app.get('/api/products', (req, res) => {
                         AND DATE(dq.date) = CURDATE()
                     WHERE p.id IN (
                         SELECT product_id 
-                        FROM dealer_product_assignments 
+                        FROM dealer_products 
                         WHERE dealer_id = ? AND assignment_type = 'product' AND product_id IS NOT NULL
                     )
                     ORDER BY p.product_code
@@ -5591,7 +5948,7 @@ app.get('/api/products', (req, res) => {
                     FROM products p
                     WHERE p.id IN (
                         SELECT product_id 
-                        FROM dealer_product_assignments 
+                        FROM dealer_products 
                         WHERE dealer_id = ? AND assignment_type = 'product' AND product_id IS NOT NULL
                     )
                     ORDER BY p.product_code
@@ -5647,7 +6004,7 @@ app.get('/api/dealer-assignments/:dealerId', (req, res) => {
             product_id,
             product_category,
             created_at
-        FROM dealer_product_assignments
+        FROM dealer_products
         WHERE dealer_id = ?
         ORDER BY assignment_type, product_id, product_category
     `;
@@ -5670,7 +6027,7 @@ app.post('/api/dealer-assignments', (req, res) => {
     }
     
     const query = `
-        INSERT INTO dealer_product_assignments (dealer_id, assignment_type, product_id, product_category)
+        INSERT INTO dealer_products (dealer_id, assignment_type, product_id, product_category)
         VALUES (?, 'product', ?, NULL)
     `;
     
@@ -5690,7 +6047,7 @@ app.post('/api/dealer-assignments', (req, res) => {
 app.delete('/api/dealer-assignments/:id', (req, res) => {
     const { id } = req.params;
     
-    const query = 'DELETE FROM dealer_product_assignments WHERE id = ?';
+    const query = 'DELETE FROM dealer_products WHERE id = ?';
     db.query(query, [id], (err) => {
         if (err) {
             console.error('Error deleting dealer assignment:', err);
@@ -5720,7 +6077,7 @@ app.post('/api/dealer-assignments/bulk', (req, res) => {
     });
     
     const query = `
-        INSERT INTO dealer_product_assignments (dealer_id, assignment_type, product_id, product_category)
+        INSERT INTO dealer_products (dealer_id, assignment_type, product_id, product_category)
         VALUES ?
         ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP
     `;

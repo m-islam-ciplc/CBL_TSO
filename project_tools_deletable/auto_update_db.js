@@ -194,10 +194,10 @@ async function updateDatabase() {
     `);
     console.log('   ✓ Default setting inserted');
 
-    // 4. Create dealer_product_assignments table
-    console.log('\n4. Creating dealer_product_assignments table...');
+    // 4. Create dealer_products table
+    console.log('\n4. Creating dealer_products table...');
     await connection.query(`
-      CREATE TABLE IF NOT EXISTS dealer_product_assignments (
+      CREATE TABLE IF NOT EXISTS dealer_products (
         id INT AUTO_INCREMENT PRIMARY KEY,
         dealer_id INT NOT NULL,
         assignment_type ENUM('product', 'category') NOT NULL,
@@ -215,14 +215,14 @@ async function updateDatabase() {
         INDEX idx_assignment_type (assignment_type)
       )
     `);
-    console.log('   ✓ dealer_product_assignments table ready');
+    console.log('   ✓ dealer_products table ready');
 
     console.log('\n✅ Database updated successfully!');
     console.log('\nChanges applied:');
     console.log('  ✓ Users table: Added dealer role and dealer_id');
     console.log('  ✓ Created monthly_forecast table');
     console.log('  ✓ Created settings table');
-    console.log('  ✓ Created dealer_product_assignments table');
+    console.log('  ✓ Created dealer_products table');
 
   } catch (error) {
     console.error('\n❌ Error updating database:', error.message);

@@ -718,43 +718,43 @@ function DealerReports() {
               </Text>
             </Card>
           )}
-          
-          <StandardExpandableTable
-            columns={orderColumns}
-            dataSource={filteredOrders}
-            loading={loading}
-            rowKey="order_id"
-            expandedRowKeys={expandedRowKeys}
-            onExpand={(expanded, record) => {
-              if (expanded) {
-                setExpandedRowKeys([...expandedRowKeys, record.order_id]);
-              } else {
-                setExpandedRowKeys(expandedRowKeys.filter(key => key !== record.order_id));
-              }
-            }}
-            expandedRowRender={(record) => {
-              const products = orderProducts[record.order_id] || [];
-              return renderStandardExpandedRow(
-                record,
-                products,
-                (item) => (
-                  <>
-                    <Text strong>{item.product_code}</Text> - {item.product_name}
-                    <br />
-                    <Text type="secondary" style={{ fontSize: '12px' }}>
-                      Quantity: {item.quantity}
-                    </Text>
-                    {!isDealer && item.unit_tp && (
+
+            <StandardExpandableTable
+              columns={orderColumns}
+              dataSource={filteredOrders}
+              loading={loading}
+              rowKey="order_id"
+              expandedRowKeys={expandedRowKeys}
+              onExpand={(expanded, record) => {
+                if (expanded) {
+                  setExpandedRowKeys([...expandedRowKeys, record.order_id]);
+                } else {
+                  setExpandedRowKeys(expandedRowKeys.filter(key => key !== record.order_id));
+                }
+              }}
+              expandedRowRender={(record) => {
+                const products = orderProducts[record.order_id] || [];
+                return renderStandardExpandedRow(
+                  record,
+                  products,
+                  (item) => (
+                    <>
+                      <Text strong>{item.product_code}</Text> - {item.product_name}
+                      <br />
                       <Text type="secondary" style={{ fontSize: '12px' }}>
-                        {' | '}Unit TP: ৳{item.unit_tp}
+                        Quantity: {item.quantity}
                       </Text>
-                    )}
-                  </>
-                ),
-                'Order Items:'
-              );
-            }}
-            pagination={getStandardPaginationConfig('orders', 10)}
+                    {!isDealer && item.unit_tp && (
+                        <Text type="secondary" style={{ fontSize: '12px' }}>
+                          {' | '}Unit TP: ৳{item.unit_tp}
+                        </Text>
+                      )}
+                    </>
+                  ),
+                  'Order Items:'
+                );
+              }}
+              pagination={getStandardPaginationConfig('orders', 10)}
             header={renderTableHeaderWithSearch({
               title: 'Orders',
               count: filteredOrders.length,
@@ -829,12 +829,12 @@ function DealerReports() {
 
             {!forecastLoading && selectedPeriod && (
               <Card {...TABLE_CARD_CONFIG} style={{ marginTop: '16px' }}>
-                <Table
-                  columns={forecastColumns}
-                  dataSource={filteredForecasts}
-                  rowKey="product_id"
-                  pagination={getStandardPaginationConfig('products', 20)}
-                />
+              <Table
+                columns={forecastColumns}
+                dataSource={filteredForecasts}
+                rowKey="product_id"
+                pagination={getStandardPaginationConfig('products', 20)}
+              />
               </Card>
             )}
 

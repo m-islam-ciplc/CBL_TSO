@@ -11,7 +11,7 @@ TRUNCATE TABLE order_items;
 TRUNCATE TABLE orders;
 TRUNCATE TABLE daily_quotas;
 TRUNCATE TABLE monthly_forecast;
-TRUNCATE TABLE dealer_product_assignments;
+TRUNCATE TABLE dealer_products;
 TRUNCATE TABLE dealers;
 TRUNCATE TABLE products;
 TRUNCATE TABLE transports;
@@ -29,7 +29,7 @@ SELECT 'daily_quotas', COUNT(*) FROM daily_quotas
 UNION ALL
 SELECT 'monthly_forecast', COUNT(*) FROM monthly_forecast
 UNION ALL
-SELECT 'dealer_product_assignments', COUNT(*) FROM dealer_product_assignments
+SELECT 'dealer_products', COUNT(*) FROM dealer_products
 UNION ALL
 SELECT 'dealers', COUNT(*) FROM dealers
 UNION ALL

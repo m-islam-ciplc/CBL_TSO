@@ -380,6 +380,21 @@ function DealerManagement() {
       { wch: 10 }  // ERP_STATUS
     ];
 
+    // Set font style for all cells: Calibri size 8
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+    for (let R = range.s.r; R <= range.e.r; ++R) {
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+        if (!ws[cellAddress]) continue;
+        if (!ws[cellAddress].s) ws[cellAddress].s = {};
+        ws[cellAddress].s.font = {
+          name: 'Calibri',
+          sz: 8,
+          bold: R === range.s.r // Make header row bold
+        };
+      }
+    }
+
     XLSX.utils.book_append_sheet(wb, ws, 'Dealer_Template');
 
     // Generate and download file

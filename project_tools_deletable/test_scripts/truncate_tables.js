@@ -30,7 +30,7 @@
  * 
  * Tables Truncated:
  *   - order_items, orders, daily_quotas, monthly_forecast
- *   - dealer_product_assignments, dealers, products
+ *   - dealer_products, dealers, products
  *   - transports
  */
 
@@ -70,7 +70,7 @@ const TABLES_TO_TRUNCATE = [
   'orders',                // Child of dealers, warehouses, order_types, users
   'daily_quotas',          // Child of products
   'monthly_forecast',      // Child of dealers, products
-  'dealer_product_assignments', // Child of dealers, products
+  'dealer_products', // Child of dealers, products
   'dealers',               // Parent of users (but FK is ON DELETE SET NULL, so safe)
   'products',              // Parent of many tables
   'transports'             // No dependencies

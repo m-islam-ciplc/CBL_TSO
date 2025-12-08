@@ -819,16 +819,16 @@ useEffect(() => {
               </Col>
             </Row>
             <Card {...TABLE_CARD_CONFIG} style={{ marginTop: '16px' }}>
-              <Table
-                dataSource={historyAllocations}
-                columns={historyColumns}
-                rowKey="key"
-                pagination={getStandardPaginationConfig('allocations', 20)}
-                scroll={{ x: 'max-content' }}
-                size={STANDARD_TABLE_SIZE}
-                loading={historyLoading}
-                locale={{ emptyText: 'No quotas found for this date.' }}
-              />
+            <Table
+              dataSource={historyAllocations}
+              columns={historyColumns}
+              rowKey="key"
+              pagination={getStandardPaginationConfig('allocations', 20)}
+              scroll={{ x: 'max-content' }}
+              size={STANDARD_TABLE_SIZE}
+              loading={historyLoading}
+              locale={{ emptyText: 'No quotas found for this date.' }}
+            />
             </Card>
           </Card>
         </TabPane>

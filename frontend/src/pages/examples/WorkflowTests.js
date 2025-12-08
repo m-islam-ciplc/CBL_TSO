@@ -582,7 +582,7 @@ function WorkflowTests() {
                   <li>orders, order_items</li>
                   <li>dealers, products, transports</li>
                   <li>daily_quotas, monthly_forecast</li>
-                  <li>dealer_product_assignments</li>
+                  <li>dealer_products</li>
                 </ul>
                 <Text strong style={{ color: '#52c41a' }}>The following tables will be preserved:</Text>
                 <ul style={{ marginTop: '8px', marginBottom: '0' }}>
@@ -612,7 +612,7 @@ function WorkflowTests() {
                   <li><Text code>orders</Text> - All orders</li>
                   <li><Text code>daily_quotas</Text> - Daily quota allocations</li>
                   <li><Text code>monthly_forecast</Text> - Monthly forecasts</li>
-                  <li><Text code>dealer_product_assignments</Text> - Product assignments to dealers</li>
+                  <li><Text code>dealer_products</Text> - Product assignments to dealers</li>
                   <li><Text code>dealers</Text> - All dealers</li>
                   <li><Text code>products</Text> - All products</li>
                   <li><Text code>transports</Text> - All transports</li>

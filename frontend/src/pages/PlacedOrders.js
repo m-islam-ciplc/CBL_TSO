@@ -201,7 +201,7 @@ function PlacedOrders({ refreshTrigger }) {
             // Date range filter
             const end = dayjs(endDate).endOf('day');
             if (end.isValid()) {
-              filtered = filtered.filter(order => {
+      filtered = filtered.filter(order => {
                 const dateToCheck = order.order_date 
                   ? dayjs(order.order_date)
                   : dayjs(order.created_at);
@@ -217,7 +217,7 @@ function PlacedOrders({ refreshTrigger }) {
                 : dayjs(order.created_at);
               if (!dateToCheck.isValid()) return false;
               return dateToCheck.isSame(start, 'day');
-            });
+      });
           }
         }
       } catch (error) {
@@ -686,23 +686,23 @@ function PlacedOrders({ refreshTrigger }) {
                   placeholder="All TSOs"
                   value={tsoUserFilter}
                   onChange={setTsoUserFilter}
-                  style={{ width: '100%' }}
-                  size={STANDARD_INPUT_SIZE}
-                  allowClear
-                  showSearch
-                  filterOption={(input, option) => {
-                    const optionText = option?.children?.toString() || '';
-                    return optionText.toLowerCase().includes(input.toLowerCase());
-                  }}
-                >
+                style={{ width: '100%' }}
+                size={STANDARD_INPUT_SIZE}
+                allowClear
+                showSearch
+                filterOption={(input, option) => {
+                  const optionText = option?.children?.toString() || '';
+                  return optionText.toLowerCase().includes(input.toLowerCase());
+                }}
+              >
                   {tsoUsersList && tsoUsersList.length > 0 ? tsoUsersList.map(tso => (
                     <Option key={tso.id} value={tso.id}>
                       {tso.name}
-                    </Option>
+                  </Option>
                   )) : null}
-                </Select>
-              </Space>
-            </Col>
+              </Select>
+            </Space>
+          </Col>
           )}
           <Col xs={24} sm={12} md={6}>
             <Space direction="vertical" style={{ width: '100%' }}>
