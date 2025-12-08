@@ -298,7 +298,7 @@ function AppContent() {
     {
       key: 'placed-orders',
       icon: <OrderedListOutlined />,
-      label: 'Placed Orders',
+      label: 'Orders & Demands',
     },
     {
       key: 'reports',

@@ -79,7 +79,7 @@ import {
 import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG } from '../../templates/UIElements';
 import { createStandardDatePickerConfig, createStandardDateRangePicker } from '../../templates/UIConfig';
 import { getStandardPagination } from '../../templates/UIConfig';
-import { renderStandardExpandedRow, StandardExpandableTable } from '../../templates/TableTemplate';
+import { renderStandardExpandedRow, StandardExpandableTable, renderProductDetailsStack } from '../../templates/TableTemplate';
 import '../../App.css';
 import '../NewOrdersTablet.css';
 
@@ -125,6 +125,36 @@ function UnifiedUITemplate() {
   const tableData = [
     { key: '1', id: 'ORD-001', dealer: 'Power Battery', territory: 'Dhaka', qty: 25, status: 'new' },
     { key: '2', id: 'ORD-002', dealer: 'Green Energy', territory: 'Chittagong', qty: 15, status: 'confirmed' },
+  ];
+
+  const tableProductsData = [
+    {
+      key: '1',
+      id: '001',
+      order_id: '001',
+      order_date: '2024-12-16',
+      dealer: 'Power Battery',
+      territory: 'Dhaka',
+      warehouse_id: 5, // SO
+      item_count: 2,
+      products: [
+        { id: 'p1', product_code: '6DGA-225(H)', product_name: '6DGA-225(H)', quantity: 10, unit_tp: 1250 },
+        { id: 'p2', product_code: '6DGA-180(H)', product_name: 'Kingshuk Power', quantity: 8, unit_tp: 1100 },
+      ],
+    },
+    {
+      key: '2',
+      id: '002',
+      order_id: '002',
+      order_date: '2024-12-17',
+      dealer: 'Green Energy',
+      territory: 'Chittagong',
+      warehouse_id: null, // DD
+      item_count: 1,
+      products: [
+        { id: 'p3', product_code: '6DGA-200(H)', product_name: '6DGA-200(H)', quantity: 5, unit_tp: 1200 },
+      ],
+    },
   ];
 
   const expandableData = [
@@ -417,6 +447,75 @@ function UnifiedUITemplate() {
                 size="small"
               />
       </Card>
+          </div>
+
+          <div>
+            <Text strong style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>Table Card with Products (Orders &amp; Demands)</Text>
+            <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: '8px' }}>
+              Product details stacked with product name bold, code muted, quantity in green. Matches Orders &amp; Demands table.
+            </Text>
+            <Card {...TABLE_CARD_CONFIG}>
+              <Table
+                dataSource={tableProductsData}
+                columns={[
+                  {
+                    title: 'Order ID',
+                    dataIndex: 'order_id',
+                    key: 'order_id',
+                    render: (orderId, record) => {
+                    const isTSOOrder = record.order_type === 'SO' || record.order_type_name === 'SO';
+                      const prefix = isTSOOrder ? 'SO' : 'DD';
+                      return (
+                        <Tag color={isTSOOrder ? 'blue' : 'green'} style={STANDARD_TAG_STYLE}>
+                          {prefix}-{orderId}
+                        </Tag>
+                      );
+                    },
+                  },
+                  {
+                    title: 'Order Date',
+                    dataIndex: 'order_date',
+                    key: 'order_date',
+                  },
+                  { title: 'Dealer', dataIndex: 'dealer', key: 'dealer', ellipsis: true },
+                  { title: 'Territory', dataIndex: 'territory', key: 'territory', ellipsis: true },
+                  {
+                    title: 'Products',
+                    key: 'products',
+                    render: (_, record) => (
+                      <Tag color="green" style={STANDARD_TAG_STYLE}>
+                        {record.item_count} item{record.item_count !== 1 ? 's' : ''}
+                      </Tag>
+                    ),
+                  },
+                  {
+                    title: 'Product Details',
+                    key: 'product_details',
+                    ellipsis: true,
+                    render: (_, record) =>
+                      renderProductDetailsStack({
+                        products: record.products,
+                        showPrice: false,
+                        showIndex: true,
+                      }),
+                  },
+                  {
+                    title: 'Order Type',
+                    key: 'order_type',
+                    render: (_, record) => {
+                    const isTSOOrder = record.order_type === 'SO' || record.order_type_name === 'SO';
+                      return (
+                        <Tag color={isTSOOrder ? 'blue' : 'green'} style={STANDARD_TAG_STYLE}>
+                          {isTSOOrder ? 'Sales Order' : 'Daily Demand'}
+                        </Tag>
+                      );
+                    },
+                  },
+                ]}
+                pagination={false}
+                size="small"
+              />
+            </Card>
           </div>
 
           <div>

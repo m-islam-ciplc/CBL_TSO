@@ -7,10 +7,11 @@ import * as XLSX from 'xlsx';
 import { useUser } from '../contexts/UserContext';
 import { createStandardDatePickerConfig, createStandardDateRangePicker } from '../templates/UIConfig';
 import { getStandardPaginationConfig } from '../templates/useStandardPagination';
-import { STANDARD_EXPANDABLE_TABLE_CONFIG } from '../templates/TableTemplate';
+import { STANDARD_EXPANDABLE_TABLE_CONFIG, renderProductDetailsStack } from '../templates/TableTemplate';
 import { STANDARD_CARD_CONFIG, FILTER_CARD_CONFIG, DATE_SELECTION_CARD_CONFIG, TABLE_CARD_CONFIG, EXPANDABLE_TABLE_CARD_CONFIG } from '../templates/CardTemplates';
 // All cards now use STANDARD_CARD_CONFIG
 import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, STANDARD_TABLE_SIZE, STANDARD_TAG_STYLE, STANDARD_TABS_CONFIG, STANDARD_BADGE_CONFIG, STANDARD_SPIN_SIZE, STANDARD_DATE_PICKER_CONFIG, STANDARD_INPUT_SIZE, renderTableHeaderWithSearch } from '../templates/UIElements';
+import { useCascadingFilters } from '../templates/useCascadingFilters';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -46,8 +47,8 @@ function DailyReport() {
   const [selectedPeriod, setSelectedPeriod] = useState(null);
   const [periods, setPeriods] = useState([]);
   const [forecastSearchTerm, setForecastSearchTerm] = useState('');
-  const [territoryFilter, setTerritoryFilter] = useState(isTSO ? territoryName : '');
-  const [dealerFilter, setDealerFilter] = useState('');
+  const [territoryFilter, setTerritoryFilter] = useState(isTSO ? territoryName : null);
+  const [dealerFilter, setDealerFilter] = useState(null);
   const [expandedRowKeys, setExpandedRowKeys] = useState({
     byDealer: [],
     byProduct: [],
@@ -56,9 +57,9 @@ function DailyReport() {
 
   // Forecast Report tab states (separate from existing forecast tabs)
   const [forecastReportPeriod, setForecastReportPeriod] = useState(null);
-  const [forecastReportTerritory, setForecastReportTerritory] = useState(isTSO ? territoryName : '');
-  const [forecastReportDealer, setForecastReportDealer] = useState('');
-  const [forecastReportProduct, setForecastReportProduct] = useState('');
+  const [forecastReportTerritory, setForecastReportTerritory] = useState(isTSO ? territoryName : null);
+  const [forecastReportDealer, setForecastReportDealer] = useState(null);
+  const [forecastReportProduct, setForecastReportProduct] = useState(null);
   const [forecastReportData, setForecastReportData] = useState([]);
   const [filteredForecastReportData, setFilteredForecastReportData] = useState([]);
   const [forecastReportLoading, setForecastReportLoading] = useState(false);
@@ -67,6 +68,29 @@ function DailyReport() {
     products: [],
     territories: [],
   });
+  const [autoPreviewDone, setAutoPreviewDone] = useState(false);
+
+  // Prefill selected date with today if available, otherwise first available date
+  useEffect(() => {
+    if (!availableDates || availableDates.length === 0) return;
+    const today = dayjs().format('YYYY-MM-DD');
+    if (availableDates.includes(today)) {
+      setSelectedDate(dayjs(today));
+      return;
+    }
+    const current = selectedDate ? selectedDate.format('YYYY-MM-DD') : null;
+    if (current && availableDates.includes(current)) return;
+    setSelectedDate(dayjs(availableDates[0]));
+  }, [availableDates, selectedDate]);
+
+  // Auto-load Daily Order Report preview once dates are available and a date is selected
+  useEffect(() => {
+    if (autoPreviewDone) return;
+    if (!selectedDate) return;
+    if (!availableDates || availableDates.length === 0) return;
+    setAutoPreviewDone(true);
+    handlePreviewData();
+  }, [autoPreviewDone, selectedDate, availableDates]);
 
   // Load available dates on component mount
   useEffect(() => {
@@ -710,43 +734,13 @@ function DailyReport() {
       ellipsis: {
         showTitle: true,
       },
-      render: (_, record) => {
-        const products = orderProducts[record.order_id] || [];
-        
-        if (products.length === 0) {
-          return (
-            <div style={{ fontSize: '12px', color: '#999', fontStyle: 'italic' }}>
-              No products found
-            </div>
-          );
-        }
-        
-        return (
-          <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
-            {products.map((product, index) => (
-              <div key={product.id} style={{ marginBottom: '2px' }}>
-                <span style={{ fontWeight: 'bold', color: '#1890ff' }}>
-                  #{index + 1}
-                </span>{' '}
-                <span style={{ fontWeight: 'bold' }}>
-                  {product.product_code}
-                </span>{' '}
-                <span style={{ color: '#666' }}>
-                  {product.product_name}
-                </span>
-                <span style={{ color: '#52c41a', marginLeft: '8px' }}>
-                  (Qty: {product.quantity})
-                </span>
-                {!isTSO && product.unit_tp && (
-                  <span style={{ color: '#1890ff', marginLeft: '8px' }}>
-                    @৳{product.unit_tp.toLocaleString()}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        );
-      },
+      render: (_, record) =>
+        renderProductDetailsStack({
+          products: orderProducts[record.order_id] || [],
+          showPrice: false,
+          isTSO,
+          showIndex: true,
+        }),
     },
     {
       title: 'Transport',
@@ -827,7 +821,7 @@ function DailyReport() {
       align: 'center',
       sorter: (a, b) => (a.distinct_products || 0) - (b.distinct_products || 0),
       render: (count) => (
-        <Tag color="green" style={{ fontSize: '12px' }}>
+        <Tag color="green" style={STANDARD_TAG_STYLE}>
           {count || 0} item{count === 1 ? '' : 's'}
         </Tag>
       ),
@@ -839,40 +833,15 @@ function DailyReport() {
         showTitle: true,
       },
       render: (_, record) => {
-        const products = record.product_summaries || [];
-        if (products.length === 0) {
-          return (
-            <div style={{ fontSize: '12px', color: '#999', fontStyle: 'italic' }}>
-              No products found
-            </div>
-          );
-        }
-
-        return (
-          <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
-            {products.map((product, index) => (
-              <div key={`${record.id}-${product.product_code}`} style={{ marginBottom: '2px' }}>
-                <span style={{ fontWeight: 'bold', color: '#1890ff' }}>
-                  #{index + 1}
-                </span>{' '}
-                <span style={{ fontWeight: 'bold' }}>
-                  {product.product_code}
-                </span>{' '}
-                <span style={{ color: '#666' }}>
-                  {product.product_name}
-                </span>
-                <span style={{ color: '#52c41a', marginLeft: '8px' }}>
-                  (Qty: {product.quantity})
-                </span>
-                {!isTSO && product.unit_tp != null && (
-                  <span style={{ color: '#1890ff', marginLeft: '8px' }}>
-                    @৳{Number(product.unit_tp).toLocaleString()}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        );
+        const products = (record.product_summaries || []).map((p) => ({
+          ...p,
+          quantity: p.total_quantity ?? p.quantity ?? 0,
+        }));
+        return renderProductDetailsStack({
+          products,
+          showPrice: false,
+          showIndex: true,
+        });
       },
     },
     {
@@ -1047,7 +1016,7 @@ function DailyReport() {
   
   // Get unique dealers for filter dropdown
   const uniqueDealers = forecasts
-    .map(f => ({ id: f.dealer_id, code: f.dealer_code, name: f.dealer_name }))
+    .map(f => ({ id: f.dealer_id, code: f.dealer_code, name: f.dealer_name, territory: f.territory_name }))
     .filter((dealer, index, self) => 
       index === self.findIndex(d => d.id === dealer.id)
     )
@@ -1092,6 +1061,93 @@ function DailyReport() {
     return [...new Set(forecastReportData.map(f => f.territory_name))].sort();
   };
 
+  /**
+   * Cascading filters
+   */
+  // Monthly Forecasts tab: Territory -> Dealer
+  const { filteredOptions: forecastFilterOptions } = useCascadingFilters({
+    filterConfigs: [
+      {
+        name: 'dealer',
+        allOptions: uniqueDealers,
+        dependsOn: isTSO ? [] : ['territory'],
+        filterFn: (dealer, parentValues) => {
+          if (isTSO) return true;
+          if (!parentValues.territory) return true;
+          return dealer.territory === parentValues.territory;
+        },
+        getValueKey: (dealer) => dealer.id?.toString?.() || dealer.id,
+      },
+    ],
+    filterValues: {
+      territory: territoryFilter,
+      dealer: dealerFilter,
+    },
+    setFilterValues: {
+      dealer: setDealerFilter,
+    },
+  });
+
+  const filteredForecastDealers = forecastFilterOptions.dealer || uniqueDealers;
+
+  // Forecast Report tab: Territory -> Dealer -> Product
+  const forecastReportTerritories = getUniqueTerritoriesFromForecastReport();
+  const forecastReportDealers = getUniqueDealersFromForecastReport();
+  const forecastReportProducts = getUniqueProductsFromForecastReport();
+
+  const { filteredOptions: forecastReportFilterOptions } = useCascadingFilters({
+    filterConfigs: [
+      {
+        name: 'territory',
+        allOptions: forecastReportTerritories,
+        dependsOn: [],
+        getValueKey: (territory) => territory,
+      },
+      {
+        name: 'dealer',
+        allOptions: forecastReportDealers,
+        dependsOn: isTSO ? [] : ['territory'],
+        filterFn: (dealer, parentValues) => {
+          if (isTSO) return true;
+          if (!parentValues.territory) return true;
+          return dealer.territory === parentValues.territory;
+        },
+        getValueKey: (dealer) => dealer.id?.toString?.() || dealer.id,
+      },
+      {
+        name: 'product',
+        allOptions: forecastReportProducts,
+        dependsOn: ['territory', 'dealer'],
+        filterFn: (product, parentValues, context) => {
+          const { forecastData } = context;
+          // If no parent filters, allow all products
+          if (!parentValues.territory && !parentValues.dealer) return true;
+          return forecastData.some((f) => {
+            if (parentValues.territory && f.territory_name !== parentValues.territory) return false;
+            if (parentValues.dealer && f.dealer_id !== parseInt(parentValues.dealer)) return false;
+            return (f.products || []).some((p) => p.product_code === product.code);
+          });
+        },
+        getValueKey: (product) => product.code,
+      },
+    ],
+    filterValues: {
+      territory: forecastReportTerritory,
+      dealer: forecastReportDealer,
+      product: forecastReportProduct,
+    },
+    setFilterValues: {
+      territory: setForecastReportTerritory,
+      dealer: setForecastReportDealer,
+      product: setForecastReportProduct,
+    },
+    context: { forecastData: forecastReportData },
+  });
+
+  const filteredForecastReportTerritories = forecastReportFilterOptions.territory || forecastReportTerritories;
+  const filteredForecastReportDealers = forecastReportFilterOptions.dealer || forecastReportDealers;
+  const filteredForecastReportProducts = forecastReportFilterOptions.product || forecastReportProducts;
+
   // Forecast table columns and renderers
   const dealerColumns = [
     {
@@ -1122,47 +1178,25 @@ function DailyReport() {
       render: (text) => <Tag color="blue">{text}</Tag>,
     },
     {
+      title: 'Product Details',
+      key: 'product_details',
+      ellipsis: {
+        showTitle: true,
+      },
+      render: (_, record) =>
+        renderProductDetailsStack({
+          products: record.products || [],
+          showPrice: false,
+          showIndex: true,
+        }),
+    },
+    {
       title: 'Total Quantity',
       dataIndex: 'total_quantity',
       key: 'total_quantity',
       width: 130,
       align: 'right',
       render: (text) => <Text strong>{(Number(text) || 0).toLocaleString()}</Text>,
-    },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: 180,
-      fixed: 'right',
-      align: 'center',
-      render: (_text, record) => {
-        const isExpanded = expandedRowKeys.byDealer.includes(record.dealer_id);
-        return (
-          <Badge {...STANDARD_BADGE_CONFIG} count={record.total_products}>
-            <Button
-              type="primary"
-              icon={<AppstoreOutlined />}
-              size={STANDARD_TABLE_SIZE}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (isExpanded) {
-                  setExpandedRowKeys({
-                    ...expandedRowKeys,
-                    byDealer: expandedRowKeys.byDealer.filter((key) => key !== record.dealer_id),
-                  });
-                } else {
-                  setExpandedRowKeys({
-                    ...expandedRowKeys,
-                    byDealer: [...expandedRowKeys.byDealer, record.dealer_id],
-                  });
-                }
-              }}
-            >
-              {isExpanded ? 'Hide Products' : 'View Products'}
-            </Button>
-          </Badge>
-        );
-      },
     },
   ];
 
@@ -1841,12 +1875,12 @@ function DailyReport() {
           )}
         </Tabs.TabPane>
 
-        {/* Forecasts by Dealer Tab */}
+        {/* Monthly Forecasts Tab */}
         <Tabs.TabPane
           tab={
             <span>
               <AppstoreOutlined />
-              Forecasts by Dealer
+              Monthly Forecasts
             </span>
           }
           key="forecasts-by-dealer"
@@ -1881,7 +1915,9 @@ function DailyReport() {
                   <Select
                     style={{ width: '100%', marginTop: '8px' }}
                     value={territoryFilter}
-                    onChange={setTerritoryFilter}
+                  onChange={(value) => {
+                    setTerritoryFilter(value || null);
+                  }}
                     allowClear
                     showSearch
                     placeholder="All Territories"
@@ -1903,7 +1939,7 @@ function DailyReport() {
                 <Select
                   style={{ width: '100%', marginTop: '8px' }}
                   value={dealerFilter}
-                  onChange={setDealerFilter}
+                onChange={(value) => setDealerFilter(value || null)}
                   allowClear
                   showSearch
                   placeholder="All Dealers"
@@ -1912,7 +1948,7 @@ function DailyReport() {
                     return optionText.toLowerCase().includes(input.toLowerCase());
                   }}
                 >
-                  {uniqueDealers.map((d) => (
+                  {filteredForecastDealers.map((d) => (
                     <Option key={d.id} value={d.id.toString()}>
                       {d.code} - {d.name}
                     </Option>
@@ -1944,24 +1980,12 @@ function DailyReport() {
             </Row>
           </Card>
 
-          <Card {...EXPANDABLE_TABLE_CARD_CONFIG}>
+          <Card {...TABLE_CARD_CONFIG}>
             <Table
               columns={dealerColumns}
               dataSource={filteredForecasts}
               rowKey="dealer_id"
               loading={forecastLoading}
-              expandable={{
-                expandedRowRender: renderDealerExpandedRow,
-                expandedRowKeys: expandedRowKeys.byDealer,
-                onExpandedRowsChange: (keys) => {
-                  setExpandedRowKeys({
-                    ...expandedRowKeys,
-                    byDealer: keys,
-                  });
-                },
-                expandRowByClick: false,
-                showExpandColumn: false,
-              }}
               pagination={getStandardPaginationConfig('dealers', 20)}
               scroll={{ x: 800 }}
             />
@@ -2201,11 +2225,11 @@ function DailyReport() {
                   style={{ width: '100%', marginTop: '8px' }}
                   value={forecastReportPeriod}
                   onChange={(value) => {
-                    setForecastReportPeriod(value);
+                    setForecastReportPeriod(value || null);
                     // Reset other filters when period changes
-                    setForecastReportTerritory(isTSO ? territoryName : '');
-                    setForecastReportDealer('');
-                    setForecastReportProduct('');
+                    setForecastReportTerritory(isTSO ? territoryName : null);
+                    setForecastReportDealer(null);
+                    setForecastReportProduct(null);
                   }}
                   loading={periods.length === 0}
                   placeholder="Select Period"
@@ -2230,10 +2254,10 @@ function DailyReport() {
                     style={{ width: '100%', marginTop: '8px' }}
                     value={forecastReportTerritory}
                     onChange={(value) => {
-                      setForecastReportTerritory(value || '');
+                      setForecastReportTerritory(value || null);
                       // Reset dealer and product when territory changes
-                      setForecastReportDealer('');
-                      setForecastReportProduct('');
+                      setForecastReportDealer(null);
+                      setForecastReportProduct(null);
                     }}
                     allowClear
                     showSearch
@@ -2244,7 +2268,7 @@ function DailyReport() {
                       return optionText.toLowerCase().includes(input.toLowerCase());
                     }}
                   >
-                    {getUniqueTerritoriesFromForecastReport().map((t) => (
+                    {filteredForecastReportTerritories.map((t) => (
                       <Option key={t} value={t}>
                         {t}
                       </Option>
@@ -2258,9 +2282,9 @@ function DailyReport() {
                   style={{ width: '100%', marginTop: '8px' }}
                   value={forecastReportDealer}
                   onChange={(value) => {
-                    setForecastReportDealer(value || '');
+                    setForecastReportDealer(value || null);
                     // Reset product when dealer changes
-                    setForecastReportProduct('');
+                    setForecastReportProduct(null);
                   }}
                   allowClear
                   showSearch
@@ -2271,7 +2295,7 @@ function DailyReport() {
                     return optionText.toLowerCase().includes(input.toLowerCase());
                   }}
                 >
-                  {getUniqueDealersFromForecastReport().map((d) => (
+                    {filteredForecastReportDealers.map((d) => (
                     <Option key={d.id} value={d.id.toString()}>
                       {d.code} - {d.name}
                     </Option>
@@ -2283,7 +2307,7 @@ function DailyReport() {
                 <Select
                   style={{ width: '100%', marginTop: '8px' }}
                   value={forecastReportProduct}
-                  onChange={(value) => setForecastReportProduct(value || '')}
+                  onChange={(value) => setForecastReportProduct(value || null)}
                   allowClear
                   showSearch
                   placeholder="All Products"
@@ -2293,7 +2317,7 @@ function DailyReport() {
                     return optionText.toLowerCase().includes(input.toLowerCase());
                   }}
                 >
-                  {getUniqueProductsFromForecastReport().map((p) => (
+                    {filteredForecastReportProducts.map((p) => (
                     <Option key={p.code} value={p.code}>
                       {p.code} - {p.name}
                     </Option>

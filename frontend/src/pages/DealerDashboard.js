@@ -66,9 +66,9 @@ function DealerDashboard() {
     try {
       // Get all dealer orders and filter for recent ones
       const response = await axios.get('/api/orders');
-      // Filter for dealer orders (has dealer_id, warehouse_id is null)
+      // Filter for dealer orders (Daily Demand) using order_type, not warehouse_id
       const dealerOrders = (response.data || []).filter(order => 
-        order.dealer_id === dealerId && order.warehouse_id === null
+        order.dealer_id === dealerId && (order.order_type === 'DD' || order.order_type_name === 'DD')
       );
       
       // Load item_count for each order
@@ -90,9 +90,13 @@ function DealerDashboard() {
         })
       );
       
-      // Sort by created_at descending and take last 5
+      // Sort by order_date descending (business date, not database timestamp)
       const sortedOrders = ordersWithCounts
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .sort((a, b) => {
+          const dateA = a.order_date ? new Date(a.order_date) : new Date(0);
+          const dateB = b.order_date ? new Date(b.order_date) : new Date(0);
+          return dateB - dateA; // Descending order
+        })
         .slice(0, 5);
       setRecentOrders(sortedOrders);
     } catch (error) {

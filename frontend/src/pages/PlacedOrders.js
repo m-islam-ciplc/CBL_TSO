@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { useUser } from '../contexts/UserContext';
 import {
@@ -19,6 +19,7 @@ import {
   Modal,
   InputNumber,
   Form,
+  Alert,
 } from 'antd';
 import {
   ReloadOutlined,
@@ -32,7 +33,9 @@ import {
 import dayjs from 'dayjs';
 import { createStandardDatePickerConfig, createStandardDateRangePicker } from '../templates/UIConfig';
 import { useStandardPagination } from '../templates/useStandardPagination';
+import { useCascadingFilters } from '../templates/useCascadingFilters';
 import { FILTER_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
+import { renderProductDetailsStack } from '../templates/TableTemplate';
 import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, COMPACT_ROW_GUTTER, STANDARD_FORM_LABEL_STYLE, STANDARD_INPUT_SIZE, STANDARD_SELECT_SIZE, STANDARD_TABLE_SIZE, STANDARD_TAG_STYLE, STANDARD_POPCONFIRM_CONFIG, STANDARD_TOOLTIP_CONFIG, STANDARD_SPIN_SIZE, STANDARD_MODAL_CONFIG, STANDARD_INPUT_NUMBER_SIZE, STANDARD_BUTTON_SIZE, renderTableHeaderWithSearch } from '../templates/UIElements';
 
 const { Title, Text } = Typography;
@@ -54,6 +57,7 @@ function PlacedOrders({ refreshTrigger }) {
   const [orderTypeFilter, setOrderTypeFilter] = useState('tso'); // 'tso' = Sales Orders, 'dd' = Daily Demands, 'all' = All
   const [startDate, setStartDate] = useState(dayjs()); // Start date filter
   const [endDate, setEndDate] = useState(null); // End date filter (blank by default, optional)
+  const [dateError, setDateError] = useState(''); // Date validation error message
   const [productFilter, setProductFilter] = useState(null);
   const [dealerFilter, setDealerFilter] = useState(null);
   const [territoryFilter, setTerritoryFilter] = useState(null);
@@ -71,6 +75,75 @@ function PlacedOrders({ refreshTrigger }) {
   const [editLoading, setEditLoading] = useState(false);
   const [editForm] = Form.useForm();
   const [dealerAssignedProducts, setDealerAssignedProducts] = useState([]);
+
+  // Cascading filters: Territory -> Dealer -> Product
+  const { filteredOptions: cascadingFilteredOptions } = useCascadingFilters({
+    filterConfigs: [
+      {
+        name: 'dealer',
+        allOptions: dealersList,
+        dependsOn: ['territory'],
+        filterFn: (dealer, parentValues) => {
+          if (!parentValues.territory) return true;
+          return dealer?.territory_name === parentValues.territory;
+        },
+        getValueKey: (dealer) => dealer.id,
+      },
+      {
+        name: 'product',
+        allOptions: productsList,
+        dependsOn: ['territory', 'dealer'],
+        filterFn: (product, parentValues, context) => {
+          const { orders, orderProducts, orderTypeFilter } = context;
+          // Limit products to those appearing in orders matching current territory/dealer/orderType filters
+          const allowedProductIds = new Set();
+          orders.forEach(order => {
+            // Check territory filter
+            if (parentValues.territory && order.dealer_territory !== parentValues.territory) return;
+            // Check dealer filter
+            if (parentValues.dealer && order.dealer_id !== parentValues.dealer) return;
+            // Check order type filter
+            if (orderTypeFilter === 'tso') {
+              const isSO = order.order_type === 'SO' || order.order_type_name === 'SO';
+              if (!isSO && !order.order_type && !order.order_type_name) {
+                if (order.order_source !== 'tso') return;
+              } else if (!isSO) return;
+            } else if (orderTypeFilter === 'dd') {
+              const isDD = order.order_type === 'DD' || order.order_type_name === 'DD';
+              if (!isDD && !order.order_type && !order.order_type_name) {
+                if (order.order_source !== 'dealer') return;
+              } else if (!isDD) return;
+            }
+            // If order passes all filters, include its products
+            const products = orderProducts[order.order_id] || [];
+            products.forEach(p => {
+              if (p.product_id) allowedProductIds.add(p.product_id);
+              else if (p.id) allowedProductIds.add(p.id);
+              else if (p.product_code) allowedProductIds.add(p.product_code);
+            });
+          });
+          // If no filters applied, return all products
+          if (!parentValues.territory && !parentValues.dealer) return true;
+          return allowedProductIds.has(product.id) || allowedProductIds.has(product.product_code);
+        },
+        getValueKey: (product) => product.id || product.product_code,
+      },
+    ],
+    filterValues: {
+      territory: territoryFilter,
+      dealer: dealerFilter,
+      product: productFilter,
+    },
+    setFilterValues: {
+      dealer: setDealerFilter,
+      product: setProductFilter,
+    },
+    context: { orders, orderProducts, orderTypeFilter },
+  });
+
+  // Extract filtered options for easier access
+  const filteredDealersForFilter = cascadingFilteredOptions.dealer || dealersList;
+  const filteredProductsForFilter = cascadingFilteredOptions.product || productsList;
 
   const loadDropdownData = async () => {
     try {
@@ -187,38 +260,97 @@ function PlacedOrders({ refreshTrigger }) {
   const filterOrders = () => {
     let filtered = orders;
 
-    // Date range filter - use order_date if available, otherwise created_at
+    // Date range filter - use order_date (business date, always NOT NULL)
     // If only startDate is provided, filter for that single date
     // If both startDate and endDate are provided, filter for the range
+    // Clear date error first
+    setDateError('');
+    
     if (startDate) {
       try {
-        const start = dayjs(startDate).startOf('day');
-        if (start.isValid()) {
+        // Convert to dayjs if not already (handles both dayjs objects and strings/dates)
+        const start = dayjs(startDate);
+        
+        if (!start.isValid()) {
+          setDateError('Invalid start date');
+          // Skip date filtering but continue with other filters
+        } else {
+          const startNormalized = start.startOf('day');
+          
           if (endDate) {
             // Date range filter
-            const end = dayjs(endDate).endOf('day');
-            if (end.isValid()) {
-      filtered = filtered.filter(order => {
-                const dateToCheck = order.order_date 
-                  ? dayjs(order.order_date)
-                  : dayjs(order.created_at);
-                if (!dateToCheck.isValid()) return false;
-                return dateToCheck.isSameOrAfter(start) && dateToCheck.isSameOrBefore(end);
+            const end = dayjs(endDate);
+            
+            if (!end.isValid()) {
+              setDateError('Invalid end date');
+              // Skip date filtering but continue with other filters
+            } else {
+              const endNormalized = end.endOf('day');
+              
+              // Validate: end date must be >= start date
+              if (endNormalized.isBefore(startNormalized)) {
+                setDateError('End date cannot be before start date');
+                // Still filter, but show error (user might want to see what's wrong)
+              } else {
+                setDateError(''); // Clear error if valid
+              }
+              
+              filtered = filtered.filter(order => {
+                try {
+                  // Use order_date (business date) - this is always NOT NULL in database
+                  // order_date represents the actual date the order is for, not when it was created
+                  if (!order.order_date) {
+                    // This shouldn't happen since order_date is NOT NULL, but handle gracefully
+                    console.warn('Order missing order_date:', order.order_id);
+                    return false;
+                  }
+                  
+                  const dateToCheck = dayjs(order.order_date);
+                  
+                  if (!dateToCheck.isValid()) {
+                    // If date is invalid, exclude from results
+                    return false;
+                  }
+                  
+                  // Normalize order date to start of day for comparison (removes time component)
+                  const orderDateNormalized = dateToCheck.startOf('day');
+                  
+                  // Compare dates at day level (ignoring time)
+                  // Use format('YYYY-MM-DD') for reliable date-only comparison
+                  const orderDateStr = orderDateNormalized.format('YYYY-MM-DD');
+                  const startDateStr = startNormalized.format('YYYY-MM-DD');
+                  const endDateStr = endNormalized.format('YYYY-MM-DD');
+                  
+                  // Simple string comparison for dates (YYYY-MM-DD format is sortable)
+                  return orderDateStr >= startDateStr && orderDateStr <= endDateStr;
+                } catch (error) {
+                  // Silently exclude orders with date parsing errors
+                  return false;
+                }
               });
             }
           } else {
             // Single date filter (only startDate)
             filtered = filtered.filter(order => {
-              const dateToCheck = order.order_date 
-                ? dayjs(order.order_date)
-                : dayjs(order.created_at);
-              if (!dateToCheck.isValid()) return false;
-              return dateToCheck.isSame(start, 'day');
-      });
+              try {
+                // Use order_date (business date) - always NOT NULL
+                if (!order.order_date) {
+                  return false;
+                }
+                const dateToCheck = dayjs(order.order_date);
+                if (!dateToCheck.isValid()) return false;
+                return dateToCheck.isSame(startNormalized, 'day');
+              } catch {
+                return false;
+              }
+            });
           }
         }
       } catch (error) {
         console.error('Error filtering by date range:', error);
+        // Only show generic error if it's unexpected
+        setDateError('Error processing dates. Please check your date selections.');
+        // Continue with other filters even if date filtering fails
       }
     }
 
@@ -243,24 +375,53 @@ function PlacedOrders({ refreshTrigger }) {
     // TSO User filter (only for Sales Orders)
     if (tsoUserFilter && (orderTypeFilter === 'tso' || orderTypeFilter === 'all')) {
       filtered = filtered.filter(order => 
-        order.warehouse_id !== null && order.user_id === tsoUserFilter
+        (order.order_type === 'SO' || order.order_type_name === 'SO') && order.user_id === tsoUserFilter
       );
     }
 
-    // Search filter
+    // Search filter - Enhanced: includes product codes/names from orderProducts
     if (searchTerm) {
-      filtered = filtered.filter(order =>
-        order.order_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.dealer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.product_name?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      const searchLower = searchTerm.toLowerCase();
+      filtered = filtered.filter(order => {
+        // Basic order fields
+        if (order.order_id?.toLowerCase().includes(searchLower)) return true;
+        if (order.dealer_name?.toLowerCase().includes(searchLower)) return true;
+        if (order.product_name?.toLowerCase().includes(searchLower)) return true;
+        
+        // Enhanced: Search in orderProducts for product codes and names
+        const products = orderProducts[order.order_id] || [];
+        const productMatch = products.some(p => 
+          p.product_code?.toLowerCase().includes(searchLower) ||
+          p.product_name?.toLowerCase().includes(searchLower) ||
+          p.name?.toLowerCase().includes(searchLower)
+        );
+        if (productMatch) return true;
+        
+        return false;
+      });
     }
 
-    // Order Type filter: Sales Orders (warehouse_id IS NOT NULL) vs Daily Demands (warehouse_id IS NULL)
+    // Order Type filter: Use order_type field (SO or DD) - NOT warehouse_id
+    // This is the correct way since we split tables: sales_orders = SO, demand_orders = DD
+    // Fallback: If order_type is missing, use order_source ('tso' = SO, 'dealer' = DD)
     if (orderTypeFilter === 'tso') {
-      filtered = filtered.filter(order => order.warehouse_id !== null);
+      filtered = filtered.filter(order => {
+        const isSO = order.order_type === 'SO' || order.order_type_name === 'SO';
+        // Fallback: if order_type is missing, check order_source
+        if (!isSO && !order.order_type && !order.order_type_name) {
+          return order.order_source === 'tso';
+        }
+        return isSO;
+      });
     } else if (orderTypeFilter === 'dd') {
-      filtered = filtered.filter(order => order.warehouse_id === null);
+      filtered = filtered.filter(order => {
+        const isDD = order.order_type === 'DD' || order.order_type_name === 'DD';
+        // Fallback: if order_type is missing, check order_source
+        if (!isDD && !order.order_type && !order.order_type_name) {
+          return order.order_source === 'dealer';
+        }
+        return isDD;
+      });
     }
     // If 'all', show everything (no filter)
 
@@ -291,8 +452,9 @@ function PlacedOrders({ refreshTrigger }) {
   }
 
   const handleEditOrder = async (order) => {
-    // Check if order is a dealer order (has dealer_id, no warehouse_id, order_type is DD)
-    if (!order.dealer_id || order.warehouse_id !== null) {
+    // Check if order is a dealer order (order_type must be DD, not SO)
+    // Use order_type field, not warehouse_id (since tables are split)
+    if (!order.dealer_id || (order.order_type !== 'DD' && order.order_type_name !== 'DD')) {
       message.warning('Only dealer daily demand orders can be edited');
       return;
     }
@@ -372,12 +534,13 @@ function PlacedOrders({ refreshTrigger }) {
     }
   };
 
-  const handleDeleteOrder = async (orderId, orderCreatedAt) => {
+  const handleDeleteOrder = async (orderId, orderDate) => {
     // Additional safety check: only allow deletion of today's orders
-    const orderDate = dayjs(orderCreatedAt).format('YYYY-MM-DD');
+    // Use order_date (business date), not created_at (database timestamp)
+    const orderDateStr = orderDate ? dayjs(orderDate).format('YYYY-MM-DD') : null;
     const today = dayjs().format('YYYY-MM-DD');
     
-    if (orderDate !== today) {
+    if (!orderDateStr || orderDateStr !== today) {
       message.error('Only today\'s orders can be deleted');
       return;
     }
@@ -401,7 +564,8 @@ function PlacedOrders({ refreshTrigger }) {
       key: 'order_id',
       ellipsis: true,
       render: (orderId, record) => {
-        const isTSOOrder = record.warehouse_id !== null;
+        // Use order_type field, not warehouse_id (since tables are split)
+        const isTSOOrder = record.order_type === 'SO' || record.order_type_name === 'SO';
         const prefix = isTSOOrder ? 'SO' : 'DD';
         return (
           <Tag color={isTSOOrder ? 'blue' : 'green'} style={STANDARD_TAG_STYLE}>
@@ -416,15 +580,14 @@ function PlacedOrders({ refreshTrigger }) {
       key: 'order_date',
       ellipsis: true,
       render: (_, record) => {
-        const dateToShow = record.order_date 
-          ? dayjs(record.order_date).format('YYYY-MM-DD')
-          : dayjs(record.created_at).format('YYYY-MM-DD');
-        return dateToShow;
+        // Use order_date (business date, always NOT NULL)
+        return record.order_date ? dayjs(record.order_date).format('YYYY-MM-DD') : 'N/A';
       },
       sorter: (a, b) => {
-        const dateA = a.order_date || a.created_at;
-        const dateB = b.order_date || b.created_at;
-        return new Date(dateA) - new Date(dateB);
+        // Sort by order_date (business date, always NOT NULL)
+        const dateA = a.order_date ? new Date(a.order_date) : new Date(0);
+        const dateB = b.order_date ? new Date(b.order_date) : new Date(0);
+        return dateA - dateB;
       },
     },
     {
@@ -472,40 +635,11 @@ function PlacedOrders({ refreshTrigger }) {
       },
       render: (_, record) => {
         const products = orderProducts[record.order_id] || [];
-        
-        if (products.length === 0) {
-          return (
-            <div style={{ fontSize: '12px', color: '#999', fontStyle: 'italic' }}>
-              No products found
-            </div>
-          );
-        }
-        
-        return (
-          <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
-            {products.map((product, index) => (
-              <div key={product.id} style={{ marginBottom: '2px' }}>
-                <span style={{ fontWeight: 'bold', color: '#1890ff' }}>
-                  #{index + 1}
-                </span>{' '}
-                <span style={{ color: '#666' }}>
-                  {product.product_code}
-                </span>{' '}
-                <span style={{ fontWeight: 'bold' }}>
-                  {product.product_name}
-                </span>
-                <span style={{ color: '#52c41a', marginLeft: '8px' }}>
-                  (Qty: {product.quantity})
-                </span>
-                {!isTSO && product.unit_tp && (
-                  <span style={{ color: '#1890ff', marginLeft: '8px' }}>
-                    @৳{product.unit_tp.toLocaleString()}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        );
+        return renderProductDetailsStack({
+          products,
+          showPrice: true,
+          isTSO,
+        });
       },
     },
     {
@@ -514,7 +648,8 @@ function PlacedOrders({ refreshTrigger }) {
       width: 120,
       align: 'center',
       render: (_, record) => {
-        const isTSOOrder = record.warehouse_id !== null;
+        // Use order_type field, not warehouse_id (since tables are split)
+        const isTSOOrder = record.order_type === 'SO' || record.order_type_name === 'SO';
         return (
           <Tag color={isTSOOrder ? 'blue' : 'green'} style={STANDARD_TAG_STYLE}>
             {isTSOOrder ? 'Sales Order' : 'Daily Demand'}
@@ -522,8 +657,8 @@ function PlacedOrders({ refreshTrigger }) {
         );
       },
       sorter: (a, b) => {
-        const aIsTSO = a.warehouse_id !== null;
-        const bIsTSO = b.warehouse_id !== null;
+        const aIsTSO = a.order_type === 'SO' || a.order_type_name === 'SO';
+        const bIsTSO = b.order_type === 'SO' || b.order_type_name === 'SO';
         if (aIsTSO === bIsTSO) return 0;
         return aIsTSO ? 1 : -1;
       },
@@ -534,10 +669,13 @@ function PlacedOrders({ refreshTrigger }) {
       width: 120,
       align: 'center',
       render: (_, record) => {
-        const orderDate = dayjs(record.created_at).format('YYYY-MM-DD');
+        // Use order_date (business date) to determine if order can be deleted
+        // Only today's orders can be deleted
+        const orderDate = record.order_date ? dayjs(record.order_date).format('YYYY-MM-DD') : null;
         const today = dayjs().format('YYYY-MM-DD');
         const isToday = orderDate === today;
-        const isDealerOrder = record.dealer_id && record.warehouse_id === null;
+        // Use order_type field, not warehouse_id (since tables are split)
+        const isDealerOrder = record.dealer_id && (record.order_type === 'DD' || record.order_type_name === 'DD');
         const canEditDealerOrder = isDealerOrder && (isAdmin || isSalesManager);
         
         return (
@@ -562,7 +700,7 @@ function PlacedOrders({ refreshTrigger }) {
                     <div>This will also delete all associated items, and quotas will revert to the TSO.</div>
                   </div>
                 }
-                onConfirm={() => handleDeleteOrder(record.id, record.created_at)}
+                onConfirm={() => handleDeleteOrder(record.id, record.order_date)}
                 okText="Yes, Delete"
                 cancelText="Cancel"
                 okButtonProps={{ danger: true }}
@@ -599,7 +737,7 @@ function PlacedOrders({ refreshTrigger }) {
   return (
     <div>
       <Title {...STANDARD_PAGE_TITLE_CONFIG}>
-        <OrderedListOutlined /> Placed Orders
+        <OrderedListOutlined /> Orders & Demands
       </Title>
       <Text {...STANDARD_PAGE_SUBTITLE_CONFIG}>
         {isTSO ? "View orders you've placed and filter by date range, territory, dealer, product, and order type." : 'View and manage all Sales Orders and Daily Demands. Filter by date range, territory, dealer, product, and order type.'}
@@ -607,8 +745,24 @@ function PlacedOrders({ refreshTrigger }) {
 
       {/* Filters */}
       <Card title="Filter Orders" {...FILTER_CARD_CONFIG}>
-        {/* Row 1: Primary Filters */}
+        {/* Row 1: Primary Filters - Order Type first (most important) */}
         <Row gutter={COMPACT_ROW_GUTTER} align="bottom" style={{ marginBottom: '12px' }}>
+          <Col xs={24} sm={12} md={6}>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Text strong style={STANDARD_FORM_LABEL_STYLE}>Order Type</Text>
+              <Select
+                placeholder="Select Type"
+                value={orderTypeFilter}
+                onChange={setOrderTypeFilter}
+                style={{ width: '100%' }}
+                size={STANDARD_INPUT_SIZE}
+              >
+                <Option value="tso">Sales Orders</Option>
+                <Option value="dd">Daily Demands</Option>
+                <Option value="all">All Orders</Option>
+              </Select>
+            </Space>
+          </Col>
           {createStandardDateRangePicker({
             startDate,
             setStartDate,
@@ -617,15 +771,39 @@ function PlacedOrders({ refreshTrigger }) {
             disabledDate,
             dateCellRender,
             availableDates,
-            colSpan: { xs: 24, sm: 12, md: 6 }
+            colSpan: { xs: 24, sm: 12, md: 6 },
+            onStartChange: () => {
+              setDateError(''); // Clear error when start date changes
+              filterOrders();
+            },
+            onEndChange: () => {
+              filterOrders(); // Error will be set in filterOrders if invalid
+            },
           })}
+          {dateError && (
+            <Col xs={24} sm={24} md={12}>
+              <Alert
+                message={dateError}
+                type="error"
+                showIcon
+                closable
+                onClose={() => setDateError('')}
+                style={{ marginTop: '8px' }}
+              />
+            </Col>
+          )}
           <Col xs={24} sm={12} md={6}>
             <Space direction="vertical" style={{ width: '100%' }}>
               <Text strong style={STANDARD_FORM_LABEL_STYLE}>Territory</Text>
               <Select
                 placeholder="All Territories"
                 value={territoryFilter}
-                onChange={setTerritoryFilter}
+                onChange={(value) => {
+                  setTerritoryFilter(value);
+                  // Clear dependent filters when territory changes
+                  setDealerFilter(null);
+                  setProductFilter(null);
+                }}
                 style={{ width: '100%' }}
                 size={STANDARD_INPUT_SIZE}
                 allowClear
@@ -643,22 +821,6 @@ function PlacedOrders({ refreshTrigger }) {
               </Select>
             </Space>
           </Col>
-          <Col xs={24} sm={12} md={6}>
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Text strong style={STANDARD_FORM_LABEL_STYLE}>Order Type</Text>
-              <Select
-                placeholder="Select Type"
-                value={orderTypeFilter}
-                onChange={setOrderTypeFilter}
-                style={{ width: '100%' }}
-                size={STANDARD_INPUT_SIZE}
-              >
-                <Option value="tso">Sales Orders</Option>
-                <Option value="dd">Daily Demands</Option>
-                <Option value="all">All Orders</Option>
-              </Select>
-            </Space>
-          </Col>
         </Row>
 
         {/* Row 2: Secondary Filters */}
@@ -670,42 +832,53 @@ function PlacedOrders({ refreshTrigger }) {
                 <Select
                   placeholder="All TSOs"
                   value={tsoUserFilter}
-                  onChange={setTsoUserFilter}
-                style={{ width: '100%' }}
-                size={STANDARD_INPUT_SIZE}
-                allowClear
-                showSearch
-                filterOption={(input, option) => {
-                  const optionText = option?.children?.toString() || '';
-                  return optionText.toLowerCase().includes(input.toLowerCase());
-                }}
-              >
+                  onChange={(value) => {
+                    setTsoUserFilter(value);
+                    // Auto-switch Order Type to SO when TSO user is selected (if currently 'all')
+                    if (value && orderTypeFilter === 'all') {
+                      setOrderTypeFilter('tso');
+                    }
+                  }}
+                  style={{ width: '100%' }}
+                  size={STANDARD_INPUT_SIZE}
+                  allowClear
+                  showSearch
+                  filterOption={(input, option) => {
+                    const optionText = option?.children?.toString() || '';
+                    return optionText.toLowerCase().includes(input.toLowerCase());
+                  }}
+                >
                   {tsoUsersList && tsoUsersList.length > 0 ? tsoUsersList.map(tso => (
                     <Option key={tso.id} value={tso.id}>
                       {tso.name}
                   </Option>
                   )) : null}
-              </Select>
-            </Space>
-          </Col>
+                </Select>
+              </Space>
+            </Col>
           )}
           <Col xs={24} sm={12} md={6}>
             <Space direction="vertical" style={{ width: '100%' }}>
               <Text strong style={STANDARD_FORM_LABEL_STYLE}>Dealer</Text>
               <Select
-                placeholder="All Dealers"
+                placeholder={territoryFilter ? "Select Dealer" : "All Dealers"}
                 value={dealerFilter}
-                onChange={setDealerFilter}
+                onChange={(value) => {
+                  setDealerFilter(value);
+                  // Clear dependent filter when dealer changes
+                  setProductFilter(null);
+                }}
                 style={{ width: '100%' }}
                 size={STANDARD_INPUT_SIZE}
                 allowClear
                 showSearch
+                disabled={!territoryFilter && territoriesList.length > 0}
                 filterOption={(input, option) => {
                   const optionText = option?.children?.toString() || '';
                   return optionText.toLowerCase().includes(input.toLowerCase());
                 }}
               >
-                {dealersList.map(dealer => (
+                {filteredDealersForFilter.map(dealer => (
                   <Option key={dealer.id} value={dealer.id}>
                     {removeMSPrefix(dealer.name)}
                   </Option>
@@ -717,19 +890,20 @@ function PlacedOrders({ refreshTrigger }) {
             <Space direction="vertical" style={{ width: '100%' }}>
               <Text strong style={STANDARD_FORM_LABEL_STYLE}>Product</Text>
               <Select
-                placeholder="All Products"
+                placeholder={!territoryFilter && !dealerFilter ? "Select Territory/Dealer first" : "All Products"}
                 value={productFilter}
                 onChange={setProductFilter}
                 style={{ width: '100%' }}
                 size={STANDARD_INPUT_SIZE}
                 allowClear
                 showSearch
+                disabled={!territoryFilter && !dealerFilter && (territoriesList.length > 0 || dealersList.length > 0)}
                 filterOption={(input, option) => {
                   const optionText = option?.children?.toString() || '';
                   return optionText.toLowerCase().includes(input.toLowerCase());
                 }}
               >
-                {productsList.map(product => (
+                {filteredProductsForFilter.map(product => (
                   <Option key={product.id} value={product.id}>
                     {product.product_code} - {product.name}
                   </Option>
@@ -758,22 +932,26 @@ function PlacedOrders({ refreshTrigger }) {
             <Space direction="vertical" style={{ width: '100%' }}>
               <Text strong style={STANDARD_FORM_LABEL_STYLE}>Actions</Text>
               <Space style={{ width: '100%' }}>
-                <Button
-                  icon={<ReloadOutlined />}
-                  onClick={loadOrders}
-                  style={{ flex: 1 }}
-                  size={STANDARD_INPUT_SIZE}
-                >
-                  Refresh
-                </Button>
-                <Button
-                  icon={<ClearOutlined />}
-                  onClick={clearFilters}
-                  style={{ flex: 1 }}
-                  size={STANDARD_INPUT_SIZE}
-                >
-                  Clear
-                </Button>
+                <Tooltip {...STANDARD_TOOLTIP_CONFIG} title="Reload orders from server without changing current filters">
+                  <Button
+                    icon={<ReloadOutlined />}
+                    onClick={loadOrders}
+                    style={{ flex: 1 }}
+                    size={STANDARD_INPUT_SIZE}
+                  >
+                    Refresh
+                  </Button>
+                </Tooltip>
+                <Tooltip {...STANDARD_TOOLTIP_CONFIG} title="Clear all filters and reset to defaults">
+                  <Button
+                    icon={<ClearOutlined />}
+                    onClick={clearFilters}
+                    style={{ flex: 1 }}
+                    size={STANDARD_INPUT_SIZE}
+                  >
+                    Clear
+                  </Button>
+                </Tooltip>
               </Space>
             </Space>
           </Col>

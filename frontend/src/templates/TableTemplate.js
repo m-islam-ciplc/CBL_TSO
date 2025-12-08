@@ -18,6 +18,62 @@ import { EXPANDABLE_TABLE_CARD_CONFIG } from './CardTemplates';
 const { Text } = Typography;
 
 /**
+ * RENDER PRODUCT DETAILS (STACKED)
+ * 
+ * Standard renderer for product details inside table cells.
+ * Design source: Orders & Demands (Products column)
+ * - Product name: bold
+ * - Product code: regular (muted)
+ * - Quantity: green
+ * - Optional price (hidden for TSO when showPrice=true and isTSO=true)
+ */
+export const renderProductDetailsStack = ({
+  products = [],
+  showPrice = false,
+  isTSO = false,
+  showIndex = true,
+}) => {
+  if (!products || products.length === 0) {
+    return (
+      <div style={{ fontSize: '12px', color: '#999', fontStyle: 'italic' }}>
+        No products found
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
+      {products.map((product, index) => (
+        <div
+          key={`${product.id || product.product_code || index}-${index}`}
+          style={{ marginBottom: '2px' }}
+        >
+          {showIndex && (
+            <span style={{ fontWeight: 'bold', color: '#1890ff' }}>
+              #{index + 1}
+            </span>
+          )}{' '}
+          <span style={{ color: '#666' }}>
+            {product.product_code || 'N/A'}
+          </span>{' '}
+          <span style={{ fontWeight: 'bold' }}>
+            {product.product_name || product.name || 'Unnamed Product'}
+          </span>
+          <span style={{ color: '#52c41a', marginLeft: '8px' }}>
+            (Qty: {Number(product.quantity || 0)})
+          </span>
+          {showPrice && !isTSO && product.unit_tp && (
+            <span style={{ color: '#1890ff', marginLeft: '8px' }}>
+              @৳{Number(product.unit_tp || 0).toLocaleString()}
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+/**
  * TABLE CONFIGURATION
  * 
  * Standard configuration for expandable tables

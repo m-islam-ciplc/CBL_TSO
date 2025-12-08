@@ -7,6 +7,7 @@ import { useUser } from '../contexts/UserContext';
 import { createStandardDatePickerConfig, createStandardDateRangePicker } from '../templates/UIConfig';
 import { getStandardPaginationConfig } from '../templates/useStandardPagination';
 import { FILTER_CARD_CONFIG, DATE_SELECTION_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
+import { renderProductDetailsStack } from '../templates/TableTemplate';
 import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, STANDARD_FORM_LABEL_STYLE, STANDARD_TABS_CONFIG, STANDARD_DATE_PICKER_CONFIG, STANDARD_SPIN_SIZE, STANDARD_TABLE_SIZE, renderTableHeaderWithSearch } from '../templates/UIElements';
 
 const { Title, Text } = Typography;
@@ -381,38 +382,13 @@ function TSOReport() {
       ellipsis: {
         showTitle: true,
       },
-      render: (_, record) => {
-        const products = orderProducts[record.order_id] || [];
-        
-        if (products.length === 0) {
-          return (
-            <div style={{ fontSize: '12px', color: '#999', fontStyle: 'italic' }}>
-              No products found
-            </div>
-          );
-        }
-        
-        return (
-          <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
-            {products.map((product, index) => (
-              <div key={product.id} style={{ marginBottom: '2px' }}>
-                <span style={{ fontWeight: 'bold', color: '#1890ff' }}>
-                  #{index + 1}
-                </span>{' '}
-                <span style={{ fontWeight: 'bold' }}>
-                  {product.product_code}
-                </span>{' '}
-                <span style={{ color: '#666' }}>
-                  {product.product_name}
-                </span>
-                <span style={{ color: '#52c41a', marginLeft: '8px' }}>
-                  (Qty: {product.quantity})
-                </span>
-              </div>
-            ))}
-          </div>
-        );
-      },
+      render: (_, record) =>
+        renderProductDetailsStack({
+          products: orderProducts[record.order_id] || [],
+          showPrice: false,
+          showIndex: true,
+          isTSO: true,
+        }),
     },
     {
       title: 'Transport',
@@ -504,37 +480,16 @@ function TSOReport() {
       ellipsis: {
         showTitle: true,
       },
-      render: (_, record) => {
-        const products = record.product_summaries || [];
-        if (products.length === 0) {
-          return (
-            <div style={{ fontSize: '12px', color: '#999', fontStyle: 'italic' }}>
-              No products found
-            </div>
-          );
-        }
-
-        return (
-          <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
-            {products.map((product, index) => (
-              <div key={`${record.id}-${product.product_code}`} style={{ marginBottom: '2px' }}>
-                <span style={{ fontWeight: 'bold', color: '#1890ff' }}>
-                  #{index + 1}
-                </span>{' '}
-                <span style={{ fontWeight: 'bold' }}>
-                  {product.product_code}
-                </span>{' '}
-                <span style={{ color: '#666' }}>
-                  {product.product_name}
-                </span>
-                <span style={{ color: '#52c41a', marginLeft: '8px' }}>
-                  (Qty: {product.quantity})
-                </span>
-              </div>
-            ))}
-          </div>
-        );
-      },
+      render: (_, record) =>
+        renderProductDetailsStack({
+          products: (record.product_summaries || []).map((p) => ({
+            ...p,
+            quantity: p.total_quantity ?? p.quantity ?? 0,
+          })),
+          showPrice: false,
+          showIndex: true,
+          isTSO: true,
+        }),
     },
     {
       title: 'Transport',

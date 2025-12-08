@@ -60,6 +60,73 @@ This folder contains **reusable template code** that is imported into applicatio
 **Visual reference:**
 - `/template-ui` - See UnifiedUITemplate.js for all card patterns
 
+### useCascadingFilters.js
+**Type**: React Hook  
+**Purpose**: Reusable hook for implementing cascading (dependent) filter behavior. When a parent filter changes, child filters are automatically updated and cleared if invalid.
+
+**Hook:**
+- `useCascadingFilters(config)` - Returns filtered options and clear function
+
+**Parameters:**
+- `filterConfigs` - Array of filter configurations, each with:
+  - `name` - Filter name (e.g., 'dealer', 'product')
+  - `allOptions` - All available options for this filter
+  - `dependsOn` - Array of parent filter names this depends on
+  - `filterFn` - Custom filter function: (item, parentValues, context) => boolean
+  - `getValueKey` - Function to get the value/key for matching: (item) => any
+- `filterValues` - Current filter values object (e.g., { territory: null, dealer: null })
+- `setFilterValues` - Setters for filter values (e.g., { dealer: setDealer })
+- `context` - Additional context data needed for filtering (e.g., orders, orderProducts)
+
+**Returns:**
+- `filteredOptions` - Object with filtered options for each filter (e.g., { dealer: [...], product: [...] })
+- `clearFilters` - Function to clear all filters: (defaultValues?) => void
+
+**Features:**
+- Automatic filtering of options based on parent selections
+- Automatic clearing of dependent filters when parent changes
+- Support for complex filtering logic using context data
+- Flexible configuration for different filter relationships
+
+**Used in application pages:**
+- PlacedOrders.js (Territory -> Dealer -> Product)
+
+**Example:**
+```javascript
+const { filteredOptions, clearFilters } = useCascadingFilters({
+  filterConfigs: [
+    {
+      name: 'dealer',
+      allOptions: dealersList,
+      dependsOn: ['territory'],
+      filterFn: (dealer, parentValues) => {
+        if (!parentValues.territory) return true;
+        return dealer?.territory_name === parentValues.territory;
+      },
+      getValueKey: (dealer) => dealer.id,
+    },
+    {
+      name: 'product',
+      allOptions: productsList,
+      dependsOn: ['territory', 'dealer'],
+      filterFn: (product, parentValues, context) => {
+        // Complex filtering logic using context
+        const { orders, orderProducts } = context;
+        // ... filtering logic ...
+      },
+      getValueKey: (product) => product.id || product.product_code,
+    },
+  ],
+  filterValues: { territory: territoryFilter, dealer: dealerFilter, product: productFilter },
+  setFilterValues: { dealer: setDealerFilter, product: setProductFilter },
+  context: { orders, orderProducts },
+});
+
+// Use filtered options
+const filteredDealers = filteredOptions.dealer || dealersList;
+const filteredProducts = filteredOptions.product || productsList;
+```
+
 ### DealerProductCard.js
 **Type**: Component template  
 **Purpose**: Reusable product card component based on Monthly Forecast design. Provides a consistent card layout for dealer products with quantity input, preset buttons, and optional clear functionality.
@@ -95,6 +162,30 @@ This folder contains **reusable template code** that is imported into applicatio
 **Visual reference:**
 - `/template-ui` - See UnifiedUITemplate.js for DealerProductCard pattern
 
+### useStandardPagination.js
+**Type**: React Hook  
+**Purpose**: Universal pagination hook for all tables in the application. Provides consistent pagination behavior across all pages.
+
+**Hook:**
+- `useStandardPagination(itemName, defaultPageSize)` - Returns pagination state and handlers
+
+**Parameters:**
+- `itemName` - Name of the items (e.g., 'orders', 'products', 'users')
+- `defaultPageSize` - Default page size (default: 20)
+
+**Returns:**
+- `pagination` - Pagination state object
+- `setPagination` - Function to update pagination state
+- `handleTableChange` - Handler for table change events
+
+**Used in application pages:**
+- PlacedOrders.js
+- DealerReports.js
+- TSOReport.js
+- UserManagement.js
+- ProductManagement.js
+- TransportManagement.js
+
 ## Import Examples
 
 ```javascript
@@ -103,6 +194,8 @@ import { getStandardPagination } from '../templates/UIConfig';
 import { StandardExpandableTable } from '../templates/TableTemplate';
 import { STANDARD_CARD_CONFIG } from '../templates/CardTemplates';
 import { DealerProductCard } from '../templates/DealerProductCard';
+import { useCascadingFilters } from '../templates/useCascadingFilters';
+import { useStandardPagination } from '../templates/useStandardPagination';
 
 // From example pages (frontend/src/pages/examples/)
 import { createStandardDatePickerConfig } from '../../templates/UIConfig';

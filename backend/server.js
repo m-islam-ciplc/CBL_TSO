@@ -271,8 +271,8 @@ async function fetchOrdersWithItemsBetween(startDate, endDate, user_id = null, t
         demandParams.push(territory_name);
     }
     
-    salesOrdersQuery += ' ORDER BY so.created_at ASC';
-    demandQuery += ' ORDER BY do.created_at ASC';
+    salesOrdersQuery += ' ORDER BY so.order_date ASC';
+    demandQuery += ' ORDER BY do.order_date ASC';
 
     // Execute both queries
     const [salesOrders] = await dbPromise.query(salesOrdersQuery, salesParams);
@@ -1793,7 +1793,7 @@ function calculateSoldQuantityForQuota(productId, territoryName, date, callback)
     JOIN dealers d ON d.id = so.dealer_id
     WHERE soi.product_id = ? 
       AND d.territory_name = ?
-      AND COALESCE(so.order_date, DATE(so.created_at)) = ?
+      AND so.order_date = ?
   `;
   
   db.query(query, [productId, territoryName, date], (err, results) => {
@@ -1914,7 +1914,7 @@ app.get('/api/product-caps', (req, res) => {
              INNER JOIN dealers d ON d.id = so.dealer_id
              WHERE soi.product_id = pc.product_id
                AND d.territory_name = pc.territory_name
-               AND COALESCE(so.order_date, DATE(so.created_at)) = pc.date
+               AND so.order_date = pc.date
            ), 0) as sold_quantity,
            pc.max_quantity - COALESCE((
              SELECT SUM(soi.quantity)
@@ -1923,7 +1923,7 @@ app.get('/api/product-caps', (req, res) => {
              INNER JOIN dealers d ON d.id = so.dealer_id
              WHERE soi.product_id = pc.product_id
                AND d.territory_name = pc.territory_name
-               AND COALESCE(so.order_date, DATE(so.created_at)) = pc.date
+               AND so.order_date = pc.date
            ), 0) as remaining_quantity
     FROM daily_quotas pc
     JOIN products p ON pc.product_id = p.id
@@ -1977,7 +1977,7 @@ app.get('/api/product-caps', (req, res) => {
                INNER JOIN dealers d ON d.id = so.dealer_id
                WHERE soi.product_id = pc.product_id
                  AND d.territory_name = pc.territory_name
-                 AND COALESCE(so.order_date, DATE(so.created_at)) = pc.date
+                 AND so.order_date = pc.date
              ), 0) as sold_quantity,
              pc.max_quantity - COALESCE((
                SELECT SUM(soi.quantity)
@@ -1986,7 +1986,7 @@ app.get('/api/product-caps', (req, res) => {
                INNER JOIN dealers d ON d.id = so.dealer_id
                WHERE soi.product_id = pc.product_id
                  AND d.territory_name = pc.territory_name
-                 AND COALESCE(so.order_date, DATE(so.created_at)) = pc.date
+                 AND so.order_date = pc.date
              ), 0) as remaining_quantity
       FROM daily_quotas pc
       JOIN products p ON pc.product_id = p.id
@@ -3141,7 +3141,7 @@ app.post('/api/orders', async (req, res) => {
                                 INNER JOIN dealers d ON d.id = so.dealer_id
                                 WHERE soi.product_id = pc.product_id
                                   AND d.territory_name = pc.territory_name
-                                  AND COALESCE(so.order_date, DATE(so.created_at)) = pc.date
+                                  AND so.order_date = pc.date
                             ), 0) as sold_quantity
                         FROM daily_quotas pc
                         WHERE pc.product_id = ? 
@@ -3316,7 +3316,6 @@ app.get('/api/orders', (req, res) => {
             so.transport_name,
             so.user_id,
             so.user_name,
-            so.created_at,
             so.order_date,
             so.total_quantity,
             'SO' as order_type,
@@ -3349,7 +3348,6 @@ app.get('/api/orders', (req, res) => {
             NULL as transport_name,
             do.user_id,
             do.user_name,
-            do.created_at,
             do.order_date,
             do.total_quantity,
             'DD' as order_type,
@@ -3384,8 +3382,8 @@ app.get('/api/orders', (req, res) => {
             salesOrdersQuery += ' WHERE ' + salesConditions.join(' AND ');
         }
         salesOrdersQuery += `
-            GROUP BY so.id, so.order_id, so.dealer_id, so.warehouse_id, so.created_at, so.user_id
-            ORDER BY so.created_at DESC
+            GROUP BY so.id, so.order_id, so.dealer_id, so.warehouse_id, so.order_date, so.user_id
+            ORDER BY so.order_date DESC, so.id DESC
         `;
         
         db.query(salesOrdersQuery, params, (err, results) => {
@@ -3403,8 +3401,8 @@ app.get('/api/orders', (req, res) => {
             demandQuery += ' WHERE ' + demandConditions.join(' AND ');
         }
         demandQuery += `
-            GROUP BY do.id, do.order_id, do.dealer_id, do.created_at, do.user_id
-            ORDER BY do.created_at DESC
+            GROUP BY do.id, do.order_id, do.dealer_id, do.order_date, do.user_id
+            ORDER BY do.order_date DESC, do.id DESC
         `;
         
         db.query(demandQuery, params, (err, results) => {
@@ -3427,18 +3425,18 @@ app.get('/api/orders', (req, res) => {
     }
     
     salesOrdersQuery += `
-        GROUP BY so.id, so.order_id, so.dealer_id, so.warehouse_id, so.created_at, so.user_id
+        GROUP BY so.id, so.order_id, so.dealer_id, so.warehouse_id, so.order_date, so.user_id
     `;
     demandQuery += `
-        GROUP BY do.id, do.order_id, do.dealer_id, do.created_at, do.user_id
+        GROUP BY do.id, do.order_id, do.dealer_id, do.order_date, do.user_id
     `;
     
-    // UNION both queries and order by created_at
+    // UNION both queries and order by order_date (business date, not database timestamp)
     const combinedQuery = `
         (${salesOrdersQuery})
         UNION ALL
         (${demandQuery})
-        ORDER BY created_at DESC
+        ORDER BY order_date DESC, id DESC
     `;
     
     db.query(combinedQuery, [...params, ...params], (err, results) => {
@@ -3588,13 +3586,13 @@ app.get('/api/orders/date/:date', async (req, res) => {
         }
         
         salesOrdersQuery += `
-            GROUP BY so.id, so.order_id, so.dealer_id, so.warehouse_id, so.created_at, so.user_id
-            ORDER BY so.created_at DESC
+            GROUP BY so.id, so.order_id, so.dealer_id, so.warehouse_id, so.order_date, so.user_id
+            ORDER BY so.order_date DESC, so.id DESC
         `;
         
         demandQuery += `
-            GROUP BY do.id, do.order_id, do.dealer_id, do.created_at, do.user_id
-            ORDER BY do.created_at DESC
+            GROUP BY do.id, do.order_id, do.dealer_id, do.order_date, do.user_id
+            ORDER BY do.order_date DESC, do.id DESC
         `;
 
         const [salesOrders] = await dbPromise.query(salesOrdersQuery, salesParams);
@@ -3687,7 +3685,7 @@ app.get('/api/orders/tso-report/:date', async (req, res) => {
             params.push(territory_name);
         }
         
-        ordersQuery += ` ORDER BY so.created_at ASC`;
+        ordersQuery += ` ORDER BY so.order_date ASC, so.id ASC`;
         
         const orders = await dbPromise.query(ordersQuery, params);
         
@@ -3802,7 +3800,7 @@ app.get('/api/orders/tso/my-report/:date', async (req, res) => {
                 so.order_date
             FROM sales_orders so
             WHERE so.order_date = ? AND so.user_id = ?
-            ORDER BY so.created_at ASC
+            ORDER BY so.order_date ASC, so.id ASC
         `;
 
         const orders = await dbPromise.query(ordersQuery, [date, user_id]);
@@ -3884,7 +3882,7 @@ app.get('/api/orders/tso/my-report-range', async (req, res) => {
                 so.order_date
         FROM sales_orders so
             WHERE so.order_date BETWEEN ? AND ? AND so.user_id = ?
-            ORDER BY so.created_at ASC
+            ORDER BY so.order_date ASC, so.id ASC
         `;
 
         const [orders] = await dbPromise.query(ordersQuery, [startDate, endDate, user_id]);
@@ -3995,8 +3993,8 @@ app.get('/api/orders/tso/date/:date', async (req, res) => {
             FROM sales_orders so
             LEFT JOIN sales_order_items soi ON so.order_id = soi.order_id
             WHERE so.order_date = ? AND so.user_id = ?
-            GROUP BY so.id, so.order_id, so.dealer_id, so.warehouse_id, so.created_at, so.user_id
-            ORDER BY so.created_at DESC
+            GROUP BY so.id, so.order_id, so.dealer_id, so.warehouse_id, so.order_date, so.user_id
+            ORDER BY so.order_date DESC, so.id DESC
         `;
         
         const orders = await dbPromise.query(ordersQuery, [date, user_id]);
@@ -4139,8 +4137,8 @@ app.get('/api/orders/dealer/date', async (req, res) => {
             FROM demand_orders do
             LEFT JOIN demand_order_items doi ON do.order_id = doi.order_id
             WHERE do.order_date = ? AND do.dealer_id = ?
-            GROUP BY do.id, do.order_id, do.dealer_id, do.created_at, do.user_id
-            ORDER BY do.created_at DESC
+            GROUP BY do.id, do.order_id, do.dealer_id, do.order_date, do.user_id
+            ORDER BY do.order_date DESC, do.id DESC
         `;
         
         const orders = await dbPromise.query(ordersQuery, [date, dealer_id]);
@@ -4200,8 +4198,8 @@ app.get('/api/orders/dealer/range', async (req, res) => {
             LEFT JOIN demand_order_items doi ON do.order_id = doi.order_id
             WHERE do.order_date BETWEEN ? AND ? 
               AND do.dealer_id = ?
-            GROUP BY do.id, do.order_id, do.dealer_id, do.created_at, do.user_id
-            ORDER BY do.created_at DESC
+            GROUP BY do.id, do.order_id, do.dealer_id, do.order_date, do.user_id
+            ORDER BY do.order_date DESC, do.id DESC
         `;
         
         const orders = await dbPromise.query(query, [startDate, endDate, dealer_id]);
@@ -4245,7 +4243,7 @@ app.get('/api/orders/dealer/my-report/:date', async (req, res) => {
                 do.order_date
             FROM demand_orders do
             WHERE do.order_date = ? AND do.dealer_id = ?
-            ORDER BY do.created_at ASC
+            ORDER BY do.order_date ASC, do.id ASC
         `;
 
         const orders = await dbPromise.query(ordersQuery, [date, dealer_id]);
@@ -4325,7 +4323,7 @@ app.get('/api/orders/dealer/my-report-range', async (req, res) => {
         FROM demand_orders do
             WHERE do.order_date BETWEEN ? AND ? 
               AND do.dealer_id = ?
-            ORDER BY do.created_at ASC
+            ORDER BY do.order_date ASC, do.id ASC
         `;
 
         const [orders] = await dbPromise.query(ordersQuery, [startDate, endDate, dealer_id]);
@@ -4424,11 +4422,11 @@ app.get('/api/orders/dealer/daily-demand-report/:date', async (req, res) => {
         
         // Get all daily demand orders for this dealer on this date
         const [orders] = await dbPromise.query(`
-            SELECT do.order_id, do.created_at
+            SELECT do.order_id
             FROM demand_orders do
             WHERE do.order_date = ? 
               AND do.dealer_id = ?
-            ORDER BY do.created_at ASC
+            ORDER BY do.order_date ASC, do.id ASC
         `, [date, dealer_id]);
         
         const orderIds = orders.length > 0 ? orders.map(o => o.order_id) : [];
@@ -4745,11 +4743,10 @@ app.get('/api/orders/mr-report/:date', async (req, res) => {
                 so.territory_name as dealer_territory, 
                 so.warehouse_name,
                 so.warehouse_name as warehouse_alias,
-                so.order_date,
-                so.created_at
+                so.order_date
             FROM sales_orders so
             WHERE so.order_date = ?
-            ORDER BY so.created_at ASC
+            ORDER BY so.order_date ASC, so.id ASC
         `;
         
         const orders = await dbPromise.query(ordersQuery, [date]);
@@ -5988,8 +5985,7 @@ app.get('/api/dealer-assignments/:dealerId', (req, res) => {
             id,
             assignment_type,
             product_id,
-            product_category,
-            created_at
+            product_category
         FROM dealer_products
         WHERE dealer_id = ?
         ORDER BY assignment_type, product_id, product_category

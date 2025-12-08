@@ -145,7 +145,9 @@ export const createStandardDateRangePicker = ({
   disabledDate,
   dateCellRender,
   availableDates = [],
-  colSpan = { xs: 24, sm: 12, md: 6 }
+  colSpan = { xs: 24, sm: 12, md: 6 },
+  onStartChange,
+  onEndChange,
 }) => {
   return (
     <>
@@ -155,7 +157,10 @@ export const createStandardDateRangePicker = ({
           <DatePicker
             {...STANDARD_DATE_PICKER_CONFIG}
             value={startDate}
-            onChange={setStartDate}
+            onChange={(date) => {
+              setStartDate(date);
+              if (onStartChange) onStartChange(date);
+            }}
             style={{ width: '100%' }}
             placeholder="Start date"
             disabledDate={disabledDate}
@@ -169,7 +174,10 @@ export const createStandardDateRangePicker = ({
           <DatePicker
             {...STANDARD_DATE_PICKER_CONFIG}
             value={endDate}
-            onChange={setEndDate}
+            onChange={(date) => {
+              setEndDate(date);
+              if (onEndChange) onEndChange(date);
+            }}
             style={{ width: '100%' }}
             placeholder="End date (optional)"
             disabledDate={(current) => {

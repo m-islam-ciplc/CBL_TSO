@@ -5,7 +5,7 @@ import axios from 'axios';
 import dayjs from 'dayjs';
 import * as XLSX from 'xlsx';
 import { useUser } from '../contexts/UserContext';
-import { StandardExpandableTable, renderStandardExpandedRow } from '../templates/TableTemplate';
+import { StandardExpandableTable, renderStandardExpandedRow, renderProductDetailsStack } from '../templates/TableTemplate';
 import { createStandardDatePickerConfig, createStandardDateRangePicker } from '../templates/UIConfig';
 import { getStandardPaginationConfig } from '../templates/useStandardPagination';
 import { STANDARD_CARD_CONFIG, FILTER_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
@@ -497,14 +497,15 @@ function DealerReports() {
       key: 'order_date',
       ellipsis: true,
       render: (date, record) => {
-        // Use order_date (date the demand is for), fallback to created_at if order_date doesn't exist
-        const displayDate = date || record.created_at;
+        // Use order_date (business date, always NOT NULL)
+        const displayDate = date || record.order_date;
         return displayDate ? dayjs(displayDate).format('DD MMM YYYY') : 'N/A';
       },
       sorter: (a, b) => {
-        const dateA = a.order_date || a.created_at;
-        const dateB = b.order_date || b.created_at;
-        return new Date(dateA) - new Date(dateB);
+        // Sort by order_date (business date, always NOT NULL)
+        const dateA = a.order_date ? new Date(a.order_date) : new Date(0);
+        const dateB = b.order_date ? new Date(b.order_date) : new Date(0);
+        return dateA - dateB;
       },
     },
     {
@@ -538,38 +539,12 @@ function DealerReports() {
       ellipsis: {
         showTitle: true,
       },
-      render: (_, record) => {
-        const products = orderProducts[record.order_id] || [];
-        
-        if (products.length === 0) {
-          return (
-            <div style={{ fontSize: '12px', color: '#999', fontStyle: 'italic' }}>
-              No products found
-            </div>
-          );
-        }
-        
-        return (
-          <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
-            {products.map((product, index) => (
-              <div key={product.id || index} style={{ marginBottom: '2px' }}>
-                <span style={{ fontWeight: 'bold', color: '#1890ff' }}>
-                  #{index + 1}
-                </span>{' '}
-                <span style={{ fontWeight: 'bold' }}>
-                  {product.product_code}
-                </span>{' '}
-                <span style={{ color: '#666' }}>
-                  {product.product_name}
-                </span>
-                <span style={{ color: '#52c41a', marginLeft: '8px' }}>
-                  (Qty: {product.quantity})
-                </span>
-              </div>
-            ))}
-          </div>
-        );
-      },
+      render: (_, record) =>
+        renderProductDetailsStack({
+          products: orderProducts[record.order_id] || [],
+          showPrice: false,
+          showIndex: true,
+        }),
     },
     {
       title: 'Total Quantity',
