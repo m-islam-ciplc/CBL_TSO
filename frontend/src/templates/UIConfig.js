@@ -6,7 +6,6 @@
  * Use these configurations to ensure consistency across all components.
  */
 
-import React from 'react';
 import { Row, Col, Space, Typography, DatePicker } from 'antd';
 import { STANDARD_ROW_GUTTER, STANDARD_FORM_LABEL_STYLE, STANDARD_DATE_PICKER_CONFIG } from './UIElements';
 

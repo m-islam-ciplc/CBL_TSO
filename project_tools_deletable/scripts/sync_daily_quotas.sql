@@ -12,14 +12,16 @@ SET dq.product_code = p.product_code,
     dq.product_name = p.name,
     dq.territory_id = COALESCE(d.territory_code, dq.territory_id);
 
+-- CRITICAL: Only update from sales_orders (not demand_orders)
+-- Daily demand orders do NOT count towards quota sold_quantity
 UPDATE daily_quotas dq
 SET sold_quantity = (
-  SELECT COALESCE(SUM(oi.quantity), 0)
-  FROM orders o
-  JOIN dealers d ON d.id = o.dealer_id
-  JOIN order_items oi ON oi.order_id = o.order_id
-  WHERE DATE(o.created_at) = dq.date
-    AND oi.product_id = dq.product_id
+  SELECT COALESCE(SUM(soi.quantity), 0)
+  FROM sales_orders so
+  INNER JOIN sales_order_items soi ON so.order_id = soi.order_id
+  INNER JOIN dealers d ON d.id = so.dealer_id
+  WHERE so.order_date = dq.date
+    AND soi.product_id = dq.product_id
     AND d.territory_name = dq.territory_name
 );
 

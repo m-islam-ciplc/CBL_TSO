@@ -7,14 +7,13 @@ import {
   Button,
   Upload,
   Table,
-  Input,
   Select,
   message,
   Row,
   Col
 } from 'antd';
 import { useStandardPagination } from '../templates/useStandardPagination';
-import { STANDARD_CARD_CONFIG, IMPORT_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
+import { IMPORT_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
 import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, STANDARD_UPLOAD_CONFIG, renderTableHeaderWithSearchAndFilter } from '../templates/UIElements';
 import {
   UploadOutlined,
@@ -23,7 +22,6 @@ import {
 } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
-const { Option } = Select;
 
 function TransportManagement() {
   const [transports, setTransports] = useState([]);

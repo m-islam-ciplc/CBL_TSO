@@ -1819,20 +1819,6 @@ function calculateSoldQuantityForQuota(productId, territoryName, date, callback)
  * 
  * @returns {string} - SQL subquery string
  */
-function getSoldQuantitySubquery(productIdColumn, territoryColumn, dateColumn) {
-  // CRITICAL: Only query sales_orders - demand_orders are in separate table
-  return `
-    COALESCE((
-      SELECT SUM(soi.quantity)
-      FROM sales_orders so
-      INNER JOIN sales_order_items soi ON so.order_id = soi.order_id
-      INNER JOIN dealers d ON d.id = so.dealer_id
-      WHERE soi.product_id = ${productIdColumn}
-        AND d.territory_name = ${territoryColumn}
-        AND COALESCE(so.order_date, DATE(so.created_at)) = ${dateColumn}
-    ), 0)
-  `;
-}
 app.post('/api/product-caps/upload', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
@@ -1879,20 +1865,20 @@ app.post('/api/product-caps/upload', upload.single('file'), async (req, res) => 
               errors.push(`Product ${productCode}: Cannot set quota (${maxQtyNum}) below already sold quantity (${soldQuantity} units)`);
               return;
             }
-            
-            // Insert or update cap
-            const insertQuery = `
-              INSERT INTO daily_quotas (date, product_id, territory_name, max_quantity)
-              VALUES (?, ?, ?, ?)
-              ON DUPLICATE KEY UPDATE max_quantity = VALUES(max_quantity)
-            `;
-            
+          
+          // Insert or update cap
+          const insertQuery = `
+            INSERT INTO daily_quotas (date, product_id, territory_name, max_quantity)
+            VALUES (?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE max_quantity = VALUES(max_quantity)
+          `;
+          
             db.query(insertQuery, [date, productId, territoryName, maxQtyNum], (err) => {
-              if (err) {
-                errors.push(`Error importing cap for ${productCode}`);
-              } else {
-                imported++;
-              }
+            if (err) {
+              errors.push(`Error importing cap for ${productCode}`);
+            } else {
+              imported++;
+            }
             });
           });
         });
@@ -2784,14 +2770,13 @@ app.post('/api/orders/dealer/multi-day', async (req, res) => {
             });
         }
 
-        // Get DD order type ID
+        // Validate DD order type exists (for reference, not used in demand_orders table)
         const [orderTypeRows] = await dbPromise.query('SELECT id FROM order_types WHERE name = ?', ['DD']);
         if (orderTypeRows.length === 0) {
             return res.status(400).json({ 
                 error: 'DD order type not found. Please contact administrator.' 
             });
         }
-        const ddOrderTypeId = orderTypeRows[0].id;
 
         // Validate each demand entry
         for (const demand of demands) {
@@ -2858,7 +2843,7 @@ app.post('/api/orders/dealer/multi-day', async (req, res) => {
             
             const dealer = dealerRows[0];
             const user = userRows[0];
-            
+
             // Check for existing orders before creating new ones
             // CRITICAL: Query demand_orders table (not orders table)
             const existingOrders = [];
@@ -3335,6 +3320,7 @@ app.get('/api/orders', (req, res) => {
             so.order_date,
             so.total_quantity,
             'SO' as order_type,
+            'SO' as order_type_name,
             so.territory_name as dealer_territory,
             so.warehouse_name as warehouse_alias,
             COUNT(soi.id) as item_count,
@@ -3367,6 +3353,7 @@ app.get('/api/orders', (req, res) => {
             do.order_date,
             do.total_quantity,
             'DD' as order_type,
+            'DD' as order_type_name,
             do.territory_name as dealer_territory,
             NULL as warehouse_alias,
             COUNT(doi.id) as item_count,
@@ -3589,7 +3576,6 @@ app.get('/api/orders/date/:date', async (req, res) => {
             WHERE do.order_date = ?
         `;
         
-        const params = [date];
         const salesParams = [date];
         const demandParams = [date];
         
@@ -3628,7 +3614,7 @@ app.get('/api/orders/date/:date', async (req, res) => {
             let items;
             if (order.order_type === 'SO') {
                 // Sales order items
-                const itemsQuery = `
+            const itemsQuery = `
                     SELECT soi.*, soi.product_name, soi.product_code, soi.unit_tp, NULL as mrp, soi.unit_trade_price
                     FROM sales_order_items soi
                     WHERE soi.order_id = ?
@@ -3643,7 +3629,7 @@ app.get('/api/orders/date/:date', async (req, res) => {
                     FROM demand_order_items doi
                     WHERE doi.order_id = ?
                     ORDER BY doi.id
-                `;
+            `;
                 const result = await dbPromise.query(itemsQuery, [order.order_id]);
                 items = result[0];
             }
@@ -3747,7 +3733,7 @@ app.get('/api/orders/tso-report/:date', async (req, res) => {
 // Generate TSO Excel report for orders within a date range
 app.get('/api/orders/tso-report-range', async (req, res) => {
     try {
-        const { startDate, endDate } = req.query;
+        const { startDate, endDate, territory_name } = req.query;
 
         if (!startDate || !endDate) {
             return res.status(400).json({ error: 'startDate and endDate are required' });
@@ -3762,7 +3748,7 @@ app.get('/api/orders/tso-report-range', async (req, res) => {
             return res.status(400).json({ error: 'startDate cannot be after endDate' });
         }
 
-        const ordersWithItems = await fetchOrdersWithItemsBetween(startDate, endDate, null, territory_name);
+        const ordersWithItems = await fetchOrdersWithItemsBetween(startDate, endDate, null, territory_name || null);
         console.log('Range Excel request', { startDate, endDate, territory_name, ordersCount: ordersWithItems.length });
         if (!ordersWithItems.length) {
             return res.status(404).json({ error: `No orders found between ${startDate} and ${endDate}` });
@@ -4841,7 +4827,7 @@ app.get('/api/orders/:orderId', (req, res) => {
     
     // Try sales_orders first
     const salesOrderQuery = `
-        SELECT so.*, 'SO' as order_type, so.dealer_name, so.territory_name as dealer_territory, so.warehouse_name
+        SELECT so.*, 'SO' as order_type, 'SO' as order_type_name, so.dealer_name, so.territory_name as dealer_territory, so.warehouse_name
         FROM sales_orders so
         WHERE so.order_id = ?
     `;
@@ -4876,7 +4862,7 @@ app.get('/api/orders/:orderId', (req, res) => {
         
         // Not found in sales_orders, try demand_orders
         const ddOrderQuery = `
-            SELECT do.*, 'DD' as order_type, do.dealer_name, do.territory_name as dealer_territory, NULL as warehouse_name
+            SELECT do.*, 'DD' as order_type, 'DD' as order_type_name, do.dealer_name, do.territory_name as dealer_territory, NULL as warehouse_name
             FROM demand_orders do
             WHERE do.order_id = ?
         `;
@@ -4888,10 +4874,10 @@ app.get('/api/orders/:orderId', (req, res) => {
             }
             
             if (ddOrderResults.length === 0) {
-                res.status(404).json({ error: 'Order not found' });
-                return;
-            }
-            
+            res.status(404).json({ error: 'Order not found' });
+            return;
+        }
+        
             // Found in demand_orders - get items from demand_order_items
             const itemsQuery = `
                 SELECT doi.*, doi.product_name, doi.product_code, NULL as unit_tp, NULL as mrp, NULL as unit_trade_price
@@ -4900,15 +4886,15 @@ app.get('/api/orders/:orderId', (req, res) => {
                 ORDER BY doi.id
             `;
             
-            db.query(itemsQuery, [orderId], (err, itemsResults) => {
-                if (err) {
-                    res.status(500).json({ error: err.message });
-                    return;
-                }
-                
+        db.query(itemsQuery, [orderId], (err, itemsResults) => {
+            if (err) {
+                res.status(500).json({ error: err.message });
+                return;
+            }
+            
                 const order = ddOrderResults[0];
-                order.items = itemsResults;
-                res.json(order);
+            order.items = itemsResults;
+            res.json(order);
             });
         });
     });
@@ -5139,29 +5125,29 @@ app.delete('/api/orders/:id', async (req, res) => {
                 // Try demand_orders
                 [orderRows] = await connection.query(
                     'SELECT order_id FROM demand_orders WHERE id = ?',
-                    [orderId]
-                );
-                
-                if (!orderRows || orderRows.length === 0) {
-                    const error = new Error('Order not found');
-                    error.status = 404;
-                    throw error;
-                }
-                
+                [orderId]
+            );
+
+            if (!orderRows || orderRows.length === 0) {
+                const error = new Error('Order not found');
+                error.status = 404;
+                throw error;
+            }
+
                 orderUUID = orderRows[0].order_id;
                 isSalesOrder = false;
             }
 
             // Delete items from appropriate table
             if (isSalesOrder) {
-                await connection.query(
+            await connection.query(
                     'DELETE FROM sales_order_items WHERE order_id = ?',
-                    [orderUUID]
-                );
+                [orderUUID]
+            );
                 await connection.query(
                     'DELETE FROM sales_orders WHERE id = ?',
-                    [orderId]
-                );
+                [orderId]
+            );
             } else {
                 await connection.query(
                     'DELETE FROM demand_order_items WHERE order_id = ?',

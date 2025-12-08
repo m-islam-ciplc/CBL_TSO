@@ -16,7 +16,7 @@ import {
   SettingOutlined,
 } from '@ant-design/icons';
 import axios from 'axios';
-import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, STANDARD_INPUT_NUMBER_SIZE } from '../templates/UIElements';
+import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER } from '../templates/UIElements';
 import { STANDARD_CARD_CONFIG } from '../templates/CardTemplates';
 
 const { Title, Text } = Typography;

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, DatePicker, Button, message, Typography, Row, Col, Space, Spin, Table, Tag, Input, Tabs, Select, Badge } from 'antd';
+import { Card, Button, message, Typography, Row, Col, Space, Spin, Table, Tag, Tabs, Select, Badge, Input } from 'antd';
 import { DownloadOutlined, FileExcelOutlined, EyeOutlined, SearchOutlined, CalendarOutlined, ShoppingCartOutlined, AppstoreOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import dayjs from 'dayjs';
@@ -9,7 +9,7 @@ import { StandardExpandableTable, renderStandardExpandedRow } from '../templates
 import { createStandardDatePickerConfig, createStandardDateRangePicker } from '../templates/UIConfig';
 import { getStandardPaginationConfig } from '../templates/useStandardPagination';
 import { STANDARD_CARD_CONFIG, FILTER_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
-import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, SINGLE_ROW_GUTTER, STANDARD_ROW_GUTTER, STANDARD_FORM_LABEL_STYLE, STANDARD_TAG_STYLE, STANDARD_TABS_CONFIG, STANDARD_BADGE_CONFIG, STANDARD_SPIN_SIZE, STANDARD_DATE_PICKER_CONFIG, STANDARD_SPACE_SIZE_MIDDLE, STANDARD_BUTTON_SIZE, STANDARD_INPUT_SIZE, renderTableHeaderWithSearch } from '../templates/UIElements';
+import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, SINGLE_ROW_GUTTER, STANDARD_ROW_GUTTER, STANDARD_TAG_STYLE, STANDARD_TABS_CONFIG, STANDARD_BADGE_CONFIG, STANDARD_SPIN_SIZE, STANDARD_BUTTON_SIZE, renderTableHeaderWithSearch } from '../templates/UIElements';
 
 const { Title, Text } = Typography;
 

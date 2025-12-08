@@ -6,7 +6,6 @@
  * All cards MUST follow these standard patterns for consistency.
  */
 
-import { Card } from 'antd';
 
 /**
  * STANDARD CARD PATTERNS

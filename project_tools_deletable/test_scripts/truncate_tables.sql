@@ -7,8 +7,10 @@ USE cbl_so;
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- Truncate tables (child tables first)
-TRUNCATE TABLE order_items;
-TRUNCATE TABLE orders;
+TRUNCATE TABLE sales_order_items;
+TRUNCATE TABLE sales_orders;
+TRUNCATE TABLE demand_order_items;
+TRUNCATE TABLE demand_orders;
 TRUNCATE TABLE daily_quotas;
 TRUNCATE TABLE monthly_forecast;
 TRUNCATE TABLE dealer_products;
@@ -21,9 +23,13 @@ TRUNCATE TABLE transports;
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- Verify truncation (optional - comment out if not needed)
-SELECT 'order_items' as table_name, COUNT(*) as row_count FROM order_items
+SELECT 'sales_order_items' as table_name, COUNT(*) as row_count FROM sales_order_items
 UNION ALL
-SELECT 'orders', COUNT(*) FROM orders
+SELECT 'sales_orders', COUNT(*) FROM sales_orders
+UNION ALL
+SELECT 'demand_order_items', COUNT(*) FROM demand_order_items
+UNION ALL
+SELECT 'demand_orders', COUNT(*) FROM demand_orders
 UNION ALL
 SELECT 'daily_quotas', COUNT(*) FROM daily_quotas
 UNION ALL

@@ -16,10 +16,10 @@ import {
   CalendarOutlined,
   SettingOutlined,
   ExperimentOutlined,
-  TableOutlined,
   DownOutlined,
   PlayCircleOutlined,
   LayoutOutlined,
+  CodeOutlined,
 } from '@ant-design/icons';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -38,6 +38,7 @@ import DealerReports from './pages/DealerReports';
 import DebugPanel from './components/DebugPanel';
 import UnifiedUITemplate from './pages/examples/UnifiedUITemplate';
 import WorkflowTests from './pages/examples/WorkflowTests';
+import DeadCodeCheck from './pages/examples/DeadCodeCheck';
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
@@ -481,6 +482,12 @@ function AppContent() {
                     icon: <PlayCircleOutlined />,
                     onClick: () => navigate('/template-workflow-tests')
                   },
+                  {
+                    key: 'deadcode-check',
+                    label: 'Dead Code Check',
+                    icon: <CodeOutlined />,
+                    onClick: () => navigate('/template-deadcode-check')
+                  },
                 ]
               }}
               trigger={['click']}
@@ -610,6 +617,7 @@ function AppContent() {
           {/* Template Routes - accessible without login */}
           <Route path="/template-ui" element={<UnifiedUITemplate />} />
           <Route path="/template-workflow-tests" element={<WorkflowTests />} />
+          <Route path="/template-deadcode-check" element={<DeadCodeCheck />} />
         </Routes>
       </Content>
 

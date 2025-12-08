@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Card, DatePicker, Button, message, Typography, Row, Col, Space, Spin, Table, Tag, Input, Select, Tabs, Badge } from 'antd';
-import { DownloadOutlined, FileExcelOutlined, EyeOutlined, SearchOutlined, BarChartOutlined, AppstoreOutlined, CalendarOutlined } from '@ant-design/icons';
+import { DownloadOutlined, FileExcelOutlined, EyeOutlined, SearchOutlined, BarChartOutlined, AppstoreOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import dayjs from 'dayjs';
 import * as XLSX from 'xlsx';
@@ -10,7 +10,7 @@ import { getStandardPaginationConfig } from '../templates/useStandardPagination'
 import { STANDARD_EXPANDABLE_TABLE_CONFIG } from '../templates/TableTemplate';
 import { STANDARD_CARD_CONFIG, FILTER_CARD_CONFIG, DATE_SELECTION_CARD_CONFIG, TABLE_CARD_CONFIG, EXPANDABLE_TABLE_CARD_CONFIG } from '../templates/CardTemplates';
 // All cards now use STANDARD_CARD_CONFIG
-import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, SINGLE_ROW_GUTTER, TIGHT_ROW_GUTTER, STANDARD_FORM_LABEL_STYLE, STANDARD_INPUT_SIZE, STANDARD_TABLE_SIZE, STANDARD_TAG_STYLE, STANDARD_TABS_CONFIG, STANDARD_BADGE_CONFIG, STANDARD_SPIN_SIZE, STANDARD_DATE_PICKER_CONFIG, STANDARD_SPACE_SIZE_MIDDLE, renderTableHeaderWithSearch } from '../templates/UIElements';
+import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, STANDARD_TABLE_SIZE, STANDARD_TAG_STYLE, STANDARD_TABS_CONFIG, STANDARD_BADGE_CONFIG, STANDARD_SPIN_SIZE, STANDARD_DATE_PICKER_CONFIG, STANDARD_INPUT_SIZE, renderTableHeaderWithSearch } from '../templates/UIElements';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -23,7 +23,7 @@ const removeMSPrefix = (name) => {
 };
 
 function DailyReport() {
-  const { territoryName, isTSO, isAdmin, isSalesManager } = useUser();
+  const { territoryName, isTSO } = useUser();
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [loading, setLoading] = useState(false);
   const [availableDates, setAvailableDates] = useState([]);
@@ -1041,10 +1041,6 @@ function DailyReport() {
     ...t,
     product_count: t.product_count.size,
   }));
-
-  const totalQuantity = filteredForecasts.reduce((sum, f) => sum + (Number(f.total_quantity) || 0), 0);
-  const totalDealers = filteredForecasts.length;
-  const totalProducts = filteredForecasts.reduce((sum, f) => sum + f.total_products, 0);
 
   // Get unique territories for filter dropdown (only for admin)
   const uniqueTerritories = [...new Set(forecasts.map(f => f.territory_name))].sort();

@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useUser } from '../contexts/UserContext';
 import './NewOrdersTablet.css';
 import { STANDARD_CARD_CONFIG, FILTER_CARD_CONFIG } from '../templates/CardTemplates';
-import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, TIGHT_ROW_GUTTER, STANDARD_INPUT_SIZE, STANDARD_SELECT_SIZE, STANDARD_TABLE_SIZE, STANDARD_MODAL_CONFIG, STANDARD_INPUT_NUMBER_SIZE } from '../templates/UIElements';
+import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_MODAL_CONFIG, STANDARD_INPUT_NUMBER_SIZE, STANDARD_INPUT_SIZE } from '../templates/UIElements';
 import {
   Card,
   Typography,

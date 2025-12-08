@@ -4,7 +4,6 @@ import {
   Typography, 
   Button, 
   Drawer, 
-  Dropdown, 
   Card, 
   Space, 
   Divider, 
@@ -22,7 +21,6 @@ import {
   Radio,
   Alert,
   Statistic,
-  Upload,
   Empty,
   Spin,
   Modal,
@@ -34,12 +32,10 @@ import {
   PlusOutlined,
   OrderedListOutlined,
   ShoppingCartOutlined,
-  CheckOutlined,
   FileExcelOutlined,
   BarChartOutlined,
   LogoutOutlined,
   MoreOutlined,
-  CalendarOutlined,
   SettingOutlined,
   ExperimentOutlined,
   TableOutlined,
@@ -51,12 +47,10 @@ import {
   InfoCircleOutlined,
   UploadOutlined,
   DownloadOutlined,
-  UserOutlined,
   DeleteOutlined,
-  ArrowLeftOutlined,
 } from '@ant-design/icons';
 import { DealerProductCard } from '../../templates/DealerProductCard';
-import { STANDARD_CARD_CONFIG, FILTER_CARD_CONFIG, DATE_SELECTION_CARD_CONFIG, FORM_CARD_CONFIG, IMPORT_CARD_CONFIG, ACTION_CARD_CONFIG, TABLE_CARD_CONFIG, EXPANDABLE_TABLE_CARD_CONFIG } from '../../templates/CardTemplates';
+import { STANDARD_CARD_CONFIG, FILTER_CARD_CONFIG, DATE_SELECTION_CARD_CONFIG, FORM_CARD_CONFIG, IMPORT_CARD_CONFIG, ACTION_CARD_CONFIG, TABLE_CARD_CONFIG } from '../../templates/CardTemplates';
 import { 
   STANDARD_ROW_GUTTER, 
   STANDARD_TAG_STYLE, 
@@ -65,7 +59,6 @@ import {
   STANDARD_RADIO_SIZE,
   STANDARD_ALERT_CONFIG,
   STANDARD_STATISTIC_CONFIG,
-  STANDARD_UPLOAD_CONFIG,
   STANDARD_EMPTY_CONFIG,
   STANDARD_SPIN_SIZE,
   STANDARD_POPCONFIRM_CONFIG,
@@ -403,7 +396,7 @@ function UnifiedUITemplate() {
           <div>
             <Text strong style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>Table Card with Inline Search</Text>
             <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: '8px' }}>
-              Table header with inline search box. This is the template design used in PlacedOrders.js "Orders & Demands" table.
+              Table header with inline search box. This is the template design used in PlacedOrders.js &quot;Orders & Demands&quot; table.
             </Text>
             <Card {...TABLE_CARD_CONFIG}>
               {renderTableHeaderWithSearch({
@@ -429,7 +422,7 @@ function UnifiedUITemplate() {
           <div>
             <Text strong style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>Table Card with Inline Search and Filter</Text>
             <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: '8px' }}>
-              Table header with inline filter dropdown and search box. This is the template design used in DealerManagement.js "Dealers" table.
+              Table header with inline filter dropdown and search box. This is the template design used in DealerManagement.js &quot;Dealers&quot; table.
               Filter appears first, then search box. Both are aligned to the right, title on the left.
             </Text>
             <Card {...TABLE_CARD_CONFIG}>
@@ -913,7 +906,7 @@ function UnifiedUITemplate() {
               Standard Date Range Picker (Template from DealerReports.js)
             </Text>
             <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: '12px' }}>
-              This is the template design used in DealerReports.js "Daily Demand Orders" tab.
+              This is the template design used in DealerReports.js &quot;Daily Demand Orders&quot; tab.
               End Date is optional - leave blank for single date filtering.
             </Text>
             <Card {...STANDARD_CARD_CONFIG}>

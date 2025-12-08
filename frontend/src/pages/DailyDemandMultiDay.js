@@ -7,10 +7,6 @@ import {
   Button,
   Input,
   message,
-  Row,
-  Col,
-  InputNumber,
-  Tag,
   DatePicker,
   Space,
   Tabs,
@@ -24,7 +20,7 @@ import {
 import dayjs from 'dayjs';
 import './NewOrdersTablet.css';
 import { DealerProductCard } from '../templates/DealerProductCard';
-import { STANDARD_CARD_CONFIG, FILTER_CARD_CONFIG, DATE_SELECTION_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_CARD_CONFIG, DATE_SELECTION_CARD_CONFIG } from '../templates/CardTemplates';
 import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_TABS_CONFIG, STANDARD_DATE_PICKER_CONFIG, STANDARD_BUTTON_SIZE } from '../templates/UIElements';
 
 const { Title, Text } = Typography;
@@ -90,7 +86,7 @@ function DailyDemandMultiDay() {
   const loadDropdownData = async () => {
     if (!dealerId) return;
     try {
-      const [orderTypesRes, productsRes, dealersRes] = await Promise.all([
+      const [orderTypesRes, productsRes] = await Promise.all([
         axios.get('/api/order-types'),
         axios.get(`/api/products?dealer_id=${dealerId}`),
         axios.get('/api/dealers')
@@ -323,8 +319,6 @@ function DailyDemandMultiDay() {
   const getTotalItems = () => {
     return Object.values(quantities).reduce((sum, qty) => sum + (qty || 0), 0);
   };
-
-  const dealerTerritory = dealerInfo?.territory_name || territoryName || '';
 
   return (
     <div>

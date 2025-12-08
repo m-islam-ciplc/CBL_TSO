@@ -232,7 +232,7 @@ function DealerDashboard() {
             >
               <Statistic
                 {...STANDARD_STATISTIC_CONFIG}
-                title={<span style={{ color: 'white' }}>Today's Orders</span>}
+                title={<span style={{ color: 'white' }}>Today&apos;s Orders</span>}
                 value={recentOrders.length}
                 prefix={<ShoppingCartOutlined />}
                 suffix="orders"

@@ -17,7 +17,7 @@ import {
   Col,
 } from 'antd';
 import { useStandardPagination } from '../templates/useStandardPagination';
-import { STANDARD_CARD_CONFIG, ACTION_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
+import { ACTION_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
 import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, STANDARD_MODAL_CONFIG, STANDARD_POPCONFIRM_CONFIG, renderTableHeaderWithSearchAndFilter } from '../templates/UIElements';
 import {
   PlusOutlined,
@@ -40,7 +40,7 @@ function UserManagement() {
   const [selectedRole, setSelectedRole] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState(null);
-  const { pagination, setPagination, handleTableChange } = useStandardPagination('users', 20);
+  const { pagination, handleTableChange } = useStandardPagination('users', 20);
 
   useEffect(() => {
     loadUsers();

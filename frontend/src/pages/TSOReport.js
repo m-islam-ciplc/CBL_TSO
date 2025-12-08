@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Card, DatePicker, Button, message, Typography, Row, Col, Space, Spin, Table, Tag, Input, Tabs } from 'antd';
-import { DownloadOutlined, FileExcelOutlined, EyeOutlined, SearchOutlined, FileTextOutlined } from '@ant-design/icons';
+import { Card, DatePicker, Button, message, Typography, Row, Col, Space, Spin, Table, Tag, Tabs } from 'antd';
+import { DownloadOutlined, FileExcelOutlined, EyeOutlined, FileTextOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import dayjs from 'dayjs';
 import { useUser } from '../contexts/UserContext';
 import { createStandardDatePickerConfig, createStandardDateRangePicker } from '../templates/UIConfig';
 import { getStandardPaginationConfig } from '../templates/useStandardPagination';
-import { STANDARD_CARD_CONFIG, FILTER_CARD_CONFIG, DATE_SELECTION_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
+import { FILTER_CARD_CONFIG, DATE_SELECTION_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
 import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, STANDARD_FORM_LABEL_STYLE, STANDARD_TABS_CONFIG, STANDARD_DATE_PICKER_CONFIG, STANDARD_SPIN_SIZE, STANDARD_TABLE_SIZE, renderTableHeaderWithSearch } from '../templates/UIElements';
 
 const { Title, Text } = Typography;

@@ -13,7 +13,6 @@ import {
 } from 'antd';
 import {
   CalendarOutlined,
-  ClearOutlined,
   SaveOutlined,
   HistoryOutlined,
 } from '@ant-design/icons';
@@ -22,14 +21,14 @@ import { useUser } from '../contexts/UserContext';
 import dayjs from 'dayjs';
 import './NewOrdersTablet.css';
 import { DealerProductCard } from '../templates/DealerProductCard';
-import { STANDARD_CARD_CONFIG, FILTER_CARD_CONFIG, DATE_SELECTION_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_CARD_CONFIG, DATE_SELECTION_CARD_CONFIG } from '../templates/CardTemplates';
 import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG } from '../templates/UIElements';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 
 function MonthlyForecastTab() {
-  const { dealerId, userRole, isAdmin, isTSO, isSalesManager } = useUser();
+  const { dealerId, userRole, isTSO, isAdmin, isSalesManager } = useUser();
   const [periodInfo, setPeriodInfo] = useState({ start: '', end: '' });
   const [selectedPeriod, setSelectedPeriod] = useState(null); // { period_start, period_end, is_current }
   const [availablePeriods, setAvailablePeriods] = useState([]);

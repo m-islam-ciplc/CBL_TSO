@@ -8,7 +8,6 @@ import {
   Upload,
   Table,
   Tag,
-  Input,
   Select,
   message,
   Row,
@@ -16,24 +15,19 @@ import {
   Form,
   Space,
   Popconfirm,
-  Divider,
   Badge,
 } from 'antd';
 import { useStandardPagination, getStandardPaginationConfig } from '../templates/useStandardPagination';
 import { STANDARD_EXPANDABLE_TABLE_CONFIG } from '../templates/TableTemplate';
-import { STANDARD_CARD_CONFIG, FILTER_CARD_CONFIG, IMPORT_CARD_CONFIG, EXPANDABLE_TABLE_CARD_CONFIG } from '../templates/CardTemplates';
-import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, STANDARD_BADGE_CONFIG, STANDARD_POPCONFIRM_CONFIG, STANDARD_UPLOAD_CONFIG, STANDARD_BUTTON_SIZE, renderTableHeaderWithSearchAndFilter } from '../templates/UIElements';
+import { IMPORT_CARD_CONFIG, EXPANDABLE_TABLE_CARD_CONFIG } from '../templates/CardTemplates';
+import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, STANDARD_BADGE_CONFIG, STANDARD_UPLOAD_CONFIG, STANDARD_BUTTON_SIZE, renderTableHeaderWithSearchAndFilter } from '../templates/UIElements';
 import {
   UploadOutlined,
   DownloadOutlined,
-  UserOutlined,
   ShopOutlined,
-  EnvironmentOutlined,
-  PhoneOutlined,
   AppstoreOutlined,
   PlusOutlined,
   DeleteOutlined,
-  SearchOutlined,
 } from '@ant-design/icons';
 
 const { Title, Text } = Typography;

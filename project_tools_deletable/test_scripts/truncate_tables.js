@@ -29,7 +29,8 @@
  *   - order_types (SO, DD order types)
  * 
  * Tables Truncated:
- *   - order_items, orders, daily_quotas, monthly_forecast
+ *   - sales_order_items, sales_orders, demand_order_items, demand_orders
+ *   - daily_quotas, monthly_forecast
  *   - dealer_products, dealers, products
  *   - transports
  */
@@ -66,11 +67,13 @@ const TABLES_TO_KEEP = ['users', 'warehouses', 'settings', 'order_types'];
 
 // Tables to truncate (in order - child tables first)
 const TABLES_TO_TRUNCATE = [
-  'order_items',           // Child of orders, products
-  'orders',                // Child of dealers, warehouses, order_types, users
+  'sales_order_items',     // Child of sales_orders, products
+  'sales_orders',           // Child of dealers, warehouses, transports, users
+  'demand_order_items',     // Child of demand_orders, products
+  'demand_orders',          // Child of dealers, users
   'daily_quotas',          // Child of products
   'monthly_forecast',      // Child of dealers, products
-  'dealer_products', // Child of dealers, products
+  'dealer_products',       // Child of dealers, products
   'dealers',               // Parent of users (but FK is ON DELETE SET NULL, so safe)
   'products',              // Parent of many tables
   'transports'             // No dependencies

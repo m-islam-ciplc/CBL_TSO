@@ -14,7 +14,6 @@ import {
   message,
   Row,
   Col,
-  DatePicker,
   Space,
   Popconfirm,
   Modal,
@@ -25,8 +24,6 @@ import {
   ReloadOutlined,
   SearchOutlined,
   CheckCircleOutlined,
-  ClockCircleOutlined,
-  CarOutlined,
   DeleteOutlined,
   ClearOutlined,
   OrderedListOutlined,
@@ -36,7 +33,7 @@ import dayjs from 'dayjs';
 import { createStandardDatePickerConfig, createStandardDateRangePicker } from '../templates/UIConfig';
 import { useStandardPagination } from '../templates/useStandardPagination';
 import { FILTER_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
-import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, COMPACT_ROW_GUTTER, STANDARD_FORM_LABEL_STYLE, STANDARD_INPUT_SIZE, STANDARD_SELECT_SIZE, STANDARD_TABLE_SIZE, STANDARD_TAG_STYLE, STANDARD_POPCONFIRM_CONFIG, STANDARD_TOOLTIP_CONFIG, STANDARD_SPIN_SIZE, STANDARD_DATE_PICKER_CONFIG, STANDARD_SPACE_SIZE_SMALL, STANDARD_MODAL_CONFIG, STANDARD_INPUT_NUMBER_SIZE, STANDARD_BUTTON_SIZE, renderTableHeaderWithSearch } from '../templates/UIElements';
+import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, COMPACT_ROW_GUTTER, STANDARD_FORM_LABEL_STYLE, STANDARD_INPUT_SIZE, STANDARD_SELECT_SIZE, STANDARD_TABLE_SIZE, STANDARD_TAG_STYLE, STANDARD_POPCONFIRM_CONFIG, STANDARD_TOOLTIP_CONFIG, STANDARD_SPIN_SIZE, STANDARD_MODAL_CONFIG, STANDARD_INPUT_NUMBER_SIZE, STANDARD_BUTTON_SIZE, renderTableHeaderWithSearch } from '../templates/UIElements';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -284,18 +281,6 @@ function PlacedOrders({ refreshTrigger }) {
   };
 
 
-  const getStatusTag = (status) => {
-    switch (status) {
-      case 'completed':
-        return <Tag color="success" icon={<CheckCircleOutlined />}>Completed</Tag>;
-      case 'processing':
-        return <Tag color="warning" icon={<ClockCircleOutlined />}>Processing</Tag>;
-      case 'shipped':
-        return <Tag color="blue" icon={<CarOutlined />}>Shipped</Tag>;
-      default:
-        return <Tag color="default">New</Tag>;
-    }
-  };
 
   if (loading) {
     return (
@@ -321,8 +306,8 @@ function PlacedOrders({ refreshTrigger }) {
       
       const orderData = orderResponse.data;
       
-      // Check if it's a DD order
-      if (orderData.order_type_name !== 'DD') {
+      // Check if it's a DD order (demand_orders can be edited, sales_orders cannot)
+      if (orderData.order_type !== 'DD') {
         message.warning('Only daily demand orders can be edited');
         return;
       }
@@ -860,8 +845,7 @@ function PlacedOrders({ refreshTrigger }) {
             <Form.List name="items">
               {(fields, { add, remove }) => (
                 <>
-                  {fields.map((field, index) => {
-                    const item = editOrderItems[index];
+                  {fields.map((field) => {
                     return (
                       <Card key={field.key} style={{ marginBottom: '16px' }} size="small">
                         <Row gutter={COMPACT_ROW_GUTTER}>
