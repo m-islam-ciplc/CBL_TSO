@@ -345,7 +345,7 @@ function AppContent() {
     ...(userRole === 'admin' ? [{
       key: 'manage-quotas',
       icon: <BarChartOutlined />,
-      label: 'Manage Quotas',
+      label: 'Quotas',
     }] : []),
     {
       key: 'reports',

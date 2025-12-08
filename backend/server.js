@@ -3451,13 +3451,38 @@ app.get('/api/orders', (req, res) => {
 
 // Get available dates with orders (from demand_orders)
 app.get('/api/orders/available-dates', (req, res) => {
-    // Get distinct order_date values from demand_orders
-    const query = `
-        SELECT DISTINCT order_date as date
-        FROM demand_orders 
-        WHERE order_date IS NOT NULL
-        ORDER BY date DESC
-    `;
+    const { order_type } = req.query; // 'SO', 'DD', or 'all' (default)
+    
+    let query;
+    
+    if (order_type === 'SO') {
+        // Only Sales Orders dates
+        query = `
+            SELECT DISTINCT order_date as date
+            FROM sales_orders 
+            WHERE order_date IS NOT NULL
+            ORDER BY date DESC
+        `;
+    } else if (order_type === 'DD') {
+        // Only Daily Demand dates
+        query = `
+            SELECT DISTINCT order_date as date
+            FROM demand_orders 
+            WHERE order_date IS NOT NULL
+            ORDER BY date DESC
+        `;
+    } else {
+        // All orders (both Sales Orders and Daily Demands) - use UNION to get unique dates
+        query = `
+            SELECT DISTINCT order_date as date
+            FROM (
+                SELECT order_date FROM sales_orders WHERE order_date IS NOT NULL
+                UNION
+                SELECT order_date FROM demand_orders WHERE order_date IS NOT NULL
+            ) AS all_dates
+            ORDER BY date DESC
+        `;
+    }
     
     db.query(query, (err, rows) => {
         if (err) {

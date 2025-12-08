@@ -32,6 +32,7 @@ export const renderProductDetailsStack = ({
   showPrice = false,
   isTSO = false,
   showIndex = true,
+  showCode = true,
 }) => {
   if (!products || products.length === 0) {
     return (
@@ -53,9 +54,13 @@ export const renderProductDetailsStack = ({
               #{index + 1}
             </span>
           )}{' '}
-          <span style={{ color: '#666' }}>
-            {product.product_code || 'N/A'}
-          </span>{' '}
+          {showCode && (
+            <>
+              <span style={{ color: '#666' }}>
+                {product.product_code || 'N/A'}
+              </span>{' '}
+            </>
+          )}
           <span style={{ fontWeight: 'bold' }}>
             {product.product_name || product.name || 'Unnamed Product'}
           </span>

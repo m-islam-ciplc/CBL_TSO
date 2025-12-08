@@ -221,12 +221,20 @@ function PlacedOrders({ refreshTrigger }) {
     loadOrders();
   }, [refreshTrigger, loadOrders]);
 
-  // Fetch available dates with orders
-  const getAvailableDates = async () => {
+  // Fetch available dates with orders - filtered by order type
+  const getAvailableDates = useCallback(async () => {
     try {
-      const endpoint = isTSO && userId 
-        ? `/api/orders/tso/available-dates?user_id=${userId}`
-        : '/api/orders/available-dates';
+      let endpoint;
+      if (isTSO && userId) {
+        // TSO users: always get their sales orders dates
+        endpoint = `/api/orders/tso/available-dates?user_id=${userId}`;
+      } else {
+        // Admin/Sales Manager: get dates based on order type filter
+        const orderTypeParam = orderTypeFilter === 'tso' ? 'SO' : 
+                              orderTypeFilter === 'dd' ? 'DD' : 'all';
+        endpoint = `/api/orders/available-dates?order_type=${orderTypeParam}`;
+      }
+      
       const response = await axios.get(endpoint);
       const dates = response.data.dates || response.data || [];
       const formattedDates = dates.map(date => {
@@ -241,12 +249,12 @@ function PlacedOrders({ refreshTrigger }) {
       // Continue without graying out dates if API fails
       setAvailableDates([]);
     }
-  };
+  }, [isTSO, userId, orderTypeFilter]);
 
-  // Load available dates on mount and when user changes
+  // Load available dates on mount and when user or order type filter changes
   useEffect(() => {
     getAvailableDates();
-  }, [isTSO, userId]);
+  }, [getAvailableDates]);
 
   const filterOrders = useCallback(() => {
     let filtered = orders;
@@ -666,6 +674,7 @@ function PlacedOrders({ refreshTrigger }) {
           products,
           showPrice: true,
           isTSO,
+          showCode: false,
         });
       },
     },
