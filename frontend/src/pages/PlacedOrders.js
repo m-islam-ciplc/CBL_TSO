@@ -221,15 +221,6 @@ function PlacedOrders({ refreshTrigger }) {
     loadOrders();
   }, [refreshTrigger, loadOrders]);
 
-  useEffect(() => {
-    filterOrders();
-  }, [orders, searchTerm, orderTypeFilter, startDate, endDate, productFilter, dealerFilter, territoryFilter, tsoUserFilter]);
-
-  // Load dropdown data
-  useEffect(() => {
-    loadDropdownData();
-  }, []);
-
   // Fetch available dates with orders
   const getAvailableDates = async () => {
     try {
@@ -257,7 +248,7 @@ function PlacedOrders({ refreshTrigger }) {
     getAvailableDates();
   }, [isTSO, userId]);
 
-  const filterOrders = () => {
+  const filterOrders = useCallback(() => {
     let filtered = orders;
 
     // Date range filter - use order_date (business date, always NOT NULL)
@@ -428,7 +419,17 @@ function PlacedOrders({ refreshTrigger }) {
     setFilteredOrders(filtered);
     // Reset pagination when filters change
     setPagination(prev => ({ ...prev, current: 1 }));
-  };
+  }, [orders, orderProducts, startDate, endDate, productFilter, dealerFilter, territoryFilter, tsoUserFilter, orderTypeFilter, searchTerm]);
+
+  // Filter orders whenever filters or data change
+  useEffect(() => {
+    filterOrders();
+  }, [filterOrders]);
+
+  // Load dropdown data
+  useEffect(() => {
+    loadDropdownData();
+  }, []);
 
   const clearFilters = () => {
     setStartDate(dayjs()); // Reset to today
@@ -534,15 +535,20 @@ function PlacedOrders({ refreshTrigger }) {
     }
   };
 
-  const handleDeleteOrder = async (orderId, orderDate) => {
-    // Additional safety check: only allow deletion of today's orders
-    // Use order_date (business date), not created_at (database timestamp)
-    const orderDateStr = orderDate ? dayjs(orderDate).format('YYYY-MM-DD') : null;
-    const today = dayjs().format('YYYY-MM-DD');
+  const handleDeleteOrder = async (orderId, orderDate, orderType) => {
+    // Daily Demand orders can be deleted regardless of date (demand may or may not be fulfilled)
+    // Sales Orders can only be deleted if they're from today
+    const isDailyDemand = orderType === 'DD' || orderType === 'Daily Demand';
     
-    if (!orderDateStr || orderDateStr !== today) {
-      message.error('Only today\'s orders can be deleted');
-      return;
+    if (!isDailyDemand) {
+      // For Sales Orders, only allow deletion of today's orders
+      const orderDateStr = orderDate ? dayjs(orderDate).format('YYYY-MM-DD') : null;
+      const today = dayjs().format('YYYY-MM-DD');
+      
+      if (!orderDateStr || orderDateStr !== today) {
+        message.error('Only today\'s orders can be deleted');
+        return;
+      }
     }
     
     try {
@@ -574,6 +580,27 @@ function PlacedOrders({ refreshTrigger }) {
         );
       },
       sorter: (a, b) => a.order_id.localeCompare(b.order_id),
+    },
+    {
+      title: 'Order Type',
+      key: 'order_type',
+      width: 120,
+      align: 'center',
+      render: (_, record) => {
+        // Use order_type field, not warehouse_id (since tables are split)
+        const isTSOOrder = record.order_type === 'SO' || record.order_type_name === 'SO';
+        return (
+          <Tag color={isTSOOrder ? 'blue' : 'green'} style={STANDARD_TAG_STYLE}>
+            {isTSOOrder ? 'Sales Order' : 'Daily Demand'}
+          </Tag>
+        );
+      },
+      sorter: (a, b) => {
+        const aIsTSO = a.order_type === 'SO' || a.order_type_name === 'SO';
+        const bIsTSO = b.order_type === 'SO' || b.order_type_name === 'SO';
+        if (aIsTSO === bIsTSO) return 0;
+        return aIsTSO ? 1 : -1;
+      },
     },
     {
       title: 'Order Date',
@@ -642,41 +669,23 @@ function PlacedOrders({ refreshTrigger }) {
         });
       },
     },
-    {
-      title: 'Order Type',
-      key: 'order_type',
-      width: 120,
-      align: 'center',
-      render: (_, record) => {
-        // Use order_type field, not warehouse_id (since tables are split)
-        const isTSOOrder = record.order_type === 'SO' || record.order_type_name === 'SO';
-        return (
-          <Tag color={isTSOOrder ? 'blue' : 'green'} style={STANDARD_TAG_STYLE}>
-            {isTSOOrder ? 'Sales Order' : 'Daily Demand'}
-          </Tag>
-        );
-      },
-      sorter: (a, b) => {
-        const aIsTSO = a.order_type === 'SO' || a.order_type_name === 'SO';
-        const bIsTSO = b.order_type === 'SO' || b.order_type_name === 'SO';
-        if (aIsTSO === bIsTSO) return 0;
-        return aIsTSO ? 1 : -1;
-      },
-    },
     ...(!isTSO ? [{
       title: 'Actions',
       key: 'actions',
       width: 120,
       align: 'center',
       render: (_, record) => {
-        // Use order_date (business date) to determine if order can be deleted
-        // Only today's orders can be deleted
+        // Use order_type field, not warehouse_id (since tables are split)
+        const isDailyDemand = record.order_type === 'DD' || record.order_type_name === 'DD';
+        const isDealerOrder = record.dealer_id && isDailyDemand;
+        const canEditDealerOrder = isDealerOrder && (isAdmin || isSalesManager);
+        
+        // Daily Demand orders can be deleted regardless of date (demand may or may not be fulfilled)
+        // Sales Orders can only be deleted if they're from today
         const orderDate = record.order_date ? dayjs(record.order_date).format('YYYY-MM-DD') : null;
         const today = dayjs().format('YYYY-MM-DD');
         const isToday = orderDate === today;
-        // Use order_type field, not warehouse_id (since tables are split)
-        const isDealerOrder = record.dealer_id && (record.order_type === 'DD' || record.order_type_name === 'DD');
-        const canEditDealerOrder = isDealerOrder && (isAdmin || isSalesManager);
+        const canDelete = isDailyDemand || isToday;
         
         return (
           <Space>
@@ -690,7 +699,7 @@ function PlacedOrders({ refreshTrigger }) {
                 />
               </Tooltip>
             )}
-            {isToday ? (
+            {canDelete ? (
               <Popconfirm
                 {...STANDARD_POPCONFIRM_CONFIG}
                 title="Delete Order"
@@ -700,7 +709,7 @@ function PlacedOrders({ refreshTrigger }) {
                     <div>This will also delete all associated items, and quotas will revert to the TSO.</div>
                   </div>
                 }
-                onConfirm={() => handleDeleteOrder(record.id, record.order_date)}
+                onConfirm={() => handleDeleteOrder(record.id, record.order_date, record.order_type || record.order_type_name)}
                 okText="Yes, Delete"
                 cancelText="Cancel"
                 okButtonProps={{ danger: true }}
@@ -745,9 +754,9 @@ function PlacedOrders({ refreshTrigger }) {
 
       {/* Filters */}
       <Card title="Filter Orders" {...FILTER_CARD_CONFIG}>
-        {/* Row 1: Primary Filters - Order Type first (most important) */}
-        <Row gutter={COMPACT_ROW_GUTTER} align="bottom" style={{ marginBottom: '12px' }}>
-          <Col xs={24} sm={12} md={6}>
+        {/* Single Row: All Filters - Order Type first (most important) */}
+        <Row gutter={COMPACT_ROW_GUTTER} align="bottom" justify="space-between" style={{ marginBottom: '12px' }}>
+          <Col xs={24} sm={12} md={3}>
             <Space direction="vertical" style={{ width: '100%' }}>
               <Text strong style={STANDARD_FORM_LABEL_STYLE}>Order Type</Text>
               <Select
@@ -771,7 +780,7 @@ function PlacedOrders({ refreshTrigger }) {
             disabledDate,
             dateCellRender,
             availableDates,
-            colSpan: { xs: 24, sm: 12, md: 6 },
+            colSpan: { xs: 24, sm: 12, md: 2 },
             onStartChange: () => {
               setDateError(''); // Clear error when start date changes
               filterOrders();
@@ -780,19 +789,7 @@ function PlacedOrders({ refreshTrigger }) {
               filterOrders(); // Error will be set in filterOrders if invalid
             },
           })}
-          {dateError && (
-            <Col xs={24} sm={24} md={12}>
-              <Alert
-                message={dateError}
-                type="error"
-                showIcon
-                closable
-                onClose={() => setDateError('')}
-                style={{ marginTop: '8px' }}
-              />
-            </Col>
-          )}
-          <Col xs={24} sm={12} md={6}>
+          <Col xs={24} sm={12} md={3}>
             <Space direction="vertical" style={{ width: '100%' }}>
               <Text strong style={STANDARD_FORM_LABEL_STYLE}>Territory</Text>
               <Select
@@ -821,12 +818,8 @@ function PlacedOrders({ refreshTrigger }) {
               </Select>
             </Space>
           </Col>
-        </Row>
-
-        {/* Row 2: Secondary Filters */}
-        <Row gutter={COMPACT_ROW_GUTTER} align="bottom" style={{ marginBottom: '12px' }}>
           {(orderTypeFilter === 'tso' || orderTypeFilter === 'all') && (
-            <Col xs={24} sm={12} md={6}>
+            <Col xs={24} sm={12} md={3}>
               <Space direction="vertical" style={{ width: '100%' }}>
                 <Text strong style={STANDARD_FORM_LABEL_STYLE}>TSO User</Text>
                 <Select
@@ -857,7 +850,7 @@ function PlacedOrders({ refreshTrigger }) {
               </Space>
             </Col>
           )}
-          <Col xs={24} sm={12} md={6}>
+          <Col xs={24} sm={12} md={4}>
             <Space direction="vertical" style={{ width: '100%' }}>
               <Text strong style={STANDARD_FORM_LABEL_STYLE}>Dealer</Text>
               <Select
@@ -886,7 +879,7 @@ function PlacedOrders({ refreshTrigger }) {
               </Select>
             </Space>
           </Col>
-          <Col xs={24} sm={12} md={6}>
+          <Col xs={24} sm={12} md={4} flex="auto">
             <Space direction="vertical" style={{ width: '100%' }}>
               <Text strong style={STANDARD_FORM_LABEL_STYLE}>Product</Text>
               <Select
@@ -905,30 +898,13 @@ function PlacedOrders({ refreshTrigger }) {
               >
                 {filteredProductsForFilter.map(product => (
                   <Option key={product.id} value={product.id}>
-                    {product.product_code} - {product.name}
+                    {product.name}
                   </Option>
                 ))}
               </Select>
             </Space>
           </Col>
-          <Col xs={24} sm={12} md={6}>
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Text strong style={STANDARD_FORM_LABEL_STYLE}>Search</Text>
-              <Input
-                placeholder="Search Order ID, Dealer, Product..."
-                prefix={<SearchOutlined />}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                size={STANDARD_INPUT_SIZE}
-                allowClear
-              />
-            </Space>
-          </Col>
-        </Row>
-
-        {/* Row 3: Actions */}
-        <Row gutter={COMPACT_ROW_GUTTER} align="bottom">
-          <Col xs={24} sm={12} md={6}>
+          <Col xs={24} sm={12} md={3} flex="none">
             <Space direction="vertical" style={{ width: '100%' }}>
               <Text strong style={STANDARD_FORM_LABEL_STYLE}>Actions</Text>
               <Space style={{ width: '100%' }}>
@@ -956,6 +932,22 @@ function PlacedOrders({ refreshTrigger }) {
             </Space>
           </Col>
         </Row>
+
+        {/* Date Error Alert (if any) */}
+        {dateError && (
+          <Row gutter={COMPACT_ROW_GUTTER}>
+            <Col xs={24}>
+              <Alert
+                message={dateError}
+                type="error"
+                showIcon
+                closable
+                onClose={() => setDateError('')}
+                style={{ marginTop: '8px' }}
+              />
+            </Col>
+          </Row>
+        )}
       </Card>
 
       {/* Orders Table */}
@@ -965,7 +957,7 @@ function PlacedOrders({ refreshTrigger }) {
           count: filteredOrders.length,
           searchTerm: searchTerm,
           onSearchChange: (e) => setSearchTerm(e.target.value),
-          searchPlaceholder: 'Search orders...'
+          searchPlaceholder: 'Search Order ID, Dealer, Product...'
         })}
 
         {filteredOrders.length === 0 ? (

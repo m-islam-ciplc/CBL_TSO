@@ -399,7 +399,7 @@ export const renderTableHeaderWithSearch = ({
         prefix={<SearchOutlined />}
         value={searchTerm}
         onChange={onSearchChange}
-        size="middle"
+        size="small"
         allowClear
         style={{ width: '300px' }}
       />
@@ -536,7 +536,7 @@ export const renderTableHeaderWithSearchAndFilter = ({
           prefix={<SearchOutlined />}
           value={searchTerm}
           onChange={onSearchChange}
-          size="middle"
+          size="small"
           allowClear
           style={{ width: '300px' }}
         />
