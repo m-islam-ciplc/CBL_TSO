@@ -34,7 +34,7 @@ async function testD16_NavigateToDealerReportsPage() {
   }
   
   // Check if available dates endpoint works (indicates reports page is accessible)
-  const result = await utils.makeRequest(`/api/orders/dealer/available-dates?dealer_id=${testData.dealerId}`, 'GET', null, {
+  const result = await utils.makeRequest(`/api/orders/dealer/available-dates?dealer_id=${testData.dealerId}&order_type=DD`, 'GET', null, {
     'Authorization': `Bearer ${testData.dealerToken}`
   });
   
@@ -258,19 +258,14 @@ async function testD22_SubmitMonthlyForecast() {
   
   console.log(`\n📋 Found ${scrapTerritoryDealers.length} dealer(s) in Scrap Territory`);
   
-  // Map dealer names to actual usernames (as created by user)
-  // User created: cash.party, alamin.enterprise, madina.metal, argus.metal
+  // Map dealer names to actual usernames (current accounts)
   function dealerNameToUsername(dealerName) {
     if (!dealerName) return null;
     const dealerNameLower = dealerName.toLowerCase();
     
-    // Direct mapping based on dealer name patterns
-    if (dealerNameLower.includes('cash') && dealerNameLower.includes('party')) return 'cash.party';
-    if (dealerNameLower.includes('alamin') || dealerNameLower.includes('al-amin')) return 'alamin.enterprise';
-    if (dealerNameLower.includes('madina') && dealerNameLower.includes('metal')) return 'madina.metal';
-    if (dealerNameLower.includes('argus') && dealerNameLower.includes('metal')) return 'argus.metal';
-    
-    // If no match, return null (will skip this dealer)
+    if (dealerNameLower.includes('madina')) return 'madina';
+    if (dealerNameLower.includes('argus')) return 'argus';
+    if (dealerNameLower.includes('al-amin') || dealerNameLower.includes('alamin')) return 'alamin';
     return null;
   }
   

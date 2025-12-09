@@ -27,7 +27,7 @@ async function testT16_NavigateToPlacedOrdersPage() {
   const testData = utils.getTestData();
   
   // Check available dates
-  const result = await utils.makeRequest(`/api/orders/tso/available-dates?user_id=${testData.tsoUserId}`, 'GET', null, {
+  const result = await utils.makeRequest(`/api/orders/tso/available-dates?user_id=${testData.tsoUserId}&order_type=SO`, 'GET', null, {
     'Authorization': `Bearer ${testData.tsoToken}`
   });
   
@@ -51,7 +51,7 @@ async function testT17_GetAvailableDates() {
   
   const testData = utils.getTestData();
   
-  const result = await utils.makeRequest(`/api/orders/tso/available-dates?user_id=${testData.tsoUserId}`, 'GET', null, {
+  const result = await utils.makeRequest(`/api/orders/tso/available-dates?user_id=${testData.tsoUserId}&order_type=SO`, 'GET', null, {
     'Authorization': `Bearer ${testData.tsoToken}`
   });
   

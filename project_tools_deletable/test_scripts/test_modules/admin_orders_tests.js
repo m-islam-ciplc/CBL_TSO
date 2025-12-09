@@ -18,14 +18,13 @@ async function testA51_ViewAllOrders() {
   console.log('📋 A51: View all orders');
   console.log('='.repeat(70));
   
-  // Use existing token from A1 (no need to login again)
-  
   const testData = utils.getTestData();
   const result = await utils.makeRequest('/api/orders', 'GET', null, {
     'Authorization': `Bearer ${testData.adminToken}`
   });
   
   if (result.status === 200 && Array.isArray(result.data)) {
+    // Ensure no unit price leakage for non-admin views isn't applicable here (admin can see)
     console.log(`\n✅ A51 PASSED: All orders viewable`);
     console.log(`   Total orders: ${result.data.length}`);
     if (result.data.length > 0) {
@@ -43,8 +42,6 @@ async function testA52_FilterOrdersByDate() {
   console.log('📋 A52: Filter orders by date');
   console.log('='.repeat(70));
   
-  // Use existing token from A1 (no need to login again)
-  
   const testData = utils.getTestData();
   const today = getTodayDate();
   
@@ -54,7 +51,7 @@ async function testA52_FilterOrdersByDate() {
   
   if (result.status === 200 && Array.isArray(result.data)) {
     const filtered = result.data.filter(o => {
-      const orderDate = o.order_date || (o.created_at ? o.created_at.split('T')[0] : '');
+      const orderDate = o.order_date || '';
       return orderDate === today;
     });
     
@@ -72,8 +69,6 @@ async function testA53_FilterOrdersByDealer() {
   console.log('\n' + '='.repeat(70));
   console.log('📋 A53: Filter orders by dealer');
   console.log('='.repeat(70));
-  
-  // Use existing token from A1 (no need to login again)
   
   const testData = utils.getTestData();
   
@@ -196,8 +191,6 @@ async function testA56_ExportOrdersReport() {
   console.log('📋 A56: Export orders report');
   console.log('='.repeat(70));
   
-  // Use existing token from A1 (no need to login again)
-  
   const testData = utils.getTestData();
   const today = getTodayDate();
   
@@ -227,6 +220,34 @@ async function testA56_ExportOrdersReport() {
   throw new Error(`A56 FAILED: Export failed - ${result.status}`);
 }
 
+// A57: Available dates by order type (SO vs DD)
+async function testA57_AvailableDatesByOrderType() {
+  console.log('\n' + '='.repeat(70));
+  console.log('📋 A57: Available dates by order type (SO vs DD)');
+  console.log('='.repeat(70));
+
+  const testData = utils.getTestData();
+
+  const soResult = await utils.makeRequest('/api/orders/available-dates?order_type=SO', 'GET', null, {
+    'Authorization': `Bearer ${testData.adminToken}`
+  });
+  const ddResult = await utils.makeRequest('/api/orders/available-dates?order_type=DD', 'GET', null, {
+    'Authorization': `Bearer ${testData.adminToken}`
+  });
+
+  if (soResult.status !== 200 || !Array.isArray(soResult.data)) {
+    throw new Error(`A57 FAILED: Could not fetch SO available dates - ${soResult.status}`);
+  }
+  if (ddResult.status !== 200 || !Array.isArray(ddResult.data)) {
+    throw new Error(`A57 FAILED: Could not fetch DD available dates - ${ddResult.status}`);
+  }
+
+  console.log(`\n✅ A57 PASSED: Available dates fetched`);
+  console.log(`   SO dates: ${soResult.data.length}`);
+  console.log(`   DD dates: ${ddResult.data.length}`);
+  return true;
+}
+
 module.exports = {
   init,
   testA51_ViewAllOrders,
@@ -234,5 +255,6 @@ module.exports = {
   testA53_FilterOrdersByDealer,
   testA54_ViewOrderDetails,
   testA55_DeleteOrder,
-  testA56_ExportOrdersReport
+  testA56_ExportOrdersReport,
+  testA57_AvailableDatesByOrderType
 };

@@ -5,8 +5,8 @@
  * 
  * This script tests:
  * - Admin workflows (55 manual steps)
- * - TSO workflows (28 manual steps) - TODO
- * - Dealer workflows (23 manual steps) - TODO
+ * - TSO workflows
+ * - Dealer workflows
  * 
  * Usage: 
  *   node test_workflows.js
@@ -28,6 +28,9 @@ const TEST_CONFIG = {
   adminPassword: process.env.ADMIN_PASSWORD || '#lme11@@',
   testPassword: '123',
   territoryName: 'Cumilla Territory',
+  // Known real accounts
+  tsoUsername: 'subrata.das',
+  dealerUsernames: ['madina', 'argus', 'alamin'],
   testUsers: {
     admin: ['test_workflows_admin', 'test_workflows_admin_2'],
     tso: ['test_workflows_tso', 'test_workflows_tso_2'],

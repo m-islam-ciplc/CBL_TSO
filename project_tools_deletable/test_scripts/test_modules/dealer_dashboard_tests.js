@@ -64,9 +64,29 @@ async function testD1_LoginAsDealer() {
     }
   }
   
-  // Use dealer username from setup (test_workflows_dealer)
-  const dealerUsername = 'test_workflows_dealer'; // From setup - for Argus metal pvt ltd
+  // Try known dealer accounts in order until one logs in
+  const dealerCandidates = TEST_CONFIG.dealerUsernames || ['argus', 'madina', 'alamin'];
   const dealerPassword = TEST_CONFIG.testPassword; // password: 123
+  let dealerUsername = null;
+  let loginResult = null;
+  for (const candidate of dealerCandidates) {
+    console.log(`🔐 Attempting dealer login: ${candidate}...`);
+    const attempt = await utils.makeRequest('/api/auth/login', 'POST', {
+      username: candidate,
+      password: dealerPassword
+    });
+    if (attempt.status === 200 && attempt.data.success) {
+      dealerUsername = candidate;
+      loginResult = attempt;
+      break;
+    } else {
+      console.log(`   ⚠️  Failed login for ${candidate}: ${attempt.status}`);
+    }
+  }
+
+  if (!dealerUsername || !loginResult) {
+    throw new Error('D1 FAILED: Could not login with any known dealer account (argus/madina/alamin)');
+  }
   
   console.log(`🔐 Logging in as Dealer: ${dealerUsername}...`);
   if (targetDealer) {
@@ -74,10 +94,7 @@ async function testD1_LoginAsDealer() {
     console.log(`   Territory: ${targetDealer.territory_name || 'N/A'}`);
   }
   
-  const result = await utils.makeRequest('/api/auth/login', 'POST', {
-    username: dealerUsername,
-    password: dealerPassword
-  });
+  const result = loginResult;
 
   if (result.status === 200 && result.data.success) {
     testData.dealerToken = result.data.token;

@@ -109,7 +109,8 @@ async function testA29_VerifyTransportDataStructure() {
   }
   
   const transport = transportsResult.data[0];
-  const requiredFields = ['id', 'truck_details', 'driver_name'];
+  // GET /api/transports returns id, truck_details (driver_name is not returned on list endpoint)
+  const requiredFields = ['id', 'truck_details'];
   const missingFields = requiredFields.filter(field => !transport.hasOwnProperty(field));
   
   if (missingFields.length === 0) {

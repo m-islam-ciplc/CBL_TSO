@@ -369,12 +369,9 @@ function WorkflowTests() {
                 <Text strong>Default API URL: </Text>
                 <Tag>http://localhost:3001</Tag>
               </div>
-              <div>
-                <Text strong>Docker API URL: </Text>
-                <Tag>http://localhost:3002</Tag>
-              </div>
               <Paragraph type="secondary" style={{ marginTop: '8px' }}>
                 You can override the API URL using the <Text code>API_URL</Text> environment variable.
+                Order API uses split tables: sales orders (SO) and demand orders (DD). Pass <Text code>order_type=SO|DD</Text> where applicable (e.g., available-dates).
               </Paragraph>
             </Space>
           </Card>
@@ -428,12 +425,9 @@ function WorkflowTests() {
                 <Text strong>Default API URL: </Text>
                 <Tag>http://localhost:3001</Tag>
               </div>
-              <div>
-                <Text strong>Docker API URL: </Text>
-                <Tag>http://localhost:3002</Tag>
-              </div>
               <Paragraph type="secondary" style={{ marginTop: '8px' }}>
                 You can override the API URL using the <Text code>API_URL</Text> environment variable.
+                Order API uses split tables (SO/DD); include <Text code>order_type</Text> where required.
               </Paragraph>
             </Space>
           </Card>
@@ -485,10 +479,6 @@ function WorkflowTests() {
             <Space direction="vertical" style={{ width: '100%' }}>
               <div>
                 <Text strong>Default API URL: </Text>
-                <Tag>http://localhost:3001</Tag>
-              </div>
-              <div>
-                <Text strong>Docker API URL: </Text>
                 <Tag>http://localhost:3002</Tag>
               </div>
               <div>
@@ -582,7 +572,8 @@ function WorkflowTests() {
               <div>
                 <Text strong>This operation will permanently delete data from the following tables:</Text>
                 <ul style={{ marginTop: '8px', marginBottom: '8px' }}>
-                  <li>orders, order_items</li>
+                  <li>sales_orders, sales_order_items</li>
+                  <li>demand_orders, demand_order_items</li>
                   <li>dealers, products, transports</li>
                   <li>daily_quotas, monthly_forecast</li>
                   <li>dealer_products</li>
@@ -611,8 +602,10 @@ function WorkflowTests() {
               <div>
                 <Text strong style={{ color: '#ff4d4f' }}>Tables Deleted (All Data Removed):</Text>
                 <ul>
-                  <li><Text code>order_items</Text> - Order line items</li>
-                  <li><Text code>orders</Text> - All orders</li>
+                  <li><Text code>sales_order_items</Text> - Sales order line items</li>
+                  <li><Text code>sales_orders</Text> - Sales orders</li>
+                  <li><Text code>demand_order_items</Text> - Daily demand order line items</li>
+                  <li><Text code>demand_orders</Text> - Daily demand orders</li>
                   <li><Text code>daily_quotas</Text> - Daily quota allocations</li>
                   <li><Text code>monthly_forecast</Text> - Monthly forecasts</li>
                   <li><Text code>dealer_products</Text> - Product assignments to dealers</li>
