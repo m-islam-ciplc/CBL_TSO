@@ -1898,6 +1898,27 @@ app.post('/api/product-caps/upload', upload.single('file'), async (req, res) => 
   }
 });
 
+// Bulk delete users
+app.post('/api/users/bulk-delete', (req, res) => {
+  const { ids } = req.body || {};
+
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: 'Missing required field: ids (array of user IDs)' });
+  }
+
+  // Prevent SQL injection by using parameterized placeholders
+  const placeholders = ids.map(() => '?').join(',');
+  const query = `DELETE FROM users WHERE id IN (${placeholders})`;
+
+  db.query(query, ids, (err, result) => {
+    if (err) {
+      console.error('Error bulk deleting users:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+    res.json({ success: true, deleted: result.affectedRows || 0 });
+  });
+});
+
 app.get('/api/product-caps', (req, res) => {
   const { date, territory_name } = req.query;
   

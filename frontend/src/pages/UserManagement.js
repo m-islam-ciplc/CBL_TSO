@@ -48,6 +48,7 @@ function UserManagement() {
   const [selectedRole, setSelectedRole] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState(null);
+  const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const { pagination, handleTableChange } = useStandardPagination('users', 20);
 
   useEffect(() => {
@@ -108,10 +109,24 @@ function UserManagement() {
     try {
       await axios.delete(`/api/users/${id}`);
       message.success('User deleted successfully');
-      loadUsers();
+      setUsers(users.filter(user => user.id !== id));
+      setSelectedRowKeys((prev) => prev.filter(key => key !== id));
     } catch (_error) {
       console.error('Failed to delete user:', _error);
       message.error('Failed to delete user');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!selectedRowKeys.length) return;
+    try {
+      await axios.post('/api/users/bulk-delete', { ids: selectedRowKeys });
+      message.success(`Deleted ${selectedRowKeys.length} user(s)`);
+      setUsers(users.filter(user => !selectedRowKeys.includes(user.id)));
+      setSelectedRowKeys([]);
+    } catch (_error) {
+      console.error('Failed to bulk delete users:', _error);
+      message.error('Failed to delete selected users');
     }
   };
 
@@ -291,6 +306,22 @@ function UserManagement() {
               Add User
             </Button>
           </Col>
+          <Col>
+            <Popconfirm
+              {...STANDARD_POPCONFIRM_CONFIG}
+              title="Are you sure you want to delete the selected users?"
+              onConfirm={handleBulkDelete}
+              disabled={!selectedRowKeys.length}
+            >
+              <Button
+                icon={<DeleteOutlined />}
+                danger
+                disabled={!selectedRowKeys.length}
+              >
+                Delete Selected
+              </Button>
+            </Popconfirm>
+          </Col>
         </Row>
       </Card>
 
@@ -321,6 +352,10 @@ function UserManagement() {
           dataSource={filteredUsers}
           rowKey="id"
           loading={loading}
+          rowSelection={{
+            selectedRowKeys,
+            onChange: setSelectedRowKeys,
+          }}
           pagination={pagination}
           onChange={handleTableChange}
           size="small"
