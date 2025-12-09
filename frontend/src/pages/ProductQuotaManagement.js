@@ -23,11 +23,24 @@ import {
   ReloadOutlined,
   CheckOutlined,
   BarChartOutlined,
+  EditOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { getStandardPaginationConfig } from '../templates/useStandardPagination';
-import { DATE_SELECTION_CARD_CONFIG, FORM_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
-import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, STANDARD_TABLE_SIZE, STANDARD_TAG_STYLE, STANDARD_TABS_CONFIG, STANDARD_DATE_PICKER_CONFIG } from '../templates/UIElements';
+import { 
+  DATE_SELECTION_CARD_CONFIG, 
+  FORM_CARD_CONFIG, 
+  TABLE_CARD_CONFIG,
+  STANDARD_PAGE_TITLE_CONFIG, 
+  STANDARD_PAGE_SUBTITLE_CONFIG, 
+  STANDARD_ROW_GUTTER, 
+  STANDARD_TABLE_SIZE, 
+  STANDARD_TAG_STYLE, 
+  STANDARD_TABS_CONFIG, 
+  STANDARD_DATE_PICKER_CONFIG, 
+  STANDARD_FORM_LABEL_STYLE, 
+  COMPACT_ROW_GUTTER 
+} from '../templates/UITemplates';
 
 const { Title, Text } = Typography;
 
@@ -38,7 +51,7 @@ function ProductQuotaManagement() {
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [quotas, setQuotas] = useState({}); // { productId_territory: quantity }
   const [, setLoading] = useState(false);
-  const [editingQuota, setEditingQuota] = useState(null); // Track which quota is being edited
+  const [editingQuota, setEditingQuota] = useState(null); // Track which quota is being edited (key format: productId_territoryName)
   const [pendingQuotaValue, setPendingQuotaValue] = useState(null); // Track pending edit value
   
   // New allocation flow state
@@ -53,6 +66,7 @@ function ProductQuotaManagement() {
   const [historyAllocations, setHistoryAllocations] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('allocate');
+  const [availableQuotaDates, setAvailableQuotaDates] = useState([]);
   
   // Filtered options for dropdowns
   const [filteredProducts, setFilteredProducts] = useState([]);
@@ -61,7 +75,22 @@ function ProductQuotaManagement() {
   useEffect(() => {
     loadProducts();
     loadTerritories();
+    loadAvailableQuotaDates();
   }, []);
+
+  const loadAvailableQuotaDates = async () => {
+    try {
+      // Get all quota dates from the API (without date filter to get all dates)
+      const response = await axios.get('/api/product-caps');
+      const dates = [...new Set((response.data || []).map(cap => cap.date))].sort((a, b) => {
+        return new Date(b) - new Date(a); // Sort descending (newest first)
+      });
+      setAvailableQuotaDates(dates);
+    } catch (error) {
+      console.error('Failed to load available quota dates:', error);
+      setAvailableQuotaDates([]);
+    }
+  };
 
   useEffect(() => {
     loadQuotas();
@@ -162,7 +191,8 @@ useEffect(() => {
         quotasObj[key] = {
           max_quantity: cap.max_quantity,
           remaining_quantity: cap.remaining_quantity !== undefined && cap.remaining_quantity !== null ? cap.remaining_quantity : 0, // remaining_quantity can be 0, preserve 0 as valid value
-          sold_quantity: cap.sold_quantity !== undefined && cap.sold_quantity !== null ? cap.sold_quantity : 0 // Use actual sold quantity from orders
+          sold_quantity: cap.sold_quantity !== undefined && cap.sold_quantity !== null ? cap.sold_quantity : 0, // Use actual sold quantity from orders
+          tso_names: cap.tso_names || null // TSO names for this territory
         };
       });
       
@@ -283,6 +313,9 @@ useEffect(() => {
       // Reload to ensure consistency
       await loadQuotas();
       
+      // Refresh available dates in case this was a new date
+      loadAvailableQuotaDates();
+      
       // Trigger refresh in all TSO pages
       triggerQuotaRefresh();
     } catch (_error) {
@@ -341,6 +374,7 @@ useEffect(() => {
             productCode: product.product_code,
             productName: product.name,
             territoryName,
+            tsoNames: typeof quotaData === 'object' && quotaData.tso_names ? quotaData.tso_names : null,
             quantity,
             remaining,
             sold,
@@ -360,8 +394,38 @@ useEffect(() => {
 
   const handleQuotaInputChange = (productId, territoryName, value) => {
     const key = `${productId}_${territoryName}`;
-    setEditingQuota(key);
     setPendingQuotaValue(value);
+  };
+
+  const handleQuotaBlur = async (productId, territoryName) => {
+    const key = `${productId}_${territoryName}`;
+    if (editingQuota === key && pendingQuotaValue !== null) {
+      const currentValue = pendingQuotaValue;
+      const originalValue = quotas[key]?.max_quantity || 0;
+      if (currentValue !== originalValue) {
+        // Auto-save on blur if value changed
+        await handleConfirmQuotaUpdate();
+      } else {
+        // No change, just cancel editing
+        setEditingQuota(null);
+        setPendingQuotaValue(null);
+      }
+    }
+  };
+
+  const handleQuotaKeyPress = async (e, productId, territoryName) => {
+    if (e.key === 'Enter') {
+      const key = `${productId}_${territoryName}`;
+      if (editingQuota === key && pendingQuotaValue !== null) {
+        // Auto-save on Enter
+        e.preventDefault();
+        await handleConfirmQuotaUpdate();
+      }
+    } else if (e.key === 'Escape') {
+      // Cancel on Escape
+      setEditingQuota(null);
+      setPendingQuotaValue(null);
+    }
   };
 
   const handleConfirmQuotaUpdate = async () => {
@@ -454,10 +518,38 @@ useEffect(() => {
 
   const disabledHistoryDate = (current) => {
     if (!current) return false;
-    return current.isAfter(dayjs(), 'day');
+    // Disable future dates
+    if (current.isAfter(dayjs(), 'day')) return true;
+    // Disable dates that don't have quota data
+    const dateString = current.format('YYYY-MM-DD');
+    return !availableQuotaDates.includes(dateString);
+  };
+
+  const historyDateCellRender = (current) => {
+    const dateString = current.format('YYYY-MM-DD');
+    const hasData = availableQuotaDates.includes(dateString);
+    
+    return (
+      <div style={{
+        color: hasData ? '#000' : '#d9d9d9',
+        backgroundColor: hasData ? 'transparent' : '#f5f5f5',
+        cursor: hasData ? 'pointer' : 'not-allowed',
+        borderRadius: '4px',
+        padding: '2px'
+      }}>
+        {current.date()}
+      </div>
+    );
   };
 
   const allocationColumns = [
+    {
+      title: 'Date Added',
+      dataIndex: 'date',
+      key: 'date',
+      ellipsis: true,
+      sorter: (a, b) => (a.date || '').localeCompare(b.date || ''),
+    },
     {
       title: 'Territory',
       dataIndex: 'territoryName',
@@ -466,11 +558,14 @@ useEffect(() => {
       sorter: (a, b) => (a.territoryName || '').localeCompare(b.territoryName || ''),
     },
     {
-      title: 'Date Added',
-      dataIndex: 'date',
-      key: 'date',
-      ellipsis: true,
-      sorter: (a, b) => (a.date || '').localeCompare(b.date || ''),
+      title: 'TSO Name',
+      dataIndex: 'tsoNames',
+      key: 'tsoNames',
+      ellipsis: {
+        showTitle: true,
+      },
+      render: (tsoNames) => tsoNames || 'N/A',
+      sorter: (a, b) => (a.tsoNames || '').localeCompare(b.tsoNames || ''),
     },
     {
       title: 'Product Code',
@@ -498,41 +593,33 @@ useEffect(() => {
       render: (quantity, record) => {
         const key = `${record.productId}_${record.territoryName}`;
         const isEditing = editingQuota === key;
-        const displayValue = isEditing ? pendingQuotaValue : quantity;
         
+        if (isEditing) {
         return (
           <InputNumber
             min={0}
             max={999999}
-            value={displayValue}
+              value={pendingQuotaValue !== null ? pendingQuotaValue : quantity}
             onChange={(value) => handleQuotaInputChange(record.productId, record.territoryName, value)}
-            style={{ width: '100%', textAlign: 'right' }}
-          />
-        );
-      },
-    },
-    {
-      title: 'Update',
-      key: 'update',
-      width: 90,
-      align: 'center',
-      render: (_, record) => {
-        const key = `${record.productId}_${record.territoryName}`;
-        const isEditing = editingQuota === key;
-        const displayValue = isEditing ? pendingQuotaValue : record.quantity;
-        const hasChanged = isEditing && displayValue !== record.quantity;
+              onBlur={() => handleQuotaBlur(record.productId, record.territoryName)}
+              onPressEnter={async () => {
+                if (pendingQuotaValue !== null && pendingQuotaValue !== quantity) {
+                  await handleConfirmQuotaUpdate();
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  setEditingQuota(null);
+                  setPendingQuotaValue(null);
+                }
+              }}
+              style={{ width: '80px', textAlign: 'right' }}
+              autoFocus
+            />
+          );
+        }
         
-        return (
-          <Button
-            type={hasChanged ? 'primary' : 'default'}
-            icon={<CheckOutlined />}
-            onClick={handleConfirmQuotaUpdate}
-            disabled={!hasChanged}
-            size={STANDARD_TABLE_SIZE}
-          >
-            Update
-          </Button>
-        );
+        return <Text style={{ textAlign: 'right', display: 'block' }}>{quantity || 0}</Text>;
       },
     },
     {
@@ -549,19 +636,47 @@ useEffect(() => {
       ),
     },
     {
-      title: 'Action',
-      key: 'action',
-      width: 70,
+      title: 'Actions',
+      key: 'actions',
+      width: 150,
       align: 'center',
-      render: (_, record) => (
+      render: (_, record) => {
+        const key = `${record.productId}_${record.territoryName}`;
+        const isEditing = editingQuota === key;
+        const displayValue = isEditing ? pendingQuotaValue : record.quantity;
+        const hasChanged = isEditing && displayValue !== record.quantity;
+        
+        return (
+          <Space>
+            {isEditing ? (
+              <Button
+                type="primary"
+                icon={<CheckOutlined />}
+                onClick={handleConfirmQuotaUpdate}
+                disabled={!hasChanged}
+                size={STANDARD_TABLE_SIZE}
+              />
+            ) : (
         <Button
           type="text"
-          size="small"
+                icon={<EditOutlined />}
+                onClick={() => {
+                  setEditingQuota(key);
+                  setPendingQuotaValue(record.quantity);
+                }}
+                size={STANDARD_TABLE_SIZE}
+              />
+            )}
+            <Button
+              type="text"
           danger
           icon={<DeleteOutlined />}
           onClick={() => handleDeleteAllocation(record.productId, record.territoryName)}
+              size={STANDARD_TABLE_SIZE}
         />
-      ),
+          </Space>
+        );
+      },
     },
   ];
 
@@ -637,24 +752,25 @@ useEffect(() => {
         <TabPane tab="Allocate Daily Quotas" key="allocate">
           {/* Allocation Form */}
           <Card title="Allocate Daily Quotas" {...FORM_CARD_CONFIG}>
-            <Row gutter={STANDARD_ROW_GUTTER} align="top">
-            <Col flex="none" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-              <Space direction="vertical">
-                <Text strong>Date:</Text>
+            <Row gutter={COMPACT_ROW_GUTTER} align="top" justify="space-between" style={{ marginBottom: '12px' }}>
+              <Col xs={24} sm={12} md={2}>
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  <Text strong style={STANDARD_FORM_LABEL_STYLE}>Date:</Text>
                 <DatePicker
                   {...STANDARD_DATE_PICKER_CONFIG}
                   value={selectedDate}
                   onChange={(date) => setSelectedDate(date || dayjs())}
                   disabledDate={disabledDate}
+                    style={{ width: '100%' }}
                 />
               </Space>
             </Col>
-            <Col flex="none" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+              <Col xs={24} sm={12} md={11}>
               <Space direction="vertical" style={{ width: '100%' }}>
-                <Text strong>Products:</Text>
+                  <Text strong style={STANDARD_FORM_LABEL_STYLE}>Products:</Text>
                 <Space direction="vertical" style={{ width: '100%' }}>
                   <AutoComplete
-                    style={{ width: '800px' }}
+                      style={{ width: '100%' }}
                     placeholder="Type product name (e.g., dimitris, alpha)"
                     value={productSearch}
                     options={filteredProducts.map(p => ({
@@ -675,7 +791,7 @@ useEffect(() => {
                   {selectedProducts.length > 0 && (
                     <div style={{ 
                       marginTop: '4px', 
-                      width: '800px', 
+                        width: '100%', 
                       display: 'flex',
                       flexWrap: 'wrap',
                       gap: '4px'
@@ -695,12 +811,12 @@ useEffect(() => {
                 </Space>
               </Space>
             </Col>
-            <Col flex="none" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-              <Space direction="vertical">
-                <Text strong>Territories:</Text>
+              <Col xs={24} sm={12} md={6} flex="auto">
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  <Text strong style={STANDARD_FORM_LABEL_STYLE}>Territories:</Text>
                 <Space direction="vertical" style={{ width: '100%' }}>
                   <AutoComplete
-                    style={{ width: '320px' }}
+                      style={{ width: '100%' }}
                     placeholder="Type territory (e.g., bari, bagura)"
                     value={territoryInput}
                     options={filteredTerritories.map(t => ({
@@ -717,7 +833,6 @@ useEffect(() => {
                     <div style={{ 
                       marginTop: '4px', 
                       width: '100%', 
-                      maxWidth: '320px',
                       display: 'flex',
                       flexWrap: 'wrap',
                       gap: '4px'
@@ -737,41 +852,43 @@ useEffect(() => {
                 </Space>
               </Space>
             </Col>
-            <Col flex="none" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-              <Space direction="vertical">
-                <Text strong>Quota:</Text>
+              <Col xs={24} sm={12} md={2}>
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  <Text strong style={STANDARD_FORM_LABEL_STYLE}>Quota:</Text>
                 <Input
-                  style={{ width: '70px' }}
-                  placeholder="Enter quantity"
+                    style={{ width: '100%' }}
+                    placeholder="Qty"
                   value={quotaValue}
                   onChange={(e) => setQuotaValue(e.target.value)}
                   onPressEnter={handleAddAllocation}
                 />
               </Space>
             </Col>
-            <Col flex="none" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-              <Space direction="vertical">
+              <Col xs={24} sm={12} md={3} flex="none">
+                <Space direction="vertical" style={{ width: '100%' }}>
                 <Text>&nbsp;</Text>
                 <Button
                   type="primary"
                   icon={<PlusOutlined />}
                   onClick={handleAddAllocation}
                   disabled={selectedProducts.length === 0 || selectedTerritories.length === 0 || !quotaValue}
+                    style={{ width: '100%' }}
                 >
                   Add
                 </Button>
               </Space>
             </Col>
-          </Row>
-
-            <Row gutter={[16, 16]} align="middle" style={{ marginTop: '16px' }}>
-              <Col>
+              <Col xs={24} sm={12} md={3} flex="none">
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  <Text>&nbsp;</Text>
                 <Button
                   icon={<ReloadOutlined />}
                   onClick={loadQuotas}
+                    style={{ width: '100%' }}
                 >
                   Refresh
                 </Button>
+                </Space>
               </Col>
             </Row>
           </Card>
@@ -793,7 +910,7 @@ useEffect(() => {
         <TabPane tab="Previously Allocated Quotas" key="history">
           <Card title="Previously Allocated Quotas" {...DATE_SELECTION_CARD_CONFIG}>
             <Row gutter={[16, 16]} align="middle">
-              <Col xs={24} sm={12} md={8}>
+              <Col xs={24} sm={12} md={2}>
                 <Space direction="vertical" style={{ width: '100%' }}>
                   <Text strong>Select Date</Text>
                   <DatePicker
@@ -802,6 +919,7 @@ useEffect(() => {
                     onChange={(value) => setHistoryDate(value || dayjs())}
                     style={{ width: '100%' }}
                     disabledDate={disabledHistoryDate}
+                    dateRender={historyDateCellRender}
                     allowClear={false}
                   />
                 </Space>

@@ -10,7 +10,7 @@
  */
 
 import { useState } from 'react';
-import { getStandardPagination } from './UIConfig';
+import { getStandardPagination } from './UITemplates';
 
 export const useStandardPagination = (itemName = 'items', defaultPageSize = 20) => {
   const [pagination, setPagination] = useState({

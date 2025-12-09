@@ -31,12 +31,30 @@ import {
   EditOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { createStandardDatePickerConfig, createStandardDateRangePicker } from '../templates/UIConfig';
+import { 
+  FILTER_CARD_CONFIG, 
+  TABLE_CARD_CONFIG,
+  createStandardDatePickerConfig, 
+  createStandardDateRangePicker,
+  STANDARD_PAGE_TITLE_CONFIG, 
+  STANDARD_PAGE_SUBTITLE_CONFIG, 
+  COMPACT_ROW_GUTTER, 
+  STANDARD_FORM_LABEL_STYLE, 
+  STANDARD_INPUT_SIZE, 
+  STANDARD_SELECT_SIZE, 
+  STANDARD_TABLE_SIZE, 
+  STANDARD_TAG_STYLE, 
+  STANDARD_POPCONFIRM_CONFIG, 
+  STANDARD_TOOLTIP_CONFIG, 
+  STANDARD_SPIN_SIZE, 
+  STANDARD_MODAL_CONFIG, 
+  STANDARD_INPUT_NUMBER_SIZE, 
+  STANDARD_BUTTON_SIZE, 
+  renderTableHeaderWithSearch 
+} from '../templates/UITemplates';
 import { useStandardPagination } from '../templates/useStandardPagination';
 import { useCascadingFilters } from '../templates/useCascadingFilters';
-import { FILTER_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
 import { renderProductDetailsStack } from '../templates/TableTemplate';
-import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, COMPACT_ROW_GUTTER, STANDARD_FORM_LABEL_STYLE, STANDARD_INPUT_SIZE, STANDARD_SELECT_SIZE, STANDARD_TABLE_SIZE, STANDARD_TAG_STYLE, STANDARD_POPCONFIRM_CONFIG, STANDARD_TOOLTIP_CONFIG, STANDARD_SPIN_SIZE, STANDARD_MODAL_CONFIG, STANDARD_INPUT_NUMBER_SIZE, STANDARD_BUTTON_SIZE, renderTableHeaderWithSearch } from '../templates/UIElements';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -294,7 +312,7 @@ function PlacedOrders({ refreshTrigger }) {
                 setDateError(''); // Clear error if valid
               }
               
-              filtered = filtered.filter(order => {
+      filtered = filtered.filter(order => {
                 try {
                   // Use order_date (business date) - this is always NOT NULL in database
                   // order_date represents the actual date the order is for, not when it was created
@@ -373,7 +391,7 @@ function PlacedOrders({ refreshTrigger }) {
 
     // TSO User filter (only for Sales Orders)
     if (tsoUserFilter && (orderTypeFilter === 'tso' || orderTypeFilter === 'all')) {
-      filtered = filtered.filter(order => 
+      filtered = filtered.filter(order =>
         (order.order_type === 'SO' || order.order_type_name === 'SO') && order.user_id === tsoUserFilter
       );
     }
@@ -393,7 +411,7 @@ function PlacedOrders({ refreshTrigger }) {
           p.product_code?.toLowerCase().includes(searchLower) ||
           p.product_name?.toLowerCase().includes(searchLower) ||
           p.name?.toLowerCase().includes(searchLower)
-        );
+      );
         if (productMatch) return true;
         
         return false;
@@ -551,11 +569,11 @@ function PlacedOrders({ refreshTrigger }) {
     if (!isDailyDemand) {
       // For Sales Orders, only allow deletion of today's orders
       const orderDateStr = orderDate ? dayjs(orderDate).format('YYYY-MM-DD') : null;
-      const today = dayjs().format('YYYY-MM-DD');
-      
+    const today = dayjs().format('YYYY-MM-DD');
+    
       if (!orderDateStr || orderDateStr !== today) {
-        message.error('Only today\'s orders can be deleted');
-        return;
+      message.error('Only today\'s orders can be deleted');
+      return;
       }
     }
     
@@ -764,7 +782,7 @@ function PlacedOrders({ refreshTrigger }) {
       {/* Filters */}
       <Card title="Filter Orders" {...FILTER_CARD_CONFIG}>
         {/* Single Row: All Filters - Order Type first (most important) */}
-        <Row gutter={COMPACT_ROW_GUTTER} align="bottom" justify="space-between" style={{ marginBottom: '12px' }}>
+        <Row gutter={COMPACT_ROW_GUTTER} align="top" justify="space-between" style={{ marginBottom: '12px' }}>
           <Col xs={24} sm={12} md={3}>
             <Space direction="vertical" style={{ width: '100%' }}>
               <Text strong style={STANDARD_FORM_LABEL_STYLE}>Order Type</Text>
@@ -831,7 +849,7 @@ function PlacedOrders({ refreshTrigger }) {
             <Col xs={24} sm={12} md={3}>
               <Space direction="vertical" style={{ width: '100%' }}>
                 <Text strong style={STANDARD_FORM_LABEL_STYLE}>TSO User</Text>
-                <Select
+              <Select
                   placeholder="All TSOs"
                   value={tsoUserFilter}
                   onChange={(value) => {
@@ -841,23 +859,23 @@ function PlacedOrders({ refreshTrigger }) {
                       setOrderTypeFilter('tso');
                     }
                   }}
-                  style={{ width: '100%' }}
-                  size={STANDARD_INPUT_SIZE}
-                  allowClear
-                  showSearch
-                  filterOption={(input, option) => {
-                    const optionText = option?.children?.toString() || '';
-                    return optionText.toLowerCase().includes(input.toLowerCase());
-                  }}
-                >
+                style={{ width: '100%' }}
+                size={STANDARD_INPUT_SIZE}
+                allowClear
+                showSearch
+                filterOption={(input, option) => {
+                  const optionText = option?.children?.toString() || '';
+                  return optionText.toLowerCase().includes(input.toLowerCase());
+                }}
+              >
                   {tsoUsersList && tsoUsersList.length > 0 ? tsoUsersList.map(tso => (
                     <Option key={tso.id} value={tso.id}>
                       {tso.name}
                   </Option>
                   )) : null}
-                </Select>
-              </Space>
-            </Col>
+              </Select>
+            </Space>
+          </Col>
           )}
           <Col xs={24} sm={12} md={4}>
             <Space direction="vertical" style={{ width: '100%' }}>
@@ -918,24 +936,24 @@ function PlacedOrders({ refreshTrigger }) {
               <Text strong style={STANDARD_FORM_LABEL_STYLE}>Actions</Text>
               <Space style={{ width: '100%' }}>
                 <Tooltip {...STANDARD_TOOLTIP_CONFIG} title="Reload orders from server without changing current filters">
-                  <Button
-                    icon={<ReloadOutlined />}
-                    onClick={loadOrders}
-                    style={{ flex: 1 }}
+                <Button
+                  icon={<ReloadOutlined />}
+                  onClick={loadOrders}
+                  style={{ flex: 1 }}
                     size={STANDARD_INPUT_SIZE}
-                  >
-                    Refresh
-                  </Button>
+                >
+                  Refresh
+                </Button>
                 </Tooltip>
                 <Tooltip {...STANDARD_TOOLTIP_CONFIG} title="Clear all filters and reset to defaults">
-                  <Button
-                    icon={<ClearOutlined />}
-                    onClick={clearFilters}
-                    style={{ flex: 1 }}
+                <Button
+                  icon={<ClearOutlined />}
+                  onClick={clearFilters}
+                  style={{ flex: 1 }}
                     size={STANDARD_INPUT_SIZE}
-                  >
-                    Clear
-                  </Button>
+                >
+                  Clear
+                </Button>
                 </Tooltip>
               </Space>
             </Space>

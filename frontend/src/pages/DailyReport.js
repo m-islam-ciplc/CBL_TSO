@@ -5,12 +5,28 @@ import axios from 'axios';
 import dayjs from 'dayjs';
 import * as XLSX from 'xlsx';
 import { useUser } from '../contexts/UserContext';
-import { createStandardDatePickerConfig, createStandardDateRangePicker } from '../templates/UIConfig';
+import { 
+  STANDARD_CARD_CONFIG, 
+  FILTER_CARD_CONFIG, 
+  DATE_SELECTION_CARD_CONFIG, 
+  TABLE_CARD_CONFIG, 
+  EXPANDABLE_TABLE_CARD_CONFIG,
+  createStandardDatePickerConfig, 
+  createStandardDateRangePicker,
+  STANDARD_PAGE_TITLE_CONFIG, 
+  STANDARD_PAGE_SUBTITLE_CONFIG, 
+  STANDARD_ROW_GUTTER, 
+  STANDARD_TABLE_SIZE, 
+  STANDARD_TAG_STYLE, 
+  STANDARD_TABS_CONFIG, 
+  STANDARD_BADGE_CONFIG, 
+  STANDARD_SPIN_SIZE, 
+  STANDARD_DATE_PICKER_CONFIG, 
+  STANDARD_INPUT_SIZE, 
+  renderTableHeaderWithSearch 
+} from '../templates/UITemplates';
 import { getStandardPaginationConfig } from '../templates/useStandardPagination';
 import { STANDARD_EXPANDABLE_TABLE_CONFIG, renderProductDetailsStack } from '../templates/TableTemplate';
-import { STANDARD_CARD_CONFIG, FILTER_CARD_CONFIG, DATE_SELECTION_CARD_CONFIG, TABLE_CARD_CONFIG, EXPANDABLE_TABLE_CARD_CONFIG } from '../templates/CardTemplates';
-// All cards now use STANDARD_CARD_CONFIG
-import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, STANDARD_TABLE_SIZE, STANDARD_TAG_STYLE, STANDARD_TABS_CONFIG, STANDARD_BADGE_CONFIG, STANDARD_SPIN_SIZE, STANDARD_DATE_PICKER_CONFIG, STANDARD_INPUT_SIZE, renderTableHeaderWithSearch } from '../templates/UIElements';
 import { useCascadingFilters } from '../templates/useCascadingFilters';
 
 const { Title, Text } = Typography;
@@ -1689,7 +1705,7 @@ function DailyReport() {
         >
           <Card title="Daily Order Report" {...DATE_SELECTION_CARD_CONFIG}>
         <Row gutter={STANDARD_ROW_GUTTER} align="bottom">
-          <Col xs={24} sm={12} md={6}>
+          <Col xs={24} sm={12} md={2}>
             <Space direction="vertical" style={{ width: '100%' }}>
               <Text strong>Select Date</Text>
               <DatePicker
@@ -1816,7 +1832,7 @@ function DailyReport() {
                 disabledDate,
                 dateCellRender,
                 availableDates,
-                colSpan: { xs: 24, sm: 12, md: 6 }
+                colSpan: { xs: 24, sm: 12, md: 2 }
               })}
               <Col xs={24} sm={24} md={6}>
               <Button

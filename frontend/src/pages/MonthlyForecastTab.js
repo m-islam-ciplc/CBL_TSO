@@ -21,8 +21,12 @@ import { useUser } from '../contexts/UserContext';
 import dayjs from 'dayjs';
 import './NewOrdersTablet.css';
 import { DealerProductCard } from '../templates/DealerProductCard';
-import { STANDARD_CARD_CONFIG, DATE_SELECTION_CARD_CONFIG } from '../templates/CardTemplates';
-import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG } from '../templates/UIElements';
+import { 
+  STANDARD_CARD_CONFIG, 
+  DATE_SELECTION_CARD_CONFIG,
+  STANDARD_PAGE_TITLE_CONFIG, 
+  STANDARD_PAGE_SUBTITLE_CONFIG 
+} from '../templates/UITemplates';
 
 const { Title, Text } = Typography;
 const { Option } = Select;

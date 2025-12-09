@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { Card, Typography, Button, Space, Divider, Tag, Alert, Collapse, Tabs, message } from 'antd';
 import { PlayCircleOutlined, CopyOutlined, CheckCircleOutlined, DeleteOutlined, WarningOutlined } from '@ant-design/icons';
-import { STANDARD_CARD_CONFIG } from '../../templates/CardTemplates';
-import { STANDARD_TABS_CONFIG, STANDARD_DIVIDER_CONFIG } from '../../templates/UIElements';
+import { 
+  STANDARD_CARD_CONFIG,
+  STANDARD_TABS_CONFIG, 
+  STANDARD_DIVIDER_CONFIG 
+} from '../../templates/UITemplates';
 
 const { Title, Text, Paragraph } = Typography;
 const { Panel } = Collapse;

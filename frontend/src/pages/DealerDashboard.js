@@ -22,8 +22,18 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { getStandardPaginationConfig } from '../templates/useStandardPagination';
-import { STANDARD_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
-import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, STANDARD_TAG_STYLE, STANDARD_ALERT_CONFIG, STANDARD_STATISTIC_CONFIG, STANDARD_SPIN_SIZE, STANDARD_SPACE_SIZE_LARGE } from '../templates/UIElements';
+import { 
+  STANDARD_CARD_CONFIG, 
+  TABLE_CARD_CONFIG,
+  STANDARD_PAGE_TITLE_CONFIG, 
+  STANDARD_PAGE_SUBTITLE_CONFIG, 
+  STANDARD_ROW_GUTTER, 
+  STANDARD_TAG_STYLE, 
+  STANDARD_ALERT_CONFIG, 
+  STANDARD_STATISTIC_CONFIG, 
+  STANDARD_SPIN_SIZE, 
+  STANDARD_SPACE_SIZE_LARGE 
+} from '../templates/UITemplates';
 
 const { Title, Text } = Typography;
 

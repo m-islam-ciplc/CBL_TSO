@@ -6,10 +6,24 @@ import dayjs from 'dayjs';
 import * as XLSX from 'xlsx';
 import { useUser } from '../contexts/UserContext';
 import { StandardExpandableTable, renderStandardExpandedRow, renderProductDetailsStack } from '../templates/TableTemplate';
-import { createStandardDatePickerConfig, createStandardDateRangePicker } from '../templates/UIConfig';
+import { 
+  STANDARD_CARD_CONFIG, 
+  FILTER_CARD_CONFIG, 
+  TABLE_CARD_CONFIG,
+  createStandardDatePickerConfig, 
+  createStandardDateRangePicker,
+  STANDARD_PAGE_TITLE_CONFIG, 
+  STANDARD_PAGE_SUBTITLE_CONFIG, 
+  SINGLE_ROW_GUTTER, 
+  STANDARD_ROW_GUTTER, 
+  STANDARD_TAG_STYLE, 
+  STANDARD_TABS_CONFIG, 
+  STANDARD_BADGE_CONFIG, 
+  STANDARD_SPIN_SIZE, 
+  STANDARD_BUTTON_SIZE, 
+  renderTableHeaderWithSearch 
+} from '../templates/UITemplates';
 import { getStandardPaginationConfig } from '../templates/useStandardPagination';
-import { STANDARD_CARD_CONFIG, FILTER_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
-import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, SINGLE_ROW_GUTTER, STANDARD_ROW_GUTTER, STANDARD_TAG_STYLE, STANDARD_TABS_CONFIG, STANDARD_BADGE_CONFIG, STANDARD_SPIN_SIZE, STANDARD_BUTTON_SIZE, renderTableHeaderWithSearch } from '../templates/UIElements';
 
 const { Title, Text } = Typography;
 
@@ -657,7 +671,7 @@ function DealerReports() {
                 disabledDate,
                 dateCellRender,
                 availableDates,
-                colSpan: { xs: 24, sm: 12, md: 6 }
+                colSpan: { xs: 24, sm: 12, md: 2 }
               })}
               <Col xs={24} sm={12} md={6}>
                 <Button

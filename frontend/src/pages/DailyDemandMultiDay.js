@@ -20,8 +20,15 @@ import {
 import dayjs from 'dayjs';
 import './NewOrdersTablet.css';
 import { DealerProductCard } from '../templates/DealerProductCard';
-import { STANDARD_CARD_CONFIG, DATE_SELECTION_CARD_CONFIG } from '../templates/CardTemplates';
-import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_TABS_CONFIG, STANDARD_DATE_PICKER_CONFIG, STANDARD_BUTTON_SIZE } from '../templates/UIElements';
+import { 
+  STANDARD_CARD_CONFIG, 
+  DATE_SELECTION_CARD_CONFIG,
+  STANDARD_PAGE_TITLE_CONFIG, 
+  STANDARD_PAGE_SUBTITLE_CONFIG, 
+  STANDARD_TABS_CONFIG, 
+  STANDARD_DATE_PICKER_CONFIG, 
+  STANDARD_BUTTON_SIZE 
+} from '../templates/UITemplates';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;

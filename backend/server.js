@@ -1905,6 +1905,7 @@ app.get('/api/product-caps', (req, res) => {
     SELECT pc.*, 
            p.product_code, 
            p.name as product_name,
+           GROUP_CONCAT(DISTINCT u.full_name ORDER BY u.full_name SEPARATOR ', ') as tso_names,
            -- ⚠️ CRITICAL: Only query sales_orders table - demand_orders are in separate table
            -- This ensures ZERO risk of mixing up sales orders with daily demand orders
            COALESCE((
@@ -1927,6 +1928,7 @@ app.get('/api/product-caps', (req, res) => {
            ), 0) as remaining_quantity
     FROM daily_quotas pc
     JOIN products p ON pc.product_id = p.id
+    LEFT JOIN users u ON u.territory_name = pc.territory_name AND u.role = 'tso' AND u.is_active = 1
     WHERE 1=1
   `;
   
@@ -1943,6 +1945,7 @@ app.get('/api/product-caps', (req, res) => {
   }
   
   query += `
+    GROUP BY pc.id, pc.date, pc.product_id, pc.territory_name, pc.max_quantity, p.product_code, p.name
     ORDER BY pc.date DESC, p.product_code
   `;
   
@@ -3461,8 +3464,8 @@ app.get('/api/orders/available-dates', (req, res) => {
             SELECT DISTINCT order_date as date
             FROM sales_orders 
             WHERE order_date IS NOT NULL
-            ORDER BY date DESC
-        `;
+        ORDER BY date DESC
+    `;
     } else if (order_type === 'DD') {
         // Only Daily Demand dates
         query = `

@@ -13,7 +13,7 @@
  */
 
 import { Table, Card, Typography, Tag, Spin } from 'antd';
-import { EXPANDABLE_TABLE_CARD_CONFIG } from './CardTemplates';
+import { EXPANDABLE_TABLE_CARD_CONFIG } from './UITemplates';
 
 const { Text } = Typography;
 

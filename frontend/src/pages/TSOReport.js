@@ -4,11 +4,24 @@ import { DownloadOutlined, FileExcelOutlined, EyeOutlined, FileTextOutlined } fr
 import axios from 'axios';
 import dayjs from 'dayjs';
 import { useUser } from '../contexts/UserContext';
-import { createStandardDatePickerConfig, createStandardDateRangePicker } from '../templates/UIConfig';
+import { 
+  FILTER_CARD_CONFIG, 
+  DATE_SELECTION_CARD_CONFIG, 
+  TABLE_CARD_CONFIG,
+  createStandardDatePickerConfig, 
+  createStandardDateRangePicker,
+  STANDARD_PAGE_TITLE_CONFIG, 
+  STANDARD_PAGE_SUBTITLE_CONFIG, 
+  STANDARD_ROW_GUTTER, 
+  STANDARD_FORM_LABEL_STYLE, 
+  STANDARD_TABS_CONFIG, 
+  STANDARD_DATE_PICKER_CONFIG, 
+  STANDARD_SPIN_SIZE, 
+  STANDARD_TABLE_SIZE, 
+  renderTableHeaderWithSearch 
+} from '../templates/UITemplates';
 import { getStandardPaginationConfig } from '../templates/useStandardPagination';
-import { FILTER_CARD_CONFIG, DATE_SELECTION_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
 import { renderProductDetailsStack } from '../templates/TableTemplate';
-import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, STANDARD_FORM_LABEL_STYLE, STANDARD_TABS_CONFIG, STANDARD_DATE_PICKER_CONFIG, STANDARD_SPIN_SIZE, STANDARD_TABLE_SIZE, renderTableHeaderWithSearch } from '../templates/UIElements';
 
 const { Title, Text } = Typography;
 
@@ -562,7 +575,7 @@ function TSOReport() {
         <Tabs.TabPane tab="Daily Report (Single Date)" key="single">
           <Card title="Daily Report (Single Date)" {...DATE_SELECTION_CARD_CONFIG}>
             <Row gutter={STANDARD_ROW_GUTTER} align="bottom">
-              <Col xs={24} sm={12} md={6}>
+              <Col xs={24} sm={12} md={2}>
                 <Space direction="vertical" style={{ width: '100%' }}>
                   <Text strong style={STANDARD_FORM_LABEL_STYLE}>Select Date</Text>
                   <DatePicker
@@ -613,7 +626,7 @@ function TSOReport() {
                 disabledDate,
                 dateCellRender,
                 availableDates,
-                colSpan: { xs: 24, sm: 12, md: 6 }
+                colSpan: { xs: 24, sm: 12, md: 2 }
               })}
               <Col xs={24} sm={24} md={6}>
                 <Button

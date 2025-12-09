@@ -1,7 +1,12 @@
 import { Card, Typography, Button, InputNumber, Space, Tag } from 'antd';
 import { ClearOutlined } from '@ant-design/icons';
-import { STANDARD_CARD_CONFIG } from './CardTemplates';
-import { STANDARD_INPUT_NUMBER_SIZE, STANDARD_BUTTON_SIZE, STANDARD_SPACE_SIZE_SMALL, STANDARD_TAG_STYLE } from './UIElements';
+import { 
+  STANDARD_CARD_CONFIG,
+  STANDARD_INPUT_NUMBER_SIZE, 
+  STANDARD_BUTTON_SIZE, 
+  STANDARD_SPACE_SIZE_SMALL, 
+  STANDARD_TAG_STYLE 
+} from './UITemplates';
 
 const { Text } = Typography;
 

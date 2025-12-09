@@ -8,33 +8,27 @@ This folder contains **reusable template code** that is imported into applicatio
 
 ## Key Principle
 
-**EVERY UI element MUST use a template. NO EXCEPTIONS.**
+**SINGLE SOURCE OF TRUTH: `UITemplates.js`**
 
-- **Templates** (this folder) = Code imported into application pages  
-  Example: `UIConfig.js` imported in PlacedOrders.js, DealerReports.js, etc.
+- All UI configs (cards, sizes, styles, gutters, typography, date/pagination helpers, table headers) live in `UITemplates.js`.  
+- Do **not** create new UI template files without confirmation. If unsure, ask for clarification.  
+- Every UI element must use the templates from `UITemplates.js`. No exceptions.
 
-- **UnifiedUITemplate.js** (`frontend/src/pages/examples/UnifiedUITemplate.js`) = Single visual reference showing ALL standardized UI elements  
-  Access via: `/template-ui` route or "Templates > UI Templates" menu
+Visual reference: `UnifiedUITemplate.js` (`frontend/src/pages/examples/UnifiedUITemplate.js`) shows the standardized UI patterns. Access via `/template-ui` or the “Templates > UI Templates” menu.
 
 ## Available Templates
 
-### UIConfig.js
-**Type**: Configuration utilities  
-**Purpose**: Standard UI component configurations
+### UITemplates.js
+**Type**: Single source of truth for ALL UI configurations  
+**Purpose**: Consolidated card configs, sizes, styles, gutters, typography, date helpers, pagination helpers, and table header renderers.
 
-**Functions:**
-- `getStandardPagination(itemName)` - Standard table pagination configuration
-- `createStandardDatePickerConfig(availableDates)` - Standard date picker configuration
+**Key Exports (non-exhaustive):**
+- Card configs: `STANDARD_CARD_CONFIG`, `FILTER_CARD_CONFIG`, `TABLE_CARD_CONFIG`, `EXPANDABLE_TABLE_CARD_CONFIG`, `FORM_CARD_CONFIG`, `DATE_SELECTION_CARD_CONFIG`, `ACTION_CARD_CONFIG`, `IMPORT_CARD_CONFIG`
+- Sizes & styles: `STANDARD_INPUT_SIZE`, `STANDARD_BUTTON_SIZE`, `STANDARD_TAG_STYLE`, `STANDARD_FORM_LABEL_STYLE`, `STANDARD_ROW_GUTTER`, `COMPACT_ROW_GUTTER`, etc.
+- Date/pagination helpers: `createStandardDatePickerConfig`, `createStandardDateRangePicker`, `STANDARD_DATE_PICKER_CONFIG`, `STANDARD_PAGINATION`, `getStandardPagination`
+- Table header helpers: `renderTableHeaderWithSearch`, `renderTableHeaderWithSearchAndFilter`
 
-**Used in application pages:**
-- PlacedOrders.js
-- DealerReports.js
-- DailyReport.js
-- TSOReport.js
-- UserManagement.js
-- DealerManagement.js
-- ProductManagement.js
-- TransportManagement.js
+**Used in application pages:** All pages that render cards, forms, tables, or date pickers (e.g., PlacedOrders, DealerReports, DailyReport, TSOReport, ProductQuotaManagement, DealerManagement, ProductManagement, TransportManagement, UserManagement, Dashboard, etc.)
 
 ### TableTemplate.js
 **Type**: Component template  
@@ -43,19 +37,12 @@ This folder contains **reusable template code** that is imported into applicatio
 **Used in application pages:**
 - DealerReports.js
 
-### CardTemplates.js
-**Type**: Configuration template  
-**Purpose**: Standard card configurations and patterns for consistent card styling across the application.
-
-**Configurations:**
-- `STANDARD_CARD_CONFIG` - Unified card configuration for all cards (with or without title, with or without buttons)
-- `TABLE_CARD_CONFIG` - For table cards
-- `STANDARD_CARD_STYLES` - Standard styling constants
-- `FILTER_CARD_CONFIG` - @deprecated Use `STANDARD_CARD_CONFIG` instead
-- `CONTENT_CARD_CONFIG` - @deprecated Use `STANDARD_CARD_CONFIG` instead
+### TableTemplate.js
+**Type**: Component template  
+**Purpose**: Standard design for expandable tables
 
 **Used in application pages:**
-- All pages use these patterns for consistent card styling
+- DealerReports.js
 
 **Visual reference:**
 - `/template-ui` - See UnifiedUITemplate.js for all card patterns

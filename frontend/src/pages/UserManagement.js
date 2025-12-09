@@ -17,8 +17,16 @@ import {
   Col,
 } from 'antd';
 import { useStandardPagination } from '../templates/useStandardPagination';
-import { ACTION_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
-import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG, STANDARD_ROW_GUTTER, STANDARD_MODAL_CONFIG, STANDARD_POPCONFIRM_CONFIG, renderTableHeaderWithSearchAndFilter } from '../templates/UIElements';
+import { 
+  ACTION_CARD_CONFIG, 
+  TABLE_CARD_CONFIG,
+  STANDARD_PAGE_TITLE_CONFIG, 
+  STANDARD_PAGE_SUBTITLE_CONFIG, 
+  STANDARD_ROW_GUTTER, 
+  STANDARD_MODAL_CONFIG, 
+  STANDARD_POPCONFIRM_CONFIG, 
+  renderTableHeaderWithSearchAndFilter 
+} from '../templates/UITemplates';
 import {
   PlusOutlined,
   EditOutlined,

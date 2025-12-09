@@ -14,7 +14,10 @@ import TransportManagement from './TransportManagement';
 import AdminSettings from './AdminSettings';
 import UserManagement from './UserManagement';
 import { useUser } from '../contexts/UserContext';
-import { STANDARD_PAGE_TITLE_CONFIG, STANDARD_PAGE_SUBTITLE_CONFIG } from '../templates/UIElements';
+import { 
+  STANDARD_PAGE_TITLE_CONFIG, 
+  STANDARD_PAGE_SUBTITLE_CONFIG 
+} from '../templates/UITemplates';
 
 const { Title, Text } = Typography;
 

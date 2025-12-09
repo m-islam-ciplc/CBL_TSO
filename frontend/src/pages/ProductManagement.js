@@ -12,8 +12,13 @@ import {
   Col,
 } from 'antd';
 import { useStandardPagination } from '../templates/useStandardPagination';
-import { IMPORT_CARD_CONFIG, TABLE_CARD_CONFIG } from '../templates/CardTemplates';
-import { STANDARD_ROW_GUTTER, STANDARD_UPLOAD_CONFIG, renderTableHeaderWithSearchAndFilter } from '../templates/UIElements';
+import { 
+  IMPORT_CARD_CONFIG, 
+  TABLE_CARD_CONFIG,
+  STANDARD_ROW_GUTTER, 
+  STANDARD_UPLOAD_CONFIG, 
+  renderTableHeaderWithSearchAndFilter 
+} from '../templates/UITemplates';
 import {
   UploadOutlined,
   DownloadOutlined,
