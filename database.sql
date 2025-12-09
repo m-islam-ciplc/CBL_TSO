@@ -1,5 +1,5 @@
--- CBL Sales Orders Database Schema
--- The database is automatically created in Docker, but include guard for local usage
+-- CBL Sales Orders schema
+-- Local MySQL connection: host=localhost port=3306 user=root password=#lme11@@
 
 CREATE DATABASE IF NOT EXISTS cbl_so;
 USE cbl_so;
@@ -139,7 +139,7 @@ CREATE TABLE IF NOT EXISTS daily_quotas (
 CREATE TABLE IF NOT EXISTS transports (
     id INT AUTO_INCREMENT PRIMARY KEY,
     truck_slno INT,
-    truck_no VARCHAR(50),
+    truck_no VARCHAR(50) UNIQUE,
     engine_no VARCHAR(100),
     truck_details VARCHAR(255),
     driver_name VARCHAR(100),

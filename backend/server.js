@@ -4950,7 +4950,20 @@ app.get('/api/orders/:orderId', (req, res) => {
 
 // Get all transports
 app.get('/api/transports', (req, res) => {
-    const query = 'SELECT id, truck_details FROM transports ORDER BY truck_details ASC';
+    const query = `
+        SELECT 
+            id,
+            truck_no,
+            vehicle_no,
+            truck_details,
+            license_no,
+            truck_type,
+            driver_name,
+            route_no,
+            load_size
+        FROM transports
+        ORDER BY truck_details ASC
+    `;
     
     db.query(query, (err, results) => {
         if (err) {
@@ -5091,6 +5104,7 @@ app.post('/api/transports/import', upload.single('file'), async (req, res) => {
         const rows = data.slice(1);
 
         let importedCount = 0;
+        let duplicateCount = 0;
         let errorCount = 0;
 
         for (const row of rows) {
@@ -5113,6 +5127,25 @@ app.post('/api/transports/import', upload.single('file'), async (req, res) => {
                     entered_terminal, updated_by, updated_date, updated_terminal,
                     license_no, transport_status, vehicle_no
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                    truck_slno = VALUES(truck_slno),
+                    engine_no = VALUES(engine_no),
+                    truck_details = VALUES(truck_details),
+                    driver_name = VALUES(driver_name),
+                    route_no = VALUES(route_no),
+                    load_size = VALUES(load_size),
+                    load_weight = VALUES(load_weight),
+                    remarks = VALUES(remarks),
+                    truck_type = VALUES(truck_type),
+                    entered_by = VALUES(entered_by),
+                    entered_date = VALUES(entered_date),
+                    entered_terminal = VALUES(entered_terminal),
+                    updated_by = VALUES(updated_by),
+                    updated_date = VALUES(updated_date),
+                    updated_terminal = VALUES(updated_terminal),
+                    license_no = VALUES(license_no),
+                    transport_status = VALUES(transport_status),
+                    vehicle_no = VALUES(vehicle_no)
             `;
 
             const values = [
@@ -5125,8 +5158,13 @@ app.post('/api/transports/import', upload.single('file'), async (req, res) => {
             ];
 
             try {
-                await dbPromise.query(insertQuery, values);
-                importedCount++;
+                const [result] = await dbPromise.query(insertQuery, values);
+                // With ON DUP KEY: affectedRows = 1 for insert, 2 for update
+                if (result.affectedRows === 1) {
+                    importedCount++;
+                } else if (result.affectedRows === 2) {
+                    duplicateCount++;
+                }
             } catch (error) {
                 console.error('Error importing transport:', error);
                 errorCount++;
@@ -5138,8 +5176,9 @@ app.post('/api/transports/import', upload.single('file'), async (req, res) => {
 
         res.json({
             success: true,
-            message: `Transport import completed. ${importedCount} transports imported, ${errorCount} errors.`,
+            message: `Transport import completed. ${importedCount} imported, ${duplicateCount} duplicates, ${errorCount} errors.`,
             imported: importedCount,
+            duplicates: duplicateCount,
             errors: errorCount
         });
 

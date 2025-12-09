@@ -532,7 +532,8 @@ function DealerManagement() {
       });
 
       if (response.data.success) {
-        message.success(`Imported ${response.data.imported} dealers successfully`);
+        const { imported = 0, duplicates = 0, errors = 0 } = response.data;
+        message.success(`Imported ${imported} dealers successfully. ${duplicates} duplicates, ${errors} errors.`);
         loadDealers(); // Refresh the list
       } else {
         message.error('Import failed');
@@ -566,6 +567,7 @@ function DealerManagement() {
       dataIndex: 'dealer_code',
       key: 'dealer_code',
       ellipsis: true,
+      width: 120,
       sorter: (a, b) => a.dealer_code.localeCompare(b.dealer_code),
     },
     {
@@ -709,9 +711,11 @@ function DealerManagement() {
       </Text>
 
       {/* Import Section */}
-      <Card title="Import Dealers" {...IMPORT_CARD_CONFIG}>
-        <Row gutter={STANDARD_ROW_GUTTER} align="middle">
-          <Col>
+      <Card
+        title="Import Dealers"
+        {...IMPORT_CARD_CONFIG}
+        extra={
+          <Space>
             <Upload
               {...STANDARD_UPLOAD_CONFIG}
               beforeUpload={handleImport}
@@ -724,17 +728,15 @@ function DealerManagement() {
                 Import Dealers (Excel)
               </Button>
             </Upload>
-          </Col>
-          <Col>
             <Button
               icon={<DownloadOutlined />}
               onClick={downloadTemplate}
             >
               Download Template
             </Button>
-          </Col>
-        </Row>
-      </Card>
+          </Space>
+        }
+      />
 
       {/* Dealers Table */}
       <Card {...EXPANDABLE_TABLE_CARD_CONFIG}>

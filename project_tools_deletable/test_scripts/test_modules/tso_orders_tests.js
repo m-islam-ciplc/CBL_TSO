@@ -441,13 +441,13 @@ async function testT15_ViewCreatedOrder() {
     try {
       // Try with order_type=SO first, then fallback without order_type if 404
       const primary = await utils.makeRequest(`/api/orders/${orderId}?order_type=SO`, 'GET', null, {
-        'Authorization': `Bearer ${testData.tsoToken}`
-      });
+    'Authorization': `Bearer ${testData.tsoToken}`
+  });
       const result = (primary.status === 404)
         ? await utils.makeRequest(`/api/orders/${orderId}`, 'GET', null, { 'Authorization': `Bearer ${testData.tsoToken}` })
         : primary;
-      
-      if (result.status === 200 && result.data) {
+  
+  if (result.status === 200 && result.data) {
         const orders = Array.isArray(result.data) ? result.data : [result.data];
         assertNoPrices(orders, 'T15');
         console.log(`\n   ✅ Order ${orderId} viewable`);

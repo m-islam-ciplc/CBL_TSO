@@ -308,11 +308,11 @@ async function testD10_CreateSingleDayOrder() {
   
       console.log(`   📦 Creating order for ${dealer.name || dealer.dealer_code}...`);
   
-      const result = await utils.makeRequest('/api/orders/dealer', 'POST', orderData, {
+  const result = await utils.makeRequest('/api/orders/dealer', 'POST', orderData, {
         'Authorization': `Bearer ${dealerToken}`
-      });
-      
-      if (result.status === 200 && result.data.success) {
+  });
+  
+  if (result.status === 200 && result.data.success) {
         const orderId = result.data.order_id;
         testData.createdOrderIds.push(orderId);
         console.log(`   ✅ Order created successfully for ${dealer.name || dealer.dealer_code}`);
@@ -489,11 +489,11 @@ async function testD11_CreateMultiDayOrder() {
   
       console.log(`   📦 Creating multi-day orders for ${dealer.name || dealer.dealer_code}...`);
   
-      const result = await utils.makeRequest('/api/orders/dealer/multi-day', 'POST', orderData, {
+  const result = await utils.makeRequest('/api/orders/dealer/multi-day', 'POST', orderData, {
         'Authorization': `Bearer ${dealerToken}`
-      });
-      
-      if (result.status === 200 && result.data.success) {
+  });
+  
+  if (result.status === 200 && result.data.success) {
         const orderIds = result.data.orders?.map(o => o.order_id) || result.data.order_ids || [];
         testData.createdMultiDayOrders.push(...orderIds);
         console.log(`   ✅ Multi-day orders created successfully for ${dealer.name || dealer.dealer_code}`);

@@ -174,6 +174,7 @@ function UserManagement() {
       dataIndex: 'id',
       key: 'id',
       ellipsis: true,
+      width: 60,
       sorter: (a, b) => (a.id || 0) - (b.id || 0),
     },
     {
@@ -295,9 +296,11 @@ function UserManagement() {
       </Text>
 
       {/* Add User Button */}
-      <Card title="Actions" {...ACTION_CARD_CONFIG}>
-        <Row gutter={STANDARD_ROW_GUTTER} align="middle">
-          <Col>
+      <Card
+        title="Actions"
+        {...ACTION_CARD_CONFIG}
+        extra={
+          <Space>
             <Button
               type="primary"
               icon={<PlusOutlined />}
@@ -305,8 +308,6 @@ function UserManagement() {
             >
               Add User
             </Button>
-          </Col>
-          <Col>
             <Popconfirm
               {...STANDARD_POPCONFIRM_CONFIG}
               title="Are you sure you want to delete the selected users?"
@@ -321,9 +322,9 @@ function UserManagement() {
                 Delete Selected
               </Button>
             </Popconfirm>
-          </Col>
-        </Row>
-      </Card>
+          </Space>
+        }
+      />
 
       {/* Users Table */}
       <Card {...TABLE_CARD_CONFIG}>

@@ -10,7 +10,8 @@ import {
   Select,
   message,
   Row,
-  Col
+  Col,
+  Space
 } from 'antd';
 import { useStandardPagination } from '../templates/useStandardPagination';
 import { 
@@ -89,7 +90,12 @@ function TransportManagement() {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
-      message.success(response.data.message || 'Imported transports successfully');
+      if (response.data.success) {
+        const { imported = 0, duplicates = 0, errors = 0, message: msg } = response.data;
+        message.success(msg || `Imported ${imported} transports successfully. ${duplicates} duplicates, ${errors} errors.`);
+      } else {
+        message.error('Failed to import transports');
+      }
       fetchTransports();
     } catch (_error) {
       message.error('Failed to import transports');
@@ -146,6 +152,7 @@ function TransportManagement() {
       dataIndex: 'id',
       key: 'id',
       ellipsis: true,
+      width: 60,
       render: (text) => text,
       sorter: (a, b) => a.id - b.id,
     },
@@ -156,6 +163,30 @@ function TransportManagement() {
       ellipsis: true,
       render: (text) => text,
       sorter: (a, b) => (a.truck_no || '').localeCompare(b.truck_no || ''),
+    },
+    {
+      title: 'Vehicle No',
+      dataIndex: 'vehicle_no',
+      key: 'vehicle_no',
+      ellipsis: true,
+      render: (text) => text,
+      sorter: (a, b) => (a.vehicle_no || '').localeCompare(b.vehicle_no || ''),
+    },
+    {
+      title: 'License No',
+      dataIndex: 'license_no',
+      key: 'license_no',
+      ellipsis: true,
+      render: (text) => text,
+      sorter: (a, b) => (a.license_no || '').localeCompare(b.license_no || ''),
+    },
+    {
+      title: 'Truck Type',
+      dataIndex: 'truck_type',
+      key: 'truck_type',
+      ellipsis: true,
+      render: (text) => text,
+      sorter: (a, b) => (a.truck_type || '').localeCompare(b.truck_type || ''),
     },
     {
       title: 'Truck Details',
@@ -203,9 +234,11 @@ function TransportManagement() {
       </Text>
 
       {/* Import Section */}
-      <Card title="Import Transports" {...IMPORT_CARD_CONFIG}>
-        <Row gutter={STANDARD_ROW_GUTTER} align="middle">
-          <Col>
+      <Card
+        title="Import Transports"
+        {...IMPORT_CARD_CONFIG}
+        extra={
+          <Space>
             <Upload
               {...STANDARD_UPLOAD_CONFIG}
               beforeUpload={handleImport}
@@ -218,17 +251,15 @@ function TransportManagement() {
                 Import Transports (Excel)
               </Button>
             </Upload>
-          </Col>
-          <Col>
             <Button
               icon={<DownloadOutlined />}
               onClick={downloadTemplate}
             >
               Download Template
             </Button>
-          </Col>
-        </Row>
-      </Card>
+          </Space>
+        }
+      />
 
       {/* Transports Table */}
       <Card {...TABLE_CARD_CONFIG}>

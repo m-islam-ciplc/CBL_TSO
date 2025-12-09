@@ -10,6 +10,7 @@ import {
   message,
   Row,
   Col,
+  Space,
 } from 'antd';
 import { useStandardPagination } from '../templates/useStandardPagination';
 import { 
@@ -238,6 +239,7 @@ function ProductManagement() {
       dataIndex: 'product_code',
       key: 'product_code',
       ellipsis: true,
+      width: 120,
       render: (text) => text,
       sorter: (a, b) => a.product_code.localeCompare(b.product_code),
     },
@@ -299,9 +301,11 @@ function ProductManagement() {
       </Text>
 
       {/* Import Section */}
-      <Card title="Import Products" {...IMPORT_CARD_CONFIG}>
-        <Row gutter={STANDARD_ROW_GUTTER} align="middle">
-          <Col>
+      <Card
+        title="Import Products"
+        {...IMPORT_CARD_CONFIG}
+        extra={
+          <Space>
             <Upload
               {...STANDARD_UPLOAD_CONFIG}
               beforeUpload={handleImport}
@@ -314,17 +318,15 @@ function ProductManagement() {
                 Import Products (Excel)
               </Button>
             </Upload>
-          </Col>
-          <Col>
             <Button
               icon={<DownloadOutlined />}
               onClick={downloadTemplate}
             >
               Download Template
             </Button>
-          </Col>
-        </Row>
-      </Card>
+          </Space>
+        }
+      />
 
       {/* Products Table */}
       <Card {...TABLE_CARD_CONFIG}>
