@@ -8,14 +8,11 @@ import { useUser } from '../contexts/UserContext';
 import { StandardExpandableTable, renderStandardExpandedRow, renderProductDetailsStack } from '../templates/TableTemplate';
 import { 
   STANDARD_CARD_CONFIG, 
-  FILTER_CARD_CONFIG, 
   TABLE_CARD_CONFIG,
   createStandardDatePickerConfig, 
-  createStandardDateRangePicker,
   STANDARD_PAGE_TITLE_CONFIG, 
   STANDARD_PAGE_SUBTITLE_CONFIG, 
   SINGLE_ROW_GUTTER, 
-  STANDARD_ROW_GUTTER, 
   STANDARD_TAG_STYLE, 
   STANDARD_TABS_CONFIG, 
   STANDARD_BADGE_CONFIG, 
@@ -24,6 +21,8 @@ import {
   renderTableHeaderWithSearch 
 } from '../templates/UITemplates';
 import { getStandardPaginationConfig } from '../templates/useStandardPagination';
+import { DealerReportsViewOrdersCardTemplate } from '../templates/DealerReportsViewOrdersCardTemplate';
+import { DealerReportsPeriodSelectorCardTemplate } from '../templates/DealerReportsPeriodSelectorCardTemplate';
 
 const { Title, Text } = Typography;
 
@@ -37,7 +36,6 @@ function DealerReports() {
   const [searchTerm, setSearchTerm] = useState('');
   const [rangeStart, setRangeStart] = useState(null);
   const [rangeEnd, setRangeEnd] = useState(null);
-  const [previewInfo, setPreviewInfo] = useState('');
   const [activeTab, setActiveTab] = useState('daily-demand');
   
   // Monthly Forecast states
@@ -140,7 +138,6 @@ function DealerReports() {
         
         const ordersData = response.data.orders || [];
         setOrders(ordersData);
-        setPreviewInfo(`Orders from ${startDate} to ${endDate} (${ordersData.length} orders)`);
 
         // Load products for all orders
         const productPromises = ordersData.map(async (order) => {
@@ -193,7 +190,6 @@ function DealerReports() {
         
         const ordersData = response.data.orders || [];
         setOrders(ordersData);
-        setPreviewInfo(`Orders for ${dateString}`);
 
         // Load products for all orders
         const productPromises = ordersData.map(async (order) => {
@@ -647,7 +643,6 @@ function DealerReports() {
         if (key !== 'daily-demand') {
           setOrders([]);
           setOrderProducts({});
-          setPreviewInfo('');
           setFilteredOrders([]);
         }
       }}>
@@ -661,52 +656,36 @@ function DealerReports() {
           }
           key="daily-demand"
         >
-          <Card title="View Orders" {...FILTER_CARD_CONFIG}>
-            <Row gutter={STANDARD_ROW_GUTTER} align="bottom">
-              {createStandardDateRangePicker({
-                startDate: rangeStart,
-                setStartDate: setRangeStart,
-                endDate: rangeEnd,
-                setEndDate: setRangeEnd,
-                disabledDate,
-                dateCellRender,
-                availableDates,
-                colSpan: { xs: 24, sm: 12, md: 2 }
-              })}
-              <Col xs={24} sm={12} md={6}>
-                <Button
-                  type="default"
-                  icon={<EyeOutlined />}
-                  onClick={loadOrders}
-                  loading={loading}
-                  disabled={!rangeStart}
-                  style={{ width: '100%' }}
-                >
-                  {rangeEnd ? 'View Range' : 'View Orders'}
-                </Button>
-              </Col>
-              <Col xs={24} sm={12} md={6}>
-                <Button
-                  type="primary"
-                  icon={<DownloadOutlined />}
-                  onClick={handleGenerateReport}
-                  loading={loading}
-                  disabled={!rangeStart}
-                  style={{ width: '100%' }}
-                >
-                  Export Excel
-                </Button>
-              </Col>
-            </Row>
-          </Card>
-
-          {previewInfo && (
-            <Card title="Preview Info" {...STANDARD_CARD_CONFIG}>
-              <Text type="secondary" style={{ fontSize: '12px' }}>
-                {previewInfo}
-              </Text>
-            </Card>
-          )}
+          <DealerReportsViewOrdersCardTemplate
+            dateRangePicker={{
+              startDate: rangeStart,
+              setStartDate: setRangeStart,
+              endDate: rangeEnd,
+              setEndDate: setRangeEnd,
+              disabledDate,
+              dateRender: dateCellRender,
+              availableDates,
+              colSpan: { xs: 24, sm: 12, md: 2 },
+            }}
+            buttons={[
+              {
+                type: 'default',
+                icon: <EyeOutlined />,
+                label: rangeEnd ? 'View Range' : 'View Orders',
+                onClick: loadOrders,
+                loading: loading,
+                disabled: !rangeStart,
+              },
+              {
+                type: 'primary',
+                icon: <DownloadOutlined />,
+                label: 'Export Excel',
+                onClick: handleGenerateReport,
+                loading: loading,
+                disabled: !rangeStart,
+              },
+            ]}
+          />
 
             <StandardExpandableTable
               columns={orderColumns}
@@ -764,27 +743,25 @@ function DealerReports() {
           }
           key="monthly-forecast"
         >
-          <Card {...STANDARD_CARD_CONFIG}>
+          <DealerReportsPeriodSelectorCardTemplate
+            periodSelect={{
+              value: selectedPeriod ? `${selectedPeriod.period_start}_${selectedPeriod.period_end}` : undefined,
+              onChange: (value) => {
+                const period = periods.find(p => `${p.period_start}_${p.period_end}` === value);
+                setSelectedPeriod(period);
+              },
+              placeholder: 'Select forecast period',
+              options: periods.map(p => ({
+                period_start: p.period_start,
+                period_end: p.period_end,
+                label: p.label,
+                is_current: p.is_current,
+                value: `${p.period_start}_${p.period_end}`,
+              })),
+            }}
+          />
+          <Card {...STANDARD_CARD_CONFIG} style={{ marginTop: '16px' }}>
             <Row gutter={SINGLE_ROW_GUTTER} style={{ marginBottom: '16px' }}>
-              <Col xs={24} md={8}>
-                <Text strong style={{ display: 'block', marginBottom: '8px' }}>Select Period</Text>
-                <Select
-                  style={{ width: '100%' }}
-                  value={selectedPeriod ? `${selectedPeriod.period_start}_${selectedPeriod.period_end}` : undefined}
-                  onChange={(value) => {
-                    const period = periods.find(p => `${p.period_start}_${p.period_end}` === value);
-                    setSelectedPeriod(period);
-                  }}
-                  placeholder="Select forecast period"
-                >
-                  {periods.map((period) => (
-                    <Select.Option key={`${period.period_start}_${period.period_end}`} value={`${period.period_start}_${period.period_end}`}>
-                      {period.label}
-                      {period.is_current && <Tag color="green" style={{ marginLeft: '8px' }}>Current</Tag>}
-                    </Select.Option>
-                  ))}
-                </Select>
-              </Col>
               <Col xs={24} md={8}>
                 <Text strong style={{ display: 'block', marginBottom: '8px' }}>Search Products</Text>
                 <Input

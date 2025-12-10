@@ -3,14 +3,14 @@ import axios from 'axios';
 import { useUser } from '../contexts/UserContext';
 import './NewOrdersTablet.css';
 import { 
-  STANDARD_CARD_CONFIG, 
-  FILTER_CARD_CONFIG,
   STANDARD_PAGE_TITLE_CONFIG, 
   STANDARD_PAGE_SUBTITLE_CONFIG, 
   STANDARD_MODAL_CONFIG, 
   STANDARD_INPUT_NUMBER_SIZE, 
   STANDARD_INPUT_SIZE 
 } from '../templates/UITemplates';
+import { PlaceNewOrdersOrderDetailsCardTemplate } from '../templates/PlaceNewOrdersOrderDetailsCardTemplate';
+import { PlaceNewOrdersSearchProductsCardTemplate } from '../templates/PlaceNewOrdersSearchProductsCardTemplate';
 import {
   Card,
   Typography,
@@ -499,158 +499,72 @@ function NewOrdersTablet({ onOrderCreated: _onOrderCreated }) {
 
       {/* Collapsible Order Details - Hide when adding more items to existing order */}
       {!isAddingMore && (
-        <Card title="Order Details" {...STANDARD_CARD_CONFIG}>
-          <div 
-            style={{ 
-              cursor: 'pointer', 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center',
-              padding: '8px 0'
-            }}
-            onClick={() => setIsDropdownCollapsed(!isDropdownCollapsed)}
-          >
-            <div>
-              <Text strong style={{ fontSize: '14px', color: '#1890ff' }}>
-                📋 Order Details
-              </Text>
-              <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
-                {form.getFieldValue('orderType') && dropdownData.orderTypes.find(t => t.id === form.getFieldValue('orderType'))?.name && (
-                  <Text style={{ fontSize: '11px' }}>
-                    {dropdownData.orderTypes.find(t => t.id === form.getFieldValue('orderType'))?.name} • {' '}
-                    {form.getFieldValue('warehouse') && dropdownData.warehouses.find(w => w.id === form.getFieldValue('warehouse'))?.name} • {' '}
-                    {form.getFieldValue('territoryCode') && dropdownData.territories.find(t => t.code === form.getFieldValue('territoryCode'))?.name} • {' '}
-                    {form.getFieldValue('dealer') && removeMSPrefix(filteredDealers.find(d => d.id === form.getFieldValue('dealer'))?.name)} • {' '}
-                    {form.getFieldValue('transport') && dropdownData.transports.find(t => t.id === form.getFieldValue('transport'))?.truck_details}
-                  </Text>
-                )}
-              </div>
-            </div>
-            {isDropdownCollapsed ? <DownOutlined /> : <UpOutlined />}
-          </div>
-        
-        {!isDropdownCollapsed && (
-          <Form
-            form={form}
-            layout="horizontal"
-            size={STANDARD_INPUT_SIZE}
-            style={{ marginTop: '12px' }}
-            onValuesChange={(changedValues, allValues) => {
-              setFormValues(allValues);
-              // Auto-save form data to localStorage so it persists when navigating via navbar
-              const individualValues = {
-                orderType: allValues.orderType,
-                warehouse: allValues.warehouse,
-                territoryCode: allValues.territoryCode,
-                dealer: allValues.dealer,
-                transport: allValues.transport
-              };
-              // Only save if there are actual values
-              const hasValues = Object.values(individualValues).some(value => value !== undefined && value !== null && value !== '');
-              if (hasValues) {
-                sessionStorage.setItem('tsoFormData', JSON.stringify(individualValues));
-              }
-            }}
-          >
-            <Form.Item name="orderType" hidden><Input /></Form.Item>
-            <Form.Item name="warehouse" hidden><Input /></Form.Item>
-            <Form.Item name="territoryCode" hidden><Input /></Form.Item>
-            <Form.Item name="territoryName" hidden><Input /></Form.Item>
-
-            <Row gutter={[8, 8]} align="middle">
-              <Col xs={24} md={12}>
-                <Form.Item
-                  name="dealer"
-                  label={<Text strong style={{ fontSize: '12px' }}>Dealer</Text>}
-                  rules={[{ required: true, message: 'Required' }]}
-                  style={{ marginBottom: '8px' }}
-                >
-                    <Select
-                    placeholder={form.getFieldValue('territoryCode') ? "Dealer" : "Select territory first"} 
-                    size={STANDARD_INPUT_SIZE}
-                    style={{ fontSize: '12px' }}
-                    allowClear
-                    showSearch
-                    filterOption={(input, option) => {
-                      const optionText = option?.children?.toString() || '';
-                      return optionText.toLowerCase().includes(input.toLowerCase());
-                    }} 
-                    disabled={filteredDealers.length === 0} 
-                    onChange={handleDealerChange}
-                  >
-                    {filteredDealers.map(dealer => (
-                      <Option key={dealer.id} value={dealer.id}>{removeMSPrefix(dealer.name)}</Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              </Col>
-
-              <Col xs={24} md={12}>
-                <Form.Item
-                  name="transport"
-                  label={<Text strong style={{ fontSize: '12px' }}>Transport</Text>}
-                  rules={[{ required: true, message: 'Required' }]}
-                  style={{ marginBottom: '8px' }}
-                >
-                    <Select
-                     placeholder={form.getFieldValue('dealer') ? "Transport" : "Select dealer first"} 
-                     size={STANDARD_INPUT_SIZE}
-                     style={{ fontSize: '12px' }}
-                     allowClear
-                     showSearch
-                     onChange={handleTransportChange}
-                     disabled={!form.getFieldValue('dealer')}
-                     filterOption={(input, option) => {
-                       const optionText = option?.children?.toString() || '';
-                       return optionText.toLowerCase().includes(input.toLowerCase());
-                     }}
-                   >
-                    {dropdownData.transports.map(transport => (
-                      <Option key={transport.id} value={transport.id}>{transport.truck_details}</Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              </Col>
-            </Row>
-          </Form>
-        )}
-      </Card>
+        <PlaceNewOrdersOrderDetailsCardTemplate
+          title="Order Details"
+          collapsed={isDropdownCollapsed}
+          onToggleCollapse={() => setIsDropdownCollapsed(!isDropdownCollapsed)}
+          summary={{
+            orderType: form.getFieldValue('orderType') && dropdownData.orderTypes.find(t => t.id === form.getFieldValue('orderType'))?.name,
+            warehouse: form.getFieldValue('warehouse') && dropdownData.warehouses.find(w => w.id === form.getFieldValue('warehouse'))?.name,
+            territory: form.getFieldValue('territoryCode') && dropdownData.territories.find(t => t.code === form.getFieldValue('territoryCode'))?.name,
+            dealer: form.getFieldValue('dealer') && removeMSPrefix(filteredDealers.find(d => d.id === form.getFieldValue('dealer'))?.name),
+            transport: form.getFieldValue('transport') && dropdownData.transports.find(t => t.id === form.getFieldValue('transport'))?.truck_details,
+          }}
+          dealerField={{
+            value: form.getFieldValue('dealer'),
+            onChange: handleDealerChange,
+            placeholder: form.getFieldValue('territoryCode') ? "Dealer" : "Select territory first",
+            options: filteredDealers,
+            disabled: filteredDealers.length === 0,
+            removeMSPrefix,
+          }}
+          transportField={{
+            value: form.getFieldValue('transport'),
+            onChange: handleTransportChange,
+            placeholder: form.getFieldValue('dealer') ? "Transport" : "Select dealer first",
+            options: dropdownData.transports,
+            disabled: !form.getFieldValue('dealer'),
+          }}
+          form={form}
+          onFormValuesChange={(changedValues, allValues) => {
+            setFormValues(allValues);
+            // Auto-save form data to localStorage so it persists when navigating via navbar
+            const individualValues = {
+              orderType: allValues.orderType,
+              warehouse: allValues.warehouse,
+              territoryCode: allValues.territoryCode,
+              dealer: allValues.dealer,
+              transport: allValues.transport
+            };
+            // Only save if there are actual values
+            const hasValues = Object.values(individualValues).some(value => value !== undefined && value !== null && value !== '');
+            if (hasValues) {
+              sessionStorage.setItem('tsoFormData', JSON.stringify(individualValues));
+            }
+          }}
+        />
+      )}
+      
+      {/* Hidden form fields for orderType, warehouse, territoryCode, territoryName */}
+      {!isAddingMore && (
+        <Form form={form}>
+          <Form.Item name="orderType" hidden><Input /></Form.Item>
+          <Form.Item name="warehouse" hidden><Input /></Form.Item>
+          <Form.Item name="territoryCode" hidden><Input /></Form.Item>
+          <Form.Item name="territoryName" hidden><Input /></Form.Item>
+        </Form>
       )}
 
       {/* Compact Product Search */}
-      <Card title="Search Products" {...FILTER_CARD_CONFIG}>
-        <Input
-          size={STANDARD_INPUT_SIZE}
-          placeholder="Search products by name or code..."
-          prefix={<SearchOutlined />}
-          suffix={
-            searchTerm && (
-              <CloseOutlined 
-                onClick={() => setSearchTerm('')}
-                style={{ 
-                  cursor: 'pointer', 
-                  color: '#666',
-                  fontSize: '14px',
-                  padding: '4px',
-                  borderRadius: '4px',
-                  backgroundColor: '#f0f0f0',
-                  minWidth: '20px',
-                  minHeight: '20px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              />
-            )
-          }
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          style={{ 
-            fontSize: '14px',
-            borderRadius: '6px'
-          }}
-        />
-      </Card>
+      <PlaceNewOrdersSearchProductsCardTemplate
+        title="Search Products"
+        searchInput={{
+          value: searchTerm,
+          onChange: (e) => setSearchTerm(e.target.value),
+          placeholder: 'Search products by name or code...',
+          onClear: () => setSearchTerm(''),
+        }}
+      />
 
        {/* Responsive Product Grid */}
        <div className="responsive-product-grid">

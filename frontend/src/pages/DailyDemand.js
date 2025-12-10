@@ -3,16 +3,16 @@ import axios from 'axios';
 import { useUser } from '../contexts/UserContext';
 import './NewOrdersTablet.css';
 import { 
-  STANDARD_CARD_CONFIG,
   STANDARD_PAGE_TITLE_CONFIG, 
   STANDARD_PAGE_SUBTITLE_CONFIG, 
-  SINGLE_ROW_GUTTER, 
   STANDARD_MODAL_CONFIG, 
   STANDARD_INPUT_NUMBER_SIZE, 
   STANDARD_INPUT_SIZE, 
   STANDARD_FORM_SIZE, 
   STANDARD_BUTTON_SIZE 
 } from '../templates/UITemplates';
+import { DailyDemandOrderDetailsCardTemplate } from '../templates/DailyDemandOrderDetailsCardTemplate';
+import { DailyDemandProductSearchCardTemplate } from '../templates/DailyDemandProductSearchCardTemplate';
 import {
   Card,
   Typography,
@@ -266,82 +266,22 @@ function DailyDemand() {
         Create your daily product demand orders
       </Text>
 
-      {/* Dealer Info Card */}
-      {dealerInfo && (
-        <Card title="Dealer Information" {...STANDARD_CARD_CONFIG}>
-          <Row gutter={SINGLE_ROW_GUTTER}>
-            <Col xs={24} md={12}>
-              <Text strong>Dealer: </Text>
-              <Text>{dealerInfo.name}</Text>
-            </Col>
-            <Col xs={24} md={12}>
-              <Text strong>Territory: </Text>
-              <Text>{dealerTerritory}</Text>
-            </Col>
-          </Row>
-        </Card>
-      )}
-
       {/* Order Details Card - Fixed Values */}
-      <Card {...STANDARD_CARD_CONFIG}>
-        <Form
-          form={form}
-          layout="horizontal"
-          size={STANDARD_FORM_SIZE}
-        >
-          <Row gutter={[8, 8]} align="middle">
-            <Col xs={24} md={12}>
-              <Form.Item
-                name="orderType"
-                label={<Text strong style={{ fontSize: '12px' }}>Order Type</Text>}
-                style={{ marginBottom: '8px' }}
-              >
-                <Input
-                  value="DD (Daily Demand)"
-                  disabled
-                  style={{ fontSize: '12px', background: '#f5f5f5' }}
-                />
-              </Form.Item>
-            </Col>
-
-            <Col xs={24} md={12}>
-              <Form.Item
-                name="territory"
-                label={<Text strong style={{ fontSize: '12px' }}>Territory</Text>}
-                style={{ marginBottom: '8px' }}
-              >
-                <Input
-                  value={dealerTerritory}
-                  disabled
-                  style={{ fontSize: '12px', background: '#f5f5f5' }}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-        </Form>
-      </Card>
+      <DailyDemandOrderDetailsCardTemplate
+        orderType="DD (Daily Demand)"
+        territory={dealerTerritory}
+        form={form}
+      />
 
       {/* Product Search */}
-      <Card {...STANDARD_CARD_CONFIG}>
-        <Input
-          size={STANDARD_INPUT_SIZE}
-          placeholder="Search products by name or code..."
-          prefix={<SearchOutlined />}
-          suffix={
-            searchTerm && (
-              <CloseOutlined 
-                onClick={() => setSearchTerm('')}
-                style={{ 
-                  cursor: 'pointer',
-                  color: '#999'
-                }}
-              />
-            )
-          }
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          style={{ marginBottom: '12px' }}
-        />
+      <DailyDemandProductSearchCardTemplate
+        searchInput={{
+          value: searchTerm,
+          onChange: (e) => setSearchTerm(e.target.value),
+          placeholder: 'Search products by name or code...',
+          onClear: () => setSearchTerm(''),
+        }}
+      />
 
         {/* Product Grid */}
         <div className="responsive-product-grid">

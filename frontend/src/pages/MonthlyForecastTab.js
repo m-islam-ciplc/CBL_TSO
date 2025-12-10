@@ -1,15 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  Card,
   Button,
   InputNumber,
   Typography,
-  Row,
-  Col,
-  Space,
-  Tag,
   message,
-  Select,
 } from 'antd';
 import {
   CalendarOutlined,
@@ -20,16 +14,15 @@ import axios from 'axios';
 import { useUser } from '../contexts/UserContext';
 import dayjs from 'dayjs';
 import './NewOrdersTablet.css';
-import { DealerProductCard } from '../templates/DealerProductCard';
 import { 
-  STANDARD_CARD_CONFIG, 
-  DATE_SELECTION_CARD_CONFIG,
   STANDARD_PAGE_TITLE_CONFIG, 
   STANDARD_PAGE_SUBTITLE_CONFIG 
 } from '../templates/UITemplates';
+import { MonthlyForecastSelectPeriodCardTemplate } from '../templates/MonthlyForecastSelectPeriodCardTemplate';
+import { MonthlyForecastWarningCardTemplate } from '../templates/MonthlyForecastWarningCardTemplate';
+import { MonthlyForecastProductsCardTemplate } from '../templates/MonthlyForecastProductsCardTemplate';
 
 const { Title, Text } = Typography;
-const { Option } = Select;
 
 function MonthlyForecastTab() {
   const { dealerId, userRole, isTSO, isAdmin, isSalesManager } = useUser();
@@ -304,118 +297,66 @@ function MonthlyForecastTab() {
       </Text>
 
       {/* Period Selection Card */}
-      <Card title="Select Period" {...DATE_SELECTION_CARD_CONFIG}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <Select
-            style={{ width: 280 }}
-            value={selectedPeriod ? `${selectedPeriod.period_start}_${selectedPeriod.period_end}` : undefined}
-            onChange={(value) => {
-              const period = availablePeriods.find(p => `${p.period_start}_${p.period_end}` === value);
-              setSelectedPeriod(period);
-            }}
-            loading={loadingPeriods}
-            placeholder="Select forecast period"
-          >
-            {availablePeriods.map((period) => (
-              <Option key={`${period.period_start}_${period.period_end}`} value={`${period.period_start}_${period.period_end}`}>
-                <Space>
-                  {formatPeriodLabel(period)}
-                  {period.is_current && <Tag color="green" size="small">Current</Tag>}
-                  {!period.is_current && period.has_forecast && <Tag color="blue" size="small"><HistoryOutlined /> Historical</Tag>}
-                  {!period.has_forecast && !period.is_current && <Tag color="default" size="small">No Data</Tag>}
-                </Space>
-              </Option>
-            ))}
-          </Select>
-          {selectedPeriod && (
-            <>
-              <Text strong style={{ marginLeft: '8px' }}>
-                {isCurrentPeriod ? 'Current Period' : 'Historical Period'}
-              </Text>
-              <Tag 
-                color={isCurrentPeriod ? 'green' : 'blue'} 
-                style={{ 
-                  marginLeft: '8px',
-                  fontWeight: 'bold'
-                }}
-              >
-                {periodInfo.start ? dayjs(periodInfo.start).format('DD MMM YYYY') : ''} - {periodInfo.end ? dayjs(periodInfo.end).format('DD MMM YYYY') : ''}
-              </Tag>
-            </>
-          )}
-        </div>
-      </Card>
+      <MonthlyForecastSelectPeriodCardTemplate
+        periodSelect={{
+          value: selectedPeriod ? `${selectedPeriod.period_start}_${selectedPeriod.period_end}` : undefined,
+          onChange: (value) => {
+            const period = availablePeriods.find(p => `${p.period_start}_${p.period_end}` === value);
+            setSelectedPeriod(period);
+          },
+          loading: loadingPeriods,
+          placeholder: 'Select forecast period',
+          options: availablePeriods,
+          formatLabel: formatPeriodLabel,
+        }}
+        periodInfo={selectedPeriod ? {
+          isCurrent: isCurrentPeriod,
+          start: periodInfo.start,
+          end: periodInfo.end,
+        } : null}
+      />
 
       {/* Products Card Grid */}
-      <Card {...STANDARD_CARD_CONFIG}>
-        {products.length > 0 ? (
-          <div className="responsive-product-grid">
-            {products.map(product => (
-              <DealerProductCard
-                key={product.id}
-                product={product}
-                quantity={forecastData[product.id] || null}
-                onQuantityChange={handleQuantityChange}
-                onClear={handleClearProduct}
-                canEdit={canEdit}
-                labelText="Monthly Forecast Quantity:"
-                presetValues={[5, 10, 15, 20]}
-                showClearButton={true}
-              />
-            ))}
-          </div>
-        ) : (
-          <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-            {loading ? 'Loading products...' : 'No products assigned to this dealer'}
-          </div>
-        )}
-      </Card>
-
-      {/* Footer Actions */}
-      {isCurrentPeriod && canEdit && (
-        <Card {...STANDARD_CARD_CONFIG}>
-          <Row justify="end">
-            <Col>
-              <Space>
-                <Button onClick={() => {
-                  const updated = {};
-                  products.forEach(product => {
-                    updated[product.id] = null;
-                  });
-                  setForecastData(updated);
-                  message.success('All data reset');
-                }}>
-                  Reset All
-                </Button>
-                <Button type="primary" icon={<SaveOutlined />} onClick={handleSaveAll} loading={saving}>
-                  Save All
-                </Button>
-              </Space>
-            </Col>
-          </Row>
-        </Card>
-      )}
+      <MonthlyForecastProductsCardTemplate
+        products={products}
+        forecastData={forecastData}
+        onQuantityChange={handleQuantityChange}
+        onClearProduct={handleClearProduct}
+        canEdit={canEdit}
+        labelText="Monthly Forecast Quantity:"
+        presetValues={[5, 10, 15, 20]}
+        loading={loading}
+        resetButton={isCurrentPeriod && canEdit ? {
+          label: 'Reset All',
+          onClick: () => {
+            const updated = {};
+            products.forEach(product => {
+              updated[product.id] = null;
+            });
+            setForecastData(updated);
+            message.success('All data reset');
+          },
+        } : null}
+        saveButton={isCurrentPeriod && canEdit ? {
+          label: 'Save All',
+          icon: <SaveOutlined />,
+          onClick: handleSaveAll,
+          loading: saving,
+        } : null}
+        getTotalItems={() => Object.values(forecastData).filter(qty => qty !== null && qty !== undefined && qty > 0).length}
+      />
       {isCurrentPeriod && isSubmitted && !isAdmin && !isSalesManager && (
-        <Card style={{ borderRadius: '8px', background: '#fff7e6', border: '1px solid #ffd591' }}>
-          <Row justify="center">
-            <Col>
-              <Text type="warning" strong>
-                ⚠️ This forecast has been submitted and cannot be modified. Please contact admin or TSO for changes.
-              </Text>
-            </Col>
-          </Row>
-        </Card>
+        <MonthlyForecastWarningCardTemplate
+          type="warning"
+          message="⚠️ This forecast has been submitted and cannot be modified. Please contact admin or TSO for changes."
+        />
       )}
       {!isCurrentPeriod && (
-        <Card style={{ borderRadius: '8px', background: '#fafafa' }}>
-          <Row justify="center">
-            <Col>
-              <Text type="secondary" italic>
-                <HistoryOutlined /> This is a historical forecast. You can view but not edit past forecasts.
-              </Text>
-            </Col>
-          </Row>
-        </Card>
+        <MonthlyForecastWarningCardTemplate
+          type="info"
+          message="This is a historical forecast. You can view but not edit past forecasts."
+          icon={<HistoryOutlined />}
+        />
       )}
     </div>
   );

@@ -23,8 +23,14 @@ import {
   STANDARD_SPIN_SIZE, 
   STANDARD_DATE_PICKER_CONFIG, 
   STANDARD_INPUT_SIZE, 
-  renderTableHeaderWithSearch 
+  renderTableHeaderWithSearch,
+  COMPACT_ROW_GUTTER
 } from '../templates/UITemplates';
+import { DailyOrderReportCardTemplate } from '../templates/DailyOrderReportCardTemplate';
+import { OrderSummaryReportCardTemplate } from '../templates/OrderSummaryReportCardTemplate';
+import { MonthlyForecastsFilterCardTemplate } from '../templates/MonthlyForecastsFilterCardTemplate';
+import { ForecastsByProductTerritoryFilterCardTemplate } from '../templates/ForecastsByProductTerritoryFilterCardTemplate';
+import { ForecastReportFilterCardTemplate } from '../templates/ForecastReportFilterCardTemplate';
 import { getStandardPaginationConfig } from '../templates/useStandardPagination';
 import { STANDARD_EXPANDABLE_TABLE_CONFIG, renderProductDetailsStack } from '../templates/TableTemplate';
 import { useCascadingFilters } from '../templates/useCascadingFilters';
@@ -49,7 +55,6 @@ function DailyReport() {
   const [showPreview, setShowPreview] = useState(false);
   const [orderProducts, setOrderProducts] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
   const [rangeStart, setRangeStart] = useState(null);
   const [rangeEnd, setRangeEnd] = useState(null);
   const [previewInfo, setPreviewInfo] = useState('');
@@ -121,10 +126,10 @@ function DailyReport() {
     }
   }, [selectedPeriod]);
 
-  // Filter preview data when search term or status filter changes
+  // Filter preview data when search term changes
   useEffect(() => {
     filterPreviewData();
-  }, [previewData, searchTerm, statusFilter, previewMode]);
+  }, [previewData, searchTerm, previewMode]);
 
   // Filter forecasts
   useEffect(() => {
@@ -263,9 +268,8 @@ function DailyReport() {
 
       if (!orders || orders.length === 0) {
         message.info(`No orders found between ${startDate} and ${endDate}`);
-        setPreviewMode('range');
-        setStatusFilter('all');
-        setPreviewData([]);
+      setPreviewMode('range');
+      setPreviewData([]);
         setShowPreview(false);
         setPreviewInfo('');
         return;
@@ -273,7 +277,6 @@ function DailyReport() {
 
       setOrderProducts({});
       setPreviewMode('range');
-      setStatusFilter('all');
       setPreviewData(orders);
       setShowPreview(true);
       setPreviewInfo(`Dealer summary from ${startDate} to ${endDate}`);
@@ -683,11 +686,6 @@ function DailyReport() {
           order.dealer_territory.toLowerCase().includes(searchTerm.toLowerCase())
         );
       }
-
-      // Status filter for single-day orders
-      if (statusFilter !== 'all') {
-        filtered = filtered.filter(order => (order.status || 'new') === statusFilter);
-      }
     }
 
     setFilteredPreviewData(filtered);
@@ -700,11 +698,16 @@ function DailyReport() {
       dataIndex: 'order_id',
       key: 'order_id',
       ellipsis: true,
-      render: (orderId) => (
-        <Tag color="blue" style={STANDARD_TAG_STYLE}>
-          {orderId}
-        </Tag>
-      ),
+      render: (orderId, record) => {
+        // Use order_type field to determine prefix
+        const isTSOOrder = record.order_type === 'SO' || record.order_type_name === 'SO';
+        const prefix = isTSOOrder ? 'SO' : 'DD';
+        return (
+          <Tag color={isTSOOrder ? 'blue' : 'green'} style={STANDARD_TAG_STYLE}>
+            {prefix}-{orderId}
+          </Tag>
+        );
+      },
       sorter: (a, b) => a.order_id.localeCompare(b.order_id),
     },
     {
@@ -923,6 +926,51 @@ function DailyReport() {
   ];
 
   // Forecast export handler
+  const handleForecastReportExport = () => {
+    try {
+      const exportData = filteredForecastReportData.flatMap((forecast) =>
+        forecast.products.map((product) => ({
+          'Dealer Code': forecast.dealer_code,
+          'Dealer Name': forecast.dealer_name,
+          'Territory': forecast.territory_name,
+          'Product Code': product.product_code,
+          'Product Name': product.product_name,
+          'Forecast Quantity': product.quantity,
+          'Period': periods.find((p) => p.value === forecastReportPeriod)?.label || forecastReportPeriod,
+        }))
+      );
+
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      
+      // Set font style for all cells: Calibri size 8
+      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+      for (let R = range.s.r; R <= range.e.r; ++R) {
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+          const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+          if (!ws[cellAddress]) continue;
+          if (!ws[cellAddress].s) ws[cellAddress].s = {};
+          ws[cellAddress].s.font = {
+            name: 'Calibri',
+            sz: 8,
+            bold: R === range.s.r // Make header row bold
+          };
+        }
+      }
+      
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Forecast Report');
+
+      const periodLabel = periods.find((p) => p.value === forecastReportPeriod)?.label || 'Forecast';
+      const filename = `Forecast_Report_${periodLabel.replace(/\s+/g, '_')}.xlsx`;
+      XLSX.writeFile(wb, filename);
+
+      message.success('Forecast report exported successfully!');
+    } catch (error) {
+      message.error('Failed to export data');
+      console.error('Export error:', error);
+    }
+  };
+
   const handleForecastExport = () => {
     try {
       const exportData = filteredForecasts.flatMap((forecast) =>
@@ -1703,56 +1751,41 @@ function DailyReport() {
           }
           key="daily-report"
         >
-          <Card title="Daily Order Report" {...DATE_SELECTION_CARD_CONFIG}>
-        <Row gutter={STANDARD_ROW_GUTTER} align="bottom">
-          <Col xs={24} sm={12} md={2}>
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Text strong>Select Date</Text>
-              <DatePicker
-                {...STANDARD_DATE_PICKER_CONFIG}
-                value={selectedDate}
-                onChange={setSelectedDate}
-                style={{ width: '100%' }}
-                placeholder="Select date for report"
-                disabledDate={disabledDate}
-                dateRender={dateCellRender}
-              />
-            </Space>
-          </Col>
-              <Col xs={24} sm={24} md={6}>
-            <Button
-              type="default"
-              icon={<EyeOutlined />}
-              onClick={handlePreviewData}
-              loading={loading}
-              style={{ width: '100%' }}
-            >
-              Preview Orders
-            </Button>
-          </Col>
-              <Col xs={24} sm={24} md={6}>
-            <Button
-              type="primary"
-              icon={<DownloadOutlined />}
-              onClick={handleGenerateReport}
-              loading={loading}
-              style={{ width: '100%' }}
-            >
-                  Download Daily Order Report Excel
-            </Button>
-          </Col>
-              <Col xs={24} sm={24} md={6}>
-            <Button
-              icon={<DownloadOutlined />}
-              onClick={handleGenerateMRReport}
-              loading={loading}
-              style={{ width: '100%' }}
-            >
-              Download MR CSV
-            </Button>
-          </Col>
-        </Row>
-          </Card>
+          <DailyOrderReportCardTemplate
+            title="Daily Order Report"
+            datePicker1={{
+              label: 'Select Date',
+              value: selectedDate,
+              onChange: setSelectedDate,
+              placeholder: 'Select date for report',
+              disabledDate,
+              dateRender: dateCellRender,
+            }}
+            buttons={[
+              {
+                label: 'Preview Orders',
+                type: 'default',
+                icon: <EyeOutlined />,
+                onClick: handlePreviewData,
+                loading: loading,
+              },
+              {
+                label: 'Download Daily Order Report',
+                type: 'primary',
+                icon: <DownloadOutlined />,
+                onClick: handleGenerateReport,
+                loading: loading,
+              },
+              {
+                label: 'Download MR CSV',
+                type: 'default',
+                icon: <DownloadOutlined />,
+                onClick: handleGenerateMRReport,
+                loading: loading,
+              },
+            ]}
+            gutter={COMPACT_ROW_GUTTER}
+          />
 
           {/* Preview Table */}
           {showPreview && previewMode === 'single' && previewData.length > 0 && (
@@ -1764,32 +1797,6 @@ function DailyReport() {
                 onSearchChange: (e) => setSearchTerm(e.target.value),
                 searchPlaceholder: 'Search orders...'
               })}
-              
-              {/* Filters */}
-              <Card title="Filter Orders" {...FILTER_CARD_CONFIG} style={{ marginTop: '16px' }}>
-                <Row gutter={[16, 16]} align="middle">
-                  <Col xs={24} sm={12} md={8}>
-                    <Select
-                      placeholder="Filter by status"
-                      value={statusFilter}
-                      onChange={setStatusFilter}
-                      style={{ width: '100%' }}
-                      allowClear
-                      showSearch
-                      filterOption={(input, option) => {
-                        const optionText = option?.children?.toString() || '';
-                        return optionText.toLowerCase().includes(input.toLowerCase());
-                      }}
-                    >
-                      <Select.Option value="all">All Status</Select.Option>
-                      <Select.Option value="new">New</Select.Option>
-                      <Select.Option value="processing">Processing</Select.Option>
-                      <Select.Option value="completed">Completed</Select.Option>
-                      <Select.Option value="shipped">Shipped</Select.Option>
-                    </Select>
-                  </Col>
-                </Row>
-              </Card>
 
               <Table
                 columns={singleColumns}
@@ -1822,42 +1829,42 @@ function DailyReport() {
           }
           key="order-summary"
         >
-          <Card title="Order Summary Report" {...FILTER_CARD_CONFIG}>
-            <Row gutter={STANDARD_ROW_GUTTER} align="bottom">
-              {createStandardDateRangePicker({
-                startDate: rangeStart,
-                setStartDate: setRangeStart,
-                endDate: rangeEnd,
-                setEndDate: setRangeEnd,
-                disabledDate,
-                dateCellRender,
-                availableDates,
-                colSpan: { xs: 24, sm: 12, md: 2 }
-              })}
-              <Col xs={24} sm={24} md={6}>
-              <Button
-                type="default"
-                icon={<EyeOutlined />}
-                onClick={handlePreviewRange}
-                loading={loading}
-                style={{ width: '100%' }}
-              >
-                Preview Range Orders
-              </Button>
-          </Col>
-              <Col xs={24} sm={24} md={6}>
-              <Button
-                type="primary"
-                icon={<FileExcelOutlined />}
-                onClick={handleGenerateRangeReport}
-                loading={loading}
-                style={{ width: '100%' }}
-              >
-                  Download Order Summary Excel
-              </Button>
-          </Col>
-        </Row>
-      </Card>
+          <OrderSummaryReportCardTemplate
+            title="Order Summary Report"
+            datePicker1={{
+              label: 'Start Date',
+              value: rangeStart,
+              onChange: setRangeStart,
+              placeholder: 'Select start date',
+              disabledDate,
+              dateRender: dateCellRender,
+            }}
+            datePicker2={{
+              label: 'End Date',
+              value: rangeEnd,
+              onChange: setRangeEnd,
+              placeholder: 'Select end date',
+              disabledDate,
+              dateRender: dateCellRender,
+            }}
+            buttons={[
+              {
+                label: 'Preview Range Orders',
+                type: 'default',
+                icon: <EyeOutlined />,
+                onClick: handlePreviewRange,
+                loading: loading,
+              },
+              {
+                label: 'Download Order Summary',
+                type: 'primary',
+                icon: <FileExcelOutlined />,
+                onClick: handleGenerateRangeReport,
+                loading: loading,
+              },
+            ]}
+            gutter={COMPACT_ROW_GUTTER}
+          />
 
       {/* Preview Table */}
           {showPreview && previewMode === 'range' && previewData.length > 0 && (
@@ -1902,99 +1909,71 @@ function DailyReport() {
           key="forecasts-by-dealer"
         >
           {/* Filters and Actions */}
-          <Card title="Filter Orders" {...FILTER_CARD_CONFIG}>
-            <Row gutter={[8, 8]} align="middle">
-              <Col flex="1">
-                <Text strong>Period:</Text>
-                <Select
-                  style={{ width: '100%', marginTop: '8px' }}
-                  value={selectedPeriod}
-                  onChange={setSelectedPeriod}
-                  loading={!selectedPeriod}
-                  allowClear
-                  showSearch
-                  filterOption={(input, option) => {
-                    const optionText = option?.children?.toString() || '';
-                    return optionText.toLowerCase().includes(input.toLowerCase());
-                  }}
-                >
-                  {periods.map((p) => (
-                    <Option key={p.value} value={p.value}>
-                      {p.label} {p.is_current && <Tag color="green" size="small">Current</Tag>}
-                    </Option>
-                  ))}
-                </Select>
-              </Col>
-              {!isTSO && (
-                <Col flex="1">
-                  <Text strong>Territory:</Text>
-                  <Select
-                    style={{ width: '100%', marginTop: '8px' }}
-                    value={territoryFilter}
-                  onChange={(value) => {
-                    setTerritoryFilter(value || null);
-                  }}
-                    allowClear
-                    showSearch
-                    placeholder="All Territories"
-                    filterOption={(input, option) => {
-                      const optionText = option?.children?.toString() || '';
-                      return optionText.toLowerCase().includes(input.toLowerCase());
-                    }}
-                  >
-                    {uniqueTerritories.map((t) => (
-                      <Option key={t} value={t}>
-                        {t}
-                      </Option>
-                    ))}
-                  </Select>
-                </Col>
-              )}
-              <Col flex="1">
-                <Text strong>Dealer:</Text>
-                <Select
-                  style={{ width: '100%', marginTop: '8px' }}
-                  value={dealerFilter}
-                onChange={(value) => setDealerFilter(value || null)}
-                  allowClear
-                  showSearch
-                  placeholder="All Dealers"
-                  filterOption={(input, option) => {
-                    const optionText = option?.children?.toString() || '';
-                    return optionText.toLowerCase().includes(input.toLowerCase());
-                  }}
-                >
-                  {filteredForecastDealers.map((d) => (
-                    <Option key={d.id} value={d.id.toString()}>
-                      {d.code} - {d.name}
-                    </Option>
-                  ))}
-                </Select>
-              </Col>
-              <Col flex="1">
-                <Text strong>Search:</Text>
-                <Input
-                  style={{ marginTop: '8px' }}
-                  placeholder="Dealer name or code"
-                  prefix={<SearchOutlined />}
-                  value={forecastSearchTerm}
-                  onChange={(e) => setForecastSearchTerm(e.target.value)}
-                  allowClear
-                />
-              </Col>
-              <Col flex="none" style={{ alignSelf: 'flex-end' }}>
-                <Button
-                  type="primary"
-                  icon={<DownloadOutlined />}
-                  onClick={handleForecastExport}
-                  disabled={filteredForecasts.length === 0}
-                  style={{ marginTop: '32px' }}
-                >
-                  Export Excel
-                </Button>
-              </Col>
-            </Row>
-          </Card>
+          <MonthlyForecastsFilterCardTemplate
+            title="Filter Orders"
+            formFields={[
+              {
+                label: 'Period',
+                type: 'select',
+                value: selectedPeriod,
+                onChange: setSelectedPeriod,
+                placeholder: 'Select Period',
+                options: periods.map((p) => ({
+                  value: p.value,
+                  label: p.is_current ? `${p.label} (Current)` : p.label,
+                })),
+                loading: !selectedPeriod,
+                allowClear: true,
+                showSearch: true,
+                maxWidth: '18rem',
+              },
+              ...(!isTSO ? [{
+                label: 'Territory',
+                type: 'select',
+                value: territoryFilter,
+                onChange: (value) => setTerritoryFilter(value || null),
+                placeholder: 'All Territories',
+                options: uniqueTerritories.map((t) => ({
+                  value: t,
+                  label: t,
+                })),
+                allowClear: true,
+                showSearch: true,
+                flex: 'auto',
+              }] : []),
+              {
+                label: 'Dealer',
+                type: 'select',
+                value: dealerFilter,
+                onChange: (value) => setDealerFilter(value || null),
+                placeholder: 'All Dealers',
+                options: filteredForecastDealers.map((d) => ({
+                  value: d.id.toString(),
+                  label: `${d.code} - ${d.name}`,
+                })),
+                allowClear: true,
+                showSearch: true,
+              },
+              {
+                label: 'Search',
+                type: 'input',
+                value: forecastSearchTerm,
+                onChange: (e) => setForecastSearchTerm(e.target.value),
+                placeholder: 'Dealer name or code',
+                prefix: <SearchOutlined />,
+                allowClear: true,
+              },
+            ].slice(0, 4)}
+            buttons={[
+              {
+                label: 'Export Excel',
+                type: 'primary',
+                icon: <DownloadOutlined />,
+                onClick: handleForecastExport,
+                disabled: filteredForecasts.length === 0,
+              },
+            ]}
+          />
 
           <Card {...TABLE_CARD_CONFIG}>
           <Table
@@ -2019,77 +1998,57 @@ function DailyReport() {
           key="forecasts-by-product"
         >
           {/* Filters and Actions - Same as by Dealer */}
-          <Card title="Filter Forecasts" {...FILTER_CARD_CONFIG}>
-            <Row gutter={[16, 16]} align="middle">
-              <Col xs={24} sm={12} md={6}>
-                <Text strong>Period:</Text>
-                <Select
-                  style={{ width: '100%', marginTop: '8px' }}
-                  value={selectedPeriod}
-                  onChange={setSelectedPeriod}
-                  loading={!selectedPeriod}
-                  allowClear
-                  showSearch
-                  filterOption={(input, option) => {
-                    const optionText = option?.children?.toString() || '';
-                    return optionText.toLowerCase().includes(input.toLowerCase());
-                  }}
-                >
-                  {periods.map((p) => (
-                    <Option key={p.value} value={p.value}>
-                      {p.label} {p.is_current && <Tag color="green" size="small">Current</Tag>}
-                    </Option>
-                  ))}
-                </Select>
-              </Col>
-              {!isTSO && (
-                <Col xs={24} sm={12} md={6}>
-                  <Text strong>Territory:</Text>
-                  <Select
-                    style={{ width: '100%', marginTop: '8px' }}
-                    value={territoryFilter}
-                    onChange={setTerritoryFilter}
-                    allowClear
-                    showSearch
-                    placeholder="All Territories"
-                    filterOption={(input, option) => {
-                      const optionText = option?.children?.toString() || '';
-                      return optionText.toLowerCase().includes(input.toLowerCase());
-                    }}
-                  >
-                    {uniqueTerritories.map((t) => (
-                      <Option key={t} value={t}>
-                        {t}
-                      </Option>
-                    ))}
-                  </Select>
-                </Col>
-              )}
-              <Col xs={24} sm={12} md={6}>
-                <Text strong>Search:</Text>
-                <Input
-                  style={{ marginTop: '8px' }}
-                  placeholder="Dealer name or code"
-                  prefix={<SearchOutlined />}
-                  value={forecastSearchTerm}
-                  onChange={(e) => setForecastSearchTerm(e.target.value)}
-                  allowClear
-                />
-              </Col>
-              <Col xs={24} sm={12} md={6}>
-                <Space style={{ marginTop: '32px' }}>
-                  <Button
-                    type="primary"
-                    icon={<DownloadOutlined />}
-                    onClick={handleForecastExport}
-                    disabled={filteredForecasts.length === 0}
-                  >
-                    Export Excel
-                  </Button>
-                </Space>
-              </Col>
-            </Row>
-          </Card>
+          <ForecastsByProductTerritoryFilterCardTemplate
+            title="Filter Forecasts"
+            formFields={[
+              {
+                label: 'Period',
+                type: 'select',
+                value: selectedPeriod,
+                onChange: setSelectedPeriod,
+                placeholder: 'Select Period',
+                options: periods.map((p) => ({
+                  value: p.value,
+                  label: p.is_current ? `${p.label} (Current)` : p.label,
+                })),
+                loading: !selectedPeriod,
+                allowClear: true,
+                showSearch: true,
+                maxWidth: '18rem',
+              },
+              ...(!isTSO ? [{
+                label: 'Territory',
+                type: 'select',
+                value: territoryFilter,
+                onChange: setTerritoryFilter,
+                placeholder: 'All Territories',
+                options: uniqueTerritories.map((t) => ({
+                  value: t,
+                  label: t,
+                })),
+                allowClear: true,
+                showSearch: true,
+              }] : []),
+              {
+                label: 'Search',
+                type: 'input',
+                value: forecastSearchTerm,
+                onChange: (e) => setForecastSearchTerm(e.target.value),
+                placeholder: 'Dealer name or code',
+                prefix: <SearchOutlined />,
+                allowClear: true,
+              },
+            ].slice(0, 3)}
+            buttons={[
+              {
+                label: 'Export Excel',
+                type: 'primary',
+                icon: <DownloadOutlined />,
+                onClick: handleForecastExport,
+                disabled: filteredForecasts.length === 0,
+              },
+            ]}
+          />
 
           <Card {...EXPANDABLE_TABLE_CARD_CONFIG}>
           <Table
@@ -2126,77 +2085,57 @@ function DailyReport() {
           key="forecasts-by-territory"
         >
           {/* Filters and Actions - Same as by Dealer */}
-          <Card title="Filter Forecasts" {...FILTER_CARD_CONFIG}>
-            <Row gutter={[16, 16]} align="middle">
-              <Col xs={24} sm={12} md={6}>
-                <Text strong>Period:</Text>
-                <Select
-                  style={{ width: '100%', marginTop: '8px' }}
-                  value={selectedPeriod}
-                  onChange={setSelectedPeriod}
-                  loading={!selectedPeriod}
-                  allowClear
-                  showSearch
-                  filterOption={(input, option) => {
-                    const optionText = option?.children?.toString() || '';
-                    return optionText.toLowerCase().includes(input.toLowerCase());
-                  }}
-                >
-                  {periods.map((p) => (
-                    <Option key={p.value} value={p.value}>
-                      {p.label} {p.is_current && <Tag color="green" size="small">Current</Tag>}
-                    </Option>
-                  ))}
-                </Select>
-              </Col>
-              {!isTSO && (
-                <Col xs={24} sm={12} md={6}>
-                  <Text strong>Territory:</Text>
-                  <Select
-                    style={{ width: '100%', marginTop: '8px' }}
-                    value={territoryFilter}
-                    onChange={setTerritoryFilter}
-                    allowClear
-                    showSearch
-                    placeholder="All Territories"
-                    filterOption={(input, option) => {
-                      const optionText = option?.children?.toString() || '';
-                      return optionText.toLowerCase().includes(input.toLowerCase());
-                    }}
-                  >
-                    {uniqueTerritories.map((t) => (
-                      <Option key={t} value={t}>
-                        {t}
-                      </Option>
-                    ))}
-                  </Select>
-                </Col>
-              )}
-              <Col xs={24} sm={12} md={6}>
-                <Text strong>Search:</Text>
-                <Input
-                  style={{ marginTop: '8px' }}
-                  placeholder="Dealer name or code"
-                  prefix={<SearchOutlined />}
-                  value={forecastSearchTerm}
-                  onChange={(e) => setForecastSearchTerm(e.target.value)}
-                  allowClear
-                />
-              </Col>
-              <Col xs={24} sm={12} md={6}>
-                <Space style={{ marginTop: '32px' }}>
-                  <Button
-                    type="primary"
-                    icon={<DownloadOutlined />}
-                    onClick={handleForecastExport}
-                    disabled={filteredForecasts.length === 0}
-                  >
-                    Export Excel
-                  </Button>
-                </Space>
-              </Col>
-            </Row>
-          </Card>
+          <ForecastsByProductTerritoryFilterCardTemplate
+            title="Filter Forecasts"
+            formFields={[
+              {
+                label: 'Period',
+                type: 'select',
+                value: selectedPeriod,
+                onChange: setSelectedPeriod,
+                placeholder: 'Select Period',
+                options: periods.map((p) => ({
+                  value: p.value,
+                  label: p.is_current ? `${p.label} (Current)` : p.label,
+                })),
+                loading: !selectedPeriod,
+                allowClear: true,
+                showSearch: true,
+                maxWidth: '18rem',
+              },
+              ...(!isTSO ? [{
+                label: 'Territory',
+                type: 'select',
+                value: territoryFilter,
+                onChange: setTerritoryFilter,
+                placeholder: 'All Territories',
+                options: uniqueTerritories.map((t) => ({
+                  value: t,
+                  label: t,
+                })),
+                allowClear: true,
+                showSearch: true,
+              }] : []),
+              {
+                label: 'Search',
+                type: 'input',
+                value: forecastSearchTerm,
+                onChange: (e) => setForecastSearchTerm(e.target.value),
+                placeholder: 'Dealer name or code',
+                prefix: <SearchOutlined />,
+                allowClear: true,
+              },
+            ].slice(0, 3)}
+            buttons={[
+              {
+                label: 'Export Excel',
+                type: 'primary',
+                icon: <DownloadOutlined />,
+                onClick: handleForecastExport,
+                disabled: filteredForecasts.length === 0,
+              },
+            ]}
+          />
 
           <Card {...EXPANDABLE_TABLE_CARD_CONFIG}>
           <Table
@@ -2233,169 +2172,92 @@ function DailyReport() {
           key="forecast-report"
         >
           {/* Filters */}
-          <Card title="Filter Forecasts" {...FILTER_CARD_CONFIG}>
-            <Row gutter={[8, 8]} align="middle">
-              <Col flex="1">
-                <Text strong>Period:</Text>
-                <Select
-                  style={{ width: '100%', marginTop: '8px' }}
-                  value={forecastReportPeriod}
-                  onChange={(value) => {
-                    setForecastReportPeriod(value || null);
-                    // Reset other filters when period changes
-                    setForecastReportTerritory(isTSO ? territoryName : null);
-                    setForecastReportDealer(null);
-                    setForecastReportProduct(null);
-                  }}
-                  loading={periods.length === 0}
-                  placeholder="Select Period"
-                  allowClear
-                  showSearch
-                  filterOption={(input, option) => {
-                    const optionText = option?.children?.toString() || '';
-                    return optionText.toLowerCase().includes(input.toLowerCase());
-                  }}
-                >
-                  {periods.map((p) => (
-                    <Option key={p.value} value={p.value}>
-                      {p.label} {p.is_current && <Tag color="green" size="small">Current</Tag>}
-                    </Option>
-                  ))}
-                </Select>
-              </Col>
-              {!isTSO && (
-                <Col flex="1">
-                  <Text strong>Territory:</Text>
-                  <Select
-                    style={{ width: '100%', marginTop: '8px' }}
-                    value={forecastReportTerritory}
-                    onChange={(value) => {
-                      setForecastReportTerritory(value || null);
-                      // Reset dealer and product when territory changes
-                      setForecastReportDealer(null);
-                      setForecastReportProduct(null);
-                    }}
-                    allowClear
-                    showSearch
-                    placeholder="All Territories"
-                    disabled={!forecastReportPeriod}
-                    filterOption={(input, option) => {
-                      const optionText = option?.children?.toString() || '';
-                      return optionText.toLowerCase().includes(input.toLowerCase());
-                    }}
-                  >
-                    {filteredForecastReportTerritories.map((t) => (
-                      <Option key={t} value={t}>
-                        {t}
-                      </Option>
-                    ))}
-                  </Select>
-                </Col>
-              )}
-              <Col flex="1">
-                <Text strong>Dealer:</Text>
-                <Select
-                  style={{ width: '100%', marginTop: '8px' }}
-                  value={forecastReportDealer}
-                  onChange={(value) => {
-                    setForecastReportDealer(value || null);
-                    // Reset product when dealer changes
-                    setForecastReportProduct(null);
-                  }}
-                  allowClear
-                  showSearch
-                  placeholder="All Dealers"
-                  disabled={!forecastReportPeriod}
-                  filterOption={(input, option) => {
-                    const optionText = option?.children?.toString() || '';
-                    return optionText.toLowerCase().includes(input.toLowerCase());
-                  }}
-                >
-                    {filteredForecastReportDealers.map((d) => (
-                    <Option key={d.id} value={d.id.toString()}>
-                      {d.code} - {d.name}
-                    </Option>
-                  ))}
-                </Select>
-              </Col>
-              <Col flex="1">
-                <Text strong>Product:</Text>
-                <Select
-                  style={{ width: '100%', marginTop: '8px' }}
-                  value={forecastReportProduct}
-                  onChange={(value) => setForecastReportProduct(value || null)}
-                  allowClear
-                  showSearch
-                  placeholder="All Products"
-                  disabled={!forecastReportPeriod}
-                  filterOption={(input, option) => {
-                    const optionText = option?.children?.toString() || '';
-                    return optionText.toLowerCase().includes(input.toLowerCase());
-                  }}
-                >
-                    {filteredForecastReportProducts.map((p) => (
-                    <Option key={p.code} value={p.code}>
-                      {p.code} - {p.name}
-                    </Option>
-                  ))}
-                </Select>
-              </Col>
-              <Col flex="none" style={{ alignSelf: 'flex-end' }}>
-                <Button
-                  type="primary"
-                  icon={<DownloadOutlined />}
-                  onClick={() => {
-                    try {
-                      const exportData = filteredForecastReportData.flatMap((forecast) =>
-                        forecast.products.map((product) => ({
-                          'Dealer Code': forecast.dealer_code,
-                          'Dealer Name': forecast.dealer_name,
-                          'Territory': forecast.territory_name,
-                          'Product Code': product.product_code,
-                          'Product Name': product.product_name,
-                          'Forecast Quantity': product.quantity,
-                          'Period': periods.find((p) => p.value === forecastReportPeriod)?.label || forecastReportPeriod,
-                        }))
-                      );
-
-                      const ws = XLSX.utils.json_to_sheet(exportData);
-                      
-                      // Set font style for all cells: Calibri size 8
-                      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-                      for (let R = range.s.r; R <= range.e.r; ++R) {
-                        for (let C = range.s.c; C <= range.e.c; ++C) {
-                          const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
-                          if (!ws[cellAddress]) continue;
-                          if (!ws[cellAddress].s) ws[cellAddress].s = {};
-                          ws[cellAddress].s.font = {
-                            name: 'Calibri',
-                            sz: 8,
-                            bold: R === range.s.r // Make header row bold
-                          };
-                        }
-                      }
-                      
-                      const wb = XLSX.utils.book_new();
-                      XLSX.utils.book_append_sheet(wb, ws, 'Forecast Report');
-
-                      const periodLabel = periods.find((p) => p.value === forecastReportPeriod)?.label || 'Forecast';
-                      const filename = `Forecast_Report_${periodLabel.replace(/\s+/g, '_')}.xlsx`;
-                      XLSX.writeFile(wb, filename);
-
-                      message.success('Forecast report exported successfully!');
-                    } catch (error) {
-                      message.error('Failed to export data');
-                      console.error('Export error:', error);
-                    }
-                  }}
-                  disabled={filteredForecastReportData.length === 0}
-                  style={{ marginTop: '32px' }}
-                >
-                  Export Excel
-                </Button>
-              </Col>
-            </Row>
-          </Card>
+          <ForecastReportFilterCardTemplate
+            title="Filter Forecasts"
+            formFields={[
+              {
+                label: 'Period',
+                type: 'select',
+                value: forecastReportPeriod,
+                onChange: (value) => {
+                  setForecastReportPeriod(value || null);
+                  // Reset other filters when period changes
+                  setForecastReportTerritory(isTSO ? territoryName : null);
+                  setForecastReportDealer(null);
+                  setForecastReportProduct(null);
+                },
+                placeholder: 'Select Period',
+                options: periods.map((p) => ({
+                  value: p.value,
+                  label: p.is_current ? `${p.label} (Current)` : p.label,
+                })),
+                loading: periods.length === 0,
+                allowClear: true,
+                showSearch: true,
+                maxWidth: '18rem',
+              },
+              ...(!isTSO ? [{
+                label: 'Territory',
+                type: 'select',
+                value: forecastReportTerritory,
+                onChange: (value) => {
+                  setForecastReportTerritory(value || null);
+                  // Reset dealer and product when territory changes
+                  setForecastReportDealer(null);
+                  setForecastReportProduct(null);
+                },
+                placeholder: 'All Territories',
+                options: filteredForecastReportTerritories.map((t) => ({
+                  value: t,
+                  label: t,
+                })),
+                disabled: !forecastReportPeriod,
+                allowClear: true,
+                showSearch: true,
+              }] : []),
+              {
+                label: 'Dealer',
+                type: 'select',
+                value: forecastReportDealer,
+                onChange: (value) => {
+                  setForecastReportDealer(value || null);
+                  // Reset product when dealer changes
+                  setForecastReportProduct(null);
+                },
+                placeholder: 'All Dealers',
+                options: filteredForecastReportDealers.map((d) => ({
+                  value: d.id.toString(),
+                  label: `${d.code} - ${d.name}`,
+                })),
+                disabled: !forecastReportPeriod,
+                allowClear: true,
+                showSearch: true,
+              },
+              {
+                label: 'Product',
+                type: 'select',
+                value: forecastReportProduct,
+                onChange: (value) => setForecastReportProduct(value || null),
+                placeholder: 'All Products',
+                options: filteredForecastReportProducts.map((p) => ({
+                  value: p.code,
+                  label: `${p.code} - ${p.name}`,
+                })),
+                disabled: !forecastReportPeriod,
+                allowClear: true,
+                showSearch: true,
+              },
+            ].slice(0, 4)}
+            buttons={[
+              {
+                label: 'Export Excel',
+                type: 'primary',
+                icon: <DownloadOutlined />,
+                onClick: handleForecastReportExport,
+                disabled: filteredForecastReportData.length === 0,
+              },
+            ]}
+          />
 
           {/* View Type Indicator */}
           {forecastReportPeriod && (

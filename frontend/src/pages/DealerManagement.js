@@ -20,16 +20,15 @@ import {
 import { useStandardPagination, getStandardPaginationConfig } from '../templates/useStandardPagination';
 import { STANDARD_EXPANDABLE_TABLE_CONFIG } from '../templates/TableTemplate';
 import { 
-  IMPORT_CARD_CONFIG, 
   EXPANDABLE_TABLE_CARD_CONFIG,
   STANDARD_PAGE_TITLE_CONFIG, 
   STANDARD_PAGE_SUBTITLE_CONFIG, 
   STANDARD_ROW_GUTTER, 
   STANDARD_BADGE_CONFIG, 
-  STANDARD_UPLOAD_CONFIG, 
   STANDARD_BUTTON_SIZE, 
   renderTableHeaderWithSearchAndFilter 
 } from '../templates/UITemplates';
+import { DealerManagementImportCardTemplate } from '../templates/DealerManagementImportCardTemplate';
 import {
   UploadOutlined,
   DownloadOutlined,
@@ -711,31 +710,19 @@ function DealerManagement() {
       </Text>
 
       {/* Import Section */}
-      <Card
+      <DealerManagementImportCardTemplate
         title="Import Dealers"
-        {...IMPORT_CARD_CONFIG}
-        extra={
-          <Space>
-            <Upload
-              {...STANDARD_UPLOAD_CONFIG}
-              beforeUpload={handleImport}
-            >
-              <Button
-                type="primary"
-                icon={<UploadOutlined />}
-                loading={importLoading}
-              >
-                Import Dealers (Excel)
-              </Button>
-            </Upload>
-            <Button
-              icon={<DownloadOutlined />}
-              onClick={downloadTemplate}
-            >
-              Download Template
-            </Button>
-          </Space>
-        }
+        uploadButton={{
+          label: 'Import Dealers (Excel)',
+          icon: <UploadOutlined />,
+          onUpload: handleImport,
+          loading: importLoading,
+        }}
+        downloadButton={{
+          label: 'Download Template',
+          icon: <DownloadOutlined />,
+          onClick: downloadTemplate,
+        }}
       />
 
       {/* Dealers Table */}

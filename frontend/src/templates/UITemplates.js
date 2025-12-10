@@ -20,7 +20,7 @@
  * 11. HELPER FUNCTIONS - Reusable component generators
  */
 
-import { Row, Col, Space, Typography, DatePicker, Input, Select, InputNumber, Button, Card } from 'antd';
+import { Row, Col, Space, Typography, DatePicker, Input, Select, InputNumber, Button, Card, AutoComplete, Tag } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
@@ -60,6 +60,44 @@ export const FILTER_CARD_CONFIG = {
     padding: '12px',
   },
 };
+
+/**
+ * UNIVERSAL CARD CONFIGURATION
+ * Single, shared configuration for all universal cards (filters/forms/date selection).
+ * Uses the same styling as FILTER_CARD_CONFIG to keep a consistent look everywhere.
+ */
+export const UNIVERSAL_CARD_CONFIG = {
+  ...FILTER_CARD_CONFIG,
+};
+
+/**
+ * Helper: Standard Select Field Config
+ * Use this to keep select field props consistent across pages.
+ */
+export const createSelectFieldConfig = ({
+  label,
+  value,
+  onChange,
+  placeholder,
+  options = [],
+  allowClear = true,
+  showSearch = true,
+  enableTagDisplay = false,
+  selectedItems = [],
+  onRemoveItem,
+}) => ({
+  label,
+  type: 'select',
+  value,
+  onChange,
+  placeholder,
+  options,
+  allowClear,
+  showSearch,
+  enableTagDisplay,
+  selectedItems,
+  onRemoveItem,
+});
 
 /**
  * DATE SELECTION CARD CONFIGURATION
@@ -195,6 +233,214 @@ export const STANDARD_INPUT_NUMBER_SIZE = 'small';
 export const STANDARD_TAG_STYLE = {
   fontSize: '12px',
   padding: '2px 8px',
+};
+
+/**
+ * STANDARD TAG CONTAINER STYLE
+ * Standard styling for tag containers below form fields (e.g., AutoComplete with selected items)
+ */
+export const STANDARD_TAG_CONTAINER_STYLE = {
+  marginTop: '4px',
+  width: '100%',
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: '4px',
+};
+
+/**
+ * STANDARD TAG ITEM STYLE
+ * Standard styling for individual tags in tag containers
+ */
+export const STANDARD_TAG_ITEM_STYLE = {
+  marginBottom: '4px',
+  marginRight: '0',
+};
+
+/**
+ * QUOTA ALLOCATION CARD TEMPLATE
+ * 
+ * Specialized template for Daily Quota Allocation card with custom column widths.
+ * This card has unique layout requirements:
+ * - Date: narrow (md={2})
+ * - Products: wide (md={11}) - needs more space for multi-select with tags
+ * - Territories: medium (md={6})
+ * - Quota: narrow (md={2})
+ * - Buttons: fixed width (md={3} each)
+ * 
+ * @param {Object} props
+ * @param {string} props.title - Card title
+ * @param {Object} props.datePicker1 - Date picker configuration
+ * @param {Array<Object>} props.formFields - Array of form field configurations
+ *   - formFields[0]: Products (autocomplete with multi-select)
+ *   - formFields[1]: Territories (autocomplete with multi-select)
+ *   - formFields[2]: Quota (input)
+ * @param {Array<Object>} props.buttons - Array of button configurations
+ * @param {Array} props.gutter - Row gutter configuration (default: STANDARD_ROW_GUTTER)
+ * @returns {JSX.Element} Quota allocation card JSX
+ */
+export const QuotaAllocationCardTemplate = ({
+  title = 'Allocate Daily Quotas',
+  datePicker1,
+  formFields = [],
+  buttons = [],
+  gutter = STANDARD_ROW_GUTTER,
+}) => {
+  const [productsField, territoriesField, quotaField] = formFields;
+
+  return (
+    <Card title={title} {...UNIVERSAL_CARD_CONFIG}>
+      <Row gutter={gutter} align="top" justify="space-between">
+        {/* Date Picker - narrow */}
+        {datePicker1 && (
+          <Col xs={24} sm={12} md={2}>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Text strong style={STANDARD_FORM_LABEL_STYLE}>
+                {datePicker1.label || 'Date'}
+              </Text>
+              <DatePicker
+                {...STANDARD_DATE_PICKER_CONFIG}
+                value={datePicker1.value}
+                onChange={datePicker1.onChange}
+                placeholder={datePicker1.placeholder || 'Select date'}
+                style={{ width: '100%' }}
+                disabledDate={datePicker1.disabledDate}
+                dateRender={datePicker1.dateRender}
+              />
+            </Space>
+          </Col>
+        )}
+
+        {/* Products - stretch to fill space */}
+        {productsField && (
+          <Col xs={24} sm={12} flex="auto">
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Text strong style={STANDARD_FORM_LABEL_STYLE}>
+                {productsField.label || 'Products'}
+              </Text>
+              <Space direction="vertical" style={{ width: '100%' }}>
+                {productsField.type === 'autocomplete' ? (
+                  <>
+                    <AutoComplete
+                      size={STANDARD_INPUT_SIZE}
+                      value={productsField.value}
+                      onSearch={productsField.onSearch}
+                      onSelect={productsField.onSelect}
+                      onChange={productsField.onChange}
+                      placeholder={productsField.placeholder || 'Type product name'}
+                      style={{ width: '100%' }}
+                      options={productsField.options}
+                      allowClear={productsField.allowClear !== false}
+                    />
+                    {productsField.enableTagDisplay && productsField.selectedItems && productsField.selectedItems.length > 0 && (
+                      <div style={STANDARD_TAG_CONTAINER_STYLE}>
+                        {productsField.selectedItems.map((item) => (
+                          <Tag
+                            key={item.key}
+                            closable
+                            onClose={() => productsField.onRemoveItem && productsField.onRemoveItem(item.key)}
+                            style={STANDARD_TAG_ITEM_STYLE}
+                          >
+                            {item.label}
+                          </Tag>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : null}
+              </Space>
+            </Space>
+          </Col>
+        )}
+
+        {/* Territories - fixed width (same as original md={6}) */}
+        {territoriesField && (
+          <Col xs={24} sm={12} md={6}>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Text strong style={STANDARD_FORM_LABEL_STYLE}>
+                {territoriesField.label || 'Territories'}
+              </Text>
+              <Space direction="vertical" style={{ width: '100%' }}>
+                {territoriesField.type === 'autocomplete' ? (
+                  <>
+                    <AutoComplete
+                      size={STANDARD_INPUT_SIZE}
+                      value={territoriesField.value}
+                      onSearch={territoriesField.onSearch}
+                      onSelect={territoriesField.onSelect}
+                      onChange={territoriesField.onChange}
+                      placeholder={territoriesField.placeholder || 'Type territory'}
+                      style={{ width: '100%' }}
+                      options={territoriesField.options}
+                      allowClear={territoriesField.allowClear !== false}
+                    />
+                    {territoriesField.enableTagDisplay && territoriesField.selectedItems && territoriesField.selectedItems.length > 0 && (
+                      <div style={STANDARD_TAG_CONTAINER_STYLE}>
+                        {territoriesField.selectedItems.map((item) => (
+                          <Tag
+                            key={item.key}
+                            closable
+                            onClose={() => territoriesField.onRemoveItem && territoriesField.onRemoveItem(item.key)}
+                            style={STANDARD_TAG_ITEM_STYLE}
+                          >
+                            {item.label}
+                          </Tag>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : null}
+              </Space>
+            </Space>
+          </Col>
+        )}
+
+        {/* Quota - very narrow (just for 4 numbers) */}
+        {quotaField && (
+          <Col xs={24} sm={12} md={1}>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Text strong style={STANDARD_FORM_LABEL_STYLE}>
+                {quotaField.label || 'Quota'}
+              </Text>
+              {quotaField.type === 'input' ? (
+                <Input
+                  size={STANDARD_INPUT_SIZE}
+                  value={quotaField.value}
+                  onChange={quotaField.onChange}
+                  onPressEnter={quotaField.onPressEnter}
+                  placeholder={quotaField.placeholder || 'Qty'}
+                  style={{ width: '100%' }}
+                />
+              ) : null}
+            </Space>
+          </Col>
+        )}
+
+        {/* Buttons - fixed width */}
+        {buttons.map((button, index) => {
+          if (!button) return null;
+          return (
+            <Col xs={24} sm={12} md={3} flex="none" key={`button-${index}`}>
+              <Space direction="vertical" style={{ width: '100%' }}>
+                <Text strong style={{ ...STANDARD_FORM_LABEL_STYLE, opacity: 0, lineHeight: '1.5', display: 'block', minHeight: '20px' }}>
+                  &nbsp;
+                </Text>
+                <Button
+                  type={button.type || 'default'}
+                  onClick={button.onClick}
+                  icon={button.icon}
+                  disabled={button.disabled}
+                  size={STANDARD_BUTTON_SIZE}
+                  style={{ width: '100%' }}
+                >
+                  {button.label || `Button ${index + 1}`}
+                </Button>
+              </Space>
+            </Col>
+          );
+        })}
+      </Row>
+    </Card>
+  );
 };
 
 /**
@@ -671,7 +917,9 @@ export const renderTableHeaderWithSearchAndFilter = ({
  * @param {any} props.formFields[].value - Field value
  * @param {Function} props.formFields[].onChange - onChange handler
  * @param {string} props.formFields[].placeholder - Placeholder text
- * @param {Array} props.formFields[].options - Options array for Select (only for type: 'select')
+ * @param {Array} props.formFields[].options - Options array for Select/AutoComplete (for type: 'select' or 'autocomplete')
+ * @param {Function} props.formFields[].onSearch - onSearch handler for AutoComplete (only for type: 'autocomplete')
+ * @param {Function} props.formFields[].onSelect - onSelect handler for AutoComplete (only for type: 'autocomplete')
  * @param {Object} props.quantityField - Quantity field configuration
  * @param {string} props.quantityField.label - Label text (default: "Quantity")
  * @param {number|null} props.quantityField.value - Quantity value
@@ -691,7 +939,7 @@ export const renderTableHeaderWithSearchAndFilter = ({
  */
 export const UniversalCardTemplate = ({
   title = 'Filter',
-  cardConfig = FILTER_CARD_CONFIG,
+  cardConfig = UNIVERSAL_CARD_CONFIG,
   datePicker1,
   datePicker2,
   formFields = [],
@@ -764,35 +1012,82 @@ export const UniversalCardTemplate = ({
                 <Text strong style={STANDARD_FORM_LABEL_STYLE}>
                   {field.label || `Field ${index + 1}`}
                 </Text>
-                {field.type === 'input' ? (
-                  <Input
-                    size={STANDARD_INPUT_SIZE}
-                    value={field.value}
-                    onChange={field.onChange}
-                    placeholder={field.placeholder || `Enter ${field.label || 'value'}`}
-                    style={{ width: '100%' }}
-                  />
-                ) : (
-                  <Select
-                    size={STANDARD_INPUT_SIZE}
-                    value={field.value}
-                    onChange={field.onChange}
-                    placeholder={field.placeholder || `Select ${field.label || 'option'}`}
-                    style={{ width: '100%' }}
-                    allowClear={field.allowClear !== false}
-                    showSearch={field.showSearch !== false}
-                    filterOption={field.showSearch !== false ? (input, option) => {
-                      const optionText = option?.children?.toString() || '';
-                      return optionText.toLowerCase().includes(input.toLowerCase());
-                    } : undefined}
-                  >
-                    {field.options && field.options.map((option) => (
-                      <Option key={option.value} value={option.value}>
-                        {option.label}
-                      </Option>
-                    ))}
-                  </Select>
-                )}
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  {field.type === 'input' ? (
+                    <Input
+                      size={STANDARD_INPUT_SIZE}
+                      value={field.value}
+                      onChange={field.onChange}
+                      onPressEnter={field.onPressEnter}
+                      placeholder={field.placeholder || `Enter ${field.label || 'value'}`}
+                      style={{ width: '100%' }}
+                    />
+                  ) : field.type === 'autocomplete' ? (
+                    <>
+                      <AutoComplete
+                        size={STANDARD_INPUT_SIZE}
+                        value={field.value}
+                        onSearch={field.onSearch}
+                        onSelect={field.onSelect}
+                        onChange={field.onChange}
+                        placeholder={field.placeholder || `Type ${field.label || 'value'}`}
+                        style={{ width: '100%' }}
+                        options={field.options}
+                        allowClear={field.allowClear !== false}
+                      />
+                      {field.enableTagDisplay && field.selectedItems && field.selectedItems.length > 0 && (
+                        <div style={STANDARD_TAG_CONTAINER_STYLE}>
+                          {field.selectedItems.map((item) => (
+                            <Tag
+                              key={item.key}
+                              closable
+                              onClose={() => field.onRemoveItem && field.onRemoveItem(item.key)}
+                              style={STANDARD_TAG_ITEM_STYLE}
+                            >
+                              {item.label}
+                            </Tag>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <Select
+                        size={STANDARD_INPUT_SIZE}
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder={field.placeholder || `Select ${field.label || 'option'}`}
+                        style={{ width: '100%' }}
+                        allowClear={field.allowClear !== false}
+                        showSearch={field.showSearch !== false}
+                        filterOption={field.showSearch !== false ? (input, option) => {
+                          const optionText = option?.children?.toString() || '';
+                          return optionText.toLowerCase().includes(input.toLowerCase());
+                        } : undefined}
+                      >
+                        {field.options && field.options.map((option) => (
+                          <Option key={option.value} value={option.value}>
+                            {option.label}
+                          </Option>
+                        ))}
+                      </Select>
+                      {field.enableTagDisplay && field.selectedItems && field.selectedItems.length > 0 && (
+                        <div style={STANDARD_TAG_CONTAINER_STYLE}>
+                          {field.selectedItems.map((item) => (
+                            <Tag
+                              key={item.key}
+                              closable
+                              onClose={() => field.onRemoveItem && field.onRemoveItem(item.key)}
+                              style={STANDARD_TAG_ITEM_STYLE}
+                            >
+                              {item.label}
+                            </Tag>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </Space>
               </Space>
             </Col>
           );
@@ -851,6 +1146,7 @@ export const UniversalCardTemplate = ({
                   type={button.type || 'default'}
                   onClick={button.onClick}
                   icon={button.icon}
+                  disabled={button.disabled}
                   size={STANDARD_BUTTON_SIZE}
                   style={{ width: '100%' }}
                 >

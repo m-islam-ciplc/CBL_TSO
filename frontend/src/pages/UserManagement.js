@@ -18,7 +18,6 @@ import {
 } from 'antd';
 import { useStandardPagination } from '../templates/useStandardPagination';
 import { 
-  ACTION_CARD_CONFIG, 
   TABLE_CARD_CONFIG,
   STANDARD_PAGE_TITLE_CONFIG, 
   STANDARD_PAGE_SUBTITLE_CONFIG, 
@@ -27,6 +26,7 @@ import {
   STANDARD_POPCONFIRM_CONFIG, 
   renderTableHeaderWithSearchAndFilter 
 } from '../templates/UITemplates';
+import { UserManagementActionsCardTemplate } from '../templates/UserManagementActionsCardTemplate';
 import {
   PlusOutlined,
   EditOutlined,
@@ -296,34 +296,27 @@ function UserManagement() {
       </Text>
 
       {/* Add User Button */}
-      <Card
+      <UserManagementActionsCardTemplate
         title="Actions"
-        {...ACTION_CARD_CONFIG}
-        extra={
-          <Space>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={handleAdd}
-            >
-              Add User
-            </Button>
-            <Popconfirm
-              {...STANDARD_POPCONFIRM_CONFIG}
-              title="Are you sure you want to delete the selected users?"
-              onConfirm={handleBulkDelete}
-              disabled={!selectedRowKeys.length}
-            >
-              <Button
-                icon={<DeleteOutlined />}
-                danger
-                disabled={!selectedRowKeys.length}
-              >
-                Delete Selected
-              </Button>
-            </Popconfirm>
-          </Space>
-        }
+        buttons={[
+          {
+            label: 'Add User',
+            type: 'primary',
+            icon: <PlusOutlined />,
+            onClick: handleAdd,
+          },
+          {
+            label: 'Delete Selected',
+            type: 'default',
+            icon: <DeleteOutlined />,
+            danger: true,
+            disabled: !selectedRowKeys.length,
+            popconfirm: {
+              title: 'Are you sure you want to delete the selected users?',
+              onConfirm: handleBulkDelete,
+            },
+          },
+        ]}
       />
 
       {/* Users Table */}

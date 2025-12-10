@@ -15,14 +15,13 @@ import {
 } from 'antd';
 import { useStandardPagination } from '../templates/useStandardPagination';
 import { 
-  IMPORT_CARD_CONFIG, 
   TABLE_CARD_CONFIG,
   STANDARD_PAGE_TITLE_CONFIG, 
   STANDARD_PAGE_SUBTITLE_CONFIG, 
   STANDARD_ROW_GUTTER, 
-  STANDARD_UPLOAD_CONFIG, 
   renderTableHeaderWithSearchAndFilter 
 } from '../templates/UITemplates';
+import { TransportManagementImportCardTemplate } from '../templates/TransportManagementImportCardTemplate';
 import {
   UploadOutlined,
   DownloadOutlined,
@@ -234,31 +233,19 @@ function TransportManagement() {
       </Text>
 
       {/* Import Section */}
-      <Card
+      <TransportManagementImportCardTemplate
         title="Import Transports"
-        {...IMPORT_CARD_CONFIG}
-        extra={
-          <Space>
-            <Upload
-              {...STANDARD_UPLOAD_CONFIG}
-              beforeUpload={handleImport}
-            >
-              <Button
-                type="primary"
-                icon={<UploadOutlined />}
-                loading={importLoading}
-              >
-                Import Transports (Excel)
-              </Button>
-            </Upload>
-            <Button
-              icon={<DownloadOutlined />}
-              onClick={downloadTemplate}
-            >
-              Download Template
-            </Button>
-          </Space>
-        }
+        uploadButton={{
+          label: 'Import Transports (Excel)',
+          icon: <UploadOutlined />,
+          onUpload: handleImport,
+          loading: importLoading,
+        }}
+        downloadButton={{
+          label: 'Download Template',
+          icon: <DownloadOutlined />,
+          onClick: downloadTemplate,
+        }}
       />
 
       {/* Transports Table */}

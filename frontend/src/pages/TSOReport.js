@@ -5,21 +5,17 @@ import axios from 'axios';
 import dayjs from 'dayjs';
 import { useUser } from '../contexts/UserContext';
 import { 
-  FILTER_CARD_CONFIG, 
-  DATE_SELECTION_CARD_CONFIG, 
   TABLE_CARD_CONFIG,
   createStandardDatePickerConfig, 
-  createStandardDateRangePicker,
   STANDARD_PAGE_TITLE_CONFIG, 
   STANDARD_PAGE_SUBTITLE_CONFIG, 
-  STANDARD_ROW_GUTTER, 
-  STANDARD_FORM_LABEL_STYLE, 
   STANDARD_TABS_CONFIG, 
-  STANDARD_DATE_PICKER_CONFIG, 
   STANDARD_SPIN_SIZE, 
   STANDARD_TABLE_SIZE, 
   renderTableHeaderWithSearch 
 } from '../templates/UITemplates';
+import { TSOReportDailyReportCardTemplate } from '../templates/TSOReportDailyReportCardTemplate';
+import { TSOReportOrderSummaryCardTemplate } from '../templates/TSOReportOrderSummaryCardTemplate';
 import { getStandardPaginationConfig } from '../templates/useStandardPagination';
 import { renderProductDetailsStack } from '../templates/TableTemplate';
 
@@ -573,85 +569,62 @@ function TSOReport() {
 
       <Tabs {...STANDARD_TABS_CONFIG} activeKey={activeTab} onChange={setActiveTab}>
         <Tabs.TabPane tab="Daily Report (Single Date)" key="single">
-          <Card title="Daily Report (Single Date)" {...DATE_SELECTION_CARD_CONFIG}>
-            <Row gutter={STANDARD_ROW_GUTTER} align="bottom">
-              <Col xs={24} sm={12} md={2}>
-                <Space direction="vertical" style={{ width: '100%' }}>
-                  <Text strong style={STANDARD_FORM_LABEL_STYLE}>Select Date</Text>
-                  <DatePicker
-                    {...STANDARD_DATE_PICKER_CONFIG}
-                    value={selectedDate}
-                    onChange={setSelectedDate}
-                    style={{ width: '100%' }}
-                    placeholder="Select date for report"
-                    disabledDate={disabledDate}
-                    dateRender={dateCellRender}
-                  />
-                </Space>
-              </Col>
-              <Col xs={24} sm={24} md={6}>
-                <Button
-                  type="default"
-                  icon={<EyeOutlined />}
-                  onClick={handlePreviewData}
-                  loading={loading}
-                  style={{ width: '100%' }}
-                >
-                  Preview Orders
-                </Button>
-              </Col>
-              <Col xs={24} sm={24} md={6}>
-                <Button
-                  type="primary"
-                  icon={<DownloadOutlined />}
-                  onClick={handleGenerateReport}
-                  loading={loading}
-                  style={{ width: '100%' }}
-                >
-                  Download Daily Order Report
-                </Button>
-              </Col>
-            </Row>
-          </Card>
+          <TSOReportDailyReportCardTemplate
+            datePicker={{
+              value: selectedDate,
+              onChange: setSelectedDate,
+              placeholder: 'Select date for report',
+              disabledDate: disabledDate,
+              dateRender: dateCellRender,
+            }}
+            buttons={[
+              {
+                type: 'default',
+                icon: <EyeOutlined />,
+                label: 'Preview Orders',
+                onClick: handlePreviewData,
+                loading: loading,
+              },
+              {
+                type: 'primary',
+                icon: <DownloadOutlined />,
+                label: 'Download Daily Order Report',
+                onClick: handleGenerateReport,
+                loading: loading,
+              },
+            ]}
+          />
         </Tabs.TabPane>
 
         <Tabs.TabPane tab="Order Summary (Date Range)" key="range">
-          <Card title="Order Summary (Date Range)" {...FILTER_CARD_CONFIG}>
-            <Row gutter={STANDARD_ROW_GUTTER} align="bottom">
-              {createStandardDateRangePicker({
-                startDate: rangeStart,
-                setStartDate: setRangeStart,
-                endDate: rangeEnd,
-                setEndDate: setRangeEnd,
-                disabledDate,
-                dateCellRender,
-                availableDates,
-                colSpan: { xs: 24, sm: 12, md: 2 }
-              })}
-              <Col xs={24} sm={24} md={6}>
-                <Button
-                  type="default"
-                  icon={<EyeOutlined />}
-                  onClick={handlePreviewRange}
-                  loading={loading}
-                  style={{ width: '100%' }}
-                >
-                  Preview Range Orders
-                </Button>
-              </Col>
-              <Col xs={24} sm={24} md={6}>
-                <Button
-                  type="primary"
-                  icon={<FileExcelOutlined />}
-                  onClick={handleGenerateRangeReport}
-                  loading={loading}
-                  style={{ width: '100%' }}
-                >
-                  Download Order Summary
-                </Button>
-              </Col>
-            </Row>
-          </Card>
+          <TSOReportOrderSummaryCardTemplate
+            dateRangePicker={{
+              startDate: rangeStart,
+              setStartDate: setRangeStart,
+              endDate: rangeEnd,
+              setEndDate: setRangeEnd,
+              disabledDate,
+              dateRender: dateCellRender,
+              availableDates,
+              colSpan: { xs: 24, sm: 12, md: 2 },
+            }}
+            buttons={[
+              {
+                type: 'default',
+                icon: <EyeOutlined />,
+                label: 'Preview Range Orders',
+                onClick: handlePreviewRange,
+                loading: loading,
+              },
+              {
+                type: 'primary',
+                icon: <FileExcelOutlined />,
+                label: 'Download Order Summary',
+                onClick: handleGenerateRangeReport,
+                loading: loading,
+              },
+            ]}
+          />
         </Tabs.TabPane>
       </Tabs>
 

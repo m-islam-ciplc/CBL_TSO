@@ -3,7 +3,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 8px;
-  margin-bottom: 100px;
+  margin-bottom: 0;
 }
 
 /* Mobile and Tablet Text Styles */
@@ -94,5 +94,13 @@
 .quantity-input-center .ant-input-number-input {
   text-align: center !important;
   font-weight: bold !important;
+}
+
+/* Reduce bottom padding in Daily Demand Tabs */
+.daily-demand-tabs-wrapper .ant-tabs-content-holder {
+  padding-bottom: 0 !important;
+}
+.daily-demand-tabs-wrapper .ant-tabs-tabpane {
+  padding-bottom: 0 !important;
 }
 

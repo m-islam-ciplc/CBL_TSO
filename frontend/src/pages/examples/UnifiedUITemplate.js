@@ -48,6 +48,8 @@ import {
   UploadOutlined,
   DownloadOutlined,
   DeleteOutlined,
+  ReloadOutlined,
+  ClearOutlined,
 } from '@ant-design/icons';
 import { DealerProductCard } from '../../templates/DealerProductCard';
 import { 
@@ -83,6 +85,7 @@ import {
   renderTableHeaderWithSearchAndFilter,
   UniversalCardTemplate
 } from '../../templates/UITemplates';
+import { OrdersAndDemandsFilterOrdersTemplate } from '../../templates/OrdersAndDemandsFilterOrdersTemplate';
 import { renderStandardExpandedRow, StandardExpandableTable, renderProductDetailsStack } from '../../templates/TableTemplate';
 import '../../App.css';
 import '../NewOrdersTablet.css';
@@ -257,6 +260,8 @@ function UnifiedUITemplate() {
     },
   ];
 
+  const [activeTab, setActiveTab] = useState('general');
+
   return (
     <div>
       <Title {...STANDARD_PAGE_TITLE_CONFIG}>
@@ -266,7 +271,9 @@ function UnifiedUITemplate() {
         All standard UI elements and templates used across the application.
       </Text>
 
-      {/* 1. NAVBAR TEMPLATE */}
+      <Tabs {...STANDARD_TABS_CONFIG} activeKey={activeTab} onChange={setActiveTab}>
+        <Tabs.TabPane tab="General Templates" key="general">
+          {/* 1. NAVBAR TEMPLATE */}
       <Card {...STANDARD_CARD_CONFIG} title="1. Navigation Bar">
         <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: '12px' }}>
           This is the navigation bar template used across all pages in App.js.
@@ -1168,6 +1175,9 @@ function UnifiedUITemplate() {
           ))}
         </div>
       </Drawer>
+
+        </Tabs.TabPane>
+      </Tabs>
     </div>
   );
 }

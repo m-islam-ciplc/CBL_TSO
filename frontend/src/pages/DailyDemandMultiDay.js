@@ -2,36 +2,22 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useUser } from '../contexts/UserContext';
 import {
-  Card,
   Typography,
-  Button,
-  Input,
   message,
-  DatePicker,
-  Space,
-  Tabs,
 } from 'antd';
 import {
-  SearchOutlined,
-  CheckOutlined,
   ShoppingCartOutlined,
-  CalendarOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import './NewOrdersTablet.css';
-import { DealerProductCard } from '../templates/DealerProductCard';
 import { 
-  STANDARD_CARD_CONFIG, 
-  DATE_SELECTION_CARD_CONFIG,
   STANDARD_PAGE_TITLE_CONFIG, 
   STANDARD_PAGE_SUBTITLE_CONFIG, 
-  STANDARD_TABS_CONFIG, 
-  STANDARD_DATE_PICKER_CONFIG, 
-  STANDARD_BUTTON_SIZE 
 } from '../templates/UITemplates';
+import { DailyDemandMultiDayAddDatesCardTemplate } from '../templates/DailyDemandMultiDayAddDatesCardTemplate';
+import { DailyDemandMultiDaySelectProductsCardTemplate } from '../templates/DailyDemandMultiDaySelectProductsCardTemplate';
 
 const { Title, Text } = Typography;
-const { TabPane } = Tabs;
 
 function DailyDemandMultiDay() {
   const { dealerId, userId, territoryName } = useUser();
@@ -337,133 +323,44 @@ function DailyDemandMultiDay() {
       </Text>
 
       {/* Date Selection Card */}
-      <Card title="Add Dates" {...DATE_SELECTION_CARD_CONFIG}>
-        <Space wrap>
-          <Button size={STANDARD_BUTTON_SIZE} onClick={() => handleQuickDateSelect(0)}>
-            Today
-          </Button>
-          <Button size={STANDARD_BUTTON_SIZE} onClick={() => handleQuickDateSelect(1)}>
-            Tomorrow
-          </Button>
-          <Button size={STANDARD_BUTTON_SIZE} onClick={() => handleQuickDateSelect(2)}>
-            Day After
-          </Button>
-          <Button size={STANDARD_BUTTON_SIZE} onClick={() => handleQuickDateSelect(3)}>
-            3 Days
-          </Button>
-          <DatePicker
-            {...STANDARD_DATE_PICKER_CONFIG}
-            placeholder="Or select custom date"
-            onChange={handleDateSelect}
-            disabledDate={(current) => current && current < dayjs().startOf('day')}
-          />
-        </Space>
-      </Card>
+      <DailyDemandMultiDayAddDatesCardTemplate
+        title="Add Dates"
+        quickDateButtons={[
+          { label: 'Today', onClick: () => handleQuickDateSelect(0) },
+          { label: 'Tomorrow', onClick: () => handleQuickDateSelect(1) },
+          { label: 'Day After', onClick: () => handleQuickDateSelect(2) },
+          { label: '3 Days', onClick: () => handleQuickDateSelect(3) },
+        ]}
+        datePicker={{
+          placeholder: 'Or select custom date',
+          onChange: handleDateSelect,
+          disabledDate: (current) => current && current < dayjs().startOf('day'),
+        }}
+      />
 
       {/* Date Tabs with Product Cards */}
-      {selectedDates.length > 0 && (
-        <Card {...STANDARD_CARD_CONFIG}>
-          <Tabs {...STANDARD_TABS_CONFIG}
-            activeKey={activeDateTab || selectedDates[0]?.format('YYYY-MM-DD')}
-            onChange={setActiveDateTab}
-            type="editable-card"
-            onEdit={(targetKey, action) => {
-              if (action === 'remove' && selectedDates.length > 1) {
-                removeDate(targetKey);
-              } else if (selectedDates.length === 1) {
-                message.warning('Cannot remove the last date. Add another date first.');
-              }
-            }}
-            hideAdd
-          >
-            {selectedDates.map((date) => {
-              const dateStr = date.format('YYYY-MM-DD');
-              const isToday = date.isSame(dayjs(), 'day');
-              const isTomorrow = date.isSame(dayjs().add(1, 'day'), 'day');
-              
-              let tabLabel = date.format('MMM D');
-              if (isToday) tabLabel += ' (Today)';
-              else if (isTomorrow) tabLabel += ' (Tomorrow)';
-
-              return (
-                <TabPane
-                  tab={
-                    <span>
-                      <CalendarOutlined /> {tabLabel}
-                    </span>
-                  }
-                  key={dateStr}
-                >
-                  <Title level={5} style={{ marginBottom: '16px' }}>
-                    Select Products for {date.format('MMMM D, YYYY')}
-                  </Title>
-
-                    <Input
-                      placeholder="Search products..."
-                      prefix={<SearchOutlined />}
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      style={{ marginBottom: '16px', maxWidth: '300px' }}
-                      allowClear
-                    />
-
-                    {/* Product Cards Grid */}
-                    {filteredProducts.length > 0 ? (
-                      <div className="responsive-product-grid">
-                        {filteredProducts.map((product) => {
-                          const quantityKey = `${dateStr}_${product.id}`;
-                          const quantity = quantities[quantityKey] || 0;
-
-                          // Wrapper function to adapt template callback to date-specific handler
-                          const handleProductQuantityChange = (productId, value) => {
-                            handleQuantityChange(dateStr, productId, value);
-                          };
-
-                          const handleProductClear = (productId) => {
-                            handleClearProduct(dateStr, productId);
-                          };
-
-                          return (
-                            <DealerProductCard
-                              key={product.id}
-                              product={product}
-                              quantity={quantity || null}
-                              onQuantityChange={handleProductQuantityChange}
-                              onClear={handleProductClear}
-                              canEdit={true}
-                              labelText="Quantity:"
-                              presetValues={presetValues}
-                              showClearButton={true}
-                            />
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-                        {searchTerm ? 'No products found matching your search' : 'No products assigned to your dealer account'}
-                      </div>
-                    )}
-                </TabPane>
-              );
-            })}
-          </Tabs>
-
-          {/* Submit Button */}
-          {getTotalItems() > 0 && (
-            <div style={{ marginTop: '24px', textAlign: 'right', paddingTop: '16px', borderTop: '1px solid #f0f0f0' }}>
-              <Button
-                type="primary"
-                icon={<CheckOutlined />}
-                onClick={handleSubmit}
-                loading={loading}
-                size={STANDARD_BUTTON_SIZE}
-              >
-                Submit All Daily Demands ({getTotalItems()} item{getTotalItems() !== 1 ? 's' : ''})
-              </Button>
-            </div>
-          )}
-        </Card>
-      )}
+      <DailyDemandMultiDaySelectProductsCardTemplate
+        selectedDates={selectedDates}
+        activeDateTab={activeDateTab}
+        setActiveDateTab={setActiveDateTab}
+        removeDate={(targetKey) => {
+          if (selectedDates.length > 1) {
+            removeDate(targetKey);
+          } else {
+            message.warning('Cannot remove the last date. Add another date first.');
+          }
+        }}
+        searchTerm={searchTerm}
+        onSearchChange={(e) => setSearchTerm(e.target.value)}
+        filteredProducts={filteredProducts}
+        quantities={quantities}
+        onQuantityChange={handleQuantityChange}
+        onClearProduct={handleClearProduct}
+        presetValues={presetValues}
+        getTotalItems={getTotalItems}
+        onSubmit={handleSubmit}
+        loading={loading}
+      />
     </div>
   );
 }

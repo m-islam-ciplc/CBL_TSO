@@ -14,12 +14,11 @@ import {
 } from 'antd';
 import { useStandardPagination } from '../templates/useStandardPagination';
 import { 
-  IMPORT_CARD_CONFIG, 
   TABLE_CARD_CONFIG,
   STANDARD_ROW_GUTTER, 
-  STANDARD_UPLOAD_CONFIG, 
   renderTableHeaderWithSearchAndFilter 
 } from '../templates/UITemplates';
+import { ProductManagementImportCardTemplate } from '../templates/ProductManagementImportCardTemplate';
 import {
   UploadOutlined,
   DownloadOutlined,
@@ -301,31 +300,19 @@ function ProductManagement() {
       </Text>
 
       {/* Import Section */}
-      <Card
+      <ProductManagementImportCardTemplate
         title="Import Products"
-        {...IMPORT_CARD_CONFIG}
-        extra={
-          <Space>
-            <Upload
-              {...STANDARD_UPLOAD_CONFIG}
-              beforeUpload={handleImport}
-            >
-              <Button
-                type="primary"
-                icon={<UploadOutlined />}
-                loading={importLoading}
-              >
-                Import Products (Excel)
-              </Button>
-            </Upload>
-            <Button
-              icon={<DownloadOutlined />}
-              onClick={downloadTemplate}
-            >
-              Download Template
-            </Button>
-          </Space>
-        }
+        uploadButton={{
+          label: 'Import Products (Excel)',
+          icon: <UploadOutlined />,
+          onUpload: handleImport,
+          loading: importLoading,
+        }}
+        downloadButton={{
+          label: 'Download Template',
+          icon: <DownloadOutlined />,
+          onClick: downloadTemplate,
+        }}
       />
 
       {/* Products Table */}

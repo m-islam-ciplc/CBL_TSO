@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import axios from 'axios';
 import { useUser } from '../contexts/UserContext';
 import {
@@ -48,14 +48,15 @@ import {
   STANDARD_TOOLTIP_CONFIG, 
   STANDARD_SPIN_SIZE, 
   STANDARD_MODAL_CONFIG,
-  UniversalCardTemplate, 
   STANDARD_INPUT_NUMBER_SIZE, 
   STANDARD_BUTTON_SIZE, 
-  renderTableHeaderWithSearch 
+  renderTableHeaderWithSearch,
+  createSelectFieldConfig,
 } from '../templates/UITemplates';
 import { useStandardPagination } from '../templates/useStandardPagination';
 import { useCascadingFilters } from '../templates/useCascadingFilters';
 import { renderProductDetailsStack } from '../templates/TableTemplate';
+import { OrdersAndDemandsFilterOrdersTemplate } from '../templates/OrdersAndDemandsFilterOrdersTemplate';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -91,6 +92,7 @@ function PlacedOrders({ refreshTrigger }) {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingOrder, setEditingOrder] = useState(null);
   const [editOrderItems, setEditOrderItems] = useState([]);
+  const liveFilterTimeout = useRef(null);
   const [editLoading, setEditLoading] = useState(false);
   const [editForm] = Form.useForm();
   const [dealerAssignedProducts, setDealerAssignedProducts] = useState([]);
@@ -453,6 +455,35 @@ function PlacedOrders({ refreshTrigger }) {
     filterOrders();
   }, [filterOrders]);
 
+  // Trigger live fetch on filter changes (debounced)
+  const triggerLiveFilters = useCallback(() => {
+    if (liveFilterTimeout.current) {
+      clearTimeout(liveFilterTimeout.current);
+    }
+    liveFilterTimeout.current = setTimeout(() => {
+      loadOrders();
+    }, 400);
+  }, [loadOrders]);
+
+  useEffect(() => {
+    triggerLiveFilters();
+    return () => {
+      if (liveFilterTimeout.current) {
+        clearTimeout(liveFilterTimeout.current);
+      }
+    };
+  }, [
+    startDate,
+    endDate,
+    productFilter,
+    dealerFilter,
+    territoryFilter,
+    tsoUserFilter,
+    orderTypeFilter,
+    searchTerm,
+    triggerLiveFilters,
+  ]);
+
   // Load dropdown data
   useEffect(() => {
     loadDropdownData();
@@ -782,8 +813,8 @@ function PlacedOrders({ refreshTrigger }) {
 
       {/* Filters */}
       <div>
-        <UniversalCardTemplate
-          title="Filter Orders (Universal Template)"
+          <OrdersAndDemandsFilterOrdersTemplate
+          title="Filter Orders"
           datePicker1={{
             label: 'Start Date',
             value: startDate,
@@ -815,13 +846,11 @@ function PlacedOrders({ refreshTrigger }) {
             dateRender: dateCellRender,
           }}
           formFields={[
-            {
+            createSelectFieldConfig({
               label: 'Order Type',
-              type: 'select',
               value: orderTypeFilter,
               onChange: (value) => {
                 setOrderTypeFilter(value);
-                // Trigger filter after state update
                 setTimeout(() => filterOrders(), 0);
               },
               placeholder: 'Select Type',
@@ -830,38 +859,34 @@ function PlacedOrders({ refreshTrigger }) {
                 { value: 'dd', label: 'Daily Demands' },
                 { value: 'all', label: 'All Orders' },
               ],
-            },
+            }),
             {
-              label: 'Territory',
-              type: 'select',
-              value: territoryFilter,
-              onChange: (value) => {
-                setTerritoryFilter(value);
-                // Clear dependent filters when territory changes
-                setDealerFilter(null);
-                setProductFilter(null);
-                // Trigger filter after state updates complete
-                setTimeout(() => filterOrders(), 0);
-              },
-              placeholder: 'All Territories',
-              options: territoriesList && territoriesList.length > 0 
-                ? territoriesList.map(territory => ({ value: territory, label: territory }))
-                : [],
-              allowClear: true,
-              showSearch: true,
+              ...createSelectFieldConfig({
+                label: 'Territory',
+                value: territoryFilter,
+                onChange: (value) => {
+                  setTerritoryFilter(value);
+                  setDealerFilter(null);
+                  setProductFilter(null);
+                  setTimeout(() => filterOrders(), 0);
+                },
+                placeholder: 'All Territories',
+                options: territoriesList && territoriesList.length > 0 
+                  ? territoriesList.map(territory => ({ value: territory, label: territory }))
+                  : [],
+                allowClear: true,
+                showSearch: true,
+              }),
+              flex: 'auto',
             },
-            // TSO User - conditionally shown, but keep original position
-            ...((orderTypeFilter === 'tso' || orderTypeFilter === 'all') ? [{
+            ...((orderTypeFilter === 'tso' || orderTypeFilter === 'all') ? [createSelectFieldConfig({
               label: 'TSO User',
-              type: 'select',
               value: tsoUserFilter,
               onChange: (value) => {
                 setTsoUserFilter(value);
-                // Auto-switch Order Type to SO when TSO user is selected (if currently 'all')
                 if (value && orderTypeFilter === 'all') {
                   setOrderTypeFilter('tso');
                 }
-                // Trigger filter after state update
                 setTimeout(() => filterOrders(), 0);
               },
               placeholder: 'All TSOs',
@@ -870,16 +895,13 @@ function PlacedOrders({ refreshTrigger }) {
                 : [],
               allowClear: true,
               showSearch: true,
-            }] : []),
-            {
+            })] : []),
+            createSelectFieldConfig({
               label: 'Dealer',
-              type: 'select',
               value: dealerFilter,
               onChange: (value) => {
                 setDealerFilter(value);
-                // Clear dependent filter when dealer changes
                 setProductFilter(null);
-                // Trigger filter after state updates complete
                 setTimeout(() => filterOrders(), 0);
               },
               placeholder: territoryFilter ? "Select Dealer" : "All Dealers",
@@ -889,14 +911,12 @@ function PlacedOrders({ refreshTrigger }) {
               })),
               allowClear: true,
               showSearch: true,
-            },
-            {
+            }),
+            createSelectFieldConfig({
               label: 'Product',
-              type: 'select',
               value: productFilter,
               onChange: (value) => {
                 setProductFilter(value);
-                // Trigger filter after state update
                 setTimeout(() => filterOrders(), 0);
               },
               placeholder: !territoryFilter && !dealerFilter ? "Select Territory/Dealer first" : "All Products",
@@ -906,7 +926,7 @@ function PlacedOrders({ refreshTrigger }) {
               })),
               allowClear: true,
               showSearch: true,
-            },
+            }),
           ].slice(0, 4)} // Take first 4 fields to match template limit
           buttons={[
             {

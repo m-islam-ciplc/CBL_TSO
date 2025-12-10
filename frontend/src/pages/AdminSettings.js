@@ -17,11 +17,10 @@ import {
 } from '@ant-design/icons';
 import axios from 'axios';
 import { 
-  STANDARD_CARD_CONFIG,
   STANDARD_PAGE_TITLE_CONFIG, 
-  STANDARD_PAGE_SUBTITLE_CONFIG, 
-  STANDARD_ROW_GUTTER 
+  STANDARD_PAGE_SUBTITLE_CONFIG
 } from '../templates/UITemplates';
+import { AdminSettingsCardTemplate } from '../templates/AdminSettingsCardTemplate';
 
 const { Title, Text } = Typography;
 
@@ -87,69 +86,23 @@ function AdminSettings() {
         Configure application settings and preferences.
       </Text>
 
-      <Card 
-        {...STANDARD_CARD_CONFIG}
-        title="Monthly Forecast Period Settings" 
-      >
-        <Form
-          form={form}
-          onFinish={handleSave}
-          initialValues={{ start_day: startDay }}
-        >
-          <Row gutter={STANDARD_ROW_GUTTER} align="top">
-            <Col flex="none" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-              <Space direction="vertical">
-                <Text strong>Forecast Cycle Start Day:</Text>
-                <Form.Item
-                  name="start_day"
-                  rules={[
-                    { required: true, message: 'Please enter start day' },
-                    { type: 'number', min: 1, max: 31, message: 'Day must be between 1 and 31' }
-                  ]}
-                  style={{ marginBottom: 0 }}
-                >
-                  <InputNumber
-                    style={{ width: '120px' }}
-                    min={1}
-                    max={31}
-                    placeholder="Enter day (1-31)"
-                    disabled={loading}
-                  />
-                </Form.Item>
-              </Space>
-            </Col>
-            <Col flex="none" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-              <Space direction="vertical">
-                <Text strong>Forecast Cycle Preview:</Text>
-                <Tag color="blue" style={{ fontSize: '14px', padding: '4px 12px' }}>
-                  {currentPeriod.start} to {currentPeriod.end}
-                </Tag>
-              </Space>
-            </Col>
-            <Col flex="auto" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-              <Space direction="vertical" style={{ width: '100%' }}>
-                <Text strong>Period Information:</Text>
-                <Text type="secondary" style={{ fontSize: '14px' }}>
-                  Monthly forecast cycle runs from the {startDay}{startDay === 1 ? 'st' : startDay === 2 ? 'nd' : startDay === 3 ? 'rd' : 'th'} of one month to the {(startDay - 1) === 0 ? 'last day' : (startDay - 1) + ((startDay - 1) === 1 ? 'st' : (startDay - 1) === 2 ? 'nd' : (startDay - 1) === 3 ? 'rd' : 'th')} of the next month.
-                </Text>
-              </Space>
-            </Col>
-            <Col flex="none" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-              <Space direction="vertical">
-                <Text>&nbsp;</Text>
-                <Button
-                  type="primary"
-                  icon={<SaveOutlined />}
-                  htmlType="submit"
-                  loading={saving}
-                >
-                  Save Settings
-                </Button>
-              </Space>
-            </Col>
-          </Row>
-        </Form>
-      </Card>
+      <AdminSettingsCardTemplate
+        title="Monthly Forecast Period Settings"
+        startDayField={{
+          value: startDay,
+          onChange: (value) => form.setFieldsValue({ start_day: value }),
+          disabled: loading,
+        }}
+        currentPeriod={currentPeriod}
+        startDay={startDay}
+        saveButton={{
+          label: 'Save Settings',
+          icon: <SaveOutlined />,
+          loading: saving,
+        }}
+        onFormFinish={handleSave}
+        form={form}
+      />
     </div>
   );
 }

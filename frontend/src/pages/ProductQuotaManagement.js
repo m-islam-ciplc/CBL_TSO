@@ -28,8 +28,6 @@ import {
 import dayjs from 'dayjs';
 import { getStandardPaginationConfig } from '../templates/useStandardPagination';
 import { 
-  DATE_SELECTION_CARD_CONFIG, 
-  FORM_CARD_CONFIG, 
   TABLE_CARD_CONFIG,
   STANDARD_PAGE_TITLE_CONFIG, 
   STANDARD_PAGE_SUBTITLE_CONFIG, 
@@ -39,8 +37,13 @@ import {
   STANDARD_TABS_CONFIG, 
   STANDARD_DATE_PICKER_CONFIG, 
   STANDARD_FORM_LABEL_STYLE, 
-  COMPACT_ROW_GUTTER 
+  COMPACT_ROW_GUTTER,
+  STANDARD_INPUT_SIZE,
+  STANDARD_BUTTON_SIZE,
+  UNIVERSAL_CARD_CONFIG,
 } from '../templates/UITemplates';
+import { QuotaAllocationCardTemplate } from '../templates/QuotaAllocationCardTemplate';
+import { PreviouslyAllocatedQuotasCardTemplate } from '../templates/PreviouslyAllocatedQuotasCardTemplate';
 
 const { Title, Text } = Typography;
 
@@ -53,6 +56,7 @@ function ProductQuotaManagement() {
   const [, setLoading] = useState(false);
   const [editingQuota, setEditingQuota] = useState(null); // Track which quota is being edited (key format: productId_territoryName)
   const [pendingQuotaValue, setPendingQuotaValue] = useState(null); // Track pending edit value
+  const [selectedRowKeys, setSelectedRowKeys] = useState([]); // For bulk delete
   
   // New allocation flow state
   const [productSearch, setProductSearch] = useState('');
@@ -352,6 +356,38 @@ useEffect(() => {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning('Please select at least one quota to delete');
+      return;
+    }
+
+    try {
+      const dateStr = selectedDate.format('YYYY-MM-DD');
+      const deletePromises = selectedRowKeys.map(key => {
+        const [productId, territoryName] = key.split('_');
+        return axios.delete(`/api/product-caps/${dateStr}/${productId}/${encodeURIComponent(territoryName)}`);
+      });
+
+      await Promise.all(deletePromises);
+      
+      // Remove from local state
+      const newQuotas = { ...quotas };
+      selectedRowKeys.forEach(key => {
+        delete newQuotas[key];
+      });
+      setQuotas(newQuotas);
+      setSelectedRowKeys([]);
+      message.success(`Successfully deleted ${selectedRowKeys.length} quota(s)`);
+      
+      // Trigger refresh in all TSO pages
+      triggerQuotaRefresh();
+    } catch (_error) {
+      console.error('Error deleting quotas:', _error);
+      message.error('Failed to delete quotas from database');
+    }
+  };
+
   // Get all current allocations for display
   const getAllocations = () => {
     const allocations = [];
@@ -540,6 +576,14 @@ useEffect(() => {
         {current.date()}
       </div>
     );
+  };
+
+  const rowSelection = {
+    selectedRowKeys,
+    onChange: setSelectedRowKeys,
+    getCheckboxProps: (record) => ({
+      name: record.key,
+    }),
   };
 
   const allocationColumns = [
@@ -751,154 +795,119 @@ useEffect(() => {
       <Tabs {...STANDARD_TABS_CONFIG} activeKey={activeTab} onChange={setActiveTab}>
         <TabPane tab="Allocate Daily Quotas" key="allocate">
           {/* Allocation Form */}
-          <Card title="Allocate Daily Quotas" {...FORM_CARD_CONFIG}>
-            <Row gutter={COMPACT_ROW_GUTTER} align="top" justify="space-between" style={{ marginBottom: '12px' }}>
-              <Col xs={24} sm={12} md={2}>
-                <Space direction="vertical" style={{ width: '100%' }}>
-                  <Text strong style={STANDARD_FORM_LABEL_STYLE}>Date:</Text>
-                <DatePicker
-                  {...STANDARD_DATE_PICKER_CONFIG}
-                  value={selectedDate}
-                  onChange={(date) => setSelectedDate(date || dayjs())}
-                  disabledDate={disabledDate}
-                    style={{ width: '100%' }}
-                />
-              </Space>
-            </Col>
-              <Col xs={24} sm={12} md={11}>
-              <Space direction="vertical" style={{ width: '100%' }}>
-                  <Text strong style={STANDARD_FORM_LABEL_STYLE}>Products:</Text>
-                <Space direction="vertical" style={{ width: '100%' }}>
-                  <AutoComplete
-                      style={{ width: '100%' }}
-                    placeholder="Type product name (e.g., dimitris, alpha)"
-                    value={productSearch}
-                    options={filteredProducts.map(p => ({
-                      value: `${p.name} (${p.product_code})`,
-                      label: `${p.name} (${p.product_code})`
-                    }))}
-                    onSearch={setProductSearch}
-                    onSelect={(value) => {
-                      const selected = filteredProducts.find(p => 
-                        `${p.name} (${p.product_code})` === value
-                      );
-                      if (selected) {
-                        handleAddProduct(selected);
-                      }
-                    }}
-                    allowClear
-                  />
-                  {selectedProducts.length > 0 && (
-                    <div style={{ 
-                      marginTop: '4px', 
-                        width: '100%', 
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: '4px'
-                    }}>
-                      {selectedProducts.map(product => (
-                        <Tag
-                          key={product.id}
-                          closable
-                          onClose={() => handleRemoveProduct(product.id)}
-                          style={{ marginBottom: '4px', marginRight: '0' }}
-                        >
-                          {product.name} ({product.product_code})
-                        </Tag>
-                      ))}
-                    </div>
-                  )}
-                </Space>
-              </Space>
-            </Col>
-              <Col xs={24} sm={12} md={6} flex="auto">
-                <Space direction="vertical" style={{ width: '100%' }}>
-                  <Text strong style={STANDARD_FORM_LABEL_STYLE}>Territories:</Text>
-                <Space direction="vertical" style={{ width: '100%' }}>
-                  <AutoComplete
-                      style={{ width: '100%' }}
-                    placeholder="Type territory (e.g., bari, bagura)"
-                    value={territoryInput}
-                    options={filteredTerritories.map(t => ({
-                      value: t,
-                      label: t
-                    }))}
-                    onSearch={setTerritoryInput}
-                    onSelect={(value) => {
-                      handleAddTerritory(value);
-                    }}
-                    allowClear
-                  />
-                  {selectedTerritories.length > 0 && (
-                    <div style={{ 
-                      marginTop: '4px', 
-                      width: '100%', 
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: '4px'
-                    }}>
-                      {selectedTerritories.map(territory => (
-                        <Tag
-                          key={territory}
-                          closable
-                          onClose={() => handleRemoveTerritory(territory)}
-                          style={{ marginBottom: '4px', marginRight: '0' }}
-                        >
-                          {territory}
-                        </Tag>
-                      ))}
-                    </div>
-                  )}
-                </Space>
-              </Space>
-            </Col>
-              <Col xs={24} sm={12} md={2}>
-                <Space direction="vertical" style={{ width: '100%' }}>
-                  <Text strong style={STANDARD_FORM_LABEL_STYLE}>Quota:</Text>
-                <Input
-                    style={{ width: '100%' }}
-                    placeholder="Qty"
-                  value={quotaValue}
-                  onChange={(e) => setQuotaValue(e.target.value)}
-                  onPressEnter={handleAddAllocation}
-                />
-              </Space>
-            </Col>
-              <Col xs={24} sm={12} md={3} flex="none">
-                <Space direction="vertical" style={{ width: '100%' }}>
-                <Text>&nbsp;</Text>
-                <Button
-                  type="primary"
-                  icon={<PlusOutlined />}
-                  onClick={handleAddAllocation}
-                  disabled={selectedProducts.length === 0 || selectedTerritories.length === 0 || !quotaValue}
-                    style={{ width: '100%' }}
-                >
-                  Add
-                </Button>
-              </Space>
-            </Col>
-              <Col xs={24} sm={12} md={3} flex="none">
-                <Space direction="vertical" style={{ width: '100%' }}>
-                  <Text>&nbsp;</Text>
-                <Button
-                  icon={<ReloadOutlined />}
-                  onClick={loadQuotas}
-                    style={{ width: '100%' }}
-                >
-                  Refresh
-                </Button>
-                </Space>
-              </Col>
-            </Row>
-          </Card>
+          <QuotaAllocationCardTemplate
+            title="Allocate Daily Quotas"
+            datePicker1={{
+              label: 'Date',
+              value: selectedDate,
+              onChange: (date) => setSelectedDate(date || dayjs()),
+              placeholder: 'Select date',
+              disabledDate,
+            }}
+            formFields={[
+              {
+                label: 'Products',
+                type: 'autocomplete',
+                value: productSearch,
+                onSearch: setProductSearch,
+                onSelect: (value) => {
+                  const selected = filteredProducts.find(p => 
+                    `${p.name} (${p.product_code})` === value
+                  );
+                  if (selected) {
+                    handleAddProduct(selected);
+                  }
+                },
+                onChange: setProductSearch,
+                placeholder: 'Type product name (e.g., dimitris, alpha)',
+                options: filteredProducts.map(p => ({
+                  value: `${p.name} (${p.product_code})`,
+                  label: `${p.name} (${p.product_code})`
+                })),
+                allowClear: true,
+                enableTagDisplay: true,
+                selectedItems: selectedProducts.map(p => ({
+                  key: p.id,
+                  label: `${p.name} (${p.product_code})`
+                })),
+                onRemoveItem: (key) => {
+                  handleRemoveProduct(key);
+                },
+              },
+              {
+                label: 'Territories',
+                type: 'autocomplete',
+                value: territoryInput,
+                onSearch: setTerritoryInput,
+                onSelect: (value) => {
+                  handleAddTerritory(value);
+                },
+                onChange: setTerritoryInput,
+                placeholder: 'Type territory (e.g., bari, bagura)',
+                options: filteredTerritories.map(t => ({
+                  value: t,
+                  label: t
+                })),
+                allowClear: true,
+                enableTagDisplay: true,
+                selectedItems: selectedTerritories.map(t => ({
+                  key: t,
+                  label: t
+                })),
+                onRemoveItem: (key) => {
+                  handleRemoveTerritory(key);
+                },
+              },
+              {
+                label: 'Quota',
+                type: 'input',
+                value: quotaValue,
+                onChange: (e) => setQuotaValue(e.target.value),
+                onPressEnter: handleAddAllocation,
+                placeholder: 'Qty',
+              },
+            ]}
+            buttons={[
+              {
+                label: 'Add',
+                type: 'primary',
+                icon: <PlusOutlined />,
+                onClick: handleAddAllocation,
+                disabled: selectedProducts.length === 0 || selectedTerritories.length === 0 || !quotaValue,
+              },
+              {
+                label: 'Refresh',
+                type: 'default',
+                icon: <ReloadOutlined />,
+                onClick: loadQuotas,
+              },
+            ]}
+            gutter={COMPACT_ROW_GUTTER}
+          />
 
           {/* Current Allocations Table */}
-          <Card title="Allocated Daily Quotas" {...TABLE_CARD_CONFIG}>
+          <Card 
+            title="Allocated Daily Quotas" 
+            {...TABLE_CARD_CONFIG}
+            extra={
+              selectedRowKeys.length > 0 && (
+                <Button
+                  type="primary"
+                  danger
+                  icon={<DeleteOutlined />}
+                  onClick={handleBulkDelete}
+                  size={STANDARD_BUTTON_SIZE}
+                >
+                  Delete Selected ({selectedRowKeys.length})
+                </Button>
+              )
+            }
+          >
             <Table
               dataSource={getAllocations()}
               columns={allocationColumns}
               rowKey="key"
+              rowSelection={rowSelection}
               pagination={getStandardPaginationConfig('allocations', 20)}
               scroll={{ x: 'max-content' }}
               locale={{ emptyText: 'No allocations yet. Add allocations using the form above.' }}
@@ -908,35 +917,26 @@ useEffect(() => {
         </TabPane>
 
         <TabPane tab="Previously Allocated Quotas" key="history">
-          <Card title="Previously Allocated Quotas" {...DATE_SELECTION_CARD_CONFIG}>
-            <Row gutter={[16, 16]} align="middle">
-              <Col xs={24} sm={12} md={2}>
-                <Space direction="vertical" style={{ width: '100%' }}>
-                  <Text strong>Select Date</Text>
-                  <DatePicker
-                    {...STANDARD_DATE_PICKER_CONFIG}
-                    value={historyDate}
-                    onChange={(value) => setHistoryDate(value || dayjs())}
-                    style={{ width: '100%' }}
-                    disabledDate={disabledHistoryDate}
-                    dateRender={historyDateCellRender}
-                    allowClear={false}
-                  />
-                </Space>
-              </Col>
-            </Row>
-            <Row gutter={[16, 16]} align="middle" style={{ marginTop: 16, marginBottom: 12 }}>
-              <Col>
-                <Button
-                  icon={<ReloadOutlined />}
-                  onClick={loadHistoryQuotas}
-                  disabled={historyLoading}
-                >
-                  Refresh
-                </Button>
-              </Col>
-            </Row>
-            <Card {...TABLE_CARD_CONFIG} style={{ marginTop: '16px' }}>
+          <PreviouslyAllocatedQuotasCardTemplate
+            title="Previously Allocated Quotas"
+            datePicker1={{
+              label: 'Select Date',
+              value: historyDate,
+              onChange: (value) => setHistoryDate(value || dayjs()),
+              placeholder: 'Select date',
+              disabledDate: disabledHistoryDate,
+              dateRender: historyDateCellRender,
+            }}
+            buttons={[
+              {
+                label: 'Refresh',
+                type: 'default',
+                icon: <ReloadOutlined />,
+                onClick: loadHistoryQuotas,
+              },
+            ]}
+          />
+          <Card {...TABLE_CARD_CONFIG} style={{ marginTop: '16px' }}>
             <Table
               dataSource={historyAllocations}
               columns={historyColumns}
@@ -947,7 +947,6 @@ useEffect(() => {
               loading={historyLoading}
               locale={{ emptyText: 'No quotas found for this date.' }}
             />
-            </Card>
           </Card>
         </TabPane>
       </Tabs>

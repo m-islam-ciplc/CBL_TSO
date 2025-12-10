@@ -1,43 +1,29 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
-  Card,
   Typography,
-  Button,
-  Form,
-  Row,
-  Col,
   message,
-  Empty,
-  Spin,
-  Select,
+  Form,
   Input,
 } from 'antd';
 import {
-  CheckOutlined,
-  DeleteOutlined,
   ArrowLeftOutlined,
   PlusOutlined,
   EyeOutlined,
   EditOutlined,
+  CheckOutlined,
 } from '@ant-design/icons';
 import { useUser } from '../contexts/UserContext';
 import { 
-  STANDARD_CARD_CONFIG,
   STANDARD_PAGE_TITLE_CONFIG, 
-  STANDARD_PAGE_SUBTITLE_CONFIG, 
-  MINIMAL_ROW_GUTTER, 
-  TIGHT_ROW_GUTTER, 
-  TIGHT_VERTICAL_ROW_GUTTER, 
-  STANDARD_FORM_LABEL_STYLE, 
-  STANDARD_FORM_SIZE, 
-  STANDARD_SELECT_SIZE, 
-  STANDARD_EMPTY_CONFIG, 
-  STANDARD_SPIN_SIZE 
+  STANDARD_PAGE_SUBTITLE_CONFIG,
 } from '../templates/UITemplates';
+import { ReviewOrdersEmptyOrderCardTemplate } from '../templates/ReviewOrdersEmptyOrderCardTemplate';
+import { ReviewOrdersOrderFormCardTemplate } from '../templates/ReviewOrdersOrderFormCardTemplate';
+import { ReviewOrdersOrderItemsCardTemplate } from '../templates/ReviewOrdersOrderItemsCardTemplate';
+import { ReviewOrdersOrderSummaryCardTemplate } from '../templates/ReviewOrdersOrderSummaryCardTemplate';
 
 const { Title, Text } = Typography;
-const { Option } = Select;
 
 // Helper function to remove M/S prefix from dealer names
 const removeMSPrefix = (name) => {
@@ -351,21 +337,13 @@ const { userId } = useUser();
           Review and submit your orders
         </Text>
 
-        <Card title="Empty Order" {...STANDARD_CARD_CONFIG}>
-          <Empty
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="No items in your order"
-            {...STANDARD_EMPTY_CONFIG}
-          >
-            <Button
-              type="primary"
-              icon={<ArrowLeftOutlined />}
-              onClick={() => window.location.href = '/new-orders'}
-            >
-              Go to New Orders
-            </Button>
-          </Empty>
-        </Card>
+        <ReviewOrdersEmptyOrderCardTemplate
+          button={{
+            label: 'Go to New Orders',
+            icon: <ArrowLeftOutlined />,
+            onClick: () => window.location.href = '/new-orders',
+          }}
+        />
       </div>
     );
   }
@@ -380,246 +358,59 @@ const { userId } = useUser();
       </Text>
 
       {/* Order Form */}
-      <Card {...STANDARD_CARD_CONFIG}>
-        {dataLoading ? (
-          <div style={{ textAlign: 'center', padding: '20px' }}>
-              <Spin size={STANDARD_SPIN_SIZE} />
-            <div style={{ marginTop: '10px', color: '#666' }}>Loading form data...</div>
-          </div>
-        ) : (
-        <div>
-          
-        <Form
-          form={form}
-          layout="horizontal"
-          size={STANDARD_FORM_SIZE}
-        >
-          <Row gutter={MINIMAL_ROW_GUTTER} align="middle">
-            <Form.Item name="orderType" hidden><Input /></Form.Item>
-            <Form.Item name="warehouse" hidden><Input /></Form.Item>
-            <Form.Item name="territoryCode" hidden><Input /></Form.Item>
-
-            <Col xs={24} sm={24} md={12} lg={12}>
-              <Form.Item
-                name="dealer"
-                label={<Text strong style={STANDARD_FORM_LABEL_STYLE}>Dealer</Text>}
-                rules={[{ required: true, message: 'Required' }]}
-                style={{ marginBottom: '8px' }}
-              >
-                  <Select
-                  placeholder="Dealer" 
-                  size={STANDARD_SELECT_SIZE}
-                  style={{ fontSize: '12px' }}
-                  disabled
-                >
-                  {(dropdownData.filteredDealers || dropdownData.dealers) && (dropdownData.filteredDealers || dropdownData.dealers).length > 0 ? (dropdownData.filteredDealers || dropdownData.dealers).map(dealer => (
-                    <Option key={dealer.id} value={dealer.id}>{removeMSPrefix(dealer.name)}</Option>
-                  )) : (
-                    <Option disabled>No dealers loaded</Option>
-                  )}
-                </Select>
-              </Form.Item>
-            </Col>
-
-            <Col xs={24} sm={24} md={12} lg={12}>
-              <Form.Item
-                name="transport"
-                label={<Text strong style={{ fontSize: '12px' }}>Transport</Text>}
-                rules={[{ required: true, message: 'Required' }]}
-                style={{ marginBottom: '8px' }}
-              >
-                  <Select
-                  placeholder="Transport" 
-                  size={STANDARD_SELECT_SIZE}
-                  style={{ fontSize: '12px' }}
-                  disabled
-                >
-                  {dropdownData.transports && dropdownData.transports.length > 0 ? dropdownData.transports.map(transport => (
-                    <Option key={transport.id} value={transport.id}>{transport.truck_details}</Option>
-                  )) : (
-                    <Option disabled>No transports loaded</Option>
-                  )}
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
-        </Form>
-        </div>
-        )}
-      </Card>
+      <ReviewOrdersOrderFormCardTemplate
+        loading={dataLoading}
+        form={form}
+        dealerField={{
+          value: form.getFieldValue('dealer'),
+          options: (dropdownData.filteredDealers || dropdownData.dealers) || [],
+          removeMSPrefix: removeMSPrefix,
+        }}
+        transportField={{
+          value: form.getFieldValue('transport'),
+          options: dropdownData.transports || [],
+        }}
+      />
 
       {/* Order Items Review */}
-      <Card {...STANDARD_CARD_CONFIG}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <Title level={5} style={{ margin: 0 }}>
-            📦 Order Items ({orderItems.length})
-          </Title>
-          <Button
-            type="link"
-            onClick={clearAllItems}
-            style={{ color: '#ff4d4f' }}
-          >
-            Clear All
-          </Button>
-        </div>
-        
-        <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-          {orderItems.map((item, index) => (
-            <Card
-              key={item.id}
-              size="small"
-              style={{ 
-                marginBottom: '12px',
-                borderRadius: '8px',
-                border: '2px solid #f0f0f0'
-              }}
-            >
-              <Row gutter={TIGHT_ROW_GUTTER} align="middle">
-                <Col xs={2} sm={3}>
-                  <div style={{ 
-                    textAlign: 'center',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    color: '#1890ff',
-                    backgroundColor: '#f0f8ff',
-                    padding: '4px',
-                    borderRadius: '4px'
-                  }}>
-                    #{index + 1}
-                  </div>
-                </Col>
-                <Col xs={10} sm={9}>
-                  <div style={{ 
-                    fontSize: '14px', 
-                    fontWeight: 'bold', 
-                    color: '#1890ff',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis'
-                  }}>
-                    {item.product_name}
-                  </div>
-                </Col>
-                <Col xs={12} sm={12} style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <Button
-                      type="primary"
-                      shape="circle"
-                      size={STANDARD_SELECT_SIZE}
-                      icon={<span style={{ fontSize: '12px' }}>-</span>}
-                      onClick={() => updateOrderItem(item.id, 'quantity', Math.max(1, item.quantity - 1))}
-                      style={{ 
-                        width: '28px', 
-                        height: '28px',
-                        minWidth: '28px',
-                        padding: '0'
-                      }}
-                    />
-                    <div style={{
-                      minWidth: '35px',
-                      textAlign: 'center',
-                      fontSize: '14px',
-                      fontWeight: 'bold',
-                      color: '#52c41a',
-                      padding: '4px 4px',
-                      backgroundColor: 'white',
-                      borderRadius: '4px',
-                      border: '1px solid #f0f0f0'
-                    }}>
-                      {item.quantity}
-                    </div>
-                    <Button
-                      type="primary"
-                      shape="circle"
-                      size={STANDARD_SELECT_SIZE}
-                      icon={<span style={{ fontSize: '12px' }}>+</span>}
-                      onClick={() => updateOrderItem(item.id, 'quantity', item.quantity + 1)}
-                      style={{ 
-                        width: '28px', 
-                        height: '28px',
-                        minWidth: '28px',
-                        padding: '0'
-                      }}
-                    />
-                  </div>
-                  <Button
-                    type="primary"
-                    danger
-                    icon={<DeleteOutlined />}
-                    onClick={() => removeOrderItem(item.id)}
-                  />
-                </Col>
-              </Row>
-            </Card>
-          ))}
-        </div>
-      </Card>
+      <ReviewOrdersOrderItemsCardTemplate
+        orderItems={orderItems}
+        onQuantityChange={updateOrderItem}
+        onDeleteItem={removeOrderItem}
+        onClearAll={clearAllItems}
+      />
 
-             {/* Order Summary */}
-       <Card {...STANDARD_CARD_CONFIG}>
-         <Row gutter={TIGHT_VERTICAL_ROW_GUTTER} align="middle">
-           <Col xs={24} sm={12}>
-             <div>
-               <Text strong style={{ fontSize: '16px', color: '#1890ff' }}>
-                 Order Summary
-               </Text>
-               <div style={{ fontSize: '14px', color: '#666', marginTop: '4px' }}>
-                 {orderItems.length} item{orderItems.length !== 1 ? 's' : ''} • 
-                 Total Quantity: {orderItems.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)}
-               </div>
-             </div>
-           </Col>
-           <Col xs={8} sm={4}>
-             <Button
-               danger
-               onClick={() => {
-                 // Clear all order data
-                 setOrderItems([]);
-                 sessionStorage.removeItem('tsoOrderItems');
-                 sessionStorage.removeItem('tsoFormData');
-                 form.resetFields();
-                 message.info('Order cancelled');
-                 window.location.href = '/new-orders';
-               }}
-              style={{ 
-                width: '100%'
-              }}
-            >
-              Cancel Order
-            </Button>
-          </Col>
-          <Col xs={8} sm={4}>
-            <Button
-              type="default"
-              icon={<PlusOutlined />}
-              onClick={() => {
-                // Save current form data before navigating
-                const formValues = form.getFieldsValue();
-                sessionStorage.setItem('tsoFormData', JSON.stringify(formValues));
-                window.location.href = '/new-orders';
-              }}
-              style={{ 
-                width: '100%'
-              }}
-            >
-              Add More
-            </Button>
-          </Col>
-          <Col xs={8} sm={4}>
-            <Button
-              type="primary"
-              loading={loading}
-              icon={<CheckOutlined />}
-              onClick={handleSubmit}
-              style={{ 
-                width: '100%'
-              }}
-            >
-              {loading ? 'Submitting...' : 'Submit'}
-            </Button>
-           </Col>
-         </Row>
-       </Card>
+      {/* Order Summary */}
+      <ReviewOrdersOrderSummaryCardTemplate
+        itemCount={orderItems.length}
+        totalQuantity={orderItems.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)}
+        cancelButton={{
+          label: 'Cancel Order',
+          onClick: () => {
+            setOrderItems([]);
+            sessionStorage.removeItem('tsoOrderItems');
+            sessionStorage.removeItem('tsoFormData');
+            form.resetFields();
+            message.info('Order cancelled');
+            window.location.href = '/new-orders';
+          },
+        }}
+        addMoreButton={{
+          label: 'Add More',
+          icon: <PlusOutlined />,
+          onClick: () => {
+            const formValues = form.getFieldsValue();
+            sessionStorage.setItem('tsoFormData', JSON.stringify(formValues));
+            window.location.href = '/new-orders';
+          },
+        }}
+        submitButton={{
+          label: loading ? 'Submitting...' : 'Submit',
+          icon: <CheckOutlined />,
+          onClick: handleSubmit,
+          loading: loading,
+        }}
+      />
     </div>
   );
 }
