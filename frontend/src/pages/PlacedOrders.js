@@ -47,7 +47,8 @@ import {
   STANDARD_POPCONFIRM_CONFIG, 
   STANDARD_TOOLTIP_CONFIG, 
   STANDARD_SPIN_SIZE, 
-  STANDARD_MODAL_CONFIG, 
+  STANDARD_MODAL_CONFIG,
+  UniversalCardTemplate, 
   STANDARD_INPUT_NUMBER_SIZE, 
   STANDARD_BUTTON_SIZE, 
   renderTableHeaderWithSearch 
@@ -780,202 +781,162 @@ function PlacedOrders({ refreshTrigger }) {
       </Text>
 
       {/* Filters */}
-      <Card title="Filter Orders" {...FILTER_CARD_CONFIG}>
-        {/* Single Row: All Filters - Order Type first (most important) */}
-        <Row gutter={COMPACT_ROW_GUTTER} align="top" justify="space-between" style={{ marginBottom: '12px' }}>
-          <Col xs={24} sm={12} md={3}>
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Text strong style={STANDARD_FORM_LABEL_STYLE}>Order Type</Text>
-              <Select
-                placeholder="Select Type"
-                value={orderTypeFilter}
-                onChange={setOrderTypeFilter}
-                style={{ width: '100%' }}
-                size={STANDARD_INPUT_SIZE}
-              >
-                <Option value="tso">Sales Orders</Option>
-                <Option value="dd">Daily Demands</Option>
-                <Option value="all">All Orders</Option>
-              </Select>
-            </Space>
-          </Col>
-          {createStandardDateRangePicker({
-            startDate,
-            setStartDate,
-            endDate,
-            setEndDate,
-            disabledDate,
-            dateCellRender,
-            availableDates,
-            colSpan: { xs: 24, sm: 12, md: 2 },
-            onStartChange: () => {
+      <div>
+        <UniversalCardTemplate
+          title="Filter Orders (Universal Template)"
+          datePicker1={{
+            label: 'Start Date',
+            value: startDate,
+            onChange: (date) => {
+              setStartDate(date);
               setDateError(''); // Clear error when start date changes
               filterOrders();
             },
-            onEndChange: () => {
+            placeholder: 'Select start date',
+            disabledDate,
+            dateRender: dateCellRender,
+          }}
+          datePicker2={{
+            label: 'End Date (Optional)',
+            value: endDate,
+            onChange: (date) => {
+              setEndDate(date);
               filterOrders(); // Error will be set in filterOrders if invalid
             },
-          })}
-          <Col xs={24} sm={12} md={3}>
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Text strong style={STANDARD_FORM_LABEL_STYLE}>Territory</Text>
-              <Select
-                placeholder="All Territories"
-                value={territoryFilter}
-                onChange={(value) => {
-                  setTerritoryFilter(value);
-                  // Clear dependent filters when territory changes
-                  setDealerFilter(null);
-                  setProductFilter(null);
-                }}
-                style={{ width: '100%' }}
-                size={STANDARD_INPUT_SIZE}
-                allowClear
-                showSearch
-                filterOption={(input, option) => {
-                  const optionText = option?.children?.toString() || '';
-                  return optionText.toLowerCase().includes(input.toLowerCase());
-                }}
-              >
-                {territoriesList && territoriesList.length > 0 ? territoriesList.map(territory => (
-                  <Option key={territory} value={territory}>
-                    {territory}
-                  </Option>
-                )) : null}
-              </Select>
-            </Space>
-          </Col>
-          {(orderTypeFilter === 'tso' || orderTypeFilter === 'all') && (
-            <Col xs={24} sm={12} md={3}>
-              <Space direction="vertical" style={{ width: '100%' }}>
-                <Text strong style={STANDARD_FORM_LABEL_STYLE}>TSO User</Text>
-              <Select
-                  placeholder="All TSOs"
-                  value={tsoUserFilter}
-                  onChange={(value) => {
-                    setTsoUserFilter(value);
-                    // Auto-switch Order Type to SO when TSO user is selected (if currently 'all')
-                    if (value && orderTypeFilter === 'all') {
-                      setOrderTypeFilter('tso');
-                    }
-                  }}
-                style={{ width: '100%' }}
-                size={STANDARD_INPUT_SIZE}
-                allowClear
-                showSearch
-                filterOption={(input, option) => {
-                  const optionText = option?.children?.toString() || '';
-                  return optionText.toLowerCase().includes(input.toLowerCase());
-                }}
-              >
-                  {tsoUsersList && tsoUsersList.length > 0 ? tsoUsersList.map(tso => (
-                    <Option key={tso.id} value={tso.id}>
-                      {tso.name}
-                  </Option>
-                  )) : null}
-              </Select>
-            </Space>
-          </Col>
-          )}
-          <Col xs={24} sm={12} md={4}>
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Text strong style={STANDARD_FORM_LABEL_STYLE}>Dealer</Text>
-              <Select
-                placeholder={territoryFilter ? "Select Dealer" : "All Dealers"}
-                value={dealerFilter}
-                onChange={(value) => {
-                  setDealerFilter(value);
-                  // Clear dependent filter when dealer changes
-                  setProductFilter(null);
-                }}
-                style={{ width: '100%' }}
-                size={STANDARD_INPUT_SIZE}
-                allowClear
-                showSearch
-                disabled={!territoryFilter && territoriesList.length > 0}
-                filterOption={(input, option) => {
-                  const optionText = option?.children?.toString() || '';
-                  return optionText.toLowerCase().includes(input.toLowerCase());
-                }}
-              >
-                {filteredDealersForFilter.map(dealer => (
-                  <Option key={dealer.id} value={dealer.id}>
-                    {removeMSPrefix(dealer.name)}
-                  </Option>
-                ))}
-              </Select>
-            </Space>
-          </Col>
-          <Col xs={24} sm={12} md={4} flex="auto">
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Text strong style={STANDARD_FORM_LABEL_STYLE}>Product</Text>
-              <Select
-                placeholder={!territoryFilter && !dealerFilter ? "Select Territory/Dealer first" : "All Products"}
-                value={productFilter}
-                onChange={setProductFilter}
-                style={{ width: '100%' }}
-                size={STANDARD_INPUT_SIZE}
-                allowClear
-                showSearch
-                disabled={!territoryFilter && !dealerFilter && (territoriesList.length > 0 || dealersList.length > 0)}
-                filterOption={(input, option) => {
-                  const optionText = option?.children?.toString() || '';
-                  return optionText.toLowerCase().includes(input.toLowerCase());
-                }}
-              >
-                {filteredProductsForFilter.map(product => (
-                  <Option key={product.id} value={product.id}>
-                    {product.name}
-                  </Option>
-                ))}
-              </Select>
-            </Space>
-          </Col>
-          <Col xs={24} sm={12} md={3} flex="none">
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Text strong style={STANDARD_FORM_LABEL_STYLE}>Actions</Text>
-              <Space style={{ width: '100%' }}>
-                <Tooltip {...STANDARD_TOOLTIP_CONFIG} title="Reload orders from server without changing current filters">
-                <Button
-                  icon={<ReloadOutlined />}
-                  onClick={loadOrders}
-                  style={{ flex: 1 }}
-                    size={STANDARD_INPUT_SIZE}
-                >
-                  Refresh
-                </Button>
-                </Tooltip>
-                <Tooltip {...STANDARD_TOOLTIP_CONFIG} title="Clear all filters and reset to defaults">
-                <Button
-                  icon={<ClearOutlined />}
-                  onClick={clearFilters}
-                  style={{ flex: 1 }}
-                    size={STANDARD_INPUT_SIZE}
-                >
-                  Clear
-                </Button>
-                </Tooltip>
-              </Space>
-            </Space>
-          </Col>
-        </Row>
+            placeholder: 'Select end date (optional)',
+            disabledDate: (current) => {
+              if (!current) return false;
+              if (startDate && current < startDate.startOf('day')) {
+                return true;
+              }
+              const dateString = current.format('YYYY-MM-DD');
+              return !availableDates.includes(dateString);
+            },
+            dateRender: dateCellRender,
+          }}
+          formFields={[
+            {
+              label: 'Order Type',
+              type: 'select',
+              value: orderTypeFilter,
+              onChange: (value) => {
+                setOrderTypeFilter(value);
+                // Trigger filter after state update
+                setTimeout(() => filterOrders(), 0);
+              },
+              placeholder: 'Select Type',
+              options: [
+                { value: 'tso', label: 'Sales Orders' },
+                { value: 'dd', label: 'Daily Demands' },
+                { value: 'all', label: 'All Orders' },
+              ],
+            },
+            {
+              label: 'Territory',
+              type: 'select',
+              value: territoryFilter,
+              onChange: (value) => {
+                setTerritoryFilter(value);
+                // Clear dependent filters when territory changes
+                setDealerFilter(null);
+                setProductFilter(null);
+                // Trigger filter after state updates complete
+                setTimeout(() => filterOrders(), 0);
+              },
+              placeholder: 'All Territories',
+              options: territoriesList && territoriesList.length > 0 
+                ? territoriesList.map(territory => ({ value: territory, label: territory }))
+                : [],
+              allowClear: true,
+              showSearch: true,
+            },
+            // TSO User - conditionally shown, but keep original position
+            ...((orderTypeFilter === 'tso' || orderTypeFilter === 'all') ? [{
+              label: 'TSO User',
+              type: 'select',
+              value: tsoUserFilter,
+              onChange: (value) => {
+                setTsoUserFilter(value);
+                // Auto-switch Order Type to SO when TSO user is selected (if currently 'all')
+                if (value && orderTypeFilter === 'all') {
+                  setOrderTypeFilter('tso');
+                }
+                // Trigger filter after state update
+                setTimeout(() => filterOrders(), 0);
+              },
+              placeholder: 'All TSOs',
+              options: tsoUsersList && tsoUsersList.length > 0 
+                ? tsoUsersList.map(tso => ({ value: tso.id, label: tso.name }))
+                : [],
+              allowClear: true,
+              showSearch: true,
+            }] : []),
+            {
+              label: 'Dealer',
+              type: 'select',
+              value: dealerFilter,
+              onChange: (value) => {
+                setDealerFilter(value);
+                // Clear dependent filter when dealer changes
+                setProductFilter(null);
+                // Trigger filter after state updates complete
+                setTimeout(() => filterOrders(), 0);
+              },
+              placeholder: territoryFilter ? "Select Dealer" : "All Dealers",
+              options: filteredDealersForFilter.map(dealer => ({
+                value: dealer.id,
+                label: removeMSPrefix(dealer.name),
+              })),
+              allowClear: true,
+              showSearch: true,
+            },
+            {
+              label: 'Product',
+              type: 'select',
+              value: productFilter,
+              onChange: (value) => {
+                setProductFilter(value);
+                // Trigger filter after state update
+                setTimeout(() => filterOrders(), 0);
+              },
+              placeholder: !territoryFilter && !dealerFilter ? "Select Territory/Dealer first" : "All Products",
+              options: filteredProductsForFilter.map(product => ({
+                value: product.id,
+                label: product.name,
+              })),
+              allowClear: true,
+              showSearch: true,
+            },
+          ].slice(0, 4)} // Take first 4 fields to match template limit
+          buttons={[
+            {
+              label: 'Refresh',
+              type: 'default',
+              icon: <ReloadOutlined />,
+              onClick: loadOrders,
+            },
+            {
+              label: 'Clear',
+              type: 'default',
+              icon: <ClearOutlined />,
+              onClick: clearFilters,
+            },
+          ]}
+          gutter={COMPACT_ROW_GUTTER}
+        />
 
         {/* Date Error Alert (if any) */}
         {dateError && (
-          <Row gutter={COMPACT_ROW_GUTTER}>
-            <Col xs={24}>
-              <Alert
-                message={dateError}
-                type="error"
-                showIcon
-                closable
-                onClose={() => setDateError('')}
-                style={{ marginTop: '8px' }}
-              />
-            </Col>
-          </Row>
+          <Alert
+            message={dateError}
+            type="error"
+            showIcon
+            closable
+            onClose={() => setDateError('')}
+            style={{ marginTop: '8px' }}
+          />
         )}
-      </Card>
+      </div>
 
       {/* Orders Table */}
       <Card {...TABLE_CARD_CONFIG}>

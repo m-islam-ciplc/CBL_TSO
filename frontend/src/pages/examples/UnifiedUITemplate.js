@@ -52,11 +52,6 @@ import {
 import { DealerProductCard } from '../../templates/DealerProductCard';
 import { 
   STANDARD_CARD_CONFIG, 
-  FILTER_CARD_CONFIG, 
-  DATE_SELECTION_CARD_CONFIG, 
-  FORM_CARD_CONFIG, 
-  IMPORT_CARD_CONFIG, 
-  ACTION_CARD_CONFIG, 
   TABLE_CARD_CONFIG,
   STANDARD_ROW_GUTTER, 
   STANDARD_TAG_STYLE, 
@@ -85,7 +80,8 @@ import {
   createStandardDateRangePicker,
   getStandardPagination,
   renderTableHeaderWithSearch,
-  renderTableHeaderWithSearchAndFilter
+  renderTableHeaderWithSearchAndFilter,
+  UniversalCardTemplate
 } from '../../templates/UITemplates';
 import { renderStandardExpandedRow, StandardExpandableTable, renderProductDetailsStack } from '../../templates/TableTemplate';
 import '../../App.css';
@@ -105,6 +101,16 @@ function UnifiedUITemplate() {
   const [quantities, setQuantities] = useState({});
   const [expandedRowKeys, setExpandedRowKeys] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
+  
+  // State for Universal Card Template
+  const [universalDate1, setUniversalDate1] = useState(null);
+  const [universalDate2, setUniversalDate2] = useState(null);
+  const [universalFormField1, setUniversalFormField1] = useState(null);
+  const [universalFormField2, setUniversalFormField2] = useState(null);
+  const [universalFormField3, setUniversalFormField3] = useState(null);
+  const [universalFormField4, setUniversalFormField4] = useState(null);
+  const [universalQuantity, setUniversalQuantity] = useState(null);
+  const [universalSearch, setUniversalSearch] = useState('');
 
   // Menu items for navbar demo
   const adminMenuItems = [
@@ -346,73 +352,118 @@ function UnifiedUITemplate() {
         </Text>
         <Space direction="vertical" style={{ width: '100%' }} size={STANDARD_SPACE_SIZE_LARGE}>
           <div>
-            <Card {...FILTER_CARD_CONFIG} title="Filter Card">
-              <Row gutter={STANDARD_ROW_GUTTER}>
-                <Col span={8}>
-                  <Text strong style={STANDARD_FORM_LABEL_STYLE}>Search</Text>
-                  <Input size={STANDARD_INPUT_SIZE} prefix={<SearchOutlined />} placeholder="Search..." />
-                </Col>
-                <Col span={2}>
-                  <Text strong style={STANDARD_FORM_LABEL_STYLE}>Date</Text>
-                  <DatePicker {...STANDARD_DATE_PICKER_CONFIG} style={{ width: '100%' }} />
-                </Col>
-              </Row>
-            </Card>
-          </div>
-
-          <div>
-            <Card {...DATE_SELECTION_CARD_CONFIG} title="Date Selection Card">
-              <Row gutter={STANDARD_ROW_GUTTER}>
-                <Col span={2}>
-                  <Text strong style={STANDARD_FORM_LABEL_STYLE}>Select Date</Text>
-                  <DatePicker {...STANDARD_DATE_PICKER_CONFIG} style={{ width: '100%' }} />
-                </Col>
-              </Row>
-            </Card>
-          </div>
-
-          <div>
-            <Card {...FORM_CARD_CONFIG} title="Form Card">
-              <Row gutter={STANDARD_ROW_GUTTER}>
-                <Col span={2}>
-                  <Text strong style={STANDARD_FORM_LABEL_STYLE}>Date</Text>
-                  <DatePicker {...STANDARD_DATE_PICKER_CONFIG} style={{ width: '100%' }} />
-                </Col>
-                <Col span={12}>
-                  <Text strong style={STANDARD_FORM_LABEL_STYLE}>Quantity</Text>
-                  <InputNumber style={{ width: '100%' }} placeholder="Enter quantity" />
-                </Col>
-              </Row>
-            </Card>
-          </div>
-
-          <div>
-            <Card {...IMPORT_CARD_CONFIG} title="Import Card">
-              <Row gutter={STANDARD_ROW_GUTTER} align="middle">
-                <Col>
-                  <Button type="primary" icon={<UploadOutlined />}>
-                    Import Data (Excel)
-                  </Button>
-                </Col>
-                <Col>
-                  <Button icon={<DownloadOutlined />}>
-                    Download Template
-                  </Button>
-                </Col>
-              </Row>
-            </Card>
-          </div>
-
-          <div>
-            <Card {...ACTION_CARD_CONFIG} title="Action Card">
-              <Row gutter={STANDARD_ROW_GUTTER} align="middle">
-                <Col>
-                  <Button type="primary" icon={<PlusOutlined />}>
-                    Add User
-                  </Button>
-                </Col>
-              </Row>
-            </Card>
+            <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: '8px' }}>
+              Universal Card Template - Consolidated template for Filter Card, Form Card, and Date Selection Card.
+              Includes: 2 date pickers, 4 form fields, 1 quantity field, 1 search bar, and 3 buttons.
+            </Text>
+            <UniversalCardTemplate
+              title="Filter Card"
+              datePicker1={{
+                label: 'Start Date',
+                value: universalDate1,
+                onChange: setUniversalDate1,
+                placeholder: 'Select start date',
+                disabledDate,
+                dateRender: dateCellRender,
+              }}
+              datePicker2={{
+                label: 'End Date',
+                value: universalDate2,
+                onChange: setUniversalDate2,
+                placeholder: 'Select end date',
+                disabledDate,
+                dateRender: dateCellRender,
+              }}
+              formFields={[
+                {
+                  label: 'Territory',
+                  type: 'select',
+                  value: universalFormField1,
+                  onChange: setUniversalFormField1,
+                  placeholder: 'Select territory',
+                  options: [
+                    { value: 'dhaka', label: 'Dhaka' },
+                    { value: 'chittagong', label: 'Chittagong' },
+                    { value: 'sylhet', label: 'Sylhet' },
+                  ],
+                },
+                {
+                  label: 'Dealer',
+                  type: 'select',
+                  value: universalFormField2,
+                  onChange: setUniversalFormField2,
+                  placeholder: 'Select dealer',
+                  options: [
+                    { value: 'dealer1', label: 'Dealer 1' },
+                    { value: 'dealer2', label: 'Dealer 2' },
+                    { value: 'dealer3', label: 'Dealer 3' },
+                  ],
+                },
+                {
+                  label: 'Product',
+                  type: 'select',
+                  value: universalFormField3,
+                  onChange: setUniversalFormField3,
+                  placeholder: 'Select product',
+                  options: [
+                    { value: 'product1', label: 'Product 1' },
+                    { value: 'product2', label: 'Product 2' },
+                    { value: 'product3', label: 'Product 3' },
+                  ],
+                },
+                {
+                  label: 'Status',
+                  type: 'select',
+                  value: universalFormField4,
+                  onChange: setUniversalFormField4,
+                  placeholder: 'Select status',
+                  options: [
+                    { value: 'active', label: 'Active' },
+                    { value: 'inactive', label: 'Inactive' },
+                    { value: 'pending', label: 'Pending' },
+                  ],
+                },
+              ]}
+              quantityField={{
+                label: 'Quantity',
+                value: universalQuantity,
+                onChange: setUniversalQuantity,
+                placeholder: 'Enter quantity',
+              }}
+              searchBar={{
+                value: universalSearch,
+                onChange: (e) => setUniversalSearch(e.target.value),
+                placeholder: 'Search...',
+              }}
+              buttons={[
+                {
+                  label: 'Filter',
+                  type: 'primary',
+                  icon: <SearchOutlined />,
+                  onClick: () => console.log('Filter clicked'),
+                },
+                {
+                  label: 'Reset',
+                  type: 'default',
+                  onClick: () => {
+                    setUniversalDate1(null);
+                    setUniversalDate2(null);
+                    setUniversalFormField1(null);
+                    setUniversalFormField2(null);
+                    setUniversalFormField3(null);
+                    setUniversalFormField4(null);
+                    setUniversalQuantity(null);
+                    setUniversalSearch('');
+                  },
+                },
+                {
+                  label: 'Export',
+                  type: 'default',
+                  icon: <DownloadOutlined />,
+                  onClick: () => console.log('Export clicked'),
+                },
+              ]}
+            />
           </div>
 
           <div>
@@ -675,14 +726,15 @@ function UnifiedUITemplate() {
         </Text>
         <Tabs {...STANDARD_TABS_CONFIG} defaultActiveKey="tab1">
           <Tabs.TabPane tab="Tab 1" key="tab1">
-            <Card {...FILTER_CARD_CONFIG} title="Filter Card in Tab">
-              <Row gutter={STANDARD_ROW_GUTTER}>
-                <Col span={2}>
-                  <Text strong style={STANDARD_FORM_LABEL_STYLE}>Date</Text>
-                  <DatePicker {...STANDARD_DATE_PICKER_CONFIG} style={{ width: '100%' }} />
-                </Col>
-              </Row>
-            </Card>
+            <UniversalCardTemplate
+              title="Filter Card in Tab"
+              datePicker1={{
+                label: 'Date',
+                value: null,
+                onChange: () => {},
+                placeholder: 'Select date',
+              }}
+            />
           </Tabs.TabPane>
           <Tabs.TabPane tab="Tab 2" key="tab2">
             <Card {...STANDARD_CARD_CONFIG}>Content in Tab 2</Card>
@@ -691,7 +743,7 @@ function UnifiedUITemplate() {
       </Card>
 
       {/* 8. INLINE FILTERS */}
-      <Card {...FILTER_CARD_CONFIG} title="8. Inline Filters (Dashboard Pattern)">
+      <Card {...STANDARD_CARD_CONFIG} title="8. Inline Filters (Dashboard Pattern)">
         <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: '12px' }}>
           Inline filter pattern used in Dashboard.js and TSODashboard.js.
           Radio buttons for quick filters combined with date picker for date-based filtering. Used in TSO Dashboard page, Orders section.
