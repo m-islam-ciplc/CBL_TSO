@@ -7,13 +7,13 @@
  * Features:
  * - Title: "Search Products"
  * - Search Input with prefix icon and optional clear button
- * - Uses FILTER_CARD_CONFIG for styling
+ * - Uses FORM_CARD_CONFIG for styling
  */
 
 import { Card, Input } from 'antd';
 import { SearchOutlined, CloseOutlined } from '@ant-design/icons';
 import { 
-  FILTER_CARD_CONFIG, 
+  FORM_CARD_CONFIG, 
   STANDARD_INPUT_SIZE,
 } from './UITemplates';
 
@@ -36,7 +36,7 @@ export const PlaceNewOrdersSearchProductsCardTemplate = ({
   return (
     <Card 
       title={title} 
-      {...FILTER_CARD_CONFIG}
+      {...FORM_CARD_CONFIG}
     >
       <Input
         size={STANDARD_INPUT_SIZE}

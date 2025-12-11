@@ -736,8 +736,6 @@ function PlacedOrders({ refreshTrigger }) {
       render: (_, record) => {
         // Use order_type field, not warehouse_id (since tables are split)
         const isDailyDemand = record.order_type === 'DD' || record.order_type_name === 'DD';
-        const isDealerOrder = record.dealer_id && isDailyDemand;
-        const canEditDealerOrder = isDealerOrder && (isAdmin || isSalesManager);
         
         // Daily Demand orders can be deleted regardless of date (demand may or may not be fulfilled)
         // Sales Orders can only be deleted if they're from today
@@ -748,16 +746,6 @@ function PlacedOrders({ refreshTrigger }) {
         
         return (
           <Space>
-            {canEditDealerOrder && (
-              <Tooltip {...STANDARD_TOOLTIP_CONFIG} title="Edit Order">
-                <Button
-                  type="text"
-                  size={STANDARD_TABLE_SIZE}
-                  icon={<EditOutlined />}
-                  onClick={() => handleEditOrder(record)}
-                />
-              </Tooltip>
-            )}
             {canDelete ? (
               <Popconfirm
                 {...STANDARD_POPCONFIRM_CONFIG}
@@ -814,7 +802,7 @@ function PlacedOrders({ refreshTrigger }) {
       {/* Filters */}
       <div>
           <OrdersAndDemandsFilterOrdersTemplate
-          title="Filter Orders"
+          title="Filter Orders & Demands"
           datePicker1={{
             label: 'Start Date',
             value: startDate,

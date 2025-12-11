@@ -35,7 +35,7 @@ function DealerReports() {
   const [orderProducts, setOrderProducts] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [rangeStart, setRangeStart] = useState(null);
-  const [rangeEnd, setRangeEnd] = useState(null);
+  const [rangeEnd, setRangeEnd] = useState(null); // Will be set to most recent date on load
   const [activeTab, setActiveTab] = useState('daily-demand');
   
   // Monthly Forecast states
@@ -54,21 +54,43 @@ function DealerReports() {
     }
   }, [dealerId]);
 
-  // Set rangeStart to most recent available date when availableDates are loaded
+  // Set rangeEnd to most recent available date when availableDates are loaded
   useEffect(() => {
-    if (availableDates.length > 0 && dealerId && !rangeStart) {
+    if (availableDates.length > 0 && dealerId && !rangeEnd) {
       // Set to most recent date (first in array, sorted DESC)
       const mostRecentDate = availableDates[0];
-      setRangeStart(dayjs(mostRecentDate));
-    } else if (availableDates.length > 0 && dealerId && rangeStart) {
-      // If rangeStart exists but doesn't have orders, switch to most recent date with orders
-      const currentDateStr = rangeStart.format('YYYY-MM-DD');
+      setRangeEnd(dayjs(mostRecentDate));
+    } else if (availableDates.length > 0 && dealerId && rangeEnd) {
+      // If rangeEnd exists but doesn't have orders, switch to most recent date with orders
+      const currentDateStr = rangeEnd.format('YYYY-MM-DD');
       if (!availableDates.includes(currentDateStr)) {
         const mostRecentDate = availableDates[0];
-        setRangeStart(dayjs(mostRecentDate));
+        setRangeEnd(dayjs(mostRecentDate));
       }
     }
   }, [availableDates, dealerId]);
+
+  // Auto-load orders on page load (after available dates are loaded and rangeEnd is set)
+  useEffect(() => {
+    if (dealerId && rangeEnd && availableDates.length > 0) {
+      // Small delay to ensure everything is ready
+      const timer = setTimeout(() => {
+        loadOrders();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [dealerId, rangeEnd, availableDates.length]); // Run when availableDates are loaded or rangeEnd is set
+
+  // Auto-load when end date or start date changes
+  useEffect(() => {
+    if (dealerId && rangeEnd && availableDates.length > 0) {
+      // Small delay to avoid rapid calls
+      const timer = setTimeout(() => {
+        loadOrders();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [rangeEnd, rangeStart]); // Run when rangeEnd or rangeStart changes
 
   // Load periods for forecasts
   useEffect(() => {
@@ -111,13 +133,13 @@ function DealerReports() {
   };
 
   const loadOrders = async () => {
-    if (!rangeStart || !dealerId) {
-      message.error('Please select a start date');
+    if (!rangeEnd || !dealerId) {
+      message.error('Please select an end date');
       return;
     }
 
     // If both dates are selected, treat as date range
-    if (rangeEnd) {
+    if (rangeStart) {
       if (rangeStart.isAfter(rangeEnd)) {
         message.error('Start date cannot be after end date');
         return;
@@ -177,10 +199,10 @@ function DealerReports() {
         setLoading(false);
       }
     } else {
-      // Single date mode
+      // Single date mode - use rangeEnd (no start date selected)
       setLoading(true);
       try {
-        const dateString = rangeStart.format('YYYY-MM-DD');
+        const dateString = rangeEnd.format('YYYY-MM-DD');
         const response = await axios.get('/api/orders/dealer/date', {
           params: {
             dealer_id: dealerId,
@@ -412,7 +434,7 @@ function DealerReports() {
     setLoading(true);
     try {
       // If both dates are selected, treat as date range
-      if (rangeEnd) {
+      if (rangeStart) {
         if (rangeStart.isAfter(rangeEnd)) {
           message.error('Start date cannot be after end date');
           setLoading(false);
@@ -445,8 +467,8 @@ function DealerReports() {
 
         message.success(`Excel report generated successfully for ${startDate} to ${endDate}`);
       } else {
-        // Single date mode
-        const dateString = rangeStart.format('YYYY-MM-DD');
+        // Single date mode - use rangeEnd
+        const dateString = rangeEnd.format('YYYY-MM-DD');
         
         const response = await axios.get(`/api/orders/dealer/daily-demand-report/${dateString}`, {
           responseType: 'blob',
@@ -472,10 +494,10 @@ function DealerReports() {
     } catch (error) {
       console.error('Error generating report:', error);
       if (error.response?.status === 404) {
-        if (rangeEnd) {
+        if (rangeStart) {
           message.error(`No orders found between ${rangeStart.format('YYYY-MM-DD')} and ${rangeEnd.format('YYYY-MM-DD')}`);
         } else {
-          message.error(`No orders found for ${rangeStart.format('YYYY-MM-DD')}`);
+          message.error(`No orders found for ${rangeEnd.format('YYYY-MM-DD')}`);
         }
       } else {
         message.error('Failed to generate report. Please try again.');
@@ -659,7 +681,19 @@ function DealerReports() {
           <DealerReportsViewOrdersCardTemplate
             dateRangePicker={{
               startDate: rangeStart,
-              setStartDate: setRangeStart,
+              setStartDate: (date) => {
+                // When selecting a start date, if a startDate already exists,
+                // move it to endDate, and set the new date as startDate
+                if (date) {
+                  if (rangeStart && rangeStart.isBefore(rangeEnd)) {
+                    // Move previous startDate to endDate
+                    setRangeEnd(rangeStart);
+                  }
+                  setRangeStart(date);
+                } else {
+                  setRangeStart(null);
+                }
+              },
               endDate: rangeEnd,
               setEndDate: setRangeEnd,
               disabledDate,
@@ -671,10 +705,10 @@ function DealerReports() {
               {
                 type: 'default',
                 icon: <EyeOutlined />,
-                label: rangeEnd ? 'View Range' : 'View Orders',
+                label: rangeStart ? 'View Range' : 'View Orders',
                 onClick: loadOrders,
                 loading: loading,
-                disabled: !rangeStart,
+                disabled: !rangeEnd,
               },
               {
                 type: 'primary',
@@ -682,7 +716,7 @@ function DealerReports() {
                 label: 'Export Excel',
                 onClick: handleGenerateReport,
                 loading: loading,
-                disabled: !rangeStart,
+                disabled: !rangeEnd,
               },
             ]}
           />

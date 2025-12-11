@@ -14,32 +14,19 @@
 import { Card, Select, Space, Typography, Tag } from 'antd';
 import { HistoryOutlined, CheckCircleOutlined, FileOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import type { FC } from 'react';
 import { 
   DATE_SELECTION_CARD_CONFIG,
 } from './UITemplates';
+import type { MonthlyForecastSelectPeriodCardTemplateProps } from './types';
 
 const { Text } = Typography;
 const { Option } = Select;
 
 /**
  * Monthly Forecast Select Period Card Template
- * 
- * @param {Object} props
- * @param {string} props.title - Card title (default: "Select Period")
- * @param {Object} props.periodSelect - Period select configuration
- * @param {any} props.periodSelect.value - Selected period value (format: "period_start_period_end")
- * @param {Function} props.periodSelect.onChange - onChange handler: (value) => void
- * @param {string} props.periodSelect.placeholder - Placeholder text (default: "Select forecast period")
- * @param {boolean} props.periodSelect.loading - Whether select is loading (optional)
- * @param {Array<Object>} props.periodSelect.options - Period options array: [{ period_start, period_end, is_current, has_forecast, label }]
- * @param {Function} props.periodSelect.formatLabel - Function to format period label: (period) => string
- * @param {Object} props.periodInfo - Period info display configuration
- * @param {boolean} props.periodInfo.isCurrent - Whether selected period is current
- * @param {string} props.periodInfo.start - Period start date string
- * @param {string} props.periodInfo.end - Period end date string
- * @returns {JSX.Element} Monthly Forecast Select Period card JSX
  */
-export const MonthlyForecastSelectPeriodCardTemplate = ({
+export const MonthlyForecastSelectPeriodCardTemplate: FC<MonthlyForecastSelectPeriodCardTemplateProps> = ({
   title = 'Select Period',
   periodSelect,
   periodInfo,
@@ -69,17 +56,17 @@ export const MonthlyForecastSelectPeriodCardTemplate = ({
                   <Space>
                     {label}
                     {period.is_current && (
-                      <Tag color="green" size="small">
+                      <Tag color="green">
                         <CheckCircleOutlined /> Current
                       </Tag>
                     )}
                     {!period.is_current && period.has_forecast && (
-                      <Tag color="blue" size="small">
+                      <Tag color="blue">
                         <HistoryOutlined /> Historical
                       </Tag>
                     )}
                     {!period.has_forecast && !period.is_current && (
-                      <Tag color="default" size="small">
+                      <Tag color="default">
                         <FileOutlined /> No Data
                       </Tag>
                     )}
@@ -109,5 +96,4 @@ export const MonthlyForecastSelectPeriodCardTemplate = ({
     </Card>
   );
 };
-
 

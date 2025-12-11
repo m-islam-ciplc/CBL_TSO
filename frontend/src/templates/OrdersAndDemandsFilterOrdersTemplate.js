@@ -31,7 +31,7 @@ const { Option } = Select;
  * Orders & Demands Filter Orders Template
  * 
  * @param {Object} props
- * @param {string} props.title - Card title (default: "Filter Orders")
+ * @param {string} props.title - Card title (default: "Filter Orders & Demands")
  * @param {Object} props.datePicker1 - Start date picker configuration
  * @param {Object} props.datePicker2 - End date picker configuration (optional)
  * @param {Array<Object>} props.formFields - Array of form field configurations
@@ -44,7 +44,7 @@ const { Option } = Select;
  * @returns {JSX.Element} Orders & Demands Filter Orders card JSX
  */
 export const OrdersAndDemandsFilterOrdersTemplate = ({
-  title = 'Filter Orders',
+  title = 'Filter Orders & Demands',
   datePicker1,
   datePicker2,
   formFields = [],
@@ -72,6 +72,104 @@ export const OrdersAndDemandsFilterOrdersTemplate = ({
       headStyle={{ textAlign: 'left' }}
     >
       <Row gutter={gutter} align="top">
+        {/* Order Type Field (First Form Field) */}
+        {displayFormFields[0] && (() => {
+          const field = displayFormFields[0];
+          const colFlex = field.flex === 'auto' ? 'auto' : (field.flex || 1);
+          const colStyle = field.flex === 'auto' 
+            ? { flex: '1 1 auto', minWidth: 0 } 
+            : { maxWidth: field.maxWidth || '12.5rem' };
+          return (
+            <Col xs={24} sm={12} flex={colFlex} style={colStyle} key="form-field-0">
+              <Space direction="vertical" style={{ width: '100%' }}>
+                <Text strong style={STANDARD_FORM_LABEL_STYLE}>
+                  {field.label || 'Order Type'}
+                </Text>
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  {field.type === 'input' ? (
+                    <Input
+                      size={STANDARD_INPUT_SIZE}
+                      value={field.value}
+                      onChange={field.onChange}
+                      onPressEnter={field.onPressEnter}
+                      placeholder={field.placeholder || `Enter ${field.label || 'value'}`}
+                      style={{ width: '100%' }}
+                      prefix={field.prefix}
+                      allowClear={field.allowClear !== false}
+                    />
+                  ) : field.type === 'autocomplete' ? (
+                    <>
+                      <AutoComplete
+                        size={STANDARD_INPUT_SIZE}
+                        value={field.value}
+                        onSearch={field.onSearch}
+                        onSelect={field.onSelect}
+                        onChange={field.onChange}
+                        placeholder={field.placeholder || `Type ${field.label || 'value'}`}
+                        style={{ width: '100%' }}
+                        options={field.options}
+                        allowClear={field.allowClear !== false}
+                      />
+                      {field.enableTagDisplay && field.selectedItems && field.selectedItems.length > 0 && (
+                        <div style={STANDARD_TAG_CONTAINER_STYLE}>
+                          {field.selectedItems.map((item) => (
+                            <Tag
+                              key={item.key}
+                              closable
+                              onClose={() => field.onRemoveItem && field.onRemoveItem(item.key)}
+                              style={STANDARD_TAG_ITEM_STYLE}
+                            >
+                              {item.label}
+                            </Tag>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <Select
+                        size={STANDARD_INPUT_SIZE}
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder={field.placeholder || `Select ${field.label || 'option'}`}
+                        style={{ width: '100%' }}
+                        allowClear={field.allowClear !== false}
+                        showSearch={field.showSearch !== false}
+                        loading={field.loading}
+                        disabled={field.disabled}
+                        filterOption={field.showSearch !== false ? (input, option) => {
+                          const optionText = option?.children?.toString() || '';
+                          return optionText.toLowerCase().includes(input.toLowerCase());
+                        } : undefined}
+                      >
+                        {field.options && field.options.map((option) => (
+                          <Option key={option.value} value={option.value}>
+                            {option.label}
+                          </Option>
+                        ))}
+                      </Select>
+                      {field.enableTagDisplay && field.selectedItems && field.selectedItems.length > 0 && (
+                        <div style={STANDARD_TAG_CONTAINER_STYLE}>
+                          {field.selectedItems.map((item) => (
+                            <Tag
+                              key={item.key}
+                              closable
+                              onClose={() => field.onRemoveItem && field.onRemoveItem(item.key)}
+                              style={STANDARD_TAG_ITEM_STYLE}
+                            >
+                              {item.label}
+                            </Tag>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </Space>
+              </Space>
+            </Col>
+          );
+        })()}
+
         {/* Date Pickers */}
         {datePicker1 && (
           <Col xs={24} sm={12} flex={1} style={{ maxWidth: '12.5rem' }}>
@@ -110,8 +208,8 @@ export const OrdersAndDemandsFilterOrdersTemplate = ({
           </Col>
         )}
 
-        {/* 4 Form Fields */}
-        {displayFormFields.map((field, index) => {
+        {/* Remaining Form Fields (skip first one, already rendered) */}
+        {displayFormFields.slice(1).map((field, index) => {
           if (!field) return null;
           const colFlex = field.flex === 'auto' ? 'auto' : (field.flex || 1);
           const colStyle = field.flex === 'auto' 

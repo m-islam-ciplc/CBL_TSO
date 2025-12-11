@@ -40,7 +40,6 @@ import {
   COMPACT_ROW_GUTTER,
   STANDARD_INPUT_SIZE,
   STANDARD_BUTTON_SIZE,
-  UNIVERSAL_CARD_CONFIG,
 } from '../templates/UITemplates';
 import { QuotaAllocationCardTemplate } from '../templates/QuotaAllocationCardTemplate';
 import { PreviouslyAllocatedQuotasCardTemplate } from '../templates/PreviouslyAllocatedQuotasCardTemplate';

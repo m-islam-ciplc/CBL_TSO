@@ -56,7 +56,7 @@ function DailyReport() {
   const [orderProducts, setOrderProducts] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [rangeStart, setRangeStart] = useState(null);
-  const [rangeEnd, setRangeEnd] = useState(null);
+  const [rangeEnd, setRangeEnd] = useState(dayjs()); // On page load, end date is today
   const [previewInfo, setPreviewInfo] = useState('');
   const [previewMode, setPreviewMode] = useState('single');
   const [activeTab, setActiveTab] = useState('daily-report');
@@ -119,6 +119,28 @@ function DailyReport() {
     loadPeriods();
   }, []);
 
+  // Auto-load orders on page load (after available dates are loaded) - only for Order Summary tab
+  useEffect(() => {
+    if (activeTab === 'order-summary' && rangeEnd && availableDates.length > 0) {
+      // Small delay to ensure everything is ready
+      const timer = setTimeout(() => {
+        handlePreviewRange();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab, rangeEnd, availableDates.length]); // Run when tab is active, availableDates are loaded, or rangeEnd is set
+
+  // Auto-load when end date or start date changes - only for Order Summary tab
+  useEffect(() => {
+    if (activeTab === 'order-summary' && rangeEnd && availableDates.length > 0) {
+      // Small delay to avoid rapid calls
+      const timer = setTimeout(() => {
+        handlePreviewRange();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab, rangeEnd, rangeStart]); // Run when tab is active, or rangeEnd/rangeStart changes
+
   // Load forecasts when period changes
   useEffect(() => {
     if (selectedPeriod) {
@@ -175,8 +197,53 @@ function DailyReport() {
   };
 
   const handleGenerateRangeReport = async () => {
-    if (!rangeStart || !rangeEnd) {
-      message.error('Please select both start and end dates');
+    if (!rangeEnd) {
+      message.error('Please select an end date');
+      return;
+    }
+
+    // If only end date is selected (no start date), use it as single date
+    if (!rangeStart) {
+      const dateString = rangeEnd.format('YYYY-MM-DD');
+      setLoading(true);
+      try {
+        const params = {
+          date: dateString,
+        };
+        if (isTSO && territoryName) {
+          params.territory_name = territoryName;
+        }
+        
+        const response = await axios.get('/api/orders/tso-report', {
+          responseType: 'blob',
+          headers: {
+            'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          },
+          params,
+        });
+
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `TSO_Order_Report_${dateString}.xlsx`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+
+        message.success(`Excel report generated for ${dateString}`);
+      } catch (error) {
+        console.error('Error generating report:', error);
+        if (error.response?.status === 404) {
+          message.error(`No orders found for ${dateString}`);
+        } else if (error.response?.data?.error) {
+          message.error(error.response.data.error);
+        } else {
+          message.error('Failed to generate report. Please try again.');
+        }
+      } finally {
+        setLoading(false);
+      }
       return;
     }
 
@@ -232,8 +299,69 @@ function DailyReport() {
   };
 
   const handlePreviewRange = async () => {
-    if (!rangeStart || !rangeEnd) {
-      message.error('Please select both start and end dates to preview');
+    if (!rangeEnd) {
+      message.error('Please select an end date to preview');
+      return;
+    }
+
+    // If only end date is selected (no start date), use it as single date
+    if (!rangeStart) {
+      const dateString = rangeEnd.format('YYYY-MM-DD');
+      setLoading(true);
+      try {
+        const params = {};
+        if (isTSO && territoryName) {
+          params.territory_name = territoryName;
+        }
+        
+        const response = await axios.get(`/api/orders/date/${dateString}`, { params });
+
+        const { orders, total_orders, total_items } = response.data;
+        
+        if (orders.length === 0) {
+          message.info(`No orders found for ${dateString}`);
+          setPreviewMode('single');
+          setShowPreview(false);
+          setPreviewInfo('');
+          return;
+        }
+
+        // Load products for all orders
+        const productPromises = orders.map(async (order) => {
+          try {
+            const productResponse = await axios.get(`/api/orders/${order.order_id}`);
+            return {
+              orderId: order.order_id,
+              products: productResponse.data.items || []
+            };
+          } catch (_error) {
+            console.error(`Error loading products for order ${order.order_id}:`, _error);
+            return {
+              orderId: order.order_id,
+              products: []
+            };
+          }
+        });
+
+        const productResults = await Promise.all(productPromises);
+        const productsMap = {};
+        productResults.forEach(result => {
+          productsMap[result.orderId] = result.products;
+        });
+        setOrderProducts(productsMap);
+
+        setPreviewMode('single');
+        setPreviewData(orders);
+        setShowPreview(true);
+        setPreviewInfo(`Orders for ${dateString}`);
+        
+        message.success(`Found ${total_orders} orders with ${total_items} items for ${dateString}`);
+      } catch (error) {
+        console.error('Error fetching order data:', error);
+        message.error('Failed to fetch order data. Please try again.');
+      } finally {
+        setLoading(false);
+      }
       return;
     }
 
@@ -268,8 +396,8 @@ function DailyReport() {
 
       if (!orders || orders.length === 0) {
         message.info(`No orders found between ${startDate} and ${endDate}`);
-      setPreviewMode('range');
-      setPreviewData([]);
+        setPreviewMode('range');
+        setPreviewData([]);
         setShowPreview(false);
         setPreviewInfo('');
         return;
@@ -705,7 +833,7 @@ function DailyReport() {
         return (
           <Tag color={isTSOOrder ? 'blue' : 'green'} style={STANDARD_TAG_STYLE}>
             {prefix}-{orderId}
-          </Tag>
+        </Tag>
         );
       },
       sorter: (a, b) => a.order_id.localeCompare(b.order_id),
@@ -1834,9 +1962,21 @@ function DailyReport() {
             datePicker1={{
               label: 'Start Date',
               value: rangeStart,
-              onChange: setRangeStart,
+              onChange: (date) => {
+                // When selecting a start date, if a startDate already exists,
+                // move it to endDate, and set the new date as startDate
+                if (date) {
+                  if (rangeStart && rangeStart.isBefore(rangeEnd)) {
+                    // Move previous startDate to endDate
+                    setRangeEnd(rangeStart);
+                  }
+                  setRangeStart(date);
+                } else {
+                  setRangeStart(null);
+                }
+              },
               placeholder: 'Select start date',
-              disabledDate,
+                disabledDate,
               dateRender: dateCellRender,
             }}
             datePicker2={{
@@ -1849,16 +1989,16 @@ function DailyReport() {
             }}
             buttons={[
               {
-                label: 'Preview Range Orders',
+                label: rangeStart ? 'Preview Range Orders' : 'Preview Orders',
                 type: 'default',
                 icon: <EyeOutlined />,
                 onClick: handlePreviewRange,
                 loading: loading,
               },
               {
-                label: 'Download Order Summary',
+                label: rangeStart ? 'Download Order Summary' : 'Download Daily Order Report',
                 type: 'primary',
-                icon: <FileExcelOutlined />,
+                icon: rangeStart ? <FileExcelOutlined /> : <DownloadOutlined />,
                 onClick: handleGenerateRangeReport,
                 loading: loading,
               },
@@ -1866,7 +2006,29 @@ function DailyReport() {
             gutter={COMPACT_ROW_GUTTER}
           />
 
-      {/* Preview Table */}
+      {/* Preview Table - Single Date Mode */}
+          {showPreview && previewMode === 'single' && previewData.length > 0 && (
+        <Card {...TABLE_CARD_CONFIG}>
+          {renderTableHeaderWithSearch({
+            title: previewInfo || 'Orders',
+            count: filteredPreviewData.length,
+            searchTerm: searchTerm,
+            onSearchChange: (e) => setSearchTerm(e.target.value),
+            searchPlaceholder: 'Search orders...'
+          })}
+
+          <Table
+                columns={singleColumns}
+            dataSource={filteredPreviewData}
+                rowKey={(record) => record.order_id || record.id}
+            pagination={getStandardPaginationConfig('orders', 20)}
+            scroll={{ x: 'max-content' }}
+            size={STANDARD_TABLE_SIZE}
+          />
+        </Card>
+      )}
+
+      {/* Preview Table - Range Mode */}
           {showPreview && previewMode === 'range' && previewData.length > 0 && (
         <Card {...TABLE_CARD_CONFIG}>
           {renderTableHeaderWithSearch({
@@ -2180,11 +2342,11 @@ function DailyReport() {
                 type: 'select',
                 value: forecastReportPeriod,
                 onChange: (value) => {
-                  setForecastReportPeriod(value || null);
-                  // Reset other filters when period changes
-                  setForecastReportTerritory(isTSO ? territoryName : null);
-                  setForecastReportDealer(null);
-                  setForecastReportProduct(null);
+                    setForecastReportPeriod(value || null);
+                    // Reset other filters when period changes
+                    setForecastReportTerritory(isTSO ? territoryName : null);
+                    setForecastReportDealer(null);
+                    setForecastReportProduct(null);
                 },
                 placeholder: 'Select Period',
                 options: periods.map((p) => ({
@@ -2201,10 +2363,10 @@ function DailyReport() {
                 type: 'select',
                 value: forecastReportTerritory,
                 onChange: (value) => {
-                  setForecastReportTerritory(value || null);
-                  // Reset dealer and product when territory changes
-                  setForecastReportDealer(null);
-                  setForecastReportProduct(null);
+                      setForecastReportTerritory(value || null);
+                      // Reset dealer and product when territory changes
+                      setForecastReportDealer(null);
+                      setForecastReportProduct(null);
                 },
                 placeholder: 'All Territories',
                 options: filteredForecastReportTerritories.map((t) => ({
@@ -2220,9 +2382,9 @@ function DailyReport() {
                 type: 'select',
                 value: forecastReportDealer,
                 onChange: (value) => {
-                  setForecastReportDealer(value || null);
-                  // Reset product when dealer changes
-                  setForecastReportProduct(null);
+                    setForecastReportDealer(value || null);
+                    // Reset product when dealer changes
+                    setForecastReportProduct(null);
                 },
                 placeholder: 'All Dealers',
                 options: filteredForecastReportDealers.map((d) => ({

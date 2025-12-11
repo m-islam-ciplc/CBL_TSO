@@ -87,7 +87,7 @@ function AdminSettings() {
       </Text>
 
       <AdminSettingsCardTemplate
-        title="Monthly Forecast Period Settings"
+        title="Monthly Forecast Period Settings" 
         startDayField={{
           value: startDay,
           onChange: (value) => form.setFieldsValue({ start_day: value }),
@@ -101,7 +101,7 @@ function AdminSettings() {
           loading: saving,
         }}
         onFormFinish={handleSave}
-        form={form}
+          form={form}
       />
     </div>
   );

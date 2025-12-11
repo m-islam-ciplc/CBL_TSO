@@ -114,7 +114,7 @@ function DealerTemplateCards() {
       {/* MONTHLY FORECAST SELECT PERIOD CARD TEMPLATE */}
       <Card {...STANDARD_CARD_CONFIG} title="Dealer > /monthly-forecast > Monthly Forecast > Select Period">
         <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: '12px' }}>
-          File: <code>MonthlyForecastSelectPeriodCardTemplate.js</code><br/>
+          File: <code>MonthlyForecastSelectPeriodCardTemplate.tsx</code><br/>
           Used in: Monthly Forecast page - Select Period card<br/>
           Features: Period selector with tags (Current, Historical, No Data) and period info display<br/>
           Horizontal gap: N/A (flex wrap layout)
@@ -195,7 +195,7 @@ function DealerTemplateCards() {
       {/* DEALER REPORTS VIEW ORDERS CARD TEMPLATE */}
       <Card {...STANDARD_CARD_CONFIG} title="Dealer > /my-reports > My Reports > View Orders">
         <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: '12px' }}>
-          File: <code>DealerReportsViewOrdersCardTemplate.js</code><br/>
+          File: <code>DealerReportsViewOrdersCardTemplate.tsx</code><br/>
           Used in: Dealer Reports page - View Orders card<br/>
           Features: Date range picker and 2 buttons (View Orders/View Range, Export Excel)<br/>
           Horizontal gap: 16px (STANDARD_ROW_GUTTER)

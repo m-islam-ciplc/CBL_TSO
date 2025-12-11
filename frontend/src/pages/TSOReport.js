@@ -9,13 +9,11 @@ import {
   createStandardDatePickerConfig, 
   STANDARD_PAGE_TITLE_CONFIG, 
   STANDARD_PAGE_SUBTITLE_CONFIG, 
-  STANDARD_TABS_CONFIG, 
   STANDARD_SPIN_SIZE, 
   STANDARD_TABLE_SIZE, 
   renderTableHeaderWithSearch 
 } from '../templates/UITemplates';
-import { TSOReportDailyReportCardTemplate } from '../templates/TSOReportDailyReportCardTemplate';
-import { TSOReportOrderSummaryCardTemplate } from '../templates/TSOReportOrderSummaryCardTemplate';
+import { TSOReportMyOrderReportsCardTemplate } from '../templates/TSOReportMyOrderReportsCardTemplate';
 import { getStandardPaginationConfig } from '../templates/useStandardPagination';
 import { renderProductDetailsStack } from '../templates/TableTemplate';
 
@@ -29,7 +27,8 @@ const removeMSPrefix = (name) => {
 
 function TSOReport() {
   const { userId } = useUser();
-  const [selectedDate, setSelectedDate] = useState(dayjs());
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(dayjs()); // On page load, end date is today
   const [loading, setLoading] = useState(false);
   const [availableDates, setAvailableDates] = useState([]);
   const [previewData, setPreviewData] = useState([]);
@@ -37,11 +36,8 @@ function TSOReport() {
   const [showPreview, setShowPreview] = useState(false);
   const [orderProducts, setOrderProducts] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
-  const [rangeStart, setRangeStart] = useState(null);
-  const [rangeEnd, setRangeEnd] = useState(null);
   const [previewInfo, setPreviewInfo] = useState('');
   const [previewMode, setPreviewMode] = useState('single');
-  const [activeTab, setActiveTab] = useState('single');
 
   // Load available dates on component mount
   useEffect(() => {
@@ -72,18 +68,57 @@ function TSOReport() {
   };
 
   const handleGenerateRangeReport = async () => {
-    if (!rangeStart || !rangeEnd) {
-      message.error('Please select both start and end dates');
+    if (!endDate) {
+      message.error('Please select an end date');
       return;
     }
 
-    if (rangeStart.isAfter(rangeEnd)) {
+    // If only end date is selected (no start date), use it as single date
+    if (!startDate) {
+      const dateString = endDate.format('YYYY-MM-DD');
+      setLoading(true);
+      try {
+        const response = await axios.get(`/api/orders/tso/my-report/${dateString}`, {
+          responseType: 'blob',
+          headers: {
+            'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          },
+          params: {
+            user_id: userId,
+          }
+        });
+
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `TSO_My_Order_Report_${dateString}.xlsx`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+
+        message.success(`Excel report generated successfully for ${dateString}`);
+      } catch (_error) {
+        console.error('Error generating report:', _error);
+        if (_error.response?.status === 404) {
+          message.error(`No orders found for ${dateString}`);
+        } else {
+          message.error('Failed to generate report. Please try again.');
+        }
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // If both dates are selected, use range
+    if (startDate.isAfter(endDate)) {
       message.error('Start date cannot be after end date');
       return;
     }
 
-    const startDate = rangeStart.format('YYYY-MM-DD');
-    const endDate = rangeEnd.format('YYYY-MM-DD');
+    const startDateStr = startDate.format('YYYY-MM-DD');
+    const endDateStr = endDate.format('YYYY-MM-DD');
 
     setLoading(true);
     try {
@@ -102,13 +137,13 @@ function TSOReport() {
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `TSO_My_Order_Report_${startDate}_${endDate}.xlsx`);
+      link.setAttribute('download', `TSO_My_Order_Report_${startDateStr}_${endDateStr}.xlsx`);
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
 
-      message.success(`Excel report generated for ${startDate} to ${endDate}`);
+      message.success(`Excel report generated for ${startDateStr} to ${endDateStr}`);
     } catch (_error) {
       console.error('Error generating range report:', _error);
       if (_error.response?.status === 404) {
@@ -124,25 +159,85 @@ function TSOReport() {
   };
 
   const handlePreviewRange = async () => {
-    if (!rangeStart || !rangeEnd) {
-      message.error('Please select both start and end dates to preview');
+    if (!endDate) {
+      message.error('Please select an end date');
       return;
     }
 
-    if (rangeStart.isAfter(rangeEnd)) {
+    // If only end date is selected (no start date), use it as single date
+    if (!startDate) {
+      setLoading(true);
+      try {
+        const dateString = endDate.format('YYYY-MM-DD');
+        const response = await axios.get(`/api/orders/tso/date/${dateString}`, {
+          params: { user_id: userId }
+        });
+        
+        const { orders, total_orders, total_items } = response.data;
+        
+        if (orders.length === 0) {
+          message.info(`No orders found for ${dateString}`);
+          setPreviewMode('single');
+          setShowPreview(false);
+          setPreviewInfo('');
+          return;
+        }
+
+        // Load products for all orders
+        const productPromises = orders.map(async (order) => {
+          try {
+            const productResponse = await axios.get(`/api/orders/${order.order_id}`);
+            return {
+              orderId: order.order_id,
+              products: productResponse.data.items || []
+            };
+          } catch (_error) {
+            console.error(`Error loading products for order ${order.order_id}:`, _error);
+            return {
+              orderId: order.order_id,
+              products: []
+            };
+          }
+        });
+
+        const productResults = await Promise.all(productPromises);
+        const productsMap = {};
+        productResults.forEach(result => {
+          productsMap[result.orderId] = result.products;
+        });
+        setOrderProducts(productsMap);
+
+        setPreviewMode('single');
+        setPreviewData(orders);
+        setShowPreview(true);
+        setPreviewInfo(`Orders for ${dateString}`);
+        
+        message.success(`Found ${total_orders} orders with ${total_items} items for ${dateString}`);
+        
+      } catch (_error) {
+        console.error('Error fetching order data:', _error);
+        message.error('Failed to fetch order data. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // If both dates are selected, use range
+    if (startDate.isAfter(endDate)) {
       message.error('Start date cannot be after end date');
       return;
     }
 
-    const startDate = rangeStart.format('YYYY-MM-DD');
-    const endDate = rangeEnd.format('YYYY-MM-DD');
+    const startDateStr = startDate.format('YYYY-MM-DD');
+    const endDateStr = endDate.format('YYYY-MM-DD');
 
     setLoading(true);
     try {
       const response = await axios.get('/api/orders/tso/range', {
         params: {
-          startDate,
-          endDate,
+          startDate: startDateStr,
+          endDate: endDateStr,
           user_id: userId,
         },
       });
@@ -155,7 +250,7 @@ function TSOReport() {
       } = response.data;
 
       if (!orders || orders.length === 0) {
-        message.info(`No orders found between ${startDate} and ${endDate}`);
+        message.info(`No orders found between ${startDateStr} and ${endDateStr}`);
         setPreviewMode('range');
         setPreviewData([]);
         setShowPreview(false);
@@ -167,7 +262,7 @@ function TSOReport() {
       setPreviewMode('range');
       setPreviewData(orders);
       setShowPreview(true);
-      setPreviewInfo(`Dealer summary from ${startDate} to ${endDate}`);
+      setPreviewInfo(`Dealer summary from ${startDateStr} to ${endDateStr}`);
 
       const dealerLabel = total_dealers === 1 ? 'dealer' : 'dealers';
       const orderLabel = total_original_orders === 1 ? 'order' : 'orders';
@@ -192,117 +287,27 @@ function TSOReport() {
   // Standard date picker configuration
   const { disabledDate, dateCellRender } = createStandardDatePickerConfig(availableDates);
 
-  const handleGenerateReport = async () => {
-    if (!selectedDate) {
-      message.error('Please select a date');
-      return;
+  // Load today's orders on page load (after available dates are loaded)
+  useEffect(() => {
+    if (userId && endDate && availableDates.length > 0) {
+      // Small delay to ensure everything is ready
+      const timer = setTimeout(() => {
+        handlePreviewRange();
+      }, 300);
+      return () => clearTimeout(timer);
     }
+  }, [userId, endDate, availableDates.length]); // Run when availableDates are loaded or endDate is set
 
-    setLoading(true);
-    try {
-      const dateString = selectedDate ? selectedDate.format('YYYY-MM-DD') : '';
-      if (!dateString) {
-        message.error('Please select a valid date');
-        return;
-      }
-      
-      const response = await axios.get(`/api/orders/tso/my-report/${dateString}`, {
-        responseType: 'blob',
-        headers: {
-          'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        },
-        params: {
-          user_id: userId,
-        }
-      });
-
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `TSO_My_Order_Report_${dateString}.xlsx`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-
-      message.success(`Excel report generated successfully for ${dateString}`);
-    } catch (_error) {
-      console.error('Error generating report:', _error);
-      if (_error.response?.status === 404) {
-        message.error(`No orders found for ${selectedDate ? selectedDate.format('YYYY-MM-DD') : 'selected date'}`);
-      } else {
-        message.error('Failed to generate report. Please try again.');
-      }
-    } finally {
-      setLoading(false);
+  // Auto-load when end date or start date changes
+  useEffect(() => {
+    if (userId && endDate && availableDates.length > 0) {
+      // Small delay to avoid rapid calls
+      const timer = setTimeout(() => {
+        handlePreviewRange();
+      }, 300);
+      return () => clearTimeout(timer);
     }
-  };
-
-  const handlePreviewData = async () => {
-    if (!selectedDate) {
-      message.error('Please select a date');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const dateString = selectedDate ? selectedDate.format('YYYY-MM-DD') : '';
-      if (!dateString) {
-        message.error('Please select a valid date');
-        return;
-      }
-      const response = await axios.get(`/api/orders/tso/date/${dateString}`, {
-        params: { user_id: userId }
-      });
-      
-      const { orders, total_orders, total_items } = response.data;
-      
-      if (orders.length === 0) {
-        message.info(`No orders found for ${dateString}`);
-        setPreviewMode('single');
-        setShowPreview(false);
-        setPreviewInfo('');
-        return;
-      }
-
-      // Load products for all orders
-      const productPromises = orders.map(async (order) => {
-        try {
-          const productResponse = await axios.get(`/api/orders/${order.order_id}`);
-          return {
-            orderId: order.order_id,
-            products: productResponse.data.items || []
-          };
-        } catch (_error) {
-          console.error(`Error loading products for order ${order.order_id}:`, _error);
-          return {
-            orderId: order.order_id,
-            products: []
-          };
-        }
-      });
-
-      const productResults = await Promise.all(productPromises);
-      const productsMap = {};
-      productResults.forEach(result => {
-        productsMap[result.orderId] = result.products;
-      });
-      setOrderProducts(productsMap);
-
-      setPreviewMode('single');
-      setPreviewData(orders);
-      setShowPreview(true);
-      setPreviewInfo(`Orders for ${dateString}`);
-      
-      message.success(`Found ${total_orders} orders with ${total_items} items for ${dateString}`);
-      
-    } catch (_error) {
-      console.error('Error fetching order data:', _error);
-      message.error('Failed to fetch order data. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [endDate, startDate]); // Run when endDate or startDate changes
 
   // Filter preview data
   const filterPreviewData = () => {
@@ -567,66 +572,46 @@ function TSOReport() {
         Generate Excel reports for your orders placed on a specific date or across a date range
       </Text>
 
-      <Tabs {...STANDARD_TABS_CONFIG} activeKey={activeTab} onChange={setActiveTab}>
-        <Tabs.TabPane tab="Daily Report (Single Date)" key="single">
-          <TSOReportDailyReportCardTemplate
-            datePicker={{
-              value: selectedDate,
-              onChange: setSelectedDate,
-              placeholder: 'Select date for report',
-              disabledDate: disabledDate,
-              dateRender: dateCellRender,
-            }}
-            buttons={[
-              {
-                type: 'default',
-                icon: <EyeOutlined />,
-                label: 'Preview Orders',
-                onClick: handlePreviewData,
-                loading: loading,
-              },
-              {
-                type: 'primary',
-                icon: <DownloadOutlined />,
-                label: 'Download Daily Order Report',
-                onClick: handleGenerateReport,
-                loading: loading,
-              },
-            ]}
-          />
-        </Tabs.TabPane>
-
-        <Tabs.TabPane tab="Order Summary (Date Range)" key="range">
-          <TSOReportOrderSummaryCardTemplate
-            dateRangePicker={{
-              startDate: rangeStart,
-              setStartDate: setRangeStart,
-              endDate: rangeEnd,
-              setEndDate: setRangeEnd,
-              disabledDate,
-              dateRender: dateCellRender,
-              availableDates,
-              colSpan: { xs: 24, sm: 12, md: 2 },
-            }}
-            buttons={[
-              {
-                type: 'default',
-                icon: <EyeOutlined />,
-                label: 'Preview Range Orders',
-                onClick: handlePreviewRange,
-                loading: loading,
-              },
-              {
-                type: 'primary',
-                icon: <FileExcelOutlined />,
-                label: 'Download Order Summary',
-                onClick: handleGenerateRangeReport,
-                loading: loading,
-              },
-            ]}
-          />
-        </Tabs.TabPane>
-      </Tabs>
+      <TSOReportMyOrderReportsCardTemplate
+        title="My Order Reports"
+        dateRangePicker={{
+          startDate: startDate,
+          setStartDate: (date) => {
+            // When selecting a start date, if a startDate already exists,
+            // move it to endDate, and set the new date as startDate
+            if (date) {
+              if (startDate && startDate.isBefore(endDate)) {
+                // Move previous startDate to endDate
+                setEndDate(startDate);
+              }
+              setStartDate(date);
+            } else {
+              setStartDate(null);
+            }
+          },
+          endDate: endDate,
+          setEndDate: setEndDate,
+          disabledDate,
+          dateRender: dateCellRender,
+          availableDates,
+        }}
+        buttons={[
+          {
+            type: 'default',
+            icon: <EyeOutlined />,
+            label: startDate ? 'Preview Range Orders' : 'Preview Orders',
+            onClick: handlePreviewRange,
+            loading: loading,
+          },
+          {
+            type: 'primary',
+            icon: startDate ? <FileExcelOutlined /> : <DownloadOutlined />,
+            label: startDate ? 'Download Order Summary' : 'Download Daily Order Report',
+            onClick: handleGenerateRangeReport,
+            loading: loading,
+          },
+        ]}
+      />
 
       {/* Preview Table */}
       {showPreview && previewData.length > 0 && (

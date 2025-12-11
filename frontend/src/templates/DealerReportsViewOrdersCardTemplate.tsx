@@ -8,39 +8,27 @@
  * - Title: "View Orders"
  * - Date range picker (Start Date, End Date)
  * - 2 buttons (View Orders/View Range, Export Excel)
- * - Uses FILTER_CARD_CONFIG for styling
+ * - Uses DATE_SELECTION_CARD_CONFIG for styling
  * - Uses STANDARD_ROW_GUTTER for spacing
  */
 
 import { Row, Col, Button, Card, Space, Typography, DatePicker } from 'antd';
+import type { FC } from 'react';
 import {
-  FILTER_CARD_CONFIG,
+  DATE_SELECTION_CARD_CONFIG,
   STANDARD_BUTTON_SIZE,
   STANDARD_ROW_GUTTER,
   STANDARD_FORM_LABEL_STYLE,
   STANDARD_DATE_PICKER_CONFIG,
 } from './UITemplates';
+import type { DealerReportsViewOrdersCardTemplateProps } from './types';
 
 const { Text } = Typography;
 
 /**
  * Dealer Reports View Orders Card Template
- * 
- * @param {Object} props
- * @param {string} props.title - Card title (default: "View Orders")
- * @param {Object} props.dateRangePicker - Date range picker configuration
- * @param {dayjs.Dayjs|null} props.dateRangePicker.startDate - Start date value
- * @param {Function} props.dateRangePicker.setStartDate - Function to update start date
- * @param {dayjs.Dayjs|null} props.dateRangePicker.endDate - End date value
- * @param {Function} props.dateRangePicker.setEndDate - Function to update end date
- * @param {Function} props.dateRangePicker.disabledDate - disabledDate function: (current) => boolean
- * @param {Function} props.dateRangePicker.dateRender - dateRender function: (current) => ReactNode
- * @param {Array<string>} props.dateRangePicker.availableDates - Array of available date strings
- * @param {Object} props.dateRangePicker.colSpan - Column span configuration (default: { xs: 24, sm: 12, md: 2 })
- * @param {Array<Object>} props.buttons - Array of button configurations (2 buttons: View, Export)
- * @returns {JSX.Element} Dealer Reports View Orders card JSX
  */
-export const DealerReportsViewOrdersCardTemplate = ({
+export const DealerReportsViewOrdersCardTemplate: FC<DealerReportsViewOrdersCardTemplateProps> = ({
   title = 'View Orders',
   dateRangePicker,
   buttons = [],
@@ -55,16 +43,17 @@ export const DealerReportsViewOrdersCardTemplate = ({
   return (
     <Card 
       title={title} 
-      {...FILTER_CARD_CONFIG}
+      {...DATE_SELECTION_CARD_CONFIG}
     >
-      <Row gutter={STANDARD_ROW_GUTTER} align="bottom">
+      <Row gutter={STANDARD_ROW_GUTTER as [number, number]} align="bottom">
         {/* Start Date */}
         {dateRangePicker && (
           <Col xs={24} sm={12} flex={1} style={{ maxWidth: '12.5rem' }}>
             <Space direction="vertical" style={{ width: '100%' }}>
               <Text strong style={STANDARD_FORM_LABEL_STYLE}>Start Date</Text>
               <DatePicker
-                {...STANDARD_DATE_PICKER_CONFIG}
+                format={STANDARD_DATE_PICKER_CONFIG.format}
+                size="small"
                 value={dateRangePicker.startDate}
                 onChange={dateRangePicker.setStartDate}
                 placeholder="Start date"
@@ -80,12 +69,13 @@ export const DealerReportsViewOrdersCardTemplate = ({
         {dateRangePicker && (
           <Col xs={24} sm={12} flex={1} style={{ maxWidth: '12.5rem' }}>
             <Space direction="vertical" style={{ width: '100%' }}>
-              <Text strong style={STANDARD_FORM_LABEL_STYLE}>End Date (Optional)</Text>
+              <Text strong style={STANDARD_FORM_LABEL_STYLE}>End Date</Text>
               <DatePicker
-                {...STANDARD_DATE_PICKER_CONFIG}
+                format={STANDARD_DATE_PICKER_CONFIG.format}
+                size="small"
                 value={dateRangePicker.endDate}
                 onChange={dateRangePicker.setEndDate}
-                placeholder="End date (optional)"
+                placeholder="End date"
                 style={{ width: '100%' }}
                 disabledDate={(current) => {
                   if (!current) return false;
@@ -135,5 +125,4 @@ export const DealerReportsViewOrdersCardTemplate = ({
     </Card>
   );
 };
-
 

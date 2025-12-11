@@ -39,6 +39,9 @@ import DebugPanel from './components/DebugPanel';
 import UnifiedUITemplate from './pages/examples/UnifiedUITemplate';
 import WorkflowTests from './pages/examples/WorkflowTests';
 import DeadCodeCheck from './pages/examples/DeadCodeCheck';
+import TemplateCards from './pages/examples/TemplateCards';
+import TSOTemplateCards from './pages/examples/TSOTemplateCards';
+import DealerTemplateCards from './pages/examples/DealerTemplateCards';
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
@@ -67,7 +70,9 @@ function AppContent() {
   // Redirect to login if not authenticated (except for demo pages and login page)
   useEffect(() => {
     const savedUser = sessionStorage.getItem('user');
-    const isTemplatePage = location.pathname.startsWith('/template-');
+    const isTemplatePage = location.pathname.startsWith('/template-') || 
+                           location.pathname.startsWith('/tso-template-cards') ||
+                           location.pathname.startsWith('/dealer-template-cards');
     const isExamplePage = location.pathname.startsWith('/example-');
     const isDemoPage = location.pathname.startsWith('/demo-');
     const isLoginPage = location.pathname === '/login';
@@ -116,6 +121,9 @@ function AppContent() {
     if (path === '/monthly-forecast') return 'monthly-forecast';
     if (path === '/daily-demand') return 'daily-demand';
     if (path === '/my-reports') return 'my-reports';
+    if (path === '/template-cards') return 'template-cards';
+    if (path === '/tso-template-cards') return 'tso-template-cards';
+    if (path === '/dealer-template-cards') return 'dealer-template-cards';
     return 'dashboard';
   };
 
@@ -310,6 +318,21 @@ function AppContent() {
       icon: <FileExcelOutlined />,
       label: 'My Reports',
     },
+    {
+      key: 'template-cards',
+      icon: <LayoutOutlined />,
+      label: 'Template Cards',
+    },
+    {
+      key: 'tso-template-cards',
+      icon: <LayoutOutlined />,
+      label: 'TSO Card Templates',
+    },
+    {
+      key: 'dealer-template-cards',
+      icon: <LayoutOutlined />,
+      label: 'Dealer Card Templates',
+    },
   ] : isDealer ? [
     {
       key: 'dashboard',
@@ -330,6 +353,21 @@ function AppContent() {
       key: 'my-reports',
       icon: <FileExcelOutlined />,
       label: 'My Reports',
+    },
+    {
+      key: 'template-cards',
+      icon: <LayoutOutlined />,
+      label: 'Template Cards',
+    },
+    {
+      key: 'tso-template-cards',
+      icon: <LayoutOutlined />,
+      label: 'TSO Card Templates',
+    },
+    {
+      key: 'dealer-template-cards',
+      icon: <LayoutOutlined />,
+      label: 'Dealer Card Templates',
     },
   ] : [
     {
@@ -356,6 +394,21 @@ function AppContent() {
       key: 'settings',
       icon: <SettingOutlined />,
       label: 'Settings',
+    },
+    {
+      key: 'template-cards',
+      icon: <LayoutOutlined />,
+      label: 'Template Cards',
+    },
+    {
+      key: 'tso-template-cards',
+      icon: <LayoutOutlined />,
+      label: 'TSO Card Templates',
+    },
+    {
+      key: 'dealer-template-cards',
+      icon: <LayoutOutlined />,
+      label: 'Dealer Card Templates',
     },
   ];
   
@@ -488,6 +541,27 @@ function AppContent() {
                     icon: <CodeOutlined />,
                     onClick: () => navigate('/template-deadcode-check')
                   },
+                  {
+                    type: 'divider'
+                  },
+                  {
+                    key: 'template-cards',
+                    label: 'Template Cards',
+                    icon: <LayoutOutlined />,
+                    onClick: () => navigate('/template-cards')
+                  },
+                  {
+                    key: 'tso-template-cards',
+                    label: 'TSO Card Templates',
+                    icon: <LayoutOutlined />,
+                    onClick: () => navigate('/tso-template-cards')
+                  },
+                  {
+                    key: 'dealer-template-cards',
+                    label: 'Dealer Card Templates',
+                    icon: <LayoutOutlined />,
+                    onClick: () => navigate('/dealer-template-cards')
+                  },
                 ]
               }}
               trigger={['click']}
@@ -618,6 +692,9 @@ function AppContent() {
           <Route path="/template-ui" element={<UnifiedUITemplate />} />
           <Route path="/template-workflow-tests" element={<WorkflowTests />} />
           <Route path="/template-deadcode-check" element={<DeadCodeCheck />} />
+          <Route path="/template-cards" element={<TemplateCards />} />
+          <Route path="/tso-template-cards" element={<TSOTemplateCards />} />
+          <Route path="/dealer-template-cards" element={<DealerTemplateCards />} />
         </Routes>
       </Content>
 
