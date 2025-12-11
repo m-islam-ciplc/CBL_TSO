@@ -29,7 +29,6 @@ import {
 import { DailyOrderReportCardTemplate } from '../templates/DailyOrderReportCardTemplate';
 import { OrderSummaryReportCardTemplate } from '../templates/OrderSummaryReportCardTemplate';
 import { MonthlyForecastsFilterCardTemplate } from '../templates/MonthlyForecastsFilterCardTemplate';
-import { ForecastsByProductTerritoryFilterCardTemplate } from '../templates/ForecastsByProductTerritoryFilterCardTemplate';
 import { ForecastReportFilterCardTemplate } from '../templates/ForecastReportFilterCardTemplate';
 import { getStandardPaginationConfig } from '../templates/useStandardPagination';
 import { STANDARD_EXPANDABLE_TABLE_CONFIG, renderProductDetailsStack } from '../templates/TableTemplate';
@@ -70,6 +69,7 @@ function DailyReport() {
   const [forecastSearchTerm, setForecastSearchTerm] = useState('');
   const [territoryFilter, setTerritoryFilter] = useState(isTSO ? territoryName : null);
   const [dealerFilter, setDealerFilter] = useState(null);
+  const [forecastViewType, setForecastViewType] = useState('dealer'); // 'dealer', 'product', or 'territory'
   const [expandedRowKeys, setExpandedRowKeys] = useState({
     byDealer: [],
     byProduct: [],
@@ -156,7 +156,7 @@ function DailyReport() {
   // Filter forecasts
   useEffect(() => {
     filterForecasts();
-  }, [forecastSearchTerm, territoryFilter, dealerFilter, forecasts]);
+  }, [forecastSearchTerm, territoryFilter, dealerFilter, forecasts, forecastViewType]);
 
   // Load forecast report data when period changes
   useEffect(() => {
@@ -687,18 +687,32 @@ function DailyReport() {
       filtered = filtered.filter((f) => f.territory_name === territoryFilter);
     }
 
-    // Dealer filter
-    if (dealerFilter) {
+    // Dealer filter (only for dealer view)
+    if (forecastViewType === 'dealer' && dealerFilter) {
       filtered = filtered.filter((f) => f.dealer_id === parseInt(dealerFilter));
     }
 
     // Search filter (applied after dealer filter)
     if (forecastSearchTerm) {
-      filtered = filtered.filter(
-        (f) =>
-          f.dealer_name.toLowerCase().includes(forecastSearchTerm.toLowerCase()) ||
-          f.dealer_code.toLowerCase().includes(forecastSearchTerm.toLowerCase())
-      );
+      if (forecastViewType === 'dealer') {
+        filtered = filtered.filter(
+          (f) =>
+            f.dealer_name.toLowerCase().includes(forecastSearchTerm.toLowerCase()) ||
+            f.dealer_code.toLowerCase().includes(forecastSearchTerm.toLowerCase())
+        );
+      } else if (forecastViewType === 'product') {
+        // Search in product names/codes within forecasts
+        filtered = filtered.filter((f) =>
+          f.products.some((p) =>
+            p.product_name.toLowerCase().includes(forecastSearchTerm.toLowerCase()) ||
+            p.product_code.toLowerCase().includes(forecastSearchTerm.toLowerCase())
+          )
+        );
+      } else if (forecastViewType === 'territory') {
+        filtered = filtered.filter((f) =>
+          f.territory_name.toLowerCase().includes(forecastSearchTerm.toLowerCase())
+        );
+      }
     }
 
     setFilteredForecasts(filtered);
@@ -2060,7 +2074,7 @@ function DailyReport() {
           )}
         </Tabs.TabPane>
 
-        {/* Monthly Forecasts Tab */}
+        {/* Monthly Forecasts Tab - Consolidated */}
         <Tabs.TabPane
           tab={
             <span>
@@ -2072,8 +2086,21 @@ function DailyReport() {
         >
           {/* Filters and Actions */}
           <MonthlyForecastsFilterCardTemplate
-            title="Filter Orders"
+            title="Filter Forecasts"
             formFields={[
+              {
+                label: 'View Type',
+                type: 'select',
+                value: forecastViewType,
+                onChange: setForecastViewType,
+                placeholder: 'Select View',
+                options: [
+                  { value: 'dealer', label: 'By Dealer' },
+                  { value: 'product', label: 'By Product' },
+                  { value: 'territory', label: 'By Territory' },
+                ],
+                maxWidth: '12.5rem',
+              },
               {
                 label: 'Period',
                 type: 'select',
@@ -2103,7 +2130,7 @@ function DailyReport() {
                 showSearch: true,
                 flex: 'auto',
               }] : []),
-              {
+              ...(forecastViewType === 'dealer' ? [{
                 label: 'Dealer',
                 type: 'select',
                 value: dealerFilter,
@@ -2115,92 +2142,17 @@ function DailyReport() {
                 })),
                 allowClear: true,
                 showSearch: true,
-              },
-              {
-                label: 'Search',
-                type: 'input',
-                value: forecastSearchTerm,
-                onChange: (e) => setForecastSearchTerm(e.target.value),
-                placeholder: 'Dealer name or code',
-                prefix: <SearchOutlined />,
-                allowClear: true,
-              },
-            ].slice(0, 4)}
-            buttons={[
-              {
-                label: 'Export Excel',
-                type: 'primary',
-                icon: <DownloadOutlined />,
-                onClick: handleForecastExport,
-                disabled: filteredForecasts.length === 0,
-              },
-            ]}
-          />
-
-          <Card {...TABLE_CARD_CONFIG}>
-          <Table
-            columns={dealerColumns}
-            dataSource={filteredForecasts}
-            rowKey="dealer_id"
-            loading={forecastLoading}
-            pagination={getStandardPaginationConfig('dealers', 20)}
-            scroll={{ x: 800 }}
-          />
-          </Card>
-        </Tabs.TabPane>
-
-        {/* Forecasts by Product Tab */}
-        <Tabs.TabPane
-          tab={
-            <span>
-              <FileExcelOutlined />
-              Forecasts by Product
-            </span>
-          }
-          key="forecasts-by-product"
-        >
-          {/* Filters and Actions - Same as by Dealer */}
-          <ForecastsByProductTerritoryFilterCardTemplate
-            title="Filter Forecasts"
-            formFields={[
-              {
-                label: 'Period',
-                type: 'select',
-                value: selectedPeriod,
-                onChange: setSelectedPeriod,
-                placeholder: 'Select Period',
-                options: periods.map((p) => ({
-                  value: p.value,
-                  label: p.is_current ? `${p.label} (Current)` : p.label,
-                })),
-                loading: !selectedPeriod,
-                allowClear: true,
-                showSearch: true,
-                maxWidth: '18rem',
-              },
-              ...(!isTSO ? [{
-                label: 'Territory',
-                type: 'select',
-                value: territoryFilter,
-                onChange: setTerritoryFilter,
-                placeholder: 'All Territories',
-                options: uniqueTerritories.map((t) => ({
-                  value: t,
-                  label: t,
-                })),
-                allowClear: true,
-                showSearch: true,
               }] : []),
               {
                 label: 'Search',
                 type: 'input',
                 value: forecastSearchTerm,
                 onChange: (e) => setForecastSearchTerm(e.target.value),
-                placeholder: 'Dealer name or code',
+                placeholder: forecastViewType === 'dealer' ? 'Dealer name or code' : forecastViewType === 'product' ? 'Product name or code' : 'Territory name',
                 prefix: <SearchOutlined />,
                 allowClear: true,
               },
-            ].slice(0, 3)}
+            ].filter(Boolean).slice(0, 4)}
             buttons={[
               {
                 label: 'Export Excel',
@@ -2212,115 +2164,71 @@ function DailyReport() {
             ]}
           />
 
-          <Card {...EXPANDABLE_TABLE_CARD_CONFIG}>
-          <Table
-            columns={productColumns}
-            dataSource={productSummaryData}
-            rowKey="product_code"
-            loading={forecastLoading}
-            expandable={{
-              expandedRowRender: renderProductExpandedRow,
-              expandedRowKeys: expandedRowKeys.byProduct,
-              onExpandedRowsChange: (keys) => {
-                setExpandedRowKeys({
-                  ...expandedRowKeys,
-                  byProduct: keys,
-                });
-              },
-              expandRowByClick: false,
-              showExpandColumn: false,
-            }}
-            pagination={getStandardPaginationConfig('products', 20)}
-            scroll={{ x: 800 }}
-          />
-          </Card>
-        </Tabs.TabPane>
+          {/* Dealer View */}
+          {forecastViewType === 'dealer' && (
+            <Card {...TABLE_CARD_CONFIG}>
+              <Table
+                columns={dealerColumns}
+                dataSource={filteredForecasts}
+                rowKey="dealer_id"
+                loading={forecastLoading}
+                pagination={getStandardPaginationConfig('dealers', 20)}
+                scroll={{ x: 800 }}
+              />
+            </Card>
+          )}
 
-        {/* Forecasts by Territory Tab */}
-        <Tabs.TabPane
-          tab={
-            <span>
-              <BarChartOutlined />
-              Forecasts by Territory
-            </span>
-          }
-          key="forecasts-by-territory"
-        >
-          {/* Filters and Actions - Same as by Dealer */}
-          <ForecastsByProductTerritoryFilterCardTemplate
-            title="Filter Forecasts"
-            formFields={[
-              {
-                label: 'Period',
-                type: 'select',
-                value: selectedPeriod,
-                onChange: setSelectedPeriod,
-                placeholder: 'Select Period',
-                options: periods.map((p) => ({
-                  value: p.value,
-                  label: p.is_current ? `${p.label} (Current)` : p.label,
-                })),
-                loading: !selectedPeriod,
-                allowClear: true,
-                showSearch: true,
-                maxWidth: '18rem',
-              },
-              ...(!isTSO ? [{
-                label: 'Territory',
-                type: 'select',
-                value: territoryFilter,
-                onChange: setTerritoryFilter,
-                placeholder: 'All Territories',
-                options: uniqueTerritories.map((t) => ({
-                  value: t,
-                  label: t,
-                })),
-                allowClear: true,
-                showSearch: true,
-              }] : []),
-              {
-                label: 'Search',
-                type: 'input',
-                value: forecastSearchTerm,
-                onChange: (e) => setForecastSearchTerm(e.target.value),
-                placeholder: 'Dealer name or code',
-                prefix: <SearchOutlined />,
-                allowClear: true,
-              },
-            ].slice(0, 3)}
-            buttons={[
-              {
-                label: 'Export Excel',
-                type: 'primary',
-                icon: <DownloadOutlined />,
-                onClick: handleForecastExport,
-                disabled: filteredForecasts.length === 0,
-              },
-            ]}
-          />
+          {/* Product View */}
+          {forecastViewType === 'product' && (
+            <Card {...EXPANDABLE_TABLE_CARD_CONFIG}>
+              <Table
+                columns={productColumns}
+                dataSource={productSummaryData}
+                rowKey="product_code"
+                loading={forecastLoading}
+                expandable={{
+                  expandedRowRender: renderProductExpandedRow,
+                  expandedRowKeys: expandedRowKeys.byProduct,
+                  onExpandedRowsChange: (keys) => {
+                    setExpandedRowKeys({
+                      ...expandedRowKeys,
+                      byProduct: keys,
+                    });
+                  },
+                  expandRowByClick: false,
+                  showExpandColumn: false,
+                }}
+                pagination={getStandardPaginationConfig('products', 20)}
+                scroll={{ x: 800 }}
+              />
+            </Card>
+          )}
 
-          <Card {...EXPANDABLE_TABLE_CARD_CONFIG}>
-          <Table
-            columns={territoryColumns}
-            dataSource={territorySummaryData}
-            rowKey="territory_name"
-            loading={forecastLoading}
-            expandable={{
-              expandedRowRender: renderTerritoryExpandedRow,
-              expandedRowKeys: expandedRowKeys.byTerritory,
-              onExpandedRowsChange: (keys) => {
-                setExpandedRowKeys({
-                  ...expandedRowKeys,
-                  byTerritory: keys,
-                });
-              },
-              expandRowByClick: false,
-              showExpandColumn: false,
-            }}
-            pagination={false}
-            scroll={{ x: 800 }}
-          />
-          </Card>
+          {/* Territory View */}
+          {forecastViewType === 'territory' && (
+            <Card {...EXPANDABLE_TABLE_CARD_CONFIG}>
+              <Table
+                columns={territoryColumns}
+                dataSource={territorySummaryData}
+                rowKey="territory_name"
+                loading={forecastLoading}
+                expandable={{
+                  expandedRowRender: renderTerritoryExpandedRow,
+                  expandedRowKeys: expandedRowKeys.byTerritory,
+                  onExpandedRowsChange: (keys) => {
+                    setExpandedRowKeys({
+                      ...expandedRowKeys,
+                      byTerritory: keys,
+                    });
+                  },
+                  expandRowByClick: false,
+                  showExpandColumn: false,
+                }}
+                pagination={false}
+                scroll={{ x: 800 }}
+              />
+            </Card>
+          )}
         </Tabs.TabPane>
 
         {/* Forecast Report Tab - Hierarchical Filtering */}

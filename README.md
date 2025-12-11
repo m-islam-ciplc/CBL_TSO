@@ -40,9 +40,18 @@ docker-compose up -d --build
 ```
 
 **Access Points:**
-- Frontend: http://localhost (main application)
-- Backend API: http://localhost:3002 (API endpoints only)
-- Database: localhost:3307
+- Frontend: http://localhost:5002 (main application - non-default port)
+- Backend API: http://localhost:5001 (API endpoints only - non-default port)
+- Database: localhost:3307 (non-default port to avoid conflict with system MySQL)
+
+**Note:** To use a custom frontend port (e.g., to avoid conflicts), set the `FRONTEND_PORT` environment variable:
+```bash
+# Windows PowerShell
+$env:FRONTEND_PORT="8080"; docker-compose up -d
+
+# Linux/Mac
+FRONTEND_PORT=8080 docker-compose up -d
+```
 
 **For Local Development (without Docker):**
 ```bash
@@ -50,18 +59,28 @@ docker-compose up -d --build
 npm run install:all
 
 # Start backend (in one terminal)
-npm run dev:backend
+# If your MySQL is on default port 3306, use:
+DB_PORT=3306 npm run dev:backend
+
+# Or if MySQL is on port 3307:
+DB_PORT=3307 npm run dev:backend
 
 # Start frontend (in another terminal)
 npm run start:frontend
 
-# Or start both together
-npm run start:all
+# Or start both together (with MySQL on 3306):
+DB_PORT=3306 npm run start:all
 ```
 
+**Note:** 
+- The backend defaults to port **3307** to match Docker, but you can override with `DB_PORT` environment variable
+- If your local MySQL is on the default port **3306**, use `DB_PORT=3306` when starting the backend
+- For MySQL Workbench, connect to the port your MySQL server is actually using (usually 3306 for local MySQL)
+
 **Access Points for Local Dev:**
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:3001
+- Frontend: http://localhost:5002
+- Backend API: http://localhost:5001
+- MySQL: localhost:3307 (non-default port)
 
 ### 4. Stop the Application
 
@@ -87,7 +106,8 @@ Press Ctrl+C in each terminal window
 - Username: `root`
 - Password: `#lme11@@`
 - Host: `localhost`
-- Port: `3306`
+- Port: `3306` (default MySQL port) or `3307` (if configured)
+- **Note:** Backend defaults to 3307, but use `DB_PORT=3306` if your MySQL is on 3306
 
 ## API Endpoints
 

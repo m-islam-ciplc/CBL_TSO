@@ -13,14 +13,14 @@
  *   node test_workflows.js admin
  *   node test_workflows.js tso (TODO)
  *   node test_workflows.js dealer (TODO)
- *   API_URL=http://localhost:3002 node test_workflows.js (for Docker)
+ *   API_URL=http://localhost:5002 node test_workflows.js (for Docker)
  */
 
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const BASE_URL = process.env.API_URL || 'http://localhost:3001';
+const BASE_URL = process.env.API_URL || 'http://localhost:5001';
 
 // Test configuration
 const TEST_CONFIG = {

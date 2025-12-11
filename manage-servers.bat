@@ -35,9 +35,9 @@ echo ========================================
 echo.
 
 REM Check if already running
-netstat -ano | findstr :3001 | findstr LISTENING >nul
+netstat -ano | findstr :5001 | findstr LISTENING >nul
 if not errorlevel 1 (
-    echo ⚠️  Backend server is already running on port 3001
+    echo ⚠️  Backend server is already running on port 5001
     echo.
 ) else (
     echo Installing/Updating backend dependencies...
@@ -51,15 +51,15 @@ if not errorlevel 1 (
     
     echo.
     echo Starting Backend server...
-    start "Backend Server (Port 3001)" cmd /k "cd /d %~dp0backend && npm run dev"
+    start "Backend Server (Port 5001)" cmd /k "cd /d %~dp0backend && npm run dev"
     echo ✅ Backend started in new window
     timeout /t 2 /nobreak >nul
 )
 
 echo.
-netstat -ano | findstr :3002 | findstr LISTENING >nul
+netstat -ano | findstr :5002 | findstr LISTENING >nul
 if not errorlevel 1 (
-    echo ⚠️  Frontend server is already running on port 3002
+    echo ⚠️  Frontend server is already running on port 5002
     echo.
 ) else (
     echo Installing/Updating frontend dependencies...
@@ -73,7 +73,7 @@ if not errorlevel 1 (
     
     echo.
     echo Starting Frontend server...
-    start "Frontend Server (Port 3002)" cmd /k "cd /d %~dp0frontend && set PORT=3002 && npm start"
+    start "Frontend Server (Port 5002)" cmd /k "cd /d %~dp0frontend && set PORT=5002 && npm start"
     echo ✅ Frontend started in new window
 )
 
@@ -83,8 +83,8 @@ echo   SERVERS STARTED
 echo ========================================
 echo.
 echo 📍 Access URLs:
-echo    Frontend: http://localhost:3002
-echo    Backend API: http://localhost:3001
+echo    Frontend: http://localhost:5002
+echo    Backend API: http://localhost:5001
 echo.
 timeout /t 3 /nobreak >nul
 goto MENU
@@ -99,28 +99,28 @@ echo.
 echo Finding and stopping Node.js processes...
 set /a count=0
 
-REM Kill processes on port 3001
-netstat -ano | findstr :3001 | findstr LISTENING >nul
+REM Kill processes on port 5001
+netstat -ano | findstr :5001 | findstr LISTENING >nul
 if not errorlevel 1 (
-    for /f "tokens=5" %%i in ('netstat -ano ^| findstr :3001 ^| findstr LISTENING') do (
-        echo Stopping Backend on port 3001: PID %%i
+    for /f "tokens=5" %%i in ('netstat -ano ^| findstr :5001 ^| findstr LISTENING') do (
+        echo Stopping Backend on port 5001: PID %%i
         taskkill /f /pid %%i >nul 2>&1
         set /a count+=1
     )
 ) else (
-    echo ℹ️  No process found on port 3001
+    echo ℹ️  No process found on port 5001
 )
 
-REM Kill processes on port 3002
-netstat -ano | findstr :3002 | findstr LISTENING >nul
+REM Kill processes on port 5002
+netstat -ano | findstr :5002 | findstr LISTENING >nul
 if not errorlevel 1 (
-    for /f "tokens=5" %%i in ('netstat -ano ^| findstr :3002 ^| findstr LISTENING') do (
-        echo Stopping Frontend on port 3002: PID %%i
+    for /f "tokens=5" %%i in ('netstat -ano ^| findstr :5002 ^| findstr LISTENING') do (
+        echo Stopping Frontend on port 5002: PID %%i
         taskkill /f /pid %%i >nul 2>&1
         set /a count+=1
     )
 ) else (
-    echo ℹ️  No process found on port 3002
+    echo ℹ️  No process found on port 5002
 )
 
 echo.
@@ -167,11 +167,11 @@ echo   SERVER STATUS CHECK
 echo ========================================
 echo.
 
-echo Checking Backend (Port 3001)...
-netstat -ano | findstr :3001 | findstr LISTENING >nul
+echo Checking Backend (Port 5001)...
+netstat -ano | findstr :5001 | findstr LISTENING >nul
 if not errorlevel 1 (
     echo ✅ Backend is RUNNING
-    for /f "tokens=5" %%i in ('netstat -ano ^| findstr :3001 ^| findstr LISTENING') do (
+    for /f "tokens=5" %%i in ('netstat -ano ^| findstr :5001 ^| findstr LISTENING') do (
         echo    PID: %%i
     )
 ) else (
@@ -179,11 +179,11 @@ if not errorlevel 1 (
 )
 
 echo.
-echo Checking Frontend (Port 3002)...
-netstat -ano | findstr :3002 | findstr LISTENING >nul
+echo Checking Frontend (Port 5002)...
+netstat -ano | findstr :5002 | findstr LISTENING >nul
 if not errorlevel 1 (
     echo ✅ Frontend is RUNNING
-    for /f "tokens=5" %%i in ('netstat -ano ^| findstr :3002 ^| findstr LISTENING') do (
+    for /f "tokens=5" %%i in ('netstat -ano ^| findstr :5002 ^| findstr LISTENING') do (
         echo    PID: %%i
     )
 ) else (
@@ -208,14 +208,14 @@ echo.
 pause
 
 REM Check if backend is running and open its window
-netstat -ano | findstr :3001 | findstr LISTENING >nul
+netstat -ano | findstr :5001 | findstr LISTENING >nul
 if not errorlevel 1 (
     echo Opening Backend logs...
     start "Backend Logs" cmd /k "echo Backend logs are shown in the Backend Server window"
 )
 
 REM Check if frontend is running and open its window
-netstat -ano | findstr :3002 | findstr LISTENING >nul
+netstat -ano | findstr :5002 | findstr LISTENING >nul
 if not errorlevel 1 (
     echo Opening Frontend logs...
     start "Frontend Logs" cmd /k "echo Frontend logs are shown in the Frontend Server window"
@@ -229,15 +229,15 @@ goto MENU
 
 :STOP_INTERNAL
 REM Internal function to stop servers (used by restart)
-netstat -ano | findstr :3001 | findstr LISTENING >nul
+netstat -ano | findstr :5001 | findstr LISTENING >nul
 if not errorlevel 1 (
-    for /f "tokens=5" %%i in ('netstat -ano ^| findstr :3001 ^| findstr LISTENING') do (
+    for /f "tokens=5" %%i in ('netstat -ano ^| findstr :5001 ^| findstr LISTENING') do (
         taskkill /f /pid %%i >nul 2>&1
     )
 )
-netstat -ano | findstr :3002 | findstr LISTENING >nul
+netstat -ano | findstr :5002 | findstr LISTENING >nul
 if not errorlevel 1 (
-    for /f "tokens=5" %%i in ('netstat -ano ^| findstr :3002 ^| findstr LISTENING') do (
+    for /f "tokens=5" %%i in ('netstat -ano ^| findstr :5002 ^| findstr LISTENING') do (
         taskkill /f /pid %%i >nul 2>&1
     )
 )
@@ -246,21 +246,21 @@ exit /b
 :START_INTERNAL
 REM Internal function to start servers (used by restart)
 REM Check and start backend
-netstat -ano | findstr :3001 | findstr LISTENING >nul
+netstat -ano | findstr :5001 | findstr LISTENING >nul
 if errorlevel 1 (
     if not exist backend\node_modules (
         cd backend
         call npm install
         cd ..
     )
-    start "Backend Server (Port 3001)" cmd /k "cd /d %~dp0backend && npm run dev"
+    start "Backend Server (Port 5001)" cmd /k "cd /d %~dp0backend && npm run dev"
     timeout /t 2 /nobreak >nul
 )
 
 REM Check and start frontend
-netstat -ano | findstr :3002 | findstr LISTENING >nul
+netstat -ano | findstr :5002 | findstr LISTENING >nul
 if errorlevel 1 (
-    start "Frontend Server (Port 3002)" cmd /k "cd /d %~dp0frontend && set PORT=3002 && npm start"
+    start "Frontend Server (Port 5002)" cmd /k "cd /d %~dp0frontend && set PORT=5002 && npm start"
 )
 exit /b
 

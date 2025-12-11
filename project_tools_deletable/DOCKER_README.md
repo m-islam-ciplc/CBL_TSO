@@ -22,7 +22,7 @@ This comprehensive guide explains how to deploy and manage the CBL Sales Orders 
 - Docker Engine 20.10+ 
 - Docker Compose 2.0+
 - At least 2GB RAM available for containers
-- Ports 80, 3002, and 3307 available on your system
+- Ports 5001 (backend, or custom BACKEND_PORT), 5002 (frontend, or custom FRONTEND_PORT), and 3307 available on your system
 
 ## Quick Start
 
@@ -50,9 +50,10 @@ This comprehensive guide explains how to deploy and manage the CBL Sales Orders 
 
 The application consists of three services:
 
-> **Note:** Ports have been configured to avoid conflicts with existing services:
+> **Note:** Ports have been configured to use non-default ports to avoid conflicts:
 > - MySQL: 3307 (external) to avoid conflict with system MySQL on 3306
-> - Backend: 3002 (external) to avoid conflict with existing backend on 3001
+> - Backend: 5001 (external and internal) - non-default port
+> - Frontend: 5002 (external) - non-default port
 
 ### 1. MySQL Database (`mysql`)
 - **Port:** 3307 (external), 3306 (internal)
@@ -62,14 +63,15 @@ The application consists of three services:
 - **Root Password:** cbl_so_root_password
 
 ### 2. Backend API (`backend`)
-- **Port:** 3002 (external), 3001 (internal)
-- **Health Check:** http://localhost:3002/health
+- **Port:** 5001 (external and internal - non-default port)
+- **Health Check:** http://localhost:5001/health
 - **Environment:** Production Node.js
 
 ### 3. Frontend Web App (`frontend`)
-- **Port:** 80
-- **URL:** http://localhost
+- **Port:** 5002 (default, non-default port, configurable via FRONTEND_PORT environment variable)
+- **URL:** http://localhost:5002 (or http://localhost:${FRONTEND_PORT} if custom)
 - **Serves:** React build with Nginx
+- **Note:** Uses non-default port (5002) to avoid conflicts. Can be customized via FRONTEND_PORT env var if needed.
 
 ## Configuration
 
@@ -219,7 +221,7 @@ docker system prune -a --volumes
 docker-compose ps
 
 # 2. Test backend health
-curl http://localhost:3002/health
+curl http://localhost:5001/health
 
 # 3. Test frontend
 curl http://localhost
@@ -339,12 +341,12 @@ docker-compose exec mysql mysqldump -u cbl_so_user -p cbl_so > backup_${DATE}.sq
    ```bash
    # Check what's using ports (Windows)
    netstat -ano | findstr :80
-   netstat -ano | findstr :3002
+   netstat -ano | findstr :5002
    netstat -ano | findstr :3307
    
    # Check what's using ports (Linux/Mac)
    netstat -tulpn | grep :80
-   netstat -tulpn | grep :3002
+   netstat -tulpn | grep :5002
    netstat -tulpn | grep :3307
    ```
 
@@ -375,7 +377,7 @@ docker-compose exec mysql mysqldump -u cbl_so_user -p cbl_so > backup_${DATE}.sq
    docker-compose restart backend
    
    # Test health endpoint directly
-   curl http://localhost:3002/health
+   curl http://localhost:5001/health
    ```
 
 5. **API proxy not working (404 errors):**
@@ -384,7 +386,7 @@ docker-compose exec mysql mysqldump -u cbl_so_user -p cbl_so > backup_${DATE}.sq
    curl http://localhost/api/dealers
    
    # Test API directly
-   curl http://localhost:3002/api/dealers
+   curl http://localhost:5001/api/dealers
    
    # Rebuild frontend if nginx config changed
    docker-compose up -d --build frontend

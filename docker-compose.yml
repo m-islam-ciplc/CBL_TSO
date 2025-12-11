@@ -42,8 +42,9 @@ services:
       DB_USER: cbl_so_user
       DB_PASSWORD: cbl_so_password
       DB_NAME: cbl_so
+      PORT: 5001  # Set internal port to 5001 (non-default)
     ports:
-      - "3002:3001"
+      - "${BACKEND_PORT:-5001}:5001"  # Default to port 5001 (non-default), can be overridden with BACKEND_PORT env var
     volumes:
       - ./backend/uploads:/app/uploads
     depends_on:
@@ -52,7 +53,7 @@ services:
     networks:
       - cbl-so-network
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5001/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -66,7 +67,7 @@ services:
     container_name: cbl-so-frontend
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "${FRONTEND_PORT:-5002}:80"  # Default to port 5002 (non-default), can be overridden with FRONTEND_PORT env var
     depends_on:
       backend:
         condition: service_healthy

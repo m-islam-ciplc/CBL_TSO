@@ -41,7 +41,7 @@ docker-compose ps
 echo "🔍 Checking health endpoints..."
 
 # Check backend health
-if curl -f http://localhost:3002/health > /dev/null 2>&1; then
+if curl -f http://localhost:5001/health > /dev/null 2>&1; then
     echo "✅ Backend is healthy"
 else
     echo "❌ Backend health check failed"
@@ -66,7 +66,7 @@ echo "🎉 Deployment completed!"
 echo ""
 echo "📋 Service URLs:"
 echo "   Frontend: http://localhost"
-echo "   Backend API: http://localhost:3002"
+echo "   Backend API: http://localhost:5001"
 echo "   Database: localhost:3307"
 echo ""
 echo "📚 Useful commands:"

@@ -1381,7 +1381,7 @@ async function buildWorksheetStructure(worksheet, orders, options = {}) {
 }
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 5001;
 
 // Middleware
 app.use(cors());
@@ -1453,7 +1453,7 @@ const db = mysql.createPool({
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '#lme11@@',
     database: process.env.DB_NAME || 'cbl_so',
-    port: parseInt(process.env.DB_PORT || '3306', 10),
+    port: parseInt(process.env.DB_PORT || '3307', 10),
     waitForConnections: true,
     connectionLimit: parseInt(process.env.DB_CONNECTION_LIMIT || '10', 10),
     queueLimit: 0,
@@ -6185,7 +6185,7 @@ app.post('/api/tests/run-admin-workflow', (req, res) => {
     const testProcess = spawn('node', [testScriptPath, testType], {
         cwd: path.join(__dirname, '..'), // Run from project root
         stdio: ['inherit', 'pipe', 'pipe'],
-        env: { ...process.env, API_URL: process.env.API_URL || 'http://localhost:3001' }
+        env: { ...process.env, API_URL: process.env.API_URL || 'http://localhost:5001' }
     });
     
     // Send stdout lines as JSON lines

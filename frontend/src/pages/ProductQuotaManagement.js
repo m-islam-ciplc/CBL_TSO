@@ -110,7 +110,7 @@ useEffect(() => {
     // Use /api/quota-stream for Docker (Nginx proxy) or direct localhost for local dev
     const sseUrl = process.env.NODE_ENV === 'production' 
       ? '/api/quota-stream' 
-      : 'http://localhost:3001/api/quota-stream';
+      : 'http://localhost:5001/api/quota-stream';
     const eventSource = new EventSource(sseUrl);
 
     eventSource.onmessage = (event) => {

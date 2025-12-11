@@ -26,14 +26,14 @@ function WorkflowTests() {
       description: 'Run from the backend directory'
     },
     {
-      label: 'For Docker (port 3002)',
-      command: '$env:API_URL=\'http://localhost:3002\'\nnode project_tools_deletable/test_scripts/test_workflows.js admin',
+      label: 'For Docker (port 5002)',
+      command: '$env:API_URL=\'http://localhost:5002\'\nnode project_tools_deletable/test_scripts/test_workflows.js admin',
       description: 'If using Docker with different port',
       os: 'Windows'
     },
     {
-      label: 'For Docker (port 3002) - Linux/Mac',
-      command: 'API_URL=\'http://localhost:3002\' node project_tools_deletable/test_scripts/test_workflows.js admin',
+      label: 'For Docker (port 5002) - Linux/Mac',
+      command: 'API_URL=\'http://localhost:5002\' node project_tools_deletable/test_scripts/test_workflows.js admin',
       description: 'If using Docker with different port',
       os: 'Linux/Mac'
     }
@@ -51,14 +51,14 @@ function WorkflowTests() {
       description: 'Run from the backend directory'
     },
     {
-      label: 'For Docker (port 3002)',
-      command: '$env:API_URL=\'http://localhost:3002\'\nnode project_tools_deletable/test_scripts/test_workflows.js tso',
+      label: 'For Docker (port 5002)',
+      command: '$env:API_URL=\'http://localhost:5002\'\nnode project_tools_deletable/test_scripts/test_workflows.js tso',
       description: 'If using Docker with different port',
       os: 'Windows'
     },
     {
-      label: 'For Docker (port 3002) - Linux/Mac',
-      command: 'API_URL=\'http://localhost:3002\' node project_tools_deletable/test_scripts/test_workflows.js tso',
+      label: 'For Docker (port 5002) - Linux/Mac',
+      command: 'API_URL=\'http://localhost:5002\' node project_tools_deletable/test_scripts/test_workflows.js tso',
       description: 'If using Docker with different port',
       os: 'Linux/Mac'
     }
@@ -76,14 +76,14 @@ function WorkflowTests() {
       description: 'Run from the backend directory'
     },
     {
-      label: 'For Docker (port 3002)',
-      command: '$env:API_URL=\'http://localhost:3002\'\nnode project_tools_deletable/test_scripts/test_workflows.js dealer',
+      label: 'For Docker (port 5002)',
+      command: '$env:API_URL=\'http://localhost:5002\'\nnode project_tools_deletable/test_scripts/test_workflows.js dealer',
       description: 'If using Docker with different port',
       os: 'Windows'
     },
     {
-      label: 'For Docker (port 3002) - Linux/Mac',
-      command: 'API_URL=\'http://localhost:3002\' node project_tools_deletable/test_scripts/test_workflows.js dealer',
+      label: 'For Docker (port 5002) - Linux/Mac',
+      command: 'API_URL=\'http://localhost:5002\' node project_tools_deletable/test_scripts/test_workflows.js dealer',
       description: 'If using Docker with different port',
       os: 'Linux/Mac'
     }
@@ -101,14 +101,14 @@ function WorkflowTests() {
       description: 'Run from the backend directory'
     },
     {
-      label: 'For Docker (port 3002)',
-      command: '$env:API_URL=\'http://localhost:3002\'\nnode project_tools_deletable/test_scripts/test_workflows.js setup',
+      label: 'For Docker (port 5002)',
+      command: '$env:API_URL=\'http://localhost:5002\'\nnode project_tools_deletable/test_scripts/test_workflows.js setup',
       description: 'If using Docker with different port',
       os: 'Windows'
     },
     {
-      label: 'For Docker (port 3002) - Linux/Mac',
-      command: 'API_URL=\'http://localhost:3002\' node project_tools_deletable/test_scripts/test_workflows.js setup',
+      label: 'For Docker (port 5002) - Linux/Mac',
+      command: 'API_URL=\'http://localhost:5002\' node project_tools_deletable/test_scripts/test_workflows.js setup',
       description: 'If using Docker with different port',
       os: 'Linux/Mac'
     }
@@ -367,7 +367,7 @@ function WorkflowTests() {
             <Space direction="vertical" style={{ width: '100%' }}>
               <div>
                 <Text strong>Default API URL: </Text>
-                <Tag>http://localhost:3001</Tag>
+                <Tag>http://localhost:5001</Tag>
               </div>
               <Paragraph type="secondary" style={{ marginTop: '8px' }}>
                 You can override the API URL using the <Text code>API_URL</Text> environment variable.
@@ -423,7 +423,7 @@ function WorkflowTests() {
             <Space direction="vertical" style={{ width: '100%' }}>
               <div>
                 <Text strong>Default API URL: </Text>
-                <Tag>http://localhost:3001</Tag>
+                <Tag>http://localhost:5001</Tag>
               </div>
               <Paragraph type="secondary" style={{ marginTop: '8px' }}>
                 You can override the API URL using the <Text code>API_URL</Text> environment variable.
@@ -479,7 +479,7 @@ function WorkflowTests() {
             <Space direction="vertical" style={{ width: '100%' }}>
               <div>
                 <Text strong>Default API URL: </Text>
-                <Tag>http://localhost:3002</Tag>
+                <Tag>http://localhost:5002</Tag>
               </div>
               <div>
                 <Text strong>Test Dealer: </Text>

@@ -3,7 +3,7 @@
 Location: `project_tools_deletable/test_scripts/`
 
 ## Environment
-- Default API base: `http://localhost:3002` (set `API_URL` to override)
+- Default API base: `http://localhost:5001` (set `API_URL` to override)
 - Uses split order tables: `sales_orders` / `sales_order_items` and `demand_orders` / `demand_order_items`
 - Pass `order_type` where applicable: `SO` for sales orders, `DD` for daily demand (e.g., `/api/orders/available-dates?order_type=SO|DD`)
 
@@ -20,9 +20,9 @@ Location: `project_tools_deletable/test_scripts/`
   - `node project_tools_deletable/test_scripts/test_workflows.js dealer`
 - From backend directory:
   - `cd backend && node ../project_tools_deletable/test_scripts/test_workflows.js <role>`
-- Docker port 3002:
-  - Windows: `$env:API_URL='http://localhost:3002'; node project_tools_deletable/test_scripts/test_workflows.js <role>`
-  - Linux/Mac: `API_URL='http://localhost:3002' node project_tools_deletable/test_scripts/test_workflows.js <role>`
+- Docker port 5002:
+  - Windows: `$env:API_URL='http://localhost:5002'; node project_tools_deletable/test_scripts/test_workflows.js <role>`
+  - Linux/Mac: `API_URL='http://localhost:5002' node project_tools_deletable/test_scripts/test_workflows.js <role>`
 
 ## Data safety
 - Scripts create and delete test users/orders/quotas; do not run against production.
