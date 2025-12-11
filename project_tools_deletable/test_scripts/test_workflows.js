@@ -30,7 +30,7 @@ const TEST_CONFIG = {
   territoryName: 'Cumilla Territory',
   // Known real accounts
   tsoUsername: 'subrata.das',
-  dealerUsernames: ['madina', 'argus', 'alamin'],
+  dealerUsernames: ['madina.metal', 'argus.metal', 'alamin.enterprise'],
   testUsers: {
     admin: ['test_workflows_admin', 'test_workflows_admin_2'],
     tso: ['test_workflows_tso', 'test_workflows_tso_2'],
@@ -1060,21 +1060,29 @@ async function runAdminTests() {
       { name: 'A43: View settings', fn: settingsTests.testA43_ViewSettings },
       { name: 'A44: Update forecast start day', fn: settingsTests.testA44_UpdateForecastStartDay },
       { name: 'A45: View forecast start day', fn: settingsTests.testA45_ViewForecastStartDay },
-      // Reports Tests (A46-A50)
+      // Reports Tests (A46-A56)
       { name: 'A46: Navigate to Reports', fn: reportsTests.testA46_NavigateToReports },
       { name: 'A47: View daily report', fn: reportsTests.testA47_ViewDailyReport },
       { name: 'A48: Export daily report', fn: reportsTests.testA48_ExportDailyReport },
+      { name: 'A48b: Export MR CSV report', fn: reportsTests.testA48b_ExportMRCSVReport },
       { name: 'A49: View TSO report', fn: reportsTests.testA49_ViewTSOReport },
       { name: 'A50: Export TSO report', fn: reportsTests.testA50_ExportTSOReport },
-      // Orders Tests (A51-A56)
-      { name: 'A51: View all orders', fn: ordersTests.testA51_ViewAllOrders },
-      { name: 'A52: Filter orders by date', fn: ordersTests.testA52_FilterOrdersByDate },
-      { name: 'A53: Filter orders by dealer', fn: ordersTests.testA53_FilterOrdersByDealer },
-      { name: 'A54: View order details', fn: ordersTests.testA54_ViewOrderDetails },
-      { name: 'A55: Delete order', fn: ordersTests.testA55_DeleteOrder },
-      { name: 'A56: Export orders report', fn: ordersTests.testA56_ExportOrdersReport },
-      // Logout Test (A57)
-      { name: 'A57: Logout', fn: logoutTest.testA57_Logout },
+      { name: 'A51: View Order Summary Report (Date Range)', fn: reportsTests.testA51_ViewOrderSummaryReport },
+      { name: 'A52: Export Order Summary Report (Date Range)', fn: reportsTests.testA52_ExportOrderSummaryReport },
+      { name: 'A53: View Monthly Forecasts (By Dealer)', fn: reportsTests.testA53_ViewMonthlyForecastsByDealer },
+      { name: 'A54: View Monthly Forecasts (By Product)', fn: reportsTests.testA54_ViewMonthlyForecastsByProduct },
+      { name: 'A55: View Monthly Forecasts (By Territory)', fn: reportsTests.testA55_ViewMonthlyForecastsByTerritory },
+      { name: 'A56: Export Monthly Forecasts', fn: reportsTests.testA56_ExportMonthlyForecasts },
+      // Orders Tests (A57-A63)
+      { name: 'A57: View all orders', fn: ordersTests.testA57_ViewAllOrders },
+      { name: 'A58: Filter orders by date', fn: ordersTests.testA58_FilterOrdersByDate },
+      { name: 'A59: Filter orders by dealer', fn: ordersTests.testA59_FilterOrdersByDealer },
+      { name: 'A60: View order details', fn: ordersTests.testA60_ViewOrderDetails },
+      { name: 'A61: Delete order', fn: ordersTests.testA61_DeleteOrder },
+      { name: 'A62: Export orders report', fn: ordersTests.testA62_ExportOrdersReport },
+      { name: 'A63: Available dates by order type (SO vs DD)', fn: ordersTests.testA63_AvailableDatesByOrderType },
+      // Logout Test (A64)
+      { name: 'A64: Logout', fn: logoutTest.testA64_Logout },
     ];
 
     let passed = 0;

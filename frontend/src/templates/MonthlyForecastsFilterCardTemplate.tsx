@@ -1,19 +1,21 @@
 /**
- * FORECAST REPORT FILTER CARD TEMPLATE
+ * MONTHLY FORECASTS FILTER CARD TEMPLATE
  * 
- * Specialized template for the "Filter Forecasts" card in Forecast Report tab.
+ * Specialized template for the "Filter Orders" card in Monthly Forecasts tab.
  * This template has a specific layout:
  * - Period field (select, maxWidth: '18rem')
- * - Territory field (select, conditional) - only for admin
+ * - Territory field (select, conditional, flex: auto) - only for admin
  * - Dealer field (select)
- * - Product field (select)
+ * - Search field (input with prefix)
  * - 1 button (Export Excel) - right aligned
  * 
- * Used in: Reports page - Forecast Report tab
+ * Used in: Reports page - Monthly Forecasts tab
  * Route: /reports
  */
 
-import { Row, Col, Space, Typography, Select, Button, Card } from 'antd';
+import { Row, Col, Space, Typography, Select, Input, Button, Card } from 'antd';
+import type { ReactNode } from 'react';
+import type { Gutter } from 'antd/es/grid/row';
 import {
   UNIVERSAL_CARD_CONFIG,
   STANDARD_FORM_LABEL_STYLE,
@@ -21,26 +23,16 @@ import {
   STANDARD_BUTTON_SIZE,
   COMPACT_ROW_GUTTER,
 } from './UITemplates';
+import type { MonthlyForecastsFilterCardTemplateProps, FormFieldConfig, ButtonConfig } from './types';
 
 const { Text } = Typography;
 const { Option } = Select;
 
 /**
- * Forecast Report Filter Card Template
- * 
- * @param {Object} props
- * @param {string} props.title - Card title (default: "Filter Forecasts")
- * @param {Array<Object>} props.formFields - Array of form field configurations
- *   - formFields[0]: Period (select, maxWidth: '18rem')
- *   - formFields[1]: Territory (select, conditional) - optional
- *   - formFields[2]: Dealer (select)
- *   - formFields[3]: Product (select)
- * @param {Array<Object>} props.buttons - Array of button configurations (1 button: Export Excel)
- * @param {Array} props.gutter - Row gutter configuration (default: COMPACT_ROW_GUTTER)
- * @returns {JSX.Element} Forecast Report Filter card JSX
+ * Monthly Forecasts Filter Card Template
  */
-export const ForecastReportFilterCardTemplate = ({
-  title = 'Filter Forecasts',
+export const MonthlyForecastsFilterCardTemplate: React.FC<MonthlyForecastsFilterCardTemplateProps> = ({
+  title = 'Filter Orders',
   formFields = [],
   buttons = [],
   gutter = COMPACT_ROW_GUTTER,
@@ -61,7 +53,7 @@ export const ForecastReportFilterCardTemplate = ({
 
   return (
     <Card title={title} {...UNIVERSAL_CARD_CONFIG} headStyle={{ textAlign: 'left' }}>
-      <Row gutter={gutter} align="top">
+      <Row gutter={gutter as Gutter} align="top">
         {/* 4 Form Fields */}
         {displayFormFields.map((field, index) => {
           if (!field) return null;
@@ -76,27 +68,40 @@ export const ForecastReportFilterCardTemplate = ({
                   {field.label || `Field ${index + 1}`}
                 </Text>
                 <Space direction="vertical" style={{ width: '100%' }}>
-                  <Select
-                    size={STANDARD_INPUT_SIZE}
-                    value={field.value}
-                    onChange={field.onChange}
-                    placeholder={field.placeholder || `Select ${field.label || 'option'}`}
-                    style={{ width: '100%' }}
-                    allowClear={field.allowClear !== false}
-                    showSearch={field.showSearch !== false}
-                    loading={field.loading}
-                    disabled={field.disabled}
-                    filterOption={field.showSearch !== false ? (input, option) => {
-                      const optionText = option?.children?.toString() || '';
-                      return optionText.toLowerCase().includes(input.toLowerCase());
-                    } : undefined}
-                  >
-                    {field.options && field.options.map((option) => (
-                      <Option key={option.value} value={option.value}>
-                        {option.label}
-                      </Option>
-                    ))}
-                  </Select>
+                  {field.type === 'input' ? (
+                    <Input
+                      size={STANDARD_INPUT_SIZE}
+                      value={field.value as string}
+                      onChange={(e) => field.onChange(e.target.value)}
+                      onPressEnter={field.onPressEnter}
+                      placeholder={field.placeholder || `Enter ${field.label || 'value'}`}
+                      style={{ width: '100%' }}
+                      prefix={field.prefix}
+                      allowClear={field.allowClear !== false}
+                    />
+                  ) : (
+                    <Select
+                      size={STANDARD_INPUT_SIZE}
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder={field.placeholder || `Select ${field.label || 'option'}`}
+                      style={{ width: '100%' }}
+                      allowClear={field.allowClear !== false}
+                      showSearch={field.showSearch !== false}
+                      loading={field.loading}
+                      disabled={field.disabled}
+                      filterOption={field.showSearch !== false ? (input, option) => {
+                        const optionText = option?.children?.toString() || '';
+                        return optionText.toLowerCase().includes(input.toLowerCase());
+                      } : undefined}
+                    >
+                      {field.options && field.options.map((option) => (
+                        <Option key={option.value} value={option.value}>
+                          {option.label}
+                        </Option>
+                      ))}
+                    </Select>
+                  )}
                 </Space>
               </Space>
             </Col>
@@ -130,5 +135,4 @@ export const ForecastReportFilterCardTemplate = ({
     </Card>
   );
 };
-
 

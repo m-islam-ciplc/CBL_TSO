@@ -65,7 +65,7 @@ async function testD1_LoginAsDealer() {
   }
   
   // Try known dealer accounts in order until one logs in
-  const dealerCandidates = TEST_CONFIG.dealerUsernames || ['argus', 'madina', 'alamin'];
+  const dealerCandidates = TEST_CONFIG.dealerUsernames || ['argus.metal', 'madina.metal', 'alamin.enterprise'];
   const dealerPassword = TEST_CONFIG.testPassword; // password: 123
   let dealerUsername = null;
   let loginResult = null;
@@ -85,7 +85,7 @@ async function testD1_LoginAsDealer() {
   }
 
   if (!dealerUsername || !loginResult) {
-    throw new Error('D1 FAILED: Could not login with any known dealer account (argus/madina/alamin)');
+    throw new Error('D1 FAILED: Could not login with any known dealer account (argus.metal/madina.metal/alamin.enterprise)');
   }
   
   console.log(`🔐 Logging in as Dealer: ${dealerUsername}...`);

@@ -11,6 +11,9 @@
  */
 
 import { Row, Col, Space, Typography, DatePicker, Button, Card } from 'antd';
+import type { ReactNode } from 'react';
+import type { Dayjs } from 'dayjs';
+import type { Gutter } from 'antd/es/grid/row';
 import {
   UNIVERSAL_CARD_CONFIG,
   STANDARD_FORM_LABEL_STYLE,
@@ -18,20 +21,14 @@ import {
   STANDARD_DATE_PICKER_CONFIG,
   COMPACT_ROW_GUTTER,
 } from './UITemplates';
+import type { DailyOrderReportCardTemplateProps, ButtonConfig } from './types';
 
 const { Text } = Typography;
 
 /**
  * Daily Order Report Card Template
- * 
- * @param {Object} props
- * @param {string} props.title - Card title (default: "Daily Order Report")
- * @param {Object} props.datePicker1 - Date picker configuration
- * @param {Array<Object>} props.buttons - Array of button configurations (3 buttons: Preview, Download Report, Download MR CSV)
- * @param {Array} props.gutter - Row gutter configuration (default: COMPACT_ROW_GUTTER)
- * @returns {JSX.Element} Daily Order Report card JSX
  */
-export const DailyOrderReportCardTemplate = ({
+export const DailyOrderReportCardTemplate: React.FC<DailyOrderReportCardTemplateProps> = ({
   title = 'Daily Order Report',
   datePicker1,
   buttons = [],
@@ -46,7 +43,7 @@ export const DailyOrderReportCardTemplate = ({
 
   return (
     <Card title={title} {...UNIVERSAL_CARD_CONFIG} headStyle={{ textAlign: 'left' }}>
-      <Row gutter={gutter} align="top">
+      <Row gutter={gutter as Gutter} align="top">
         {/* Date Picker */}
         {datePicker1 && (
           <Col xs={24} sm={12} flex={1} style={{ maxWidth: '12.5rem' }}>
@@ -55,7 +52,8 @@ export const DailyOrderReportCardTemplate = ({
                 {datePicker1.label || 'Select Date'}
               </Text>
               <DatePicker
-                {...STANDARD_DATE_PICKER_CONFIG}
+                format={STANDARD_DATE_PICKER_CONFIG.format}
+                size="small"
                 value={datePicker1.value}
                 onChange={datePicker1.onChange}
                 placeholder={datePicker1.placeholder || 'Select date for report'}
@@ -94,5 +92,4 @@ export const DailyOrderReportCardTemplate = ({
     </Card>
   );
 };
-
 

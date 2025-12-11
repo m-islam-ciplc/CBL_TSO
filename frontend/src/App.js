@@ -36,7 +36,6 @@ import MonthlyForecastTab from './pages/MonthlyForecastTab';
 import DailyDemandMultiDay from './pages/DailyDemandMultiDay';
 import DealerReports from './pages/DealerReports';
 import DebugPanel from './components/DebugPanel';
-import UnifiedUITemplate from './pages/examples/UnifiedUITemplate';
 import WorkflowTests from './pages/examples/WorkflowTests';
 import DeadCodeCheck from './pages/examples/DeadCodeCheck';
 import TemplateCards from './pages/examples/TemplateCards';
@@ -524,12 +523,6 @@ function AppContent() {
               menu={{
                 items: [
                   {
-                    key: 'ui-templates',
-                    label: 'UI Templates',
-                    icon: <LayoutOutlined />,
-                    onClick: () => navigate('/template-ui')
-                  },
-                  {
                     key: 'workflow-tests',
                     label: 'Workflow Tests',
                     icon: <PlayCircleOutlined />,
@@ -689,7 +682,6 @@ function AppContent() {
             <Dashboard setStats={setStats} />
           } />
           {/* Template Routes - accessible without login */}
-          <Route path="/template-ui" element={<UnifiedUITemplate />} />
           <Route path="/template-workflow-tests" element={<WorkflowTests />} />
           <Route path="/template-deadcode-check" element={<DeadCodeCheck />} />
           <Route path="/template-cards" element={<TemplateCards />} />

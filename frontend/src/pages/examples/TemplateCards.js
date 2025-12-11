@@ -31,7 +31,6 @@ import { DailyOrderReportCardTemplate } from '../../templates/DailyOrderReportCa
 import { OrderSummaryReportCardTemplate } from '../../templates/OrderSummaryReportCardTemplate';
 import { MonthlyForecastsFilterCardTemplate } from '../../templates/MonthlyForecastsFilterCardTemplate';
 import { ForecastsByProductTerritoryFilterCardTemplate } from '../../templates/ForecastsByProductTerritoryFilterCardTemplate';
-import { ForecastReportFilterCardTemplate } from '../../templates/ForecastReportFilterCardTemplate';
 import { UserManagementActionsCardTemplate } from '../../templates/UserManagementActionsCardTemplate';
 import { DealerManagementImportCardTemplate } from '../../templates/DealerManagementImportCardTemplate';
 import { ProductManagementImportCardTemplate } from '../../templates/ProductManagementImportCardTemplate';
@@ -503,81 +502,6 @@ function TemplateCards() {
               placeholder: 'Dealer name or code',
               prefix: <SearchOutlined />,
               allowClear: true,
-            },
-          ]}
-          buttons={[
-            {
-              label: 'Export Excel',
-              type: 'primary',
-              icon: <DownloadOutlined />,
-              onClick: () => {},
-            },
-          ]}
-        />
-      </Card>
-
-      <Card {...STANDARD_CARD_CONFIG} title="Admin > /reports > Filter Forecasts (Forecast Report)">
-        <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: '12px' }}>
-          File: <code>ForecastReportFilterCardTemplate.js</code><br/>
-          Used in: Reports page - Forecast Report tab<br/>
-          Features: Period (select, maxWidth: '18rem'), Territory (select, conditional), Dealer (select), Product (select), 1 button (Export Excel)<br/>
-          Horizontal gap: 12px (COMPACT_ROW_GUTTER)
-        </Text>
-        <ForecastReportFilterCardTemplate
-          title="Filter Forecasts"
-          formFields={[
-            {
-              label: 'Period',
-              type: 'select',
-              value: null,
-              onChange: () => {},
-              placeholder: 'Select Period',
-              options: [
-                { value: 'period1', label: 'Jan 2024 - Feb 2024 (Current)' },
-                { value: 'period2', label: 'Dec 2023 - Jan 2024' },
-              ],
-              allowClear: true,
-              showSearch: true,
-              maxWidth: '18rem',
-            },
-            {
-              label: 'Territory',
-              type: 'select',
-              value: null,
-              onChange: () => {},
-              placeholder: 'All Territories',
-              options: [
-                { value: 'territory1', label: 'Territory 1' },
-                { value: 'territory2', label: 'Territory 2' },
-              ],
-              allowClear: true,
-              showSearch: true,
-            },
-            {
-              label: 'Dealer',
-              type: 'select',
-              value: null,
-              onChange: () => {},
-              placeholder: 'All Dealers',
-              options: [
-                { value: 'dealer1', label: 'D001 - Dealer 1' },
-                { value: 'dealer2', label: 'D002 - Dealer 2' },
-              ],
-              allowClear: true,
-              showSearch: true,
-            },
-            {
-              label: 'Product',
-              type: 'select',
-              value: null,
-              onChange: () => {},
-              placeholder: 'All Products',
-              options: [
-                { value: 'product1', label: 'P001 - Product 1' },
-                { value: 'product2', label: 'P002 - Product 2' },
-              ],
-              allowClear: true,
-              showSearch: true,
             },
           ]}
           buttons={[

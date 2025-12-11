@@ -14,7 +14,7 @@ This folder contains **reusable template code** that is imported into applicatio
 - Do **not** create new UI template files without confirmation. If unsure, ask for clarification.  
 - Every UI element must use the templates from `UITemplates.js`. No exceptions.
 
-Visual reference: `UnifiedUITemplate.js` (`frontend/src/pages/examples/UnifiedUITemplate.js`) shows the standardized UI patterns. Access via `/template-ui` or the “Templates > UI Templates” menu.
+Visual reference: See `TemplateCards.js`, `TSOTemplateCards.js`, and `DealerTemplateCards.js` in `frontend/src/pages/examples/` for standardized UI patterns. Access via the Templates menu.
 
 ## Available Templates
 
@@ -45,7 +45,7 @@ Visual reference: `UnifiedUITemplate.js` (`frontend/src/pages/examples/UnifiedUI
 - DealerReports.js
 
 **Visual reference:**
-- `/template-ui` - See UnifiedUITemplate.js for all card patterns
+- `/template-cards` - See TemplateCards.js for all card patterns
 
 ### useCascadingFilters.js
 **Type**: React Hook  
@@ -147,7 +147,7 @@ const filteredProducts = filteredOptions.product || productsList;
 - DailyDemandMultiDay.js
 
 **Visual reference:**
-- `/template-ui` - See UnifiedUITemplate.js for DealerProductCard pattern
+- `/dealer-template-cards` - See DealerTemplateCards.js for DealerProductCard pattern
 
 ### useStandardPagination.js
 **Type**: React Hook  

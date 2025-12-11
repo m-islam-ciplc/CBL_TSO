@@ -29,7 +29,6 @@ import {
 import { DailyOrderReportCardTemplate } from '../templates/DailyOrderReportCardTemplate';
 import { OrderSummaryReportCardTemplate } from '../templates/OrderSummaryReportCardTemplate';
 import { MonthlyForecastsFilterCardTemplate } from '../templates/MonthlyForecastsFilterCardTemplate';
-import { ForecastReportFilterCardTemplate } from '../templates/ForecastReportFilterCardTemplate';
 import { getStandardPaginationConfig } from '../templates/useStandardPagination';
 import { STANDARD_EXPANDABLE_TABLE_CONFIG, renderProductDetailsStack } from '../templates/TableTemplate';
 import { useCascadingFilters } from '../templates/useCascadingFilters';
@@ -76,19 +75,6 @@ function DailyReport() {
     byTerritory: [],
   });
 
-  // Forecast Report tab states (separate from existing forecast tabs)
-  const [forecastReportPeriod, setForecastReportPeriod] = useState(null);
-  const [forecastReportTerritory, setForecastReportTerritory] = useState(isTSO ? territoryName : null);
-  const [forecastReportDealer, setForecastReportDealer] = useState(null);
-  const [forecastReportProduct, setForecastReportProduct] = useState(null);
-  const [forecastReportData, setForecastReportData] = useState([]);
-  const [filteredForecastReportData, setFilteredForecastReportData] = useState([]);
-  const [forecastReportLoading, setForecastReportLoading] = useState(false);
-  const [forecastReportExpandedKeys, setForecastReportExpandedKeys] = useState({
-    dealers: [],
-    products: [],
-    territories: [],
-  });
   const [autoPreviewDone, setAutoPreviewDone] = useState(false);
 
   // Prefill selected date with today if available, otherwise first available date
@@ -157,25 +143,6 @@ function DailyReport() {
   useEffect(() => {
     filterForecasts();
   }, [forecastSearchTerm, territoryFilter, dealerFilter, forecasts, forecastViewType]);
-
-  // Load forecast report data when period changes
-  useEffect(() => {
-    if (forecastReportPeriod) {
-      loadForecastReportData();
-    } else {
-      setForecastReportData([]);
-      setFilteredForecastReportData([]);
-    }
-  }, [forecastReportPeriod]);
-
-  // Filter forecast report data when filters or data change
-  useEffect(() => {
-    if (forecastReportData.length > 0) {
-      filterForecastReportData();
-    } else {
-      setFilteredForecastReportData([]);
-    }
-  }, [forecastReportTerritory, forecastReportDealer, forecastReportProduct, forecastReportData]);
 
   const getAvailableDates = async () => {
     try {
@@ -508,8 +475,48 @@ function DailyReport() {
         }
       });
 
+      // Check response status and content type
+      const contentType = response.headers['content-type'] || '';
+      const status = response.status;
+      
+      // If status is not 200 or content type is JSON, it's an error
+      if (status !== 200 || contentType.includes('application/json')) {
+        // Response is JSON error, not CSV - need to parse the blob
+        const text = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(new Error('Failed to read error response'));
+          reader.readAsText(response.data);
+        });
+        
+        try {
+          const errorData = JSON.parse(text);
+          if (errorData.error) {
+            message.error(errorData.error);
+            return;
+          }
+        } catch (e) {
+          // If parsing fails, show generic error
+          console.error('Failed to parse error response:', e);
+        }
+        
+        if (status === 404) {
+          message.error(`No orders found for ${dateString}`);
+        } else {
+          message.error('Failed to generate MR report. Please try again.');
+        }
+        return;
+      }
+
+      // Verify it's actually CSV
+      if (!contentType.includes('text/csv') && !contentType.includes('text/plain')) {
+        console.error('Unexpected content type:', contentType, 'Status:', status);
+        message.error('Unexpected response format. Please try again.');
+        return;
+      }
+
       // Create blob link to download
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'text/csv' }));
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', `MR_Order_Report_${dateString}.csv`);
@@ -521,8 +528,32 @@ function DailyReport() {
       message.success(`MR CSV report generated successfully for ${dateString}`);
     } catch (error) {
       console.error('Error generating MR report:', error);
+      console.error('Error response:', error.response);
+      
+      // Try to extract error message from blob response if it's an error
+      if (error.response?.data && error.response.data instanceof Blob) {
+        try {
+          const text = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(new Error('Failed to read error response'));
+            reader.readAsText(error.response.data);
+          });
+          const errorData = JSON.parse(text);
+          if (errorData.error) {
+            message.error(errorData.error);
+            return;
+          }
+        } catch (e) {
+          // If parsing fails, continue with generic error
+          console.error('Failed to parse error blob:', e);
+        }
+      }
+      
       if (error.response?.status === 404) {
         message.error(`No orders found for ${selectedDate ? selectedDate.format('YYYY-MM-DD') : 'selected date'}`);
+      } else if (error.response?.data?.error) {
+        message.error(error.response.data.error);
       } else {
         message.error('Failed to generate MR report. Please try again.');
       }
@@ -716,90 +747,6 @@ function DailyReport() {
     }
 
     setFilteredForecasts(filtered);
-  };
-
-  // Load forecast report data
-  const loadForecastReportData = async () => {
-    if (!forecastReportPeriod) return;
-    
-    setForecastReportLoading(true);
-    try {
-      const [periodStart, periodEnd] = forecastReportPeriod.split('_');
-      const params = {
-        period_start: periodStart,
-        period_end: periodEnd,
-      };
-      
-      // Only add territory filter for TSO users (server-side filtering for security)
-      if (isTSO && territoryName) {
-        params.territory_name = territoryName;
-      }
-      
-      const response = await axios.get('/api/monthly-forecast/all', { params });
-      const data = response.data.forecasts || [];
-      setForecastReportData(data);
-      // Initial filter will be applied by useEffect
-    } catch (error) {
-      console.error('Error loading forecast report data:', error);
-      message.error('Failed to load forecast data');
-      setForecastReportData([]);
-      setFilteredForecastReportData([]);
-    } finally {
-      setForecastReportLoading(false);
-    }
-  };
-
-  // Filter forecast report data based on hierarchical filters
-  const filterForecastReportData = () => {
-    let filtered = [...forecastReportData];
-
-    // Territory filter (hierarchical level 1)
-    if (!isTSO && forecastReportTerritory) {
-      filtered = filtered.filter((f) => f.territory_name === forecastReportTerritory);
-    }
-
-    // Dealer filter (hierarchical level 2)
-    if (forecastReportDealer) {
-      filtered = filtered.filter((f) => f.dealer_id === parseInt(forecastReportDealer));
-    }
-
-    // Product filter (hierarchical level 3)
-    if (forecastReportProduct) {
-      filtered = filtered.map((f) => {
-        const filteredProducts = f.products.filter(
-          (p) => p.product_code === forecastReportProduct
-        );
-        if (filteredProducts.length > 0) {
-          return {
-            ...f,
-            products: filteredProducts,
-            total_quantity: filteredProducts.reduce((sum, p) => sum + (Number(p.quantity) || 0), 0),
-            total_products: filteredProducts.length,
-          };
-        }
-        return null;
-      }).filter(Boolean);
-    }
-
-    setFilteredForecastReportData(filtered);
-  };
-
-  // Determine view type based on filter combination
-  const getForecastReportViewType = () => {
-    // If product is selected but no dealer/territory -> Product view
-    if (forecastReportProduct && !forecastReportDealer && !forecastReportTerritory) {
-      return 'product';
-    }
-    // If dealer is selected -> Dealer view
-    if (forecastReportDealer) {
-      return 'dealer';
-    }
-    // If territory is selected but no dealer/product -> Territory view
-    if (forecastReportTerritory && !forecastReportDealer && !forecastReportProduct) {
-      return 'territory';
-    }
-    // Default: Dealer view
-    return 'dealer';
   };
 
   const filterPreviewData = () => {
@@ -1067,52 +1014,6 @@ function DailyReport() {
     },
   ];
 
-  // Forecast export handler
-  const handleForecastReportExport = () => {
-    try {
-      const exportData = filteredForecastReportData.flatMap((forecast) =>
-        forecast.products.map((product) => ({
-          'Dealer Code': forecast.dealer_code,
-          'Dealer Name': forecast.dealer_name,
-          'Territory': forecast.territory_name,
-          'Product Code': product.product_code,
-          'Product Name': product.product_name,
-          'Forecast Quantity': product.quantity,
-          'Period': periods.find((p) => p.value === forecastReportPeriod)?.label || forecastReportPeriod,
-        }))
-      );
-
-      const ws = XLSX.utils.json_to_sheet(exportData);
-      
-      // Set font style for all cells: Calibri size 8
-      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-      for (let R = range.s.r; R <= range.e.r; ++R) {
-        for (let C = range.s.c; C <= range.e.c; ++C) {
-          const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
-          if (!ws[cellAddress]) continue;
-          if (!ws[cellAddress].s) ws[cellAddress].s = {};
-          ws[cellAddress].s.font = {
-            name: 'Calibri',
-            sz: 8,
-            bold: R === range.s.r // Make header row bold
-          };
-        }
-      }
-      
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Forecast Report');
-
-      const periodLabel = periods.find((p) => p.value === forecastReportPeriod)?.label || 'Forecast';
-      const filename = `Forecast_Report_${periodLabel.replace(/\s+/g, '_')}.xlsx`;
-      XLSX.writeFile(wb, filename);
-
-      message.success('Forecast report exported successfully!');
-    } catch (error) {
-      message.error('Failed to export data');
-      console.error('Export error:', error);
-    }
-  };
-
   const handleForecastExport = () => {
     try {
       const exportData = filteredForecasts.flatMap((forecast) =>
@@ -1228,45 +1129,6 @@ function DailyReport() {
     )
     .sort((a, b) => a.code.localeCompare(b.code));
 
-  // Get unique products from forecast report data
-  const getUniqueProductsFromForecastReport = () => {
-    const productSet = new Set();
-    forecastReportData.forEach((f) => {
-      f.products.forEach((p) => {
-        productSet.add(JSON.stringify({ code: p.product_code, name: p.product_name }));
-      });
-    });
-    return Array.from(productSet)
-      .map((str) => JSON.parse(str))
-      .sort((a, b) => a.code.localeCompare(b.code));
-  };
-
-  // Get unique dealers from forecast report data (filtered by territory if selected)
-  const getUniqueDealersFromForecastReport = () => {
-    let dealers = forecastReportData.map(f => ({ 
-      id: f.dealer_id, 
-      code: f.dealer_code, 
-      name: f.dealer_name,
-      territory: f.territory_name 
-    }));
-    
-    // Filter by territory if selected
-    if (forecastReportTerritory) {
-      dealers = dealers.filter(d => d.territory === forecastReportTerritory);
-    }
-    
-    return dealers
-      .filter((dealer, index, self) => 
-        index === self.findIndex(d => d.id === dealer.id)
-      )
-      .sort((a, b) => a.code.localeCompare(b.code));
-  };
-
-  // Get unique territories from forecast report data
-  const getUniqueTerritoriesFromForecastReport = () => {
-    return [...new Set(forecastReportData.map(f => f.territory_name))].sort();
-  };
-
   /**
    * Cascading filters
    */
@@ -1295,64 +1157,6 @@ function DailyReport() {
   });
 
   const filteredForecastDealers = forecastFilterOptions.dealer || uniqueDealers;
-
-  // Forecast Report tab: Territory -> Dealer -> Product
-  const forecastReportTerritories = getUniqueTerritoriesFromForecastReport();
-  const forecastReportDealers = getUniqueDealersFromForecastReport();
-  const forecastReportProducts = getUniqueProductsFromForecastReport();
-
-  const { filteredOptions: forecastReportFilterOptions } = useCascadingFilters({
-    filterConfigs: [
-      {
-        name: 'territory',
-        allOptions: forecastReportTerritories,
-        dependsOn: [],
-        getValueKey: (territory) => territory,
-      },
-      {
-        name: 'dealer',
-        allOptions: forecastReportDealers,
-        dependsOn: isTSO ? [] : ['territory'],
-        filterFn: (dealer, parentValues) => {
-          if (isTSO) return true;
-          if (!parentValues.territory) return true;
-          return dealer.territory === parentValues.territory;
-        },
-        getValueKey: (dealer) => dealer.id?.toString?.() || dealer.id,
-      },
-      {
-        name: 'product',
-        allOptions: forecastReportProducts,
-        dependsOn: ['territory', 'dealer'],
-        filterFn: (product, parentValues, context) => {
-          const { forecastData } = context;
-          // If no parent filters, allow all products
-          if (!parentValues.territory && !parentValues.dealer) return true;
-          return forecastData.some((f) => {
-            if (parentValues.territory && f.territory_name !== parentValues.territory) return false;
-            if (parentValues.dealer && f.dealer_id !== parseInt(parentValues.dealer)) return false;
-            return (f.products || []).some((p) => p.product_code === product.code);
-          });
-        },
-        getValueKey: (product) => product.code,
-      },
-    ],
-    filterValues: {
-      territory: forecastReportTerritory,
-      dealer: forecastReportDealer,
-      product: forecastReportProduct,
-    },
-    setFilterValues: {
-      territory: setForecastReportTerritory,
-      dealer: setForecastReportDealer,
-      product: setForecastReportProduct,
-    },
-    context: { forecastData: forecastReportData },
-  });
-
-  const filteredForecastReportTerritories = forecastReportFilterOptions.territory || forecastReportTerritories;
-  const filteredForecastReportDealers = forecastReportFilterOptions.dealer || forecastReportDealers;
-  const filteredForecastReportProducts = forecastReportFilterOptions.product || forecastReportProducts;
 
   // Forecast table columns and renderers
   const dealerColumns = [
@@ -1540,43 +1344,6 @@ function DailyReport() {
     },
   ];
 
-  const renderDealerExpandedRow = (record) => {
-    const productColumns = [
-      {
-        title: 'Product Code',
-        dataIndex: 'product_code',
-        key: 'product_code',
-        width: 150,
-      },
-      {
-        title: 'Product Name',
-        dataIndex: 'product_name',
-        key: 'product_name',
-        ellipsis: true,
-      },
-      {
-        title: 'Forecast Quantity',
-        dataIndex: 'quantity',
-        key: 'quantity',
-        width: 150,
-        align: 'right',
-        render: (text) => <Text strong style={{ fontSize: STANDARD_EXPANDABLE_TABLE_CONFIG.fontSizes.strong }}>{text.toLocaleString()}</Text>,
-      },
-    ];
-
-    return (
-      <div style={STANDARD_EXPANDABLE_TABLE_CONFIG.expandedRowContent.container}>
-        <Table
-          columns={productColumns}
-          dataSource={record.products}
-          pagination={false}
-          size={STANDARD_TABLE_SIZE}
-          rowKey="product_code"
-        />
-      </div>
-    );
-  };
-
   const renderProductExpandedRow = (record) => {
     const dealerColumns = [
       {
@@ -1619,214 +1386,6 @@ function DailyReport() {
       </div>
     );
   };
-
-  // Forecast Report tab column definitions (using forecastReportExpandedKeys)
-  const forecastReportDealerColumns = [
-    {
-      title: 'Dealer Code',
-      dataIndex: 'dealer_code',
-      key: 'dealer_code',
-      width: 120,
-      fixed: 'left',
-    },
-    {
-      title: 'Dealer Name',
-      dataIndex: 'dealer_name',
-      key: 'dealer_name',
-      ellipsis: true,
-    },
-    {
-      title: 'Territory',
-      dataIndex: 'territory_name',
-      key: 'territory_name',
-      width: 180,
-    },
-    {
-      title: 'Products',
-      dataIndex: 'total_products',
-      key: 'total_products',
-      width: 100,
-      align: 'center',
-      render: (text) => <Tag color="blue">{text}</Tag>,
-    },
-    {
-      title: 'Total Quantity',
-      dataIndex: 'total_quantity',
-      key: 'total_quantity',
-      width: 130,
-      align: 'right',
-      render: (text) => <Text strong>{text.toLocaleString()}</Text>,
-    },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: 180,
-      fixed: 'right',
-      align: 'center',
-      render: (_text, record) => {
-        const isExpanded = forecastReportExpandedKeys.dealers.includes(record.dealer_id);
-        return (
-          <Badge {...STANDARD_BADGE_CONFIG} count={record.total_products}>
-            <Button
-              type="primary"
-              icon={<AppstoreOutlined />}
-              size={STANDARD_TABLE_SIZE}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (isExpanded) {
-                  setForecastReportExpandedKeys({
-                    ...forecastReportExpandedKeys,
-                    dealers: forecastReportExpandedKeys.dealers.filter((key) => key !== record.dealer_id),
-                  });
-                } else {
-                  setForecastReportExpandedKeys({
-                    ...forecastReportExpandedKeys,
-                    dealers: [...forecastReportExpandedKeys.dealers, record.dealer_id],
-                  });
-                }
-              }}
-            >
-              {isExpanded ? 'Hide Products' : 'View Products'}
-            </Button>
-          </Badge>
-        );
-      },
-    },
-  ];
-
-  const forecastReportProductColumns = [
-    {
-      title: 'Product Code',
-      dataIndex: 'product_code',
-      key: 'product_code',
-      width: 150,
-    },
-    {
-      title: 'Product Name',
-      dataIndex: 'product_name',
-      key: 'product_name',
-      ellipsis: true,
-    },
-    {
-      title: 'Dealers',
-      dataIndex: 'dealer_count',
-      key: 'dealer_count',
-      width: 100,
-      align: 'center',
-      render: (text) => <Tag color="blue">{text}</Tag>,
-    },
-    {
-      title: 'Total Forecast',
-      dataIndex: 'total_quantity',
-      key: 'total_quantity',
-      width: 150,
-      align: 'right',
-      render: (text) => <Text strong>{text.toLocaleString()}</Text>,
-    },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: 180,
-      fixed: 'right',
-      align: 'center',
-      render: (_text, record) => {
-        const isExpanded = forecastReportExpandedKeys.products.includes(record.product_code);
-        return (
-          <Badge {...STANDARD_BADGE_CONFIG} count={record.dealer_count}>
-            <Button
-              type="primary"
-              icon={<AppstoreOutlined />}
-              size={STANDARD_TABLE_SIZE}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (isExpanded) {
-                  setForecastReportExpandedKeys({
-                    ...forecastReportExpandedKeys,
-                    products: forecastReportExpandedKeys.products.filter((key) => key !== record.product_code),
-                  });
-                } else {
-                  setForecastReportExpandedKeys({
-                    ...forecastReportExpandedKeys,
-                    products: [...forecastReportExpandedKeys.products, record.product_code],
-                  });
-                }
-              }}
-            >
-              {isExpanded ? 'Hide Dealers' : 'View Dealers'}
-            </Button>
-          </Badge>
-        );
-      },
-    },
-  ];
-
-  const forecastReportTerritoryColumns = [
-    {
-      title: 'Territory',
-      dataIndex: 'territory_name',
-      key: 'territory_name',
-      width: 200,
-    },
-    {
-      title: 'Dealers',
-      dataIndex: 'dealer_count',
-      key: 'dealer_count',
-      width: 100,
-      align: 'center',
-      render: (text) => <Tag color="blue">{text}</Tag>,
-    },
-    {
-      title: 'Products',
-      dataIndex: 'product_count',
-      key: 'product_count',
-      width: 100,
-      align: 'center',
-      render: (text) => <Tag color="green">{text}</Tag>,
-    },
-    {
-      title: 'Total Forecast',
-      dataIndex: 'total_quantity',
-      key: 'total_quantity',
-      width: 150,
-      align: 'right',
-      render: (text) => <Text strong>{text.toLocaleString()}</Text>,
-    },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: 180,
-      fixed: 'right',
-      align: 'center',
-      render: (_text, record) => {
-        const isExpanded = forecastReportExpandedKeys.territories.includes(record.territory_name);
-        return (
-          <Badge {...STANDARD_BADGE_CONFIG} count={record.dealer_count}>
-            <Button
-              type="primary"
-              icon={<AppstoreOutlined />}
-              size={STANDARD_TABLE_SIZE}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (isExpanded) {
-                  setForecastReportExpandedKeys({
-                    ...forecastReportExpandedKeys,
-                    territories: forecastReportExpandedKeys.territories.filter((key) => key !== record.territory_name),
-                  });
-                } else {
-                  setForecastReportExpandedKeys({
-                    ...forecastReportExpandedKeys,
-                    territories: [...forecastReportExpandedKeys.territories, record.territory_name],
-                  });
-                }
-              }}
-            >
-              {isExpanded ? 'Hide Dealers' : 'View Dealers'}
-            </Button>
-          </Badge>
-        );
-      },
-    },
-  ];
 
   const renderTerritoryExpandedRow = (record) => {
     const dealerColumns = [
@@ -2231,253 +1790,6 @@ function DailyReport() {
           )}
         </Tabs.TabPane>
 
-        {/* Forecast Report Tab - Hierarchical Filtering */}
-        <Tabs.TabPane
-          tab={
-            <span>
-              <BarChartOutlined />
-              Forecast Report
-            </span>
-          }
-          key="forecast-report"
-        >
-          {/* Filters */}
-          <ForecastReportFilterCardTemplate
-            title="Filter Forecasts"
-            formFields={[
-              {
-                label: 'Period',
-                type: 'select',
-                value: forecastReportPeriod,
-                onChange: (value) => {
-                    setForecastReportPeriod(value || null);
-                    // Reset other filters when period changes
-                    setForecastReportTerritory(isTSO ? territoryName : null);
-                    setForecastReportDealer(null);
-                    setForecastReportProduct(null);
-                },
-                placeholder: 'Select Period',
-                options: periods.map((p) => ({
-                  value: p.value,
-                  label: p.is_current ? `${p.label} (Current)` : p.label,
-                })),
-                loading: periods.length === 0,
-                allowClear: true,
-                showSearch: true,
-                maxWidth: '18rem',
-              },
-              ...(!isTSO ? [{
-                label: 'Territory',
-                type: 'select',
-                value: forecastReportTerritory,
-                onChange: (value) => {
-                      setForecastReportTerritory(value || null);
-                      // Reset dealer and product when territory changes
-                      setForecastReportDealer(null);
-                      setForecastReportProduct(null);
-                },
-                placeholder: 'All Territories',
-                options: filteredForecastReportTerritories.map((t) => ({
-                  value: t,
-                  label: t,
-                })),
-                disabled: !forecastReportPeriod,
-                allowClear: true,
-                showSearch: true,
-              }] : []),
-              {
-                label: 'Dealer',
-                type: 'select',
-                value: forecastReportDealer,
-                onChange: (value) => {
-                    setForecastReportDealer(value || null);
-                    // Reset product when dealer changes
-                    setForecastReportProduct(null);
-                },
-                placeholder: 'All Dealers',
-                options: filteredForecastReportDealers.map((d) => ({
-                  value: d.id.toString(),
-                  label: `${d.code} - ${d.name}`,
-                })),
-                disabled: !forecastReportPeriod,
-                allowClear: true,
-                showSearch: true,
-              },
-              {
-                label: 'Product',
-                type: 'select',
-                value: forecastReportProduct,
-                onChange: (value) => setForecastReportProduct(value || null),
-                placeholder: 'All Products',
-                options: filteredForecastReportProducts.map((p) => ({
-                  value: p.code,
-                  label: `${p.code} - ${p.name}`,
-                })),
-                disabled: !forecastReportPeriod,
-                allowClear: true,
-                showSearch: true,
-              },
-            ].slice(0, 4)}
-            buttons={[
-              {
-                label: 'Export Excel',
-                type: 'primary',
-                icon: <DownloadOutlined />,
-                onClick: handleForecastReportExport,
-                disabled: filteredForecastReportData.length === 0,
-              },
-            ]}
-          />
-
-          {/* View Type Indicator */}
-          {forecastReportPeriod && (
-            <Card title="View Type" {...STANDARD_CARD_CONFIG}>
-              <Text strong>
-                Viewing: 
-                <Tag color={getForecastReportViewType() === 'product' ? 'blue' : getForecastReportViewType() === 'territory' ? 'green' : 'default'} style={{ marginLeft: '8px' }}>
-                  {getForecastReportViewType() === 'product' ? 'By Product' : getForecastReportViewType() === 'territory' ? 'By Territory' : 'By Dealer'}
-                </Tag>
-              </Text>
-            </Card>
-          )}
-
-          {/* Dynamic Table based on View Type */}
-          {forecastReportPeriod ? (
-            getForecastReportViewType() === 'product' ? (
-              // Product View: Show products as rows, dealers in expanded rows
-              <Card {...EXPANDABLE_TABLE_CARD_CONFIG}>
-              <Table
-                columns={forecastReportProductColumns}
-                dataSource={(() => {
-                  const productSummary = {};
-                  filteredForecastReportData.forEach((forecast) => {
-                    forecast.products.forEach((product) => {
-                      if (!productSummary[product.product_code]) {
-                        productSummary[product.product_code] = {
-                          product_code: product.product_code,
-                          product_name: product.product_name,
-                          total_quantity: 0,
-                          dealer_count: new Set(),
-                          dealers: [],
-                        };
-                      }
-                        productSummary[product.product_code].total_quantity += Number(product.quantity) || 0;
-                      productSummary[product.product_code].dealer_count.add(forecast.dealer_id);
-                      productSummary[product.product_code].dealers.push({
-                        dealer_code: forecast.dealer_code,
-                        dealer_name: forecast.dealer_name,
-                        territory_name: forecast.territory_name,
-                        quantity: product.quantity,
-                      });
-                    });
-                  });
-                  return Object.values(productSummary).map((p) => ({
-                    ...p,
-                    dealer_count: p.dealer_count.size,
-                  }));
-                })()}
-                rowKey="product_code"
-                loading={forecastReportLoading}
-                expandable={{
-                  expandedRowRender: renderProductExpandedRow,
-                  expandedRowKeys: forecastReportExpandedKeys.products,
-                  onExpandedRowsChange: (keys) => {
-                    setForecastReportExpandedKeys({
-                      ...forecastReportExpandedKeys,
-                      products: keys,
-                    });
-                  },
-                  expandRowByClick: false,
-                  showExpandColumn: false,
-                }}
-                pagination={getStandardPaginationConfig('products', 20)}
-                scroll={{ x: 800 }}
-              />
-              </Card>
-            ) : getForecastReportViewType() === 'territory' ? (
-              // Territory View: Show territories as rows, dealers in expanded rows
-              <Card {...EXPANDABLE_TABLE_CARD_CONFIG}>
-              <Table
-                columns={forecastReportTerritoryColumns}
-                dataSource={(() => {
-                  const territorySummary = {};
-                  filteredForecastReportData.forEach((forecast) => {
-                    if (!territorySummary[forecast.territory_name]) {
-                      territorySummary[forecast.territory_name] = {
-                        territory_name: forecast.territory_name,
-                        total_quantity: 0,
-                        dealer_count: 0,
-                        product_count: new Set(),
-                        dealers: [],
-                      };
-                    }
-                      territorySummary[forecast.territory_name].total_quantity += Number(forecast.total_quantity) || 0;
-                    territorySummary[forecast.territory_name].dealer_count += 1;
-                    forecast.products.forEach((p) => {
-                      territorySummary[forecast.territory_name].product_count.add(p.product_code);
-                    });
-                    territorySummary[forecast.territory_name].dealers.push({
-                      dealer_code: forecast.dealer_code,
-                      dealer_name: forecast.dealer_name,
-                      total_products: forecast.total_products,
-                      total_quantity: forecast.total_quantity,
-                      products: forecast.products,
-                    });
-                  });
-                  return Object.values(territorySummary).map((t) => ({
-                    ...t,
-                    product_count: t.product_count.size,
-                  }));
-                })()}
-                rowKey="territory_name"
-                loading={forecastReportLoading}
-                expandable={{
-                  expandedRowRender: renderTerritoryExpandedRow,
-                  expandedRowKeys: forecastReportExpandedKeys.territories,
-                  onExpandedRowsChange: (keys) => {
-                    setForecastReportExpandedKeys({
-                      ...forecastReportExpandedKeys,
-                      territories: keys,
-                    });
-                  },
-                  expandRowByClick: false,
-                  showExpandColumn: false,
-                }}
-                pagination={false}
-                scroll={{ x: 800 }}
-              />
-              </Card>
-            ) : (
-              // Dealer View: Show dealers as rows, products in expanded rows (default)
-              <Card {...EXPANDABLE_TABLE_CARD_CONFIG}>
-              <Table
-                columns={forecastReportDealerColumns}
-                dataSource={filteredForecastReportData}
-                rowKey="dealer_id"
-                loading={forecastReportLoading}
-                expandable={{
-                  expandedRowRender: renderDealerExpandedRow,
-                  expandedRowKeys: forecastReportExpandedKeys.dealers,
-                  onExpandedRowsChange: (keys) => {
-                    setForecastReportExpandedKeys({
-                      ...forecastReportExpandedKeys,
-                      dealers: keys,
-                    });
-                  },
-                  expandRowByClick: false,
-                  showExpandColumn: false,
-                }}
-                pagination={getStandardPaginationConfig('dealers', 20)}
-                scroll={{ x: 800 }}
-              />
-              </Card>
-            )
-          ) : (
-            <Card>
-              <Text type="secondary">Please select a period to view forecast data.</Text>
-            </Card>
-          )}
-        </Tabs.TabPane>
       </Tabs>
 
       {loading && (

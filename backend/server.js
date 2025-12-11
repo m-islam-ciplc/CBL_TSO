@@ -4783,6 +4783,12 @@ app.get('/api/orders/mr-report/:date', async (req, res) => {
     try {
         console.log(`📊 Generating MR Order Report CSV for date: ${date}`);
         
+        // Validate date format
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(date)) {
+            return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+        }
+        
         // Get sales orders for the specified date (TSO orders only - from sales_orders table)
         const ordersQuery = `
             SELECT DISTINCT
@@ -4795,58 +4801,87 @@ app.get('/api/orders/mr-report/:date', async (req, res) => {
                 so.order_date
             FROM sales_orders so
             WHERE so.order_date = ?
-            ORDER BY so.order_date ASC, so.id ASC
+            ORDER BY so.order_date ASC, so.order_id ASC
         `;
         
         const orders = await dbPromise.query(ordersQuery, [date]);
         
-        if (orders[0].length === 0) {
+        if (!orders || !orders[0] || orders[0].length === 0) {
             return res.status(404).json({ error: 'No orders found for the specified date' });
         }
         
         // Get order items for all orders from sales_order_items
-        const orderItemsQuery = `
-            SELECT soi.order_id, soi.product_name, soi.quantity
-            FROM sales_order_items soi
-            WHERE soi.order_id IN (${orders[0].map(() => '?').join(',')})
-        `;
-        const orderItems = await dbPromise.query(orderItemsQuery, orders[0].map(order => order.order_id));
+        let orderItems = [[], []];
+        let orderedProducts = [];
+        let orderItemsMap = {};
         
-        // Get only products that are actually ordered (distinct products from order_items)
-        const orderedProducts = [...new Set(orderItems[0].map(item => item.product_name))].sort();
-        
-        // Group order items by order_id
-        const orderItemsMap = {};
-        orderItems[0].forEach(item => {
-            if (!orderItemsMap[item.order_id]) {
-                orderItemsMap[item.order_id] = {};
+        if (orders[0].length > 0) {
+            const orderIds = orders[0].map(order => order.order_id).filter(Boolean);
+            
+            if (orderIds.length === 0) {
+                console.warn('⚠️ No valid order IDs found');
+                // Continue with empty order items - CSV will still be generated
+            } else {
+                const orderItemsQuery = `
+                    SELECT soi.order_id, soi.product_name, soi.quantity
+                    FROM sales_order_items soi
+                    WHERE soi.order_id IN (${orderIds.map(() => '?').join(',')})
+                `;
+                console.log(`📦 Fetching order items for ${orderIds.length} orders`);
+                orderItems = await dbPromise.query(orderItemsQuery, orderIds);
+                console.log(`✅ Found ${orderItems[0]?.length || 0} order items`);
             }
-            orderItemsMap[item.order_id][item.product_name] = item.quantity;
-        });
+            
+            // Get only products that are actually ordered (distinct products from order_items)
+            if (orderItems[0] && orderItems[0].length > 0) {
+                orderedProducts = [...new Set(orderItems[0].map(item => item.product_name).filter(Boolean))].sort();
+                
+                // Group order items by order_id
+                orderItems[0].forEach(item => {
+                    if (!orderItemsMap[item.order_id]) {
+                        orderItemsMap[item.order_id] = {};
+                    }
+                    if (item.product_name) {
+                        orderItemsMap[item.order_id][item.product_name] = item.quantity;
+                    }
+                });
+            }
+        }
+        
+        // Helper function to escape CSV values
+        const escapeCSV = (value) => {
+            if (value === null || value === undefined) return '';
+            const stringValue = String(value);
+            // If value contains comma, quote, or newline, wrap in quotes and escape quotes
+            if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+                return `"${stringValue.replace(/"/g, '""')}"`;
+            }
+            return stringValue;
+        };
         
         // Create CSV headers
         const headers = ['internalId', 'orderType', 'orderDate', 'warehouse', 'DealerName'];
         orderedProducts.forEach(productName => {
-            headers.push(productName);
+            headers.push(escapeCSV(productName));
         });
         
         // Create CSV rows
         const csvRows = [headers.join(',')];
         
         orders[0].forEach(order => {
-            const warehouseName = order.warehouse_alias || order.warehouse_name;
+            const warehouseName = order.warehouse_alias || order.warehouse_name || '';
             const row = [
                 '', // internalId
-                order.order_type,
-                date,
-                warehouseName,
-                order.dealer_name
+                escapeCSV(order.order_type || 'SO'),
+                escapeCSV(date),
+                escapeCSV(warehouseName),
+                escapeCSV(order.dealer_name || '')
             ];
             
             // Add quantities for each ordered product
             orderedProducts.forEach(productName => {
                 const quantity = orderItemsMap[order.order_id]?.[productName] || '';
-                row.push(quantity);
+                row.push(escapeCSV(quantity));
             });
             
             csvRows.push(row.join(','));
@@ -4855,15 +4890,25 @@ app.get('/api/orders/mr-report/:date', async (req, res) => {
         // Convert to CSV string
         const csvContent = csvRows.join('\n');
         
+        console.log(`✅ Generated CSV with ${csvRows.length} rows (${csvContent.length} bytes)`);
+        console.log(`   Orders: ${orders[0].length}, Products: ${orderedProducts.length}`);
+        
         // Set headers for CSV download
-        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
         res.setHeader('Content-Disposition', `attachment; filename="MR_Order_Report_${date}.csv"`);
         
+        // Send CSV content
         res.send(csvContent);
         
     } catch (error) {
         console.error('Error generating MR Order Report CSV:', error);
-        res.status(500).json({ error: error.message });
+        console.error('Error stack:', error.stack);
+        // Only send error response if headers haven't been sent yet
+        if (!res.headersSent) {
+            res.status(500).json({ error: error.message });
+        } else {
+            console.error('Headers already sent, cannot send error response');
+        }
     }
 });
 

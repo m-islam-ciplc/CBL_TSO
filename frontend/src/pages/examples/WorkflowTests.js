@@ -193,23 +193,27 @@ function WorkflowTests() {
       ]
     },
     {
-      title: 'Reports (A46-A50)',
+      title: 'Reports (A46-A56)',
       tests: [
         'Navigate to Reports', 'View daily report',
-        'Export daily report', 'View TSO report',
-        'Export TSO report'
+        'Export daily report', 'Export MR CSV report',
+        'View TSO report', 'Export TSO report',
+        'View Order Summary Report (Date Range)', 'Export Order Summary Report (Date Range)',
+        'View Monthly Forecasts (By Dealer)', 'View Monthly Forecasts (By Product)',
+        'View Monthly Forecasts (By Territory)', 'Export Monthly Forecasts'
       ]
     },
     {
-      title: 'Orders (A51-A56)',
+      title: 'Orders (A57-A63)',
       tests: [
         'View all orders', 'Filter orders by date',
         'Filter orders by dealer', 'View order details',
-        'Delete order', 'Export orders report'
+        'Delete order', 'Export orders report',
+        'Available dates by order type (SO vs DD)'
       ]
     },
     {
-      title: 'Logout (A57)',
+      title: 'Logout (A64)',
       tests: ['Logout functionality']
     }
   ];
@@ -346,7 +350,7 @@ function WorkflowTests() {
         message="Test Coverage"
         description={
           <div>
-            <div><strong>Admin Tests:</strong> 56 tests covering User Management, Dealer Management, Product Management, Transport Management, Quota Management, Settings, Reports, and Orders.</div>
+            <div><strong>Admin Tests:</strong> 65 tests covering User Management, Dealer Management, Product Management, Transport Management, Quota Management, Settings, Reports, and Orders.</div>
             <div style={{ marginTop: '8px' }}><strong>TSO Tests:</strong> 28 tests covering Dashboard, Orders, and Reports functionality.</div>
             <div style={{ marginTop: '8px' }}><strong>Dealer Tests:</strong> 23 tests covering Dashboard, Daily Demand Orders, and Reports functionality.</div>
             <div style={{ marginTop: '8px' }}><strong>Setup:</strong> Imports resources (dealers, products, transports) and creates test users.</div>
@@ -358,7 +362,7 @@ function WorkflowTests() {
       />
 
       <Tabs {...STANDARD_TABS_CONFIG} defaultActiveKey="admin">
-        <TabPane tab="Admin Tests (56 tests)" key="admin">
+        <TabPane tab="Admin Tests (65 tests)" key="admin">
           <Card title="How to Run Admin Tests" {...STANDARD_CARD_CONFIG}>
             {renderCommands(adminCommands)}
           </Card>
@@ -399,7 +403,7 @@ function WorkflowTests() {
             <ul>
               <li>Import resources (dealers, products, transports)</li>
               <li>Create test users (if they don&apos;t exist)</li>
-              <li>Run all 56 Admin tests sequentially</li>
+              <li>Run all 65 Admin tests sequentially</li>
               <li>Show detailed results for each test</li>
               <li>Provide a summary at the end with pass/fail counts</li>
             </ul>

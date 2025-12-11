@@ -13,7 +13,11 @@
  */
 
 import { Table, Card, Typography, Tag, Spin } from 'antd';
+import type { ColumnsType, TableProps } from 'antd/es/table';
+import type { ReactNode } from 'react';
 import { EXPANDABLE_TABLE_CARD_CONFIG } from './UITemplates';
+import type { ProductDetail, RenderProductDetailsStackProps } from './types';
+import type { OrderItem, ProductSummary } from '../types/api';
 
 const { Text } = Typography;
 
@@ -33,7 +37,7 @@ export const renderProductDetailsStack = ({
   isTSO = false,
   showIndex = true,
   showCode = true,
-}) => {
+}: RenderProductDetailsStackProps): ReactNode => {
   if (!products || products.length === 0) {
     return (
       <div style={{ fontSize: '12px', color: '#999', fontStyle: 'italic' }}>
@@ -97,8 +101,8 @@ export const STANDARD_EXPANDABLE_TABLE_CONFIG = {
   pagination: {
     pageSize: 10,
     showSizeChanger: true,
-    showTotal: (total) => `Total ${total} items`,
-    pageSizeOptions: ['10', '20', '50', '100'],
+    showTotal: (total: number) => `Total ${total} items`,
+    pageSizeOptions: ['10', '20', '50', '100'] as (string | number)[],
     defaultPageSize: 10
   },
 
@@ -107,18 +111,18 @@ export const STANDARD_EXPANDABLE_TABLE_CONFIG = {
     container: {
       padding: '16px',
       background: '#fafafa'
-    },
+    } as React.CSSProperties,
     title: {
       marginBottom: '8px',
       display: 'block',
       fontSize: '14px' // Standard font size
-    },
+    } as React.CSSProperties,
     itemContainer: {
       marginBottom: '8px',
       padding: '8px',
       background: 'white',
       borderRadius: '4px'
-    }
+    } as React.CSSProperties
   },
 
   // Standard column configurations
@@ -126,7 +130,7 @@ export const STANDARD_EXPANDABLE_TABLE_CONFIG = {
     // For ID columns (use Tag)
     idColumn: {
       ellipsis: true,
-      render: (id) => (
+      render: (id: string | number) => (
         <Tag color="blue" style={{ fontSize: '12px' }}>
           {id}
         </Tag>
@@ -135,7 +139,7 @@ export const STANDARD_EXPANDABLE_TABLE_CONFIG = {
     // For date columns
     dateColumn: {
       ellipsis: true,
-      render: (date) => {
+      render: (date: string | null | undefined) => {
         if (!date) return '-';
         const dateObj = new Date(date);
         return dateObj.toLocaleDateString('en-US', { 
@@ -148,12 +152,12 @@ export const STANDARD_EXPANDABLE_TABLE_CONFIG = {
     // For quantity/number columns
     numberColumn: {
       ellipsis: true,
-      render: (value) => <Text strong>{value || 0}</Text>
+      render: (value: number | null | undefined) => <Text strong>{value || 0}</Text>
     },
     // For status columns (use Tag)
     statusColumn: {
       ellipsis: true,
-      render: (status) => <Tag color="green">{status || 'N/A'}</Tag>
+      render: (status: string | null | undefined) => <Tag color="green">{status || 'N/A'}</Tag>
     }
   },
 
@@ -199,33 +203,19 @@ export const STANDARD_EXPANDABLE_TABLE_CONFIG = {
     item: '4px',
     button: '4px'
   }
-};
+} as const;
 
 /**
  * STANDARD EXPANDABLE ROW RENDERER TEMPLATE
  * 
  * Use this as a template for creating expandedRowRender functions
- * 
- * @param {Object} record - The table row record
- * @param {Array} items - Array of items to display in expanded row
- * @param {Function} renderItem - Function to render each item
- * @param {String} title - Title for the expanded section
- * 
- * @example
- * expandedRowRender: (record) => renderStandardExpandedRow(
- *   record,
- *   record.items || [],
- *   (item, idx) => (
- *     <div key={idx} style={STANDARD_EXPANDABLE_TABLE_CONFIG.expandedRowContent.itemContainer}>
- *       <Text strong>{item.name}</Text>
- *       <br />
- *       <Text type="secondary">Details: {item.details}</Text>
- *     </div>
- *   ),
- *   'Items:'
- * )
  */
-export const renderStandardExpandedRow = (record, items, renderItem, title = 'Details:') => {
+export const renderStandardExpandedRow = <T extends Record<string, any>>(
+  record: T,
+  items: any[],
+  renderItem: (item: any, idx: number) => ReactNode,
+  title: string = 'Details:'
+): ReactNode => {
   const { container, title: titleStyle, itemContainer } = STANDARD_EXPANDABLE_TABLE_CONFIG.expandedRowContent;
 
   return (
@@ -252,22 +242,21 @@ export const renderStandardExpandedRow = (record, items, renderItem, title = 'De
  * STANDARD EXPANDABLE TABLE COMPONENT
  * 
  * Complete template component that can be used directly or as reference
- * 
- * @example
- * <StandardExpandableTable
- *   columns={columns}
- *   dataSource={data}
- *   loading={loading}
- *   rowKey="id"
- *   expandedRowRender={(record) => renderStandardExpandedRow(
- *     record,
- *     record.items,
- *     (item) => <div>Item: {item.name}</div>,
- *     'Items:'
- *   )}
- * />
  */
-export const StandardExpandableTable = ({
+interface StandardExpandableTableProps<T extends Record<string, any>> extends Omit<TableProps<T>, 'expandable'> {
+  columns: ColumnsType<T>;
+  dataSource: T[];
+  loading?: boolean;
+  rowKey: string | ((record: T) => string);
+  expandedRowRender?: (record: T) => ReactNode;
+  expandedRowKeys?: React.Key[];
+  onExpand?: (expanded: boolean, record: T) => void;
+  pagination?: TableProps<T>['pagination'];
+  header?: ReactNode;
+  expandable?: TableProps<T>['expandable'];
+}
+
+export const StandardExpandableTable = <T extends Record<string, any>>({
   columns,
   dataSource,
   loading,
@@ -277,16 +266,17 @@ export const StandardExpandableTable = ({
   onExpand,
   pagination = STANDARD_EXPANDABLE_TABLE_CONFIG.pagination,
   header,
+  expandable,
   ...otherProps
-}) => {
+}: StandardExpandableTableProps<T>): ReactNode => {
   // Default expandable configuration - uses action column instead of plus icon
-  const defaultExpandableConfig = {
+  const defaultExpandableConfig: TableProps<T>['expandable'] = {
     expandedRowKeys,
     onExpand,
-    expandedRowRender: expandedRowRender,
+    expandedRowRender: expandedRowRender as any,
     expandRowByClick: false, // Disable row click expansion - use action buttons only
     showExpandColumn: false, // Hide the default plus icon column
-    ...otherProps.expandable // Allow override
+    ...expandable // Allow override
   };
 
   return (
@@ -302,7 +292,7 @@ export const StandardExpandableTable = ({
       )}
 
       {!loading && (
-        <Table
+        <Table<T>
           columns={columns}
           dataSource={dataSource}
           rowKey={rowKey}
@@ -315,112 +305,5 @@ export const StandardExpandableTable = ({
   );
 };
 
-/**
- * USAGE EXAMPLES:
- * 
- * 1. Basic expandable table with action column:
- * 
- *    const [expandedRowKeys, setExpandedRowKeys] = useState([]);
- * 
- *    const columns = [
- *      {
- *        title: 'ID',
- *        dataIndex: 'id',
- *        key: 'id',
- *        ellipsis: true,
- *        ...STANDARD_EXPANDABLE_TABLE_CONFIG.columnStyles.idColumn
- *      },
- *      // ... more columns
- *      {
- *        title: 'Actions',
- *        key: 'actions',
- *        width: 180,
- *        align: 'center',
- *        fixed: 'right',
- *        render: (_, record) => {
- *          const isExpanded = expandedRowKeys.includes(record.id);
- *          return (
- *            <Badge count={record.item_count || 0} showZero={true} overflowCount={999}>
- *              <Button
- *                type="primary"
- *                icon={<EyeOutlined />}
- *                size="small"
- *                onClick={(e) => {
- *                  e.stopPropagation();
- *                  if (isExpanded) {
- *                    setExpandedRowKeys(expandedRowKeys.filter(key => key !== record.id));
- *                  } else {
- *                    setExpandedRowKeys([...expandedRowKeys, record.id]);
- *                  }
- *                }}
- *              >
- *                {isExpanded ? 'Hide Details' : 'View Details'}
- *              </Button>
- *            </Badge>
- *          );
- *        },
- *      },
- *    ];
- * 
- *    <StandardExpandableTable
- *       columns={columns}
- *       dataSource={data}
- *       loading={loading}
- *       rowKey="id"
- *       expandedRowKeys={expandedRowKeys}
- *       onExpand={(expanded, record) => {
- *         if (expanded) {
- *           setExpandedRowKeys([...expandedRowKeys, record.id]);
- *         } else {
- *           setExpandedRowKeys(expandedRowKeys.filter(key => key !== record.id));
- *         }
- *       }}
- *       expandedRowRender={(record) => renderStandardExpandedRow(
- *         record,
- *         record.items || [],
- *         (item, idx) => (
- *           <>
- *             <Text strong>{item.name}</Text>
- *             <br />
- *             <Text type="secondary">Quantity: {item.quantity}</Text>
- *           </>
- *         ),
- *         'Items:'
- *       )}
- *     />
- * 
- * KEY FEATURES:
- * - Action column is fixed on the right (width: 180px, align: 'center')
- * - Button text changes based on expanded state (e.g., "View Details" / "Hide Details")
- * - Badge shows count of items (optional)
- * - No default plus icon column (showExpandColumn: false)
- * - Row click expansion disabled (expandRowByClick: false)
- * 
- * 2. Custom expanded content (still following standard styling):
- * 
- *    expandable={{
- *       expandedRowRender: (record) => (
- *         <div style={STANDARD_EXPANDABLE_TABLE_CONFIG.expandedRowContent.container}>
- *           <Text strong style={STANDARD_EXPANDABLE_TABLE_CONFIG.expandedRowContent.title}>
- *             Custom Title:
- *           </Text>
- *           {record.items.map((item, idx) => (
- *             <div key={idx} style={STANDARD_EXPANDABLE_TABLE_CONFIG.expandedRowContent.itemContainer}>
- *               <Text strong>{item.name}</Text>
- *               <br />
- *               <Text type="secondary" style={{ fontSize: '12px' }}>
- *                 Details: {item.details}
- *               </Text>
- *             </div>
- *           ))}
- *         </div>
- *       )
- *     }}
- */
-
 export default StandardExpandableTable;
-
-
-
-
 

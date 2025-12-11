@@ -263,9 +263,9 @@ async function testD22_SubmitMonthlyForecast() {
     if (!dealerName) return null;
     const dealerNameLower = dealerName.toLowerCase();
     
-    if (dealerNameLower.includes('madina')) return 'madina';
-    if (dealerNameLower.includes('argus')) return 'argus';
-    if (dealerNameLower.includes('al-amin') || dealerNameLower.includes('alamin')) return 'alamin';
+    if (dealerNameLower.includes('madina')) return 'madina.metal';
+    if (dealerNameLower.includes('argus')) return 'argus.metal';
+    if (dealerNameLower.includes('al-amin') || dealerNameLower.includes('alamin')) return 'alamin.enterprise';
     return null;
   }
   
