@@ -47,9 +47,9 @@ function TSOTemplateCards() {
   const [reviewOrderForm] = Form.useForm();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedDate, setSelectedDate] = useState(dayjs());
-  const [rangeStart, setRangeStart] = useState(dayjs());
-  const [rangeEnd, setRangeEnd] = useState(dayjs().add(7, 'day'));
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [rangeStart, setRangeStart] = useState(null);
+  const [rangeEnd, setRangeEnd] = useState(dayjs()); // On page load, end date is today
   const [orderItems, setOrderItems] = useState([
     { id: 1, product_name: 'Product A', quantity: 5 },
     { id: 2, product_name: 'Product B', quantity: 10 },
@@ -379,8 +379,8 @@ function TSOTemplateCards() {
         <TSOReportMyOrderReportsCardTemplate
           title="My Order Reports"
           dateRangePicker={{
-            startDate: selectedDate,
-            setStartDate: setSelectedDate,
+            startDate: rangeStart,
+            setStartDate: setRangeStart,
             endDate: rangeEnd,
             setEndDate: setRangeEnd,
             disabledDate: () => false,

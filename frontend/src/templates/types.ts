@@ -168,6 +168,10 @@ export interface DatePickerConfig {
 export interface DailyOrderReportCardTemplateProps {
   title?: string;
   datePicker1?: DatePickerConfig;
+  orderTypeFilter?: {
+    value: 'tso' | 'dd' | 'all';
+    onChange: (value: 'tso' | 'dd' | 'all') => void;
+  };
   buttons?: (ButtonConfig | null)[];
   gutter?: [number, number] | number;
 }

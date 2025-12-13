@@ -317,21 +317,6 @@ function AppContent() {
       icon: <FileExcelOutlined />,
       label: 'My Reports',
     },
-    {
-      key: 'template-cards',
-      icon: <LayoutOutlined />,
-      label: 'Template Cards',
-    },
-    {
-      key: 'tso-template-cards',
-      icon: <LayoutOutlined />,
-      label: 'TSO Card Templates',
-    },
-    {
-      key: 'dealer-template-cards',
-      icon: <LayoutOutlined />,
-      label: 'Dealer Card Templates',
-    },
   ] : isDealer ? [
     {
       key: 'dashboard',
@@ -352,21 +337,6 @@ function AppContent() {
       key: 'my-reports',
       icon: <FileExcelOutlined />,
       label: 'My Reports',
-    },
-    {
-      key: 'template-cards',
-      icon: <LayoutOutlined />,
-      label: 'Template Cards',
-    },
-    {
-      key: 'tso-template-cards',
-      icon: <LayoutOutlined />,
-      label: 'TSO Card Templates',
-    },
-    {
-      key: 'dealer-template-cards',
-      icon: <LayoutOutlined />,
-      label: 'Dealer Card Templates',
     },
   ] : [
     {
@@ -393,21 +363,6 @@ function AppContent() {
       key: 'settings',
       icon: <SettingOutlined />,
       label: 'Settings',
-    },
-    {
-      key: 'template-cards',
-      icon: <LayoutOutlined />,
-      label: 'Template Cards',
-    },
-    {
-      key: 'tso-template-cards',
-      icon: <LayoutOutlined />,
-      label: 'TSO Card Templates',
-    },
-    {
-      key: 'dealer-template-cards',
-      icon: <LayoutOutlined />,
-      label: 'Dealer Card Templates',
     },
   ];
   

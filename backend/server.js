@@ -11,179 +11,58 @@ const fs = require('fs');
 const { spawn } = require('child_process');
 const path = require('path');
 
-// Excel report generation function using ExcelJS without external template
-async function generateExcelReport(orders, options = {}) {
-    try {
-        const {
-            date = '',
-            sheetTitle,
-            dateLabel,
-        } = options;
+// Helper function to apply column widths and formatting to a worksheet
+function applyColumnWidthsAndFormatting(worksheet, includePrices, excelDisplayOffset = 0.78) {
+    const desiredColumnWidths = includePrices ? {
+        A: 5.78, B: 16.22, C: 26.22, D: 29.22, E: 19.44, F: 17.55, G: 11.55, H: 13.88, I: 15.11, J: 13.88,
+        K: 14.33, L: 15.33, M: 17.77, N: 13.22, O: 15.55, P: 14, Q: 11.77, R: 18.55, S: 14.88, T: 13.66,
+        U: 18.55, V: 16.66, W: 16.44, X: 14.44, Y: 19.44, Z: 14.66, AA: 18.22, AB: 13.44, AC: 16.33, AD: 12.11,
+        AE: 15.11, AF: 16.88, AG: 18.66, AH: 20.11, AI: 17.22, AJ: 19.44, AK: 15.88, AL: 18.22, AM: 10.33, AN: 8.77,
+        AO: 14.55, AP: 11, AQ: 14.11, AR: 12.88, AS: 12.22, AT: 10, AU: 11.33, AV: 13.11, AW: 14.44, AX: 11.77,
+        AY: 14.22, AZ: 16, BA: 20.44, BB: 17, BC: 17.33, BD: 15.66, BE: 16, BF: 14.11, BG: 11.88, BH: 15,
+        BI: 13.77, BJ: 13.33, BK: 11.11, BL: 14.22, BM: 13, BN: 15.22, BO: 17.11, BP: 12.22, BQ: 15.22, BR: 14.44,
+        BS: 13.88, BT: 12.33, BU: 10.88, BV: 14.66, BW: 10.88, BX: 14.66, BY: 12.66, BZ: 12.66, CA: 15.88, CB: 12.66,
+        CC: 15.88, CD: 11.77, CE: 11.77, CF: 15.11, CG: 10.77, CH: 9.11, CI: 17.77, CJ: 15.77, CK: 17.77, CL: 13,
+        CM: 15.77, CN: 18.22, CO: 15.33, CP: 14.88, CQ: 12.44, CR: 10.33, CS: 13.22, CT: 11.66, CU: 10.66, CV: 14.55,
+        CW: 9.66, CX: 9.66, CY: 9.66, CZ: 11.88, DA: 12.88, DB: 11.11, DC: 11.55, DD: 9.22, DE: 10.88, DF: 9.22,
+        DG: 8.44, DH: 8.44, DI: 8.44, DJ: 8.44, DK: 8.44, DL: 10.11, DM: 11.44, DN: 11.44, DO: 12.33, DP: 12.33,
+        DQ: 19.55,
+    } : {
+        A: 5.78, B: 16.22, C: 26.22, D: 29.22, E: 19.44, F: 17.55, G: 11.55, H: 13.88, I: 15.11, J: 13.88,
+        K: 14.33, L: 15.33, M: 17.77, N: 13.22, O: 15.55, P: 14, Q: 11.77, R: 18.55, S: 14.88, T: 13.66,
+        U: 18.55, V: 16.66, W: 16.44, X: 14.44, Y: 19.44, Z: 14.66,
+    };
 
-        // Create new workbook
-        const workbook = new ExcelJS.Workbook();
-        const worksheetName = sheetTitle
-            || (date ? `Invoice ${date.replace(/-/g, '.')}` : 'Invoice Report');
-        const worksheet = workbook.addWorksheet(worksheetName);
-        
-        // Build worksheet contents programmatically
-        await buildWorksheetStructure(worksheet, orders, { date, dateLabel, sheetTitle });
+    worksheet.columns.forEach((column, colNumber) => {
+        const columnNumber = colNumber + 1;
+        const columnLetter = column.letter;
+        let maxLength = 0;
 
-        const excelDisplayOffset = 0.78;
-        const desiredColumnWidths = {
-            A: 5.78,
-            B: 16.22,
-            C: 26.22,
-            D: 29.22,
-            E: 19.44,
-            F: 17.55,
-            G: 11.55,
-            H: 13.88,
-            I: 15.11,
-            J: 13.88,
-            K: 14.33,
-            L: 15.33,
-            M: 17.77,
-            N: 13.22,
-            O: 15.55,
-            P: 14,
-            Q: 11.77,
-            R: 18.55,
-            S: 14.88,
-            T: 13.66,
-            U: 18.55,
-            V: 16.66,
-            W: 16.44,
-            X: 14.44,
-            Y: 19.44,
-            Z: 14.66,
-            AA: 18.22,
-            AB: 13.44,
-            AC: 16.33,
-            AD: 12.11,
-            AE: 15.11,
-            AF: 16.88,
-            AG: 18.66,
-            AH: 20.11,
-            AI: 17.22,
-            AJ: 19.44,
-            AK: 15.88,
-            AL: 18.22,
-            AM: 10.33,
-            AN: 8.77,
-            AO: 14.55,
-            AP: 11,
-            AQ: 14.11,
-            AR: 12.88,
-            AS: 12.22,
-            AT: 10,
-            AU: 11.33,
-            AV: 13.11,
-            AW: 14.44,
-            AX: 11.77,
-            AY: 14.22,
-            AZ: 16,
-            BA: 20.44,
-            BB: 17,
-            BC: 17.33,
-            BD: 15.66,
-            BE: 16,
-            BF: 14.11,
-            BG: 11.88,
-            BH: 15,
-            BI: 13.77,
-            BJ: 13.33,
-            BK: 11.11,
-            BL: 14.22,
-            BM: 13,
-            BN: 15.22,
-            BO: 17.11,
-            BP: 12.22,
-            BQ: 15.22,
-            BR: 14.44,
-            BS: 13.88,
-            BT: 12.33,
-            BU: 10.88,
-            BV: 14.66,
-            BW: 10.88,
-            BX: 14.66,
-            BY: 12.66,
-            BZ: 12.66,
-            CA: 15.88,
-            CB: 12.66,
-            CC: 15.88,
-            CD: 11.77,
-            CE: 11.77,
-            CF: 15.11,
-            CG: 10.77,
-            CH: 9.11,
-            CI: 17.77,
-            CJ: 15.77,
-            CK: 17.77,
-            CL: 13,
-            CM: 15.77,
-            CN: 18.22,
-            CO: 15.33,
-            CP: 14.88,
-            CQ: 12.44,
-            CR: 10.33,
-            CS: 13.22,
-            CT: 11.66,
-            CU: 10.66,
-            CV: 14.55,
-            CW: 9.66,
-            CX: 9.66,
-            CY: 9.66,
-            CZ: 11.88,
-            DA: 12.88,
-            DB: 11.11,
-            DC: 11.55,
-            DD: 9.22,
-            DE: 10.88,
-            DF: 9.22,
-            DG: 8.44,
-            DH: 8.44,
-            DI: 8.44,
-            DJ: 8.44,
-            DK: 8.44,
-            DL: 10.11,
-            DM: 11.44,
-            DN: 11.44,
-            DO: 12.33,
-            DP: 12.33,
-            DQ: 19.55,
-        };
+        const headerCell = worksheet.getRow(1).getCell(columnNumber);
+        if (headerCell.value) {
+            maxLength = Math.max(maxLength, String(headerCell.value).trim().length);
+        }
 
-        worksheet.columns.forEach((column, colNumber) => {
-            const columnNumber = colNumber + 1;
-            const columnLetter = column.letter;
-            let maxLength = 0;
-
-            const headerCell = worksheet.getRow(1).getCell(columnNumber);
-            if (headerCell.value) {
-                maxLength = Math.max(maxLength, String(headerCell.value).trim().length);
+        worksheet.eachRow({ includeEmpty: false }, (row) => {
+            const cell = row.getCell(columnNumber);
+            if (cell.value == null) {
+                return;
             }
 
-            worksheet.eachRow({ includeEmpty: false }, (row) => {
-                const cell = row.getCell(columnNumber);
-                if (cell.value == null) {
-                    return;
-                }
+            let cellLength = 0;
+            if (typeof cell.value === 'string') {
+                const trimmed = cell.value.trim();
+                cellLength = trimmed.length;
+            } else if (typeof cell.value === 'number') {
+                cellLength = cell.value.toString().trim().length;
+            } else if (cell.value instanceof Date) {
+                cellLength = cell.value.toLocaleDateString().trim().length;
+            } else {
+                cellLength = String(cell.value).trim().length;
+            }
 
-                let cellLength = 0;
-                if (typeof cell.value === 'string') {
-                    const trimmed = cell.value.trim();
-                    cellLength = trimmed.length;
-                } else if (typeof cell.value === 'number') {
-                    cellLength = cell.value.toString().trim().length;
-                } else if (cell.value instanceof Date) {
-                    cellLength = cell.value.toLocaleDateString().trim().length;
-                } else {
-                    cellLength = String(cell.value).trim().length;
-                }
-
-                maxLength = Math.max(maxLength, cellLength);
-            });
+            maxLength = Math.max(maxLength, cellLength);
+        });
 
         const desiredWidth = desiredColumnWidths[columnLetter];
         const isTransportColumn = column.key === 'transport';
@@ -194,16 +73,40 @@ async function generateExcelReport(orders, options = {}) {
         } else {
             column.width = Math.max(3.5, Math.min(maxLength + 0.05, 30));
         }
-            column.hidden = false;
+        column.hidden = false;
 
-            if (columnNumber >= 6) {
-                worksheet.getColumn(columnNumber).eachCell({ includeEmpty: false }, (cell) => {
-                    if (cell.value && String(cell.value).trim().length > 20) {
-                        cell.alignment = { ...(cell.alignment || {}), wrapText: true };
-                    }
-                });
-            }
-        });
+        if (columnNumber >= 6) {
+            worksheet.getColumn(columnNumber).eachCell({ includeEmpty: false }, (cell) => {
+                if (cell.value && String(cell.value).trim().length > 20) {
+                    cell.alignment = { ...(cell.alignment || {}), wrapText: true };
+                }
+            });
+        }
+    });
+}
+
+// Excel report generation function using ExcelJS without external template
+async function generateExcelReport(orders, options = {}) {
+    try {
+        const {
+            date = '',
+            sheetTitle,
+            dateLabel,
+            reportTitle,
+        } = options;
+
+        // Create new workbook
+        const worksheetName = sheetTitle
+            || (date ? `Admin Invoice ${date.replace(/-/g, '.')}` : 'Admin Invoice Report');
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet(worksheetName);
+        
+        // Build worksheet contents programmatically
+        await buildWorksheetStructure(worksheet, orders, { date, dateLabel, sheetTitle, reportTitle });
+
+        const excelDisplayOffset = 0.78;
+        // Apply column widths and formatting
+        applyColumnWidthsAndFormatting(worksheet, true, excelDisplayOffset);
         
         // Generate Excel buffer
         const buffer = await workbook.xlsx.writeBuffer();
@@ -635,97 +538,21 @@ async function generateExcelReportNoPrices(orders, options = {}) {
             date = '',
             sheetTitle,
             dateLabel,
+            reportTitle,
         } = options;
 
         // Create new workbook
-        const workbook = new ExcelJS.Workbook();
         const worksheetName = sheetTitle
-            || (date ? `Invoice ${date.replace(/-/g, '.')}` : 'Invoice Report');
+            || (date ? `TSO Invoice ${date.replace(/-/g, '.')}` : 'TSO Invoice Report');
+        const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet(worksheetName);
         
         // Build worksheet contents programmatically (without prices)
-        await buildWorksheetStructureNoPrices(worksheet, orders, { date, dateLabel, sheetTitle });
+        await buildWorksheetStructureNoPrices(worksheet, orders, { date, dateLabel, sheetTitle, reportTitle });
 
         const excelDisplayOffset = 0.78;
-        const desiredColumnWidths = {
-            A: 5.78,
-            B: 16.22,
-            C: 26.22,
-            D: 29.22,
-            E: 19.44,
-            F: 17.55,
-            G: 11.55,
-            H: 13.88,
-            I: 15.11,
-            J: 13.88,
-            K: 14.33,
-            L: 15.33,
-            M: 17.77,
-            N: 13.22,
-            O: 15.55,
-            P: 14,
-            Q: 11.77,
-            R: 18.55,
-            S: 14.88,
-            T: 13.66,
-            U: 18.55,
-            V: 16.66,
-            W: 16.44,
-            X: 14.44,
-            Y: 19.44,
-            Z: 14.66,
-        };
-
-        worksheet.columns.forEach((column, colNumber) => {
-            const columnNumber = colNumber + 1;
-            const columnLetter = column.letter;
-            let maxLength = 0;
-
-            const headerCell = worksheet.getRow(1).getCell(columnNumber);
-            if (headerCell.value) {
-                maxLength = Math.max(maxLength, String(headerCell.value).trim().length);
-            }
-
-            worksheet.eachRow({ includeEmpty: false }, (row) => {
-                const cell = row.getCell(columnNumber);
-                if (cell.value == null) {
-                    return;
-                }
-
-                let cellLength = 0;
-                if (typeof cell.value === 'string') {
-                    const trimmed = cell.value.trim();
-                    cellLength = trimmed.length;
-                } else if (typeof cell.value === 'number') {
-                    cellLength = cell.value.toString().trim().length;
-                } else if (cell.value instanceof Date) {
-                    cellLength = cell.value.toLocaleDateString().trim().length;
-                } else {
-                    cellLength = String(cell.value).trim().length;
-                }
-
-                maxLength = Math.max(maxLength, cellLength);
-            });
-
-        const desiredWidth = desiredColumnWidths[columnLetter];
-        const isTransportColumn = column.key === 'transport';
-        if (desiredWidth != null) {
-            column.width = desiredWidth + excelDisplayOffset;
-        } else if (isTransportColumn) {
-            column.width = 18.11 + excelDisplayOffset;
-        } else {
-            column.width = Math.max(3.5, Math.min(maxLength + 0.05, 30));
-        }
-            column.hidden = false;
-
-            if (columnNumber >= 6) {
-                worksheet.getColumn(columnNumber).eachCell({ includeEmpty: false }, (cell) => {
-                    if (cell.value && String(cell.value).trim().length > 20) {
-                        cell.alignment = { ...(cell.alignment || {}), wrapText: true };
-                    }
-                });
-            }
-        });
+        // Apply column widths and formatting
+        applyColumnWidthsAndFormatting(worksheet, false, excelDisplayOffset);
         
         // Generate Excel buffer
         const buffer = await workbook.xlsx.writeBuffer();
@@ -739,7 +566,7 @@ async function generateExcelReportNoPrices(orders, options = {}) {
 
 // Function to build worksheet structure programmatically without prices
 async function buildWorksheetStructureNoPrices(worksheet, orders, options = {}) {
-    const { dateLabel } = options;
+    const { dateLabel, reportTitle } = options;
 
     const defaultFont = { name: 'Calibri', size: 8 };
     const thinBorder = {
@@ -838,8 +665,24 @@ async function buildWorksheetStructureNoPrices(worksheet, orders, options = {}) 
         });
     });
     
+    // Title row at the very top
+    let currentRowIndex = 1;
+    if (reportTitle) {
+        const titleRow = worksheet.getRow(currentRowIndex);
+        const titleCell = titleRow.getCell(1);
+        styleCell(titleCell, {
+            bold: true,
+            alignment: { horizontal: 'left', vertical: 'middle' },
+            border: null,
+            font: { name: 'Calibri', size: 8, bold: true },
+        });
+        titleCell.value = reportTitle;
+        // Don't merge cells - keep title in single cell
+        currentRowIndex += 1;
+    }
+    
     // Summary header
-    const dateRow = worksheet.getRow(1);
+    const dateRow = worksheet.getRow(currentRowIndex);
     if (dateLabel) {
         styleCell(dateRow.getCell(1), {
             alignment: { horizontal: 'left', vertical: 'middle' },
@@ -855,14 +698,16 @@ async function buildWorksheetStructureNoPrices(worksheet, orders, options = {}) 
         });
         dateRow.getCell(2).value = dateLabel;
     }
+    currentRowIndex += 1;
 
-    const summaryHeaderRow = worksheet.getRow(2);
+    const summaryHeaderRow = worksheet.getRow(currentRowIndex);
     styleCell(summaryHeaderRow.getCell(1), { bold: true });
     summaryHeaderRow.getCell(1).value = 'Seg';
     styleCell(summaryHeaderRow.getCell(2), { bold: true });
     summaryHeaderRow.getCell(2).value = 'Qty';
 
-    let summaryRowIndex = 3;
+    currentRowIndex += 1;
+    let summaryRowIndex = currentRowIndex;
 
     // Summary rows per application (no value column)
     applicationNames.forEach((appName) => {
@@ -942,9 +787,10 @@ async function buildWorksheetStructureNoPrices(worksheet, orders, options = {}) 
         });
     });
 
-    // Freeze panes below product header rows
+    // Freeze panes below product header rows (adjust for title row if present)
+    const titleRowOffset = reportTitle ? 1 : 0;
     worksheet.views = [
-        { state: 'frozen', xSplit: 5, ySplit: headerRowIndex + 1 },
+        { state: 'frozen', xSplit: 5, ySplit: headerRowIndex + 1 + titleRowOffset },
     ];
 
     const transportColumnIndex = currentCol;
@@ -1054,7 +900,7 @@ async function buildWorksheetStructureNoPrices(worksheet, orders, options = {}) 
 
 // Function to build worksheet structure programmatically
 async function buildWorksheetStructure(worksheet, orders, options = {}) {
-    const { dateLabel } = options;
+    const { dateLabel, reportTitle } = options;
 
     const defaultFont = { name: 'Calibri', size: 8 };
     const thinBorder = {
@@ -1146,8 +992,24 @@ async function buildWorksheetStructure(worksheet, orders, options = {}) {
         });
     });
     
+    // Title row at the very top
+    let currentRowIndex = 1;
+    if (reportTitle) {
+        const titleRow = worksheet.getRow(currentRowIndex);
+        const titleCell = titleRow.getCell(1);
+        styleCell(titleCell, {
+            bold: true,
+            alignment: { horizontal: 'left', vertical: 'middle' },
+            border: null,
+            font: { name: 'Calibri', size: 8, bold: true },
+        });
+        titleCell.value = reportTitle;
+        // Don't merge cells - keep title in single cell
+        currentRowIndex += 1;
+    }
+    
     // Summary header
-    const dateRow = worksheet.getRow(1);
+    const dateRow = worksheet.getRow(currentRowIndex);
     if (dateLabel) {
         styleCell(dateRow.getCell(1), {
             alignment: { horizontal: 'left', vertical: 'middle' },
@@ -1163,8 +1025,9 @@ async function buildWorksheetStructure(worksheet, orders, options = {}) {
         });
         dateRow.getCell(2).value = dateLabel;
     }
+    currentRowIndex += 1;
 
-    const summaryHeaderRow = worksheet.getRow(2);
+    const summaryHeaderRow = worksheet.getRow(currentRowIndex);
     styleCell(summaryHeaderRow.getCell(1), { bold: true });
     summaryHeaderRow.getCell(1).value = 'Seg';
     styleCell(summaryHeaderRow.getCell(2), { bold: true });
@@ -1172,7 +1035,8 @@ async function buildWorksheetStructure(worksheet, orders, options = {}) {
     styleCell(summaryHeaderRow.getCell(3), { bold: true });
     summaryHeaderRow.getCell(3).value = 'Invoice Value';
 
-    let summaryRowIndex = 3;
+    currentRowIndex += 1;
+    let summaryRowIndex = currentRowIndex;
 
     // Summary rows per application
     applicationNames.forEach((appName) => {
@@ -1265,9 +1129,10 @@ async function buildWorksheetStructure(worksheet, orders, options = {}) {
         });
     });
 
-    // Freeze panes below product header rows
+    // Freeze panes below product header rows (adjust for title row if present)
+    const titleRowOffset = reportTitle ? 1 : 0;
     worksheet.views = [
-        { state: 'frozen', xSplit: 5, ySplit: headerRowIndex + 2 },
+        { state: 'frozen', xSplit: 5, ySplit: headerRowIndex + 2 + titleRowOffset },
     ];
 
     const transportColumnIndex = currentCol;
@@ -3568,7 +3433,7 @@ app.get('/api/orders/range', async (req, res) => {
 app.get('/api/orders/date/:date', async (req, res) => {
     try {
         const { date } = req.params;
-        const { territory_name } = req.query; // Optional territory filter for TSO users
+        const { territory_name, order_source } = req.query; // Optional territory filter for TSO users, optional order_source filter ('tso' or 'dealer')
         
         // Validate date format (YYYY-MM-DD)
         const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
@@ -3644,9 +3509,22 @@ app.get('/api/orders/date/:date', async (req, res) => {
             ORDER BY do.order_date DESC, do.id DESC
         `;
 
-        const [salesOrders] = await dbPromise.query(salesOrdersQuery, salesParams);
-        const [demandOrders] = await dbPromise.query(demandQuery, demandParams);
-        const orders = [...salesOrders, ...demandOrders];
+        // Filter by order_source if provided
+        let orders = [];
+        if (order_source === 'tso') {
+            // Only return sales orders
+            const [salesOrders] = await dbPromise.query(salesOrdersQuery, salesParams);
+            orders = salesOrders;
+        } else if (order_source === 'dealer') {
+            // Only return demand orders
+            const [demandOrders] = await dbPromise.query(demandQuery, demandParams);
+            orders = demandOrders;
+        } else {
+            // Return both types
+            const [salesOrders] = await dbPromise.query(salesOrdersQuery, salesParams);
+            const [demandOrders] = await dbPromise.query(demandQuery, demandParams);
+            orders = [...salesOrders, ...demandOrders];
+        }
 
         if (orders.length === 0) {
             return res.json({ 
@@ -3701,7 +3579,7 @@ app.get('/api/orders/date/:date', async (req, res) => {
 app.get('/api/orders/tso-report/:date', async (req, res) => {
     try {
         const { date } = req.params;
-        const { territory_name } = req.query; // Optional territory filter for TSO users
+        const { territory_name, order_source, user_role } = req.query; // Optional territory filter for TSO users, optional order_source filter ('tso' or 'dealer'), optional user_role to determine if prices should be included
         
         // Validate date format (YYYY-MM-DD)
         const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
@@ -3709,8 +3587,8 @@ app.get('/api/orders/tso-report/:date', async (req, res) => {
             return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
         }
         
-        // Get sales orders for the specific date (TSO orders only - from sales_orders table)
-        let ordersQuery = `
+        // Build queries for both sales_orders and demand_orders based on order_source filter
+        let salesOrdersQuery = `
             SELECT 
                 so.*, 
                 'SO' as order_type,
@@ -3726,48 +3604,161 @@ app.get('/api/orders/tso-report/:date', async (req, res) => {
             WHERE so.order_date = ?
         `;
         
-        const params = [date];
+        let demandOrdersQuery = `
+            SELECT 
+                do.*, 
+                'DD' as order_type,
+                do.dealer_name, 
+                do.territory_name as dealer_territory,
+                NULL as dealer_address,
+                NULL as dealer_contact,
+                NULL as warehouse_name,
+                NULL as warehouse_alias,
+                NULL as transport_name,
+                do.order_date
+            FROM demand_orders do
+            WHERE do.order_date = ?
+        `;
         
-        // Add territory filter if provided (for TSO users - only show dealers in their territory)
+        const salesParams = [date];
+        const demandParams = [date];
+        
+        // Add territory filter if provided
         if (territory_name) {
-            ordersQuery += ` AND so.territory_name = ?`;
-            params.push(territory_name);
+            salesOrdersQuery += ` AND so.territory_name = ?`;
+            demandOrdersQuery += ` AND do.territory_name = ?`;
+            salesParams.push(territory_name);
+            demandParams.push(territory_name);
         }
         
-        ordersQuery += ` ORDER BY so.order_date ASC, so.id ASC`;
+        salesOrdersQuery += ` ORDER BY so.order_date ASC, so.id ASC`;
+        demandOrdersQuery += ` ORDER BY do.order_date ASC, do.id ASC`;
         
-        const orders = await dbPromise.query(ordersQuery, params);
+        // Filter by order_source if provided
+        let orders = [];
+        if (order_source === 'tso') {
+            // Only return sales orders
+            const result = await dbPromise.query(salesOrdersQuery, salesParams);
+            orders = result[0];
+        } else if (order_source === 'dealer') {
+            // Only return demand orders
+            const result = await dbPromise.query(demandOrdersQuery, demandParams);
+            orders = result[0];
+        } else {
+            // Return both types
+            const [salesResult] = await dbPromise.query(salesOrdersQuery, salesParams);
+            const [demandResult] = await dbPromise.query(demandOrdersQuery, demandParams);
+            orders = [...salesResult, ...demandResult];
+        }
         
-        if (orders[0].length === 0) {
+        if (orders.length === 0) {
             return res.status(404).json({ 
                 error: `No orders found for date: ${date}` 
             });
         }
         
-        // Get order items for each order from sales_order_items
+        // Get order items for each order
         const ordersWithItems = [];
-        for (const order of orders[0]) {
-            const itemsQuery = `
-                SELECT soi.*, soi.product_name, soi.product_code, soi.unit_tp, NULL as mrp, soi.unit_trade_price
-                FROM sales_order_items soi
-                WHERE soi.order_id = ?
-                ORDER BY soi.id
-            `;
+        for (const order of orders) {
+            let itemsQuery;
+            if (order.order_type === 'SO') {
+                itemsQuery = `
+                    SELECT soi.*, soi.product_name, soi.product_code, soi.unit_tp, NULL as mrp, soi.unit_trade_price
+                    FROM sales_order_items soi
+                    WHERE soi.order_id = ?
+                    ORDER BY soi.id
+                `;
+            } else {
+                itemsQuery = `
+                    SELECT doi.*, doi.product_name, doi.product_code, NULL as unit_tp, NULL as mrp, NULL as unit_trade_price
+                    FROM demand_order_items doi
+                    WHERE doi.order_id = ?
+                    ORDER BY doi.id
+                `;
+            }
             
             const items = await dbPromise.query(itemsQuery, [order.order_id]);
             order.items = items[0];
             ordersWithItems.push(order);
         }
         
-        // Generate Excel report
-        const reportData = await generateExcelReport(ordersWithItems, {
-            date,
-            dateLabel: date,
-        });
+        // Generate Excel report - use no-prices version for TSO users, with prices for Admin
+        const includePrices = user_role !== 'tso'; // TSO users should not see prices
+        const reportType = includePrices ? 'Admin' : 'TSO';
+        
+        let reportData;
+        let filenameSuffix;
+        
+        if (order_source === 'tso' || order_source === 'dealer') {
+            // Single order type - generate single worksheet
+            let reportTitle;
+            if (order_source === 'tso') {
+                reportTitle = `${reportType} Sales Order Report`;
+                filenameSuffix = 'Sales_Order_Report';
+            } else {
+                reportTitle = `${reportType} Daily Demand Report`;
+                filenameSuffix = 'Daily_Demand_Report';
+            }
+            
+            const sheetTitle = `${reportType} Invoice ${date.replace(/-/g, '.')}`;
+            
+            reportData = includePrices 
+                ? await generateExcelReport(ordersWithItems, { date, dateLabel: date, sheetTitle, reportTitle })
+                : await generateExcelReportNoPrices(ordersWithItems, { date, dateLabel: date, sheetTitle, reportTitle });
+        } else {
+            // Both order types (all) - generate workbook with 2 worksheets
+            filenameSuffix = 'Order_Report';
+            
+            // Separate Sales Orders and Daily Demands
+            const salesOrders = ordersWithItems.filter(order => order.order_type === 'SO');
+            const dailyDemands = ordersWithItems.filter(order => order.order_type === 'DD');
+            
+            // Create workbook with two worksheets
+            const workbook = new ExcelJS.Workbook();
+            const dateLabel = date;
+            const dateFormatted = date.replace(/-/g, '.');
+            
+            // Worksheet 1: Sales Orders
+            if (salesOrders.length > 0) {
+                const salesSheetTitle = `${reportType} Invoice ${dateFormatted}`;
+                const salesReportTitle = `${reportType} Sales Order Report`;
+                const salesWorksheet = workbook.addWorksheet('Sales Orders');
+                
+                if (includePrices) {
+                    await buildWorksheetStructure(salesWorksheet, salesOrders, { date, dateLabel, sheetTitle: salesSheetTitle, reportTitle: salesReportTitle });
+                } else {
+                    await buildWorksheetStructureNoPrices(salesWorksheet, salesOrders, { date, dateLabel, sheetTitle: salesSheetTitle, reportTitle: salesReportTitle });
+                }
+                
+                // Apply column widths and formatting (same as in generateExcelReport)
+                const excelDisplayOffset = 0.78;
+                applyColumnWidthsAndFormatting(salesWorksheet, includePrices, excelDisplayOffset);
+            }
+            
+            // Worksheet 2: Daily Demands
+            if (dailyDemands.length > 0) {
+                const demandSheetTitle = `${reportType} Invoice ${dateFormatted}`;
+                const demandReportTitle = `${reportType} Daily Demand Report`;
+                const demandWorksheet = workbook.addWorksheet('Daily Demands');
+                
+                if (includePrices) {
+                    await buildWorksheetStructure(demandWorksheet, dailyDemands, { date, dateLabel, sheetTitle: demandSheetTitle, reportTitle: demandReportTitle });
+                } else {
+                    await buildWorksheetStructureNoPrices(demandWorksheet, dailyDemands, { date, dateLabel, sheetTitle: demandSheetTitle, reportTitle: demandReportTitle });
+                }
+                
+                // Apply column widths and formatting
+                const excelDisplayOffset = 0.78;
+                applyColumnWidthsAndFormatting(demandWorksheet, includePrices, excelDisplayOffset);
+            }
+            
+            // Generate Excel buffer
+            reportData = await workbook.xlsx.writeBuffer();
+        }
         
         // Set headers for file download
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.setHeader('Content-Disposition', `attachment; filename="TSO_Order_Report_${date}.xlsx"`);
+        res.setHeader('Content-Disposition', `attachment; filename="${reportType}_${filenameSuffix}_${date}.xlsx"`);
         
         res.send(reportData);
         
@@ -3780,7 +3771,7 @@ app.get('/api/orders/tso-report/:date', async (req, res) => {
 // Generate TSO Excel report for orders within a date range
 app.get('/api/orders/tso-report-range', async (req, res) => {
     try {
-        const { startDate, endDate, territory_name } = req.query;
+        const { startDate, endDate, territory_name, order_source, user_role } = req.query;
 
         if (!startDate || !endDate) {
             return res.status(400).json({ error: 'startDate and endDate are required' });
@@ -3795,22 +3786,129 @@ app.get('/api/orders/tso-report-range', async (req, res) => {
             return res.status(400).json({ error: 'startDate cannot be after endDate' });
         }
 
-        const ordersWithItems = await fetchOrdersWithItemsBetween(startDate, endDate, null, territory_name || null);
-        console.log('Range Excel request', { startDate, endDate, territory_name, ordersCount: ordersWithItems.length });
+        let ordersWithItems = await fetchOrdersWithItemsBetween(startDate, endDate, null, territory_name || null);
+        
+        // Apply order_source filter if provided
+        if (order_source === 'tso') {
+            ordersWithItems = ordersWithItems.filter(order => order.order_type === 'SO');
+        } else if (order_source === 'dealer') {
+            ordersWithItems = ordersWithItems.filter(order => order.order_type === 'DD');
+        }
+        // If order_source is not provided or 'all', keep all orders
+        
+        console.log('Range Excel request', { startDate, endDate, territory_name, order_source: order_source || 'all', ordersCount: ordersWithItems.length });
         if (!ordersWithItems.length) {
             return res.status(404).json({ error: `No orders found between ${startDate} and ${endDate}` });
         }
 
         const dateLabel = `${startDate} to ${endDate}`;
-        const { summaries } = buildDealerRangeSummary(ordersWithItems);
-        const aggregatedOrders = convertDealerSummariesToOrders(summaries, dateLabel);
-        const reportData = await generateExcelReport(aggregatedOrders, {
-            date: startDate,
-            dateLabel,
-        });
+        
+        // Use appropriate summary function based on whether prices should be included
+        const includePrices = user_role !== 'tso'; // TSO users should not see prices
+        const reportType = includePrices ? 'Admin' : 'TSO';
+        
+        let reportData;
+        let filenameSuffix;
+        
+        if (order_source === 'tso' || order_source === 'dealer') {
+            // Single order type - generate single worksheet
+            let reportTitle;
+            if (order_source === 'tso') {
+                reportTitle = `${reportType} Sales Order Report`;
+                filenameSuffix = 'Sales_Order_Report';
+            } else {
+                reportTitle = `${reportType} Daily Demand Report`;
+                filenameSuffix = 'Daily_Demand_Report';
+            }
+            
+            const sheetTitle = `${reportType} Invoice ${startDate.replace(/-/g, '.')} to ${endDate.replace(/-/g, '.')}`;
+            
+            let aggregatedOrders;
+            if (includePrices) {
+                const { summaries } = buildDealerRangeSummary(ordersWithItems);
+                aggregatedOrders = convertDealerSummariesToOrders(summaries, dateLabel);
+                reportData = await generateExcelReport(aggregatedOrders, {
+                    date: startDate,
+                    dateLabel,
+                    sheetTitle,
+                    reportTitle,
+                });
+            } else {
+                const { summaries } = buildDealerRangeSummaryNoPrices(ordersWithItems);
+                aggregatedOrders = convertDealerSummariesToOrdersNoPrices(summaries, dateLabel);
+                reportData = await generateExcelReportNoPrices(aggregatedOrders, {
+                    date: startDate,
+                    dateLabel,
+                    sheetTitle,
+                    reportTitle,
+                });
+            }
+        } else {
+            // Both order types (all) - generate workbook with 2 worksheets
+            filenameSuffix = 'Order_Report';
+            
+            // Separate Sales Orders and Daily Demands
+            const salesOrders = ordersWithItems.filter(order => order.order_type === 'SO');
+            const dailyDemands = ordersWithItems.filter(order => order.order_type === 'DD');
+            
+            // Create workbook with two worksheets
+            const workbook = new ExcelJS.Workbook();
+            const dateFormatted = `${startDate.replace(/-/g, '.')} to ${endDate.replace(/-/g, '.')}`;
+            
+            // Worksheet 1: Sales Orders
+            if (salesOrders.length > 0) {
+                const { summaries: salesSummaries } = includePrices 
+                    ? buildDealerRangeSummary(salesOrders)
+                    : buildDealerRangeSummaryNoPrices(salesOrders);
+                const aggregatedSalesOrders = includePrices
+                    ? convertDealerSummariesToOrders(salesSummaries, dateLabel)
+                    : convertDealerSummariesToOrdersNoPrices(salesSummaries, dateLabel);
+                
+                const salesSheetTitle = `${reportType} Invoice ${dateFormatted}`;
+                const salesReportTitle = `${reportType} Sales Order Report`;
+                const salesWorksheet = workbook.addWorksheet('Sales Orders');
+                
+                if (includePrices) {
+                    await buildWorksheetStructure(salesWorksheet, aggregatedSalesOrders, { date: startDate, dateLabel, sheetTitle: salesSheetTitle, reportTitle: salesReportTitle });
+                } else {
+                    await buildWorksheetStructureNoPrices(salesWorksheet, aggregatedSalesOrders, { date: startDate, dateLabel, sheetTitle: salesSheetTitle, reportTitle: salesReportTitle });
+                }
+                
+                // Apply column widths and formatting
+                const excelDisplayOffset = 0.78;
+                applyColumnWidthsAndFormatting(salesWorksheet, includePrices, excelDisplayOffset);
+            }
+            
+            // Worksheet 2: Daily Demands
+            if (dailyDemands.length > 0) {
+                const { summaries: demandSummaries } = includePrices 
+                    ? buildDealerRangeSummary(dailyDemands)
+                    : buildDealerRangeSummaryNoPrices(dailyDemands);
+                const aggregatedDailyDemands = includePrices
+                    ? convertDealerSummariesToOrders(demandSummaries, dateLabel)
+                    : convertDealerSummariesToOrdersNoPrices(demandSummaries, dateLabel);
+                
+                const demandSheetTitle = `${reportType} Invoice ${dateFormatted}`;
+                const demandReportTitle = `${reportType} Daily Demand Report`;
+                const demandWorksheet = workbook.addWorksheet('Daily Demands');
+                
+                if (includePrices) {
+                    await buildWorksheetStructure(demandWorksheet, aggregatedDailyDemands, { date: startDate, dateLabel, sheetTitle: demandSheetTitle, reportTitle: demandReportTitle });
+                } else {
+                    await buildWorksheetStructureNoPrices(demandWorksheet, aggregatedDailyDemands, { date: startDate, dateLabel, sheetTitle: demandSheetTitle, reportTitle: demandReportTitle });
+                }
+                
+                // Apply column widths and formatting
+                const excelDisplayOffset = 0.78;
+                applyColumnWidthsAndFormatting(demandWorksheet, includePrices, excelDisplayOffset);
+            }
+            
+            // Generate Excel buffer
+            reportData = await workbook.xlsx.writeBuffer();
+        }
 
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.setHeader('Content-Disposition', `attachment; filename="TSO_Order_Report_${startDate}_${endDate}.xlsx"`);
+        res.setHeader('Content-Disposition', `attachment; filename="${reportType}_${filenameSuffix}_${startDate}_${endDate}.xlsx"`);
         res.send(reportData);
     } catch (error) {
         console.error('Error generating range Excel report:', error);
@@ -4779,9 +4877,10 @@ app.get('/api/orders/dealer/daily-demand-report/:date', async (req, res) => {
 // Generate MR Order Report CSV (using warehouse aliases)
 app.get('/api/orders/mr-report/:date', async (req, res) => {
     const { date } = req.params;
+    const { order_source } = req.query; // Optional order_source filter ('tso' or 'dealer')
     
     try {
-        console.log(`📊 Generating MR Order Report CSV for date: ${date}`);
+        console.log(`📊 Generating MR Order Report CSV for date: ${date}, order_source: ${order_source || 'all'}`);
         
         // Validate date format
         const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
@@ -4789,8 +4888,8 @@ app.get('/api/orders/mr-report/:date', async (req, res) => {
             return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
         }
         
-        // Get sales orders for the specified date (TSO orders only - from sales_orders table)
-        const ordersQuery = `
+        // Build queries for both sales_orders and demand_orders based on order_source filter
+        let salesOrdersQuery = `
             SELECT DISTINCT
                 so.order_id,
                 'SO' as order_type,
@@ -4804,36 +4903,89 @@ app.get('/api/orders/mr-report/:date', async (req, res) => {
             ORDER BY so.order_date ASC, so.order_id ASC
         `;
         
-        const orders = await dbPromise.query(ordersQuery, [date]);
+        let demandOrdersQuery = `
+            SELECT DISTINCT
+                do.order_id,
+                'DD' as order_type,
+                do.dealer_name, 
+                do.territory_name as dealer_territory, 
+                NULL as warehouse_name,
+                NULL as warehouse_alias,
+                do.order_date
+            FROM demand_orders do
+            WHERE do.order_date = ?
+            ORDER BY do.order_date ASC, do.order_id ASC
+        `;
         
-        if (!orders || !orders[0] || orders[0].length === 0) {
+        // Filter by order_source if provided
+        let orders;
+        if (order_source === 'tso') {
+            const result = await dbPromise.query(salesOrdersQuery, [date]);
+            orders = result[0];
+        } else if (order_source === 'dealer') {
+            const result = await dbPromise.query(demandOrdersQuery, [date]);
+            orders = result[0];
+        } else {
+            // Return both types
+            const [salesResult] = await dbPromise.query(salesOrdersQuery, [date]);
+            const [demandResult] = await dbPromise.query(demandOrdersQuery, [date]);
+            orders = [...salesResult, ...demandResult].sort((a, b) => {
+                // Sort by order_date, then by order_id
+                if (a.order_date !== b.order_date) {
+                    return a.order_date.localeCompare(b.order_date);
+                }
+                return a.order_id.localeCompare(b.order_id);
+            });
+        }
+        
+        if (!orders || orders.length === 0) {
             return res.status(404).json({ error: 'No orders found for the specified date' });
         }
         
-        // Get order items for all orders from sales_order_items
+        // Get order items for all orders (from both sales_order_items and demand_order_items)
         let orderItems = [[], []];
         let orderedProducts = [];
         let orderItemsMap = {};
         
-        if (orders[0].length > 0) {
-            const orderIds = orders[0].map(order => order.order_id).filter(Boolean);
+        if (orders.length > 0) {
+            const orderIds = orders.map(order => order.order_id).filter(Boolean);
             
             if (orderIds.length === 0) {
                 console.warn('⚠️ No valid order IDs found');
                 // Continue with empty order items - CSV will still be generated
             } else {
-                const orderItemsQuery = `
-                    SELECT soi.order_id, soi.product_name, soi.quantity
-                    FROM sales_order_items soi
-                    WHERE soi.order_id IN (${orderIds.map(() => '?').join(',')})
-                `;
-                console.log(`📦 Fetching order items for ${orderIds.length} orders`);
-                orderItems = await dbPromise.query(orderItemsQuery, orderIds);
+                // Get order items from both tables
+                const salesOrderIds = orders.filter(o => o.order_type === 'SO').map(o => o.order_id).filter(Boolean);
+                const demandOrderIds = orders.filter(o => o.order_type === 'DD').map(o => o.order_id).filter(Boolean);
+                
+                let allOrderItems = [];
+                
+                if (salesOrderIds.length > 0) {
+                    const salesItemsQuery = `
+                        SELECT soi.order_id, soi.product_name, soi.quantity
+                        FROM sales_order_items soi
+                        WHERE soi.order_id IN (${salesOrderIds.map(() => '?').join(',')})
+                    `;
+                    const salesItems = await dbPromise.query(salesItemsQuery, salesOrderIds);
+                    allOrderItems = allOrderItems.concat(salesItems[0] || []);
+                }
+                
+                if (demandOrderIds.length > 0) {
+                    const demandItemsQuery = `
+                        SELECT doi.order_id, doi.product_name, doi.quantity
+                        FROM demand_order_items doi
+                        WHERE doi.order_id IN (${demandOrderIds.map(() => '?').join(',')})
+                    `;
+                    const demandItems = await dbPromise.query(demandItemsQuery, demandOrderIds);
+                    allOrderItems = allOrderItems.concat(demandItems[0] || []);
+                }
+                
+                orderItems = [allOrderItems];
                 console.log(`✅ Found ${orderItems[0]?.length || 0} order items`);
             }
             
             // Get only products that are actually ordered (distinct products from order_items)
-            if (orderItems[0] && orderItems[0].length > 0) {
+            if (orderItems && orderItems[0] && orderItems[0].length > 0) {
                 orderedProducts = [...new Set(orderItems[0].map(item => item.product_name).filter(Boolean))].sort();
                 
                 // Group order items by order_id
@@ -4868,7 +5020,7 @@ app.get('/api/orders/mr-report/:date', async (req, res) => {
         // Create CSV rows
         const csvRows = [headers.join(',')];
         
-        orders[0].forEach(order => {
+        orders.forEach(order => {
             const warehouseName = order.warehouse_alias || order.warehouse_name || '';
             const row = [
                 '', // internalId
@@ -4891,7 +5043,7 @@ app.get('/api/orders/mr-report/:date', async (req, res) => {
         const csvContent = csvRows.join('\n');
         
         console.log(`✅ Generated CSV with ${csvRows.length} rows (${csvContent.length} bytes)`);
-        console.log(`   Orders: ${orders[0].length}, Products: ${orderedProducts.length}`);
+        console.log(`   Orders: ${orders.length}, Products: ${orderedProducts.length}`);
         
         // Set headers for CSV download
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');

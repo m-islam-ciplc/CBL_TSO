@@ -35,7 +35,7 @@ function DealerReports() {
   const [orderProducts, setOrderProducts] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [rangeStart, setRangeStart] = useState(null);
-  const [rangeEnd, setRangeEnd] = useState(null); // Will be set to most recent date on load
+  const [rangeEnd, setRangeEnd] = useState(dayjs()); // On page load, end date is today
   const [activeTab, setActiveTab] = useState('daily-demand');
   
   // Monthly Forecast states
@@ -54,16 +54,20 @@ function DealerReports() {
     }
   }, [dealerId]);
 
-  // Set rangeEnd to most recent available date when availableDates are loaded
+  // Set rangeEnd to today if available, otherwise most recent available date when availableDates are loaded
   useEffect(() => {
-    if (availableDates.length > 0 && dealerId && !rangeEnd) {
-      // Set to most recent date (first in array, sorted DESC)
-      const mostRecentDate = availableDates[0];
-      setRangeEnd(dayjs(mostRecentDate));
-    } else if (availableDates.length > 0 && dealerId && rangeEnd) {
-      // If rangeEnd exists but doesn't have orders, switch to most recent date with orders
+    if (availableDates.length > 0 && dealerId && rangeEnd) {
+      // Check if today's date is in available dates
+      const todayStr = dayjs().format('YYYY-MM-DD');
       const currentDateStr = rangeEnd.format('YYYY-MM-DD');
-      if (!availableDates.includes(currentDateStr)) {
+      
+      if (availableDates.includes(todayStr)) {
+        // If today has orders and rangeEnd is not today, set it to today
+        if (currentDateStr !== todayStr) {
+          setRangeEnd(dayjs(todayStr));
+        }
+      } else if (!availableDates.includes(currentDateStr)) {
+        // If current rangeEnd doesn't have orders, switch to most recent date with orders
         const mostRecentDate = availableDates[0];
         setRangeEnd(dayjs(mostRecentDate));
       }

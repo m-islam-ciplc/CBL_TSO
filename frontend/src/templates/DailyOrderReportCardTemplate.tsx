@@ -10,7 +10,7 @@
  * Route: /reports
  */
 
-import { Row, Col, Space, Typography, DatePicker, Button, Card } from 'antd';
+import { Row, Col, Space, Typography, DatePicker, Button, Card, Select } from 'antd';
 import type { ReactNode } from 'react';
 import type { Dayjs } from 'dayjs';
 import type { Gutter } from 'antd/es/grid/row';
@@ -19,11 +19,13 @@ import {
   STANDARD_FORM_LABEL_STYLE,
   STANDARD_BUTTON_SIZE,
   STANDARD_DATE_PICKER_CONFIG,
+  STANDARD_INPUT_SIZE,
   COMPACT_ROW_GUTTER,
 } from './UITemplates';
 import type { DailyOrderReportCardTemplateProps, ButtonConfig } from './types';
 
 const { Text } = Typography;
+const { Option } = Select;
 
 /**
  * Daily Order Report Card Template
@@ -31,6 +33,7 @@ const { Text } = Typography;
 export const DailyOrderReportCardTemplate: React.FC<DailyOrderReportCardTemplateProps> = ({
   title = 'Daily Order Report',
   datePicker1,
+  orderTypeFilter,
   buttons = [],
   gutter = COMPACT_ROW_GUTTER,
 }) => {
@@ -44,6 +47,28 @@ export const DailyOrderReportCardTemplate: React.FC<DailyOrderReportCardTemplate
   return (
     <Card title={title} {...UNIVERSAL_CARD_CONFIG} headStyle={{ textAlign: 'left' }}>
       <Row gutter={gutter as Gutter} align="top">
+        {/* Order Type Filter */}
+        {orderTypeFilter && (
+          <Col xs={24} sm={12} flex={1} style={{ maxWidth: '12.5rem' }}>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Text strong style={STANDARD_FORM_LABEL_STYLE}>
+                Order Type
+              </Text>
+              <Select
+                size={STANDARD_INPUT_SIZE}
+                value={orderTypeFilter.value}
+                onChange={orderTypeFilter.onChange}
+                placeholder="Select Type"
+                style={{ width: '100%' }}
+              >
+                <Option value="tso">Sales Orders</Option>
+                <Option value="dd">Daily Demands</Option>
+                <Option value="all">All Orders</Option>
+              </Select>
+            </Space>
+          </Col>
+        )}
+
         {/* Date Picker */}
         {datePicker1 && (
           <Col xs={24} sm={12} flex={1} style={{ maxWidth: '12.5rem' }}>

@@ -20,6 +20,7 @@ import {
   InputNumber,
   Form,
   Alert,
+  Badge,
 } from 'antd';
 import {
   ReloadOutlined,
@@ -29,6 +30,7 @@ import {
   ClearOutlined,
   OrderedListOutlined,
   EditOutlined,
+  FileExcelOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { 
@@ -75,8 +77,8 @@ function PlacedOrders({ refreshTrigger }) {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [orderTypeFilter, setOrderTypeFilter] = useState('tso'); // 'tso' = Sales Orders, 'dd' = Daily Demands, 'all' = All
-  const [startDate, setStartDate] = useState(dayjs()); // Start date filter
-  const [endDate, setEndDate] = useState(null); // End date filter (blank by default, optional)
+  const [startDate, setStartDate] = useState(null); // Start date filter (blank by default)
+  const [endDate, setEndDate] = useState(dayjs()); // End date filter (today's date by default)
   const [dateError, setDateError] = useState(''); // Date validation error message
   const [productFilter, setProductFilter] = useState(null);
   const [dealerFilter, setDealerFilter] = useState(null);
@@ -296,89 +298,91 @@ function PlacedOrders({ refreshTrigger }) {
 
     // Date range filter - use order_date (business date, always NOT NULL)
     // If only startDate is provided, filter for that single date
+    // If only endDate is provided, filter for that single date (not a range)
     // If both startDate and endDate are provided, filter for the range
     // Clear date error first
     setDateError('');
     
-    if (startDate) {
+    if (startDate || endDate) {
       try {
-        // Convert to dayjs if not already (handles both dayjs objects and strings/dates)
-        const start = dayjs(startDate);
+        let start = null;
+        let startNormalized = null;
         
-        if (!start.isValid()) {
-          setDateError('Invalid start date');
-          // Skip date filtering but continue with other filters
-        } else {
-          const startNormalized = start.startOf('day');
-          
-          if (endDate) {
-            // Date range filter
-            const end = dayjs(endDate);
-            
-            if (!end.isValid()) {
-              setDateError('Invalid end date');
-              // Skip date filtering but continue with other filters
-            } else {
-              const endNormalized = end.endOf('day');
-              
-              // Validate: end date must be >= start date
-              if (endNormalized.isBefore(startNormalized)) {
-                setDateError('End date cannot be before start date');
-                // Still filter, but show error (user might want to see what's wrong)
-              } else {
-                setDateError(''); // Clear error if valid
-              }
-              
-      filtered = filtered.filter(order => {
-                try {
-                  // Use order_date (business date) - this is always NOT NULL in database
-                  // order_date represents the actual date the order is for, not when it was created
-                  if (!order.order_date) {
-                    // This shouldn't happen since order_date is NOT NULL, but handle gracefully
-                    console.warn('Order missing order_date:', order.order_id);
-                    return false;
-                  }
-                  
-                  const dateToCheck = dayjs(order.order_date);
-                  
-                  if (!dateToCheck.isValid()) {
-                    // If date is invalid, exclude from results
-                    return false;
-                  }
-                  
-                  // Normalize order date to start of day for comparison (removes time component)
-                  const orderDateNormalized = dateToCheck.startOf('day');
-                  
-                  // Compare dates at day level (ignoring time)
-                  // Use format('YYYY-MM-DD') for reliable date-only comparison
-                  const orderDateStr = orderDateNormalized.format('YYYY-MM-DD');
-                  const startDateStr = startNormalized.format('YYYY-MM-DD');
-                  const endDateStr = endNormalized.format('YYYY-MM-DD');
-                  
-                  // Simple string comparison for dates (YYYY-MM-DD format is sortable)
-                  return orderDateStr >= startDateStr && orderDateStr <= endDateStr;
-                } catch (error) {
-                  // Silently exclude orders with date parsing errors
-                  return false;
-                }
-              });
-            }
+        if (startDate) {
+          start = dayjs(startDate);
+          if (!start.isValid()) {
+            setDateError('Invalid start date');
+            // Skip date filtering but continue with other filters
           } else {
-            // Single date filter (only startDate)
-            filtered = filtered.filter(order => {
-              try {
-                // Use order_date (business date) - always NOT NULL
-                if (!order.order_date) {
-                  return false;
-                }
-                const dateToCheck = dayjs(order.order_date);
-                if (!dateToCheck.isValid()) return false;
-                return dateToCheck.isSame(startNormalized, 'day');
-              } catch {
+            startNormalized = start.startOf('day');
+          }
+        }
+        
+        let end = null;
+        let endNormalized = null;
+        
+        if (endDate) {
+          end = dayjs(endDate);
+          if (!end.isValid()) {
+            setDateError('Invalid end date');
+            // Skip date filtering but continue with other filters
+          } else {
+            endNormalized = end.startOf('day'); // Use startOf('day') for single date comparison
+          }
+        }
+        
+        // Only proceed with date filtering if we have at least one valid date
+        if ((startNormalized || endNormalized) && !dateError) {
+          // Validate: if both dates exist, end date must be >= start date
+          if (startNormalized && endNormalized && endNormalized.isBefore(startNormalized)) {
+            setDateError('End date cannot be before start date');
+            // Still filter, but show error (user might want to see what's wrong)
+          } else {
+            setDateError(''); // Clear error if valid
+          }
+          
+          filtered = filtered.filter(order => {
+            try {
+              // Use order_date (business date) - this is always NOT NULL in database
+              // order_date represents the actual date the order is for, not when it was created
+              if (!order.order_date) {
+                // This shouldn't happen since order_date is NOT NULL, but handle gracefully
+                console.warn('Order missing order_date:', order.order_id);
                 return false;
               }
-            });
-          }
+              
+              const dateToCheck = dayjs(order.order_date);
+              
+              if (!dateToCheck.isValid()) {
+                // If date is invalid, exclude from results
+                return false;
+              }
+              
+              // Normalize order date to start of day for comparison (removes time component)
+              const orderDateNormalized = dateToCheck.startOf('day');
+              const orderDateStr = orderDateNormalized.format('YYYY-MM-DD');
+              
+              if (startNormalized && endNormalized) {
+                // Date range filter (both dates)
+                const startDateStr = startNormalized.format('YYYY-MM-DD');
+                const endDateStr = endNormalized.format('YYYY-MM-DD');
+                return orderDateStr >= startDateStr && orderDateStr <= endDateStr;
+              } else if (startNormalized) {
+                // Single date filter (only startDate)
+                const startDateStr = startNormalized.format('YYYY-MM-DD');
+                return orderDateStr === startDateStr;
+              } else if (endNormalized) {
+                // Single date filter (only endDate) - show orders for that specific date only
+                const endDateStr = endNormalized.format('YYYY-MM-DD');
+                return orderDateStr === endDateStr;
+              }
+              
+              return true; // Should not reach here, but include all if no date filter
+            } catch (error) {
+              // Silently exclude orders with date parsing errors
+              return false;
+            }
+          });
         }
       } catch (error) {
         console.error('Error filtering by date range:', error);
@@ -604,6 +608,113 @@ function PlacedOrders({ refreshTrigger }) {
       message.error(error.response?.data?.error || 'Failed to update order');
     } finally {
       setEditLoading(false);
+    }
+  };
+
+  // Handle Excel report download
+  const handleDownloadExcelReport = async () => {
+    if (filteredOrders.length === 0) {
+      message.warning('No orders to export');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      let params = {};
+      
+      // Add order_source parameter based on orderTypeFilter
+      if (orderTypeFilter === 'tso') {
+        params.order_source = 'tso';
+      } else if (orderTypeFilter === 'dd') {
+        params.order_source = 'dealer';
+      }
+      // If orderTypeFilter === 'all', don't add order_source (load both)
+
+      let endpoint;
+      let filename;
+
+      // Determine report type prefix based on user role
+      const reportType = userRole === 'tso' ? 'TSO' : 'Admin';
+      
+      // Determine filename suffix based on order type filter
+      let filenameSuffix;
+      if (orderTypeFilter === 'tso') {
+        filenameSuffix = 'Sales_Order_Report';
+      } else if (orderTypeFilter === 'dd') {
+        filenameSuffix = 'Daily_Demand_Report';
+      } else {
+        filenameSuffix = 'Order_Report';
+      }
+
+      // Determine endpoint and filename based on date range
+      if (endDate && startDate) {
+        // Date range - use range endpoint
+        const startDateStr = startDate.format('YYYY-MM-DD');
+        const endDateStr = endDate.format('YYYY-MM-DD');
+        endpoint = '/api/orders/tso-report-range';
+        params.startDate = startDateStr;
+        params.endDate = endDateStr;
+        filename = `${reportType}_${filenameSuffix}_${startDateStr}_${endDateStr}.xlsx`;
+      } else if (endDate) {
+        // Single date (endDate only) - use single date endpoint
+        const dateStr = endDate.format('YYYY-MM-DD');
+        endpoint = `/api/orders/tso-report/${dateStr}`;
+        filename = `${reportType}_${filenameSuffix}_${dateStr}.xlsx`;
+      } else if (startDate) {
+        // Single date (startDate only) - use single date endpoint
+        const dateStr = startDate.format('YYYY-MM-DD');
+        endpoint = `/api/orders/tso-report/${dateStr}`;
+        filename = `${reportType}_${filenameSuffix}_${dateStr}.xlsx`;
+      } else {
+        message.error('Please select a date');
+        setLoading(false);
+        return;
+      }
+
+      // Add additional filters if needed (territory)
+      if (territoryFilter) {
+        params.territory_name = territoryFilter;
+      }
+
+      // Add user_role to determine if prices should be included (TSO users should not see prices)
+      if (userRole) {
+        params.user_role = userRole;
+      }
+
+      const response = await axios.get(endpoint, {
+        responseType: 'blob',
+        headers: {
+          'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        },
+        params,
+      });
+
+      // Create blob link to download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      message.success(`Excel report downloaded successfully`);
+    } catch (error) {
+      console.error('Error generating Excel report:', error);
+      console.error('Error details:', error.response?.data);
+      
+      if (error.response?.status === 404) {
+        message.error('No orders found for the selected filters');
+      } else if (error.response?.data?.error) {
+        message.error(error.response.data.error);
+      } else if (error.message) {
+        message.error(`Failed to generate Excel report: ${error.message}`);
+      } else {
+        message.error('Failed to generate Excel report. Please try again.');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -962,13 +1073,32 @@ function PlacedOrders({ refreshTrigger }) {
 
       {/* Orders Table */}
       <Card {...TABLE_CARD_CONFIG}>
-        {renderTableHeaderWithSearch({
-          title: isTSO ? 'Orders' : 'Orders & Demands',
-          count: filteredOrders.length,
-          searchTerm: searchTerm,
-          onSearchChange: (e) => setSearchTerm(e.target.value),
-          searchPlaceholder: 'Search Order ID, Dealer, Product...'
-        })}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: '200px' }}>
+            <Title level={5} style={{ margin: 0 }}>
+              {isTSO ? 'Orders' : 'Orders & Demands'}
+            </Title>
+            <Badge count={filteredOrders.length} showZero style={{ backgroundColor: '#1890ff' }} />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <Input
+              placeholder="Search Order ID, Dealer, Product..."
+              prefix={<SearchOutlined />}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{ width: '250px' }}
+              allowClear
+            />
+            <Button
+              type="primary"
+              icon={<FileExcelOutlined />}
+              onClick={handleDownloadExcelReport}
+              loading={loading}
+            >
+              Download Excel
+            </Button>
+          </div>
+        </div>
 
         {filteredOrders.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px 0' }}>

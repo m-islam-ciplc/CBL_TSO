@@ -32,8 +32,8 @@ const { Title, Text } = Typography;
 function DealerTemplateCards() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPeriod, setSelectedPeriod] = useState('2024-01-01_2024-01-31');
-  const [rangeStart, setRangeStart] = useState(dayjs());
-  const [rangeEnd, setRangeEnd] = useState(dayjs().add(7, 'day'));
+  const [rangeStart, setRangeStart] = useState(null);
+  const [rangeEnd, setRangeEnd] = useState(dayjs()); // On page load, end date is today
 
   const formatPeriodLabel = (period) => {
     if (!period) return '';
