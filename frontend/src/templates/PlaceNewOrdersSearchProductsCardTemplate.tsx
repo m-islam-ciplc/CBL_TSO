@@ -10,26 +10,19 @@
  * - Uses FORM_CARD_CONFIG for styling
  */
 
+import { FC } from 'react';
 import { Card, Input } from 'antd';
 import { SearchOutlined, CloseOutlined } from '@ant-design/icons';
 import { 
   FORM_CARD_CONFIG, 
   STANDARD_INPUT_SIZE,
 } from './UITemplates';
+import type { PlaceNewOrdersSearchProductsCardTemplateProps } from './types';
 
 /**
  * Place New Orders Search Products Card Template
- * 
- * @param {Object} props
- * @param {string} props.title - Card title (default: "Search Products")
- * @param {Object} props.searchInput - Search input configuration
- * @param {string} props.searchInput.value - Search value
- * @param {Function} props.searchInput.onChange - onChange handler: (e) => void
- * @param {string} props.searchInput.placeholder - Placeholder text (default: "Search products by name or code...")
- * @param {Function} props.searchInput.onClear - onClear handler: () => void (optional, shows clear button if provided)
- * @returns {JSX.Element} Place New Orders Search Products card JSX
  */
-export const PlaceNewOrdersSearchProductsCardTemplate = ({
+export const PlaceNewOrdersSearchProductsCardTemplate: FC<PlaceNewOrdersSearchProductsCardTemplateProps> = ({
   title = 'Search Products',
   searchInput,
 }) => {
@@ -72,5 +65,4 @@ export const PlaceNewOrdersSearchProductsCardTemplate = ({
     </Card>
   );
 };
-
 

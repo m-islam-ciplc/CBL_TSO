@@ -10,32 +10,19 @@
  * - Uses ACTION_CARD_CONFIG for styling
  */
 
+import { FC } from 'react';
 import { Card, Space, Button, Popconfirm } from 'antd';
 import { ACTION_CARD_CONFIG, STANDARD_POPCONFIRM_CONFIG } from './UITemplates';
+import type { UserManagementActionsCardTemplateProps, UserManagementButtonConfig } from './types';
 
 /**
  * User Management Actions Card Template
- * 
- * @param {Object} props
- * @param {string} props.title - Card title (default: "Actions")
- * @param {Array<Object>} props.buttons - Array of button configurations
- * @param {string} props.buttons[].label - Button label
- * @param {string} props.buttons[].type - Button type: 'primary', 'default', 'dashed', 'link', 'text', 'danger' (default: 'default')
- * @param {ReactNode} props.buttons[].icon - Button icon (optional)
- * @param {Function} props.buttons[].onClick - onClick handler: () => void
- * @param {boolean} props.buttons[].disabled - Whether button is disabled (optional)
- * @param {boolean} props.buttons[].loading - Whether button is loading (optional)
- * @param {boolean} props.buttons[].danger - Whether button is danger type (optional)
- * @param {Object} props.buttons[].popconfirm - Popconfirm configuration (optional)
- * @param {string} props.buttons[].popconfirm.title - Popconfirm title
- * @param {Function} props.buttons[].popconfirm.onConfirm - Popconfirm onConfirm handler
- * @returns {JSX.Element} User Management Actions card JSX
  */
-export const UserManagementActionsCardTemplate = ({
+export const UserManagementActionsCardTemplate: FC<UserManagementActionsCardTemplateProps> = ({
   title = 'Actions',
   buttons = [],
 }) => {
-  const renderButton = (button, index) => {
+  const renderButton = (button: UserManagementButtonConfig | null, index: number) => {
     if (!button) return null;
     
     const buttonElement = (

@@ -11,26 +11,18 @@
  * - Uses STANDARD_CARD_CONFIG for styling
  */
 
+import { FC } from 'react';
 import { Card, Empty, Button } from 'antd';
-import { ArrowLeftOutlined } from '@ant-design/icons';
 import { 
   STANDARD_CARD_CONFIG, 
   STANDARD_EMPTY_CONFIG,
 } from './UITemplates';
+import type { ReviewOrdersEmptyOrderCardTemplateProps } from './types';
 
 /**
  * Review Orders Empty Order Card Template
- * 
- * @param {Object} props
- * @param {string} props.title - Card title (default: "Empty Order")
- * @param {string} props.description - Empty description (default: "No items in your order")
- * @param {Object} props.button - Button configuration
- * @param {string} props.button.label - Button label (default: "Go to New Orders")
- * @param {ReactNode} props.button.icon - Button icon (optional)
- * @param {Function} props.button.onClick - onClick handler: () => void
- * @returns {JSX.Element} Review Orders Empty Order card JSX
  */
-export const ReviewOrdersEmptyOrderCardTemplate = ({
+export const ReviewOrdersEmptyOrderCardTemplate: FC<ReviewOrdersEmptyOrderCardTemplateProps> = ({
   title = 'Empty Order',
   description = 'No items in your order',
   button,
@@ -58,5 +50,4 @@ export const ReviewOrdersEmptyOrderCardTemplate = ({
     </Card>
   );
 };
-
 

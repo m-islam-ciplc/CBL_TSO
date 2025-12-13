@@ -11,34 +11,29 @@
  * - Uses SINGLE_ROW_GUTTER for spacing
  */
 
+import { FC } from 'react';
 import { Card, Select, Row, Col, Typography, Tag } from 'antd';
+import type { Gutter } from 'antd/es/grid/row';
 import { 
   STANDARD_CARD_CONFIG, 
   SINGLE_ROW_GUTTER,
 } from './UITemplates';
+import type { DealerReportsPeriodSelectorCardTemplateProps } from './types';
 
 const { Text } = Typography;
 const { Option } = Select;
 
 /**
  * Dealer Reports Period Selector Card Template
- * 
- * @param {Object} props
- * @param {Object} props.periodSelect - Period select configuration
- * @param {any} props.periodSelect.value - Selected period value
- * @param {Function} props.periodSelect.onChange - onChange handler: (value) => void
- * @param {string} props.periodSelect.placeholder - Placeholder text (default: "Select forecast period")
- * @param {Array<Object>} props.periodSelect.options - Period options array: [{ period_start, period_end, label, is_current }]
- * @returns {JSX.Element} Dealer Reports Period Selector card JSX
  */
-export const DealerReportsPeriodSelectorCardTemplate = ({
+export const DealerReportsPeriodSelectorCardTemplate: FC<DealerReportsPeriodSelectorCardTemplateProps> = ({
   periodSelect,
 }) => {
   return (
     <Card 
       {...STANDARD_CARD_CONFIG}
     >
-      <Row gutter={SINGLE_ROW_GUTTER} style={{ marginBottom: '16px' }}>
+      <Row gutter={SINGLE_ROW_GUTTER as Gutter} style={{ marginBottom: '16px' }}>
         <Col xs={24} md={8}>
           <Text strong style={{ display: 'block', marginBottom: '8px' }}>Select Period</Text>
           <Select
@@ -62,5 +57,4 @@ export const DealerReportsPeriodSelectorCardTemplate = ({
     </Card>
   );
 };
-
 

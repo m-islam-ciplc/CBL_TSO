@@ -14,38 +14,22 @@
  * - Uses STANDARD_ROW_GUTTER for spacing
  */
 
+import { FC } from 'react';
 import { Card, Form, InputNumber, Button, Row, Col, Space, Typography, Tag } from 'antd';
+import type { FormInstance } from 'antd/es/form';
 import { 
   STANDARD_CARD_CONFIG, 
   STANDARD_ROW_GUTTER,
   STANDARD_TAG_STYLE
 } from './UITemplates';
+import type { AdminSettingsCardTemplateProps } from './types';
 
 const { Text } = Typography;
 
 /**
  * Admin Settings Card Template
- * 
- * @param {Object} props
- * @param {string} props.title - Card title (default: "Monthly Forecast Period Settings")
- * @param {Object} props.startDayField - Start day InputNumber field configuration
- * @param {number} props.startDayField.value - Start day value
- * @param {Function} props.startDayField.onChange - onChange handler: (value) => void
- * @param {boolean} props.startDayField.disabled - Whether field is disabled (optional)
- * @param {Object} props.currentPeriod - Current period display configuration
- * @param {string} props.currentPeriod.start - Start date string
- * @param {string} props.currentPeriod.end - End date string
- * @param {number} props.startDay - Current start day value (for description text)
- * @param {Object} props.saveButton - Save button configuration
- * @param {string} props.saveButton.label - Save button label (default: "Save Settings")
- * @param {ReactNode} props.saveButton.icon - Save button icon (optional)
- * @param {Function} props.saveButton.onClick - onClick handler: () => void
- * @param {boolean} props.saveButton.loading - Whether save is loading (optional)
- * @param {Function} props.onFormFinish - Form onFinish handler: (values) => void
- * @param {Object} props.form - Ant Design Form instance (required)
- * @returns {JSX.Element} Admin Settings card JSX
  */
-export const AdminSettingsCardTemplate = ({
+export const AdminSettingsCardTemplate: FC<AdminSettingsCardTemplateProps> = ({
   title = 'Monthly Forecast Period Settings',
   startDayField,
   currentPeriod,
@@ -59,22 +43,22 @@ export const AdminSettingsCardTemplate = ({
     return null;
   }
   
-  const formInstance = form;
+  const formInstance = form as FormInstance;
 
-  const handleFinish = (values) => {
+  const handleFinish = (values: { start_day: number }) => {
     if (onFormFinish) {
       onFormFinish(values);
     }
   };
 
-  const getOrdinalSuffix = (day) => {
+  const getOrdinalSuffix = (day: number): string => {
     if (day === 1) return 'st';
     if (day === 2) return 'nd';
     if (day === 3) return 'rd';
     return 'th';
   };
 
-  const getPeriodDescription = () => {
+  const getPeriodDescription = (): string => {
     if (!startDay) return '';
     const prevDay = startDay - 1;
     if (prevDay === 0) {
@@ -93,7 +77,7 @@ export const AdminSettingsCardTemplate = ({
         onFinish={handleFinish}
         initialValues={{ start_day: startDayField?.value || startDay }}
       >
-        <Row gutter={STANDARD_ROW_GUTTER} align="top">
+        <Row gutter={STANDARD_ROW_GUTTER as [number, number]} align="top">
           {/* Start Day Field */}
           <Col flex="none" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
             <Space direction="vertical">

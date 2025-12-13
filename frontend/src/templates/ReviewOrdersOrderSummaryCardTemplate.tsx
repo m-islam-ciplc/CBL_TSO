@@ -12,37 +12,22 @@
  * - Uses TIGHT_VERTICAL_ROW_GUTTER for spacing
  */
 
+import { FC } from 'react';
 import { Card, Button, Row, Col, Typography } from 'antd';
+import type { Gutter } from 'antd/es/grid/row';
 import { 
   STANDARD_CARD_CONFIG, 
   TIGHT_VERTICAL_ROW_GUTTER,
   STANDARD_BUTTON_SIZE,
 } from './UITemplates';
+import type { ReviewOrdersOrderSummaryCardTemplateProps } from './types';
 
 const { Text } = Typography;
 
 /**
  * Review Orders Order Summary Card Template
- * 
- * @param {Object} props
- * @param {number} props.itemCount - Number of items in order
- * @param {number} props.totalQuantity - Total quantity of all items
- * @param {Object} props.cancelButton - Cancel button configuration
- * @param {string} props.cancelButton.label - Button label (default: "Cancel Order")
- * @param {Function} props.cancelButton.onClick - onClick handler: () => void
- * @param {Object} props.addMoreButton - Add More button configuration
- * @param {string} props.addMoreButton.label - Button label (default: "Add More")
- * @param {ReactNode} props.addMoreButton.icon - Button icon (optional)
- * @param {Function} props.addMoreButton.onClick - onClick handler: () => void
- * @param {Object} props.submitButton - Submit button configuration
- * @param {string} props.submitButton.label - Button label (default: "Submit")
- * @param {ReactNode} props.submitButton.icon - Button icon (optional)
- * @param {Function} props.submitButton.onClick - onClick handler: () => void
- * @param {boolean} props.submitButton.loading - Whether button is loading (optional)
- * @param {boolean} props.submitButton.disabled - Whether button is disabled (optional)
- * @returns {JSX.Element} Review Orders Order Summary card JSX
  */
-export const ReviewOrdersOrderSummaryCardTemplate = ({
+export const ReviewOrdersOrderSummaryCardTemplate: FC<ReviewOrdersOrderSummaryCardTemplateProps> = ({
   itemCount = 0,
   totalQuantity = 0,
   cancelButton,
@@ -53,7 +38,7 @@ export const ReviewOrdersOrderSummaryCardTemplate = ({
     <Card 
       {...STANDARD_CARD_CONFIG}
     >
-      <Row gutter={TIGHT_VERTICAL_ROW_GUTTER} align="middle">
+      <Row gutter={TIGHT_VERTICAL_ROW_GUTTER as Gutter} align="middle">
         <Col xs={24} sm={12}>
           <div>
             <Text strong style={{ fontSize: '16px', color: '#1890ff' }}>

@@ -1,16 +1,18 @@
 /**
- * ORDER SUMMARY REPORT CARD TEMPLATE
+ * PREVIOUSLY ALLOCATED QUOTAS CARD TEMPLATE
  * 
- * Specialized template for the "Order Summary Report" card in Reports page.
+ * Specialized template for the "Previously Allocated Quotas" card in Quotas page.
  * This template has a simple layout:
- * - 2 date pickers (Start Date, End Date)
- * - 2 buttons (Preview Range Orders, Download Order Summary) - right aligned
+ * - 1 date picker (Select Date)
+ * - 1 button (Refresh) - right aligned
  * 
- * Used in: Reports page - Order Summary Report tab
- * Route: /reports
+ * Used in: Quotas page - Previously Allocated Quotas tab
+ * Route: /manage-quotas
  */
 
+import { FC } from 'react';
 import { Row, Col, Space, Typography, DatePicker, Button, Card } from 'antd';
+import type { Gutter } from 'antd/es/grid/row';
 import {
   UNIVERSAL_CARD_CONFIG,
   STANDARD_FORM_LABEL_STYLE,
@@ -18,70 +20,46 @@ import {
   STANDARD_DATE_PICKER_CONFIG,
   COMPACT_ROW_GUTTER,
 } from './UITemplates';
+import type { PreviouslyAllocatedQuotasCardTemplateProps } from './types';
 
 const { Text } = Typography;
 
 /**
- * Order Summary Report Card Template
- * 
- * @param {Object} props
- * @param {string} props.title - Card title (default: "Order Summary Report")
- * @param {Object} props.datePicker1 - Start date picker configuration
- * @param {Object} props.datePicker2 - End date picker configuration
- * @param {Array<Object>} props.buttons - Array of button configurations (2 buttons: Preview, Download)
- * @param {Array} props.gutter - Row gutter configuration (default: COMPACT_ROW_GUTTER)
- * @returns {JSX.Element} Order Summary Report card JSX
+ * Previously Allocated Quotas Card Template
  */
-export const OrderSummaryReportCardTemplate = ({
-  title = 'Order Summary Report',
+export const PreviouslyAllocatedQuotasCardTemplate: FC<PreviouslyAllocatedQuotasCardTemplateProps> = ({
+  title = 'Previously Allocated Quotas',
   datePicker1,
-  datePicker2,
   buttons = [],
   gutter = COMPACT_ROW_GUTTER,
 }) => {
-  // Ensure we have exactly 2 buttons (pad with null if needed)
+  // Ensure we have at least 1 button (pad with null if needed)
   const paddedButtons = [...buttons];
-  while (paddedButtons.length < 2) {
+  while (paddedButtons.length < 1) {
     paddedButtons.push(null);
   }
-  const displayButtons = paddedButtons.slice(0, 2);
+  const displayButtons = paddedButtons.slice(0, 1);
 
   return (
     <Card title={title} {...UNIVERSAL_CARD_CONFIG} headStyle={{ textAlign: 'left' }}>
-      <Row gutter={gutter} align="top">
-        {/* Date Pickers */}
+      <Row gutter={gutter as Gutter} align="top">
+        {/* Date Picker */}
         {datePicker1 && (
           <Col xs={24} sm={12} flex={1} style={{ maxWidth: '12.5rem' }}>
             <Space direction="vertical" style={{ width: '100%' }}>
               <Text strong style={STANDARD_FORM_LABEL_STYLE}>
-                {datePicker1.label || 'Start Date'}
+                {datePicker1.label || 'Select Date'}
               </Text>
               <DatePicker
                 {...STANDARD_DATE_PICKER_CONFIG}
                 value={datePicker1.value}
                 onChange={datePicker1.onChange}
-                placeholder={datePicker1.placeholder || 'Select start date'}
+                placeholder={datePicker1.placeholder || 'Select date'}
                 style={{ width: '100%' }}
                 disabledDate={datePicker1.disabledDate}
                 dateRender={datePicker1.dateRender}
-              />
-            </Space>
-          </Col>
-        )}
-        {datePicker2 && (
-          <Col xs={24} sm={12} flex={1} style={{ maxWidth: '12.5rem' }}>
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Text strong style={STANDARD_FORM_LABEL_STYLE}>
-                {datePicker2.label || 'End Date'}
-              </Text>
-              <DatePicker
-                {...STANDARD_DATE_PICKER_CONFIG}
-                value={datePicker2.value}
-                onChange={datePicker2.onChange}
-                placeholder={datePicker2.placeholder || 'Select end date'}
-                style={{ width: '100%' }}
-                disabledDate={datePicker2.disabledDate}
-                dateRender={datePicker2.dateRender}
+                size={STANDARD_DATE_PICKER_CONFIG.size as 'small' | 'middle' | 'large'}
+                format={STANDARD_DATE_PICKER_CONFIG.format}
               />
             </Space>
           </Col>
@@ -114,5 +92,4 @@ export const OrderSummaryReportCardTemplate = ({
     </Card>
   );
 };
-
 

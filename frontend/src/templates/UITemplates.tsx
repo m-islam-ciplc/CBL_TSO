@@ -20,7 +20,11 @@
  * 11. HELPER FUNCTIONS - Reusable component generators
  */
 
+import React from 'react';
+import type { ReactNode } from 'react';
+import type { CSSProperties } from 'react';
 import { Row, Col, Space, Typography, DatePicker, Input, Select, InputNumber, Button, Card, AutoComplete, Tag } from 'antd';
+import type { Dayjs } from 'dayjs';
 import { SearchOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
@@ -239,7 +243,7 @@ export const STANDARD_TAG_STYLE = {
  * STANDARD TAG CONTAINER STYLE
  * Standard styling for tag containers below form fields (e.g., AutoComplete with selected items)
  */
-export const STANDARD_TAG_CONTAINER_STYLE = {
+export const STANDARD_TAG_CONTAINER_STYLE: CSSProperties = {
   marginTop: '4px',
   width: '100%',
   display: 'flex',
@@ -256,193 +260,7 @@ export const STANDARD_TAG_ITEM_STYLE = {
   marginRight: '0',
 };
 
-/**
- * QUOTA ALLOCATION CARD TEMPLATE
- * 
- * Specialized template for Daily Quota Allocation card with custom column widths.
- * This card has unique layout requirements:
- * - Date: narrow (md={2})
- * - Products: wide (md={11}) - needs more space for multi-select with tags
- * - Territories: medium (md={6})
- * - Quota: narrow (md={2})
- * - Buttons: fixed width (md={3} each)
- * 
- * @param {Object} props
- * @param {string} props.title - Card title
- * @param {Object} props.datePicker1 - Date picker configuration
- * @param {Array<Object>} props.formFields - Array of form field configurations
- *   - formFields[0]: Products (autocomplete with multi-select)
- *   - formFields[1]: Territories (autocomplete with multi-select)
- *   - formFields[2]: Quota (input)
- * @param {Array<Object>} props.buttons - Array of button configurations
- * @param {Array} props.gutter - Row gutter configuration (default: STANDARD_ROW_GUTTER)
- * @returns {JSX.Element} Quota allocation card JSX
- */
-export const QuotaAllocationCardTemplate = ({
-  title = 'Allocate Daily Quotas',
-  datePicker1,
-  formFields = [],
-  buttons = [],
-  gutter = STANDARD_ROW_GUTTER,
-}) => {
-  const [productsField, territoriesField, quotaField] = formFields;
-
-  return (
-    <Card title={title} {...UNIVERSAL_CARD_CONFIG}>
-      <Row gutter={gutter} align="top" justify="space-between">
-        {/* Date Picker - narrow */}
-        {datePicker1 && (
-          <Col xs={24} sm={12} md={2}>
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Text strong style={STANDARD_FORM_LABEL_STYLE}>
-                {datePicker1.label || 'Date'}
-              </Text>
-              <DatePicker
-                {...STANDARD_DATE_PICKER_CONFIG}
-                value={datePicker1.value}
-                onChange={datePicker1.onChange}
-                placeholder={datePicker1.placeholder || 'Select date'}
-                style={{ width: '100%' }}
-                disabledDate={datePicker1.disabledDate}
-                dateRender={datePicker1.dateRender}
-              />
-            </Space>
-          </Col>
-        )}
-
-        {/* Products - stretch to fill space */}
-        {productsField && (
-          <Col xs={24} sm={12} flex="auto">
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Text strong style={STANDARD_FORM_LABEL_STYLE}>
-                {productsField.label || 'Products'}
-              </Text>
-              <Space direction="vertical" style={{ width: '100%' }}>
-                {productsField.type === 'autocomplete' ? (
-                  <>
-                    <AutoComplete
-                      size={STANDARD_INPUT_SIZE}
-                      value={productsField.value}
-                      onSearch={productsField.onSearch}
-                      onSelect={productsField.onSelect}
-                      onChange={productsField.onChange}
-                      placeholder={productsField.placeholder || 'Type product name'}
-                      style={{ width: '100%' }}
-                      options={productsField.options}
-                      allowClear={productsField.allowClear !== false}
-                    />
-                    {productsField.enableTagDisplay && productsField.selectedItems && productsField.selectedItems.length > 0 && (
-                      <div style={STANDARD_TAG_CONTAINER_STYLE}>
-                        {productsField.selectedItems.map((item) => (
-                          <Tag
-                            key={item.key}
-                            closable
-                            onClose={() => productsField.onRemoveItem && productsField.onRemoveItem(item.key)}
-                            style={STANDARD_TAG_ITEM_STYLE}
-                          >
-                            {item.label}
-                          </Tag>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                ) : null}
-              </Space>
-            </Space>
-          </Col>
-        )}
-
-        {/* Territories - fixed width (same as original md={6}) */}
-        {territoriesField && (
-          <Col xs={24} sm={12} md={6}>
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Text strong style={STANDARD_FORM_LABEL_STYLE}>
-                {territoriesField.label || 'Territories'}
-              </Text>
-              <Space direction="vertical" style={{ width: '100%' }}>
-                {territoriesField.type === 'autocomplete' ? (
-                  <>
-                    <AutoComplete
-                      size={STANDARD_INPUT_SIZE}
-                      value={territoriesField.value}
-                      onSearch={territoriesField.onSearch}
-                      onSelect={territoriesField.onSelect}
-                      onChange={territoriesField.onChange}
-                      placeholder={territoriesField.placeholder || 'Type territory'}
-                      style={{ width: '100%' }}
-                      options={territoriesField.options}
-                      allowClear={territoriesField.allowClear !== false}
-                    />
-                    {territoriesField.enableTagDisplay && territoriesField.selectedItems && territoriesField.selectedItems.length > 0 && (
-                      <div style={STANDARD_TAG_CONTAINER_STYLE}>
-                        {territoriesField.selectedItems.map((item) => (
-                          <Tag
-                            key={item.key}
-                            closable
-                            onClose={() => territoriesField.onRemoveItem && territoriesField.onRemoveItem(item.key)}
-                            style={STANDARD_TAG_ITEM_STYLE}
-                          >
-                            {item.label}
-                          </Tag>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                ) : null}
-              </Space>
-            </Space>
-          </Col>
-        )}
-
-        {/* Quota - very narrow (just for 4 numbers) */}
-        {quotaField && (
-          <Col xs={24} sm={12} md={1}>
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Text strong style={STANDARD_FORM_LABEL_STYLE}>
-                {quotaField.label || 'Quota'}
-              </Text>
-              {quotaField.type === 'input' ? (
-                <Input
-                  size={STANDARD_INPUT_SIZE}
-                  value={quotaField.value}
-                  onChange={quotaField.onChange}
-                  onPressEnter={quotaField.onPressEnter}
-                  placeholder={quotaField.placeholder || 'Qty'}
-                  style={{ width: '100%' }}
-                />
-              ) : null}
-            </Space>
-          </Col>
-        )}
-
-        {/* Buttons - fixed width */}
-        {buttons.map((button, index) => {
-          if (!button) return null;
-          return (
-            <Col xs={24} sm={12} md={3} flex="none" key={`button-${index}`}>
-              <Space direction="vertical" style={{ width: '100%' }}>
-                <Text strong style={{ ...STANDARD_FORM_LABEL_STYLE, opacity: 0, lineHeight: '1.5', display: 'block', minHeight: '20px' }}>
-                  &nbsp;
-                </Text>
-                <Button
-                  type={button.type || 'default'}
-                  onClick={button.onClick}
-                  icon={button.icon}
-                  disabled={button.disabled}
-                  size={STANDARD_BUTTON_SIZE}
-                  style={{ width: '100%' }}
-                >
-                  {button.label || `Button ${index + 1}`}
-                </Button>
-              </Space>
-            </Col>
-          );
-        })}
-      </Row>
-    </Card>
-  );
-};
-
+// NOTE: QuotaAllocationCardTemplate has been moved to a separate file: QuotaAllocationCardTemplate.tsx
 /**
  * STANDARD FORM LABEL STYLE
  * fontSize: '12px', fontWeight: 'bold' - Used in ReviewOrdersTablet, DailyDemand
@@ -624,17 +442,15 @@ export const STANDARD_DATE_PICKER_CONFIG = {
 
 /**
  * Creates a standard date picker configuration with disabled dates and custom date cell renderer
- * @param {Array<string>} availableDates - Array of available date strings in 'YYYY-MM-DD' format
- * @returns {Object} Object with disabledDate and dateCellRender functions
  */
-export const createStandardDatePickerConfig = (availableDates = []) => {
-  const disabledDate = (current) => {
+export const createStandardDatePickerConfig = (availableDates: string[] = []) => {
+  const disabledDate = (current: Dayjs | null): boolean => {
     if (!current) return false;
     const dateString = current.format('YYYY-MM-DD');
     return !availableDates.includes(dateString);
   };
 
-  const dateCellRender = (current) => {
+  const dateCellRender = (current: Dayjs): ReactNode => {
     const dateString = current.format('YYYY-MM-DD');
     const hasData = availableDates.includes(dateString);
     
@@ -659,18 +475,6 @@ export const createStandardDatePickerConfig = (availableDates = []) => {
 
 /**
  * Creates a standard date range picker component with Start Date and End Date (optional)
- * @param {Object} props - Configuration object
- * @param {dayjs.Dayjs|null} props.startDate - Start date value
- * @param {Function} props.setStartDate - Function to update start date
- * @param {dayjs.Dayjs|null} props.endDate - End date value (null for optional)
- * @param {Function} props.setEndDate - Function to update end date
- * @param {Function} props.disabledDate - Function to disable dates (from createStandardDatePickerConfig)
- * @param {Function} props.dateCellRender - Function to render date cells (from createStandardDatePickerConfig)
- * @param {Array<string>} props.availableDates - Array of available date strings in 'YYYY-MM-DD' format
- * @param {Object} props.colSpan - Optional column span configuration { xs, sm, md } (default: { xs: 24, sm: 12, md: 2 })
- * @param {Function} props.onStartChange - Optional callback when start date changes
- * @param {Function} props.onEndChange - Optional callback when end date changes
- * @returns {JSX.Element} Date range picker JSX (two Col components)
  */
 export const createStandardDateRangePicker = ({
   startDate,
@@ -683,14 +487,26 @@ export const createStandardDateRangePicker = ({
   colSpan = { xs: 24, sm: 12, md: 2 },
   onStartChange,
   onEndChange,
-}) => {
+}: {
+  startDate: Dayjs | null;
+  setStartDate: (date: Dayjs | null) => void;
+  endDate: Dayjs | null;
+  setEndDate: (date: Dayjs | null) => void;
+  disabledDate?: (current: Dayjs | null) => boolean;
+  dateCellRender?: (current: Dayjs) => ReactNode;
+  availableDates?: string[];
+  colSpan?: { xs?: number; sm?: number; md?: number };
+  onStartChange?: (date: Dayjs | null) => void;
+  onEndChange?: (date: Dayjs | null) => void;
+}): ReactNode => {
   return (
     <>
       <Col xs={colSpan.xs} sm={colSpan.sm} md={colSpan.md}>
         <Space direction="vertical" style={{ width: '100%' }}>
           <Text strong style={STANDARD_FORM_LABEL_STYLE}>Start Date</Text>
           <DatePicker
-            {...STANDARD_DATE_PICKER_CONFIG}
+            size={STANDARD_DATE_PICKER_CONFIG.size as 'small' | 'middle' | 'large'}
+            format={STANDARD_DATE_PICKER_CONFIG.format}
             value={startDate}
             onChange={(date) => {
               setStartDate(date);
@@ -707,7 +523,8 @@ export const createStandardDateRangePicker = ({
         <Space direction="vertical" style={{ width: '100%' }}>
           <Text strong style={STANDARD_FORM_LABEL_STYLE}>End Date (Optional)</Text>
           <DatePicker
-            {...STANDARD_DATE_PICKER_CONFIG}
+            size={STANDARD_DATE_PICKER_CONFIG.size as 'small' | 'middle' | 'large'}
+            format={STANDARD_DATE_PICKER_CONFIG.format}
             value={endDate}
             onChange={(date) => {
               setEndDate(date);
@@ -715,7 +532,7 @@ export const createStandardDateRangePicker = ({
             }}
             style={{ width: '100%' }}
             placeholder="End date (optional)"
-            disabledDate={(current) => {
+            disabledDate={(current: Dayjs | null) => {
               if (!current) return false;
               if (startDate && current < startDate.startOf('day')) {
                 return true;
@@ -751,10 +568,8 @@ export const STANDARD_PAGINATION = {
 
 /**
  * Get standard pagination config with custom showTotal message
- * @param {string} itemName - Name of the items (e.g., 'orders', 'products', 'users')
- * @returns {Object} Standard pagination configuration
  */
-export const getStandardPagination = (itemName = 'items') => ({
+export const getStandardPagination = (itemName: string = 'items') => ({
   current: 1,
   pageSize: 20,
   showSizeChanger: true,
@@ -785,14 +600,6 @@ export const STANDARD_SPIN_SIZE = 'large';
  * 
  * Standard table header component with title and inline search box.
  * Works for BOTH static tables and expandable tables.
- * 
- * @param {Object} props
- * @param {string} props.title - Table title (e.g., "Orders", "Users")
- * @param {number} props.count - Item count to display
- * @param {string} props.searchTerm - Current search term value
- * @param {Function} props.onSearchChange - Search input onChange handler: (e) => setSearchTerm(e.target.value)
- * @param {string} props.searchPlaceholder - Placeholder text for search input (default: "Search...")
- * @param {boolean} props.showCount - Whether to show count in title (default: true)
  */
 export const renderTableHeaderWithSearch = ({
   title,
@@ -801,7 +608,14 @@ export const renderTableHeaderWithSearch = ({
   onSearchChange,
   searchPlaceholder = 'Search...',
   showCount = true
-}) => {
+}: {
+  title: string;
+  count: number;
+  searchTerm: string;
+  onSearchChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  searchPlaceholder?: string;
+  showCount?: boolean;
+}): ReactNode => {
   return (
     <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
       <Text strong>{showCount ? `${title} (${count})` : title}</Text>
@@ -823,21 +637,6 @@ export const renderTableHeaderWithSearch = ({
  * 
  * Standard table header component with title, inline filter dropdown, and inline search box.
  * Works for BOTH static tables and expandable tables.
- * 
- * @param {Object} props
- * @param {string} props.title - Table title (e.g., "Dealers", "Orders")
- * @param {number} props.count - Item count to display
- * @param {string} props.searchTerm - Current search term value
- * @param {Function} props.onSearchChange - Search input onChange handler: (e) => setSearchTerm(e.target.value)
- * @param {string} props.searchPlaceholder - Placeholder text for search input (default: "Search...")
- * @param {boolean} props.showCount - Whether to show count in title (default: true)
- * @param {Object} props.filter - Optional filter configuration
- * @param {string} props.filter.value - Current filter value
- * @param {Function} props.filter.onChange - Filter onChange handler: (value) => setFilter(value)
- * @param {string} props.filter.placeholder - Filter placeholder text
- * @param {Array} props.filter.options - Filter options array: [{ value: 'val', label: 'Label' }]
- * @param {string} props.filter.width - Filter dropdown width (default: '200px')
- * @param {boolean} props.filter.showSearch - Whether filter dropdown is searchable (default: true)
  */
 export const renderTableHeaderWithSearchAndFilter = ({
   title,
@@ -847,7 +646,22 @@ export const renderTableHeaderWithSearchAndFilter = ({
   searchPlaceholder = 'Search...',
   showCount = true,
   filter
-}) => {
+}: {
+  title: string;
+  count: number;
+  searchTerm: string;
+  onSearchChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  searchPlaceholder?: string;
+  showCount?: boolean;
+  filter?: {
+    value?: string;
+    onChange: (value: string) => void;
+    placeholder?: string;
+    options: Array<{ value: string; label: string }>;
+    width?: string;
+    showSearch?: boolean;
+  };
+}): ReactNode => {
   return (
     <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
       <Text strong>{showCount ? `${title} (${count})` : title}</Text>
@@ -861,7 +675,7 @@ export const renderTableHeaderWithSearchAndFilter = ({
             style={{ width: filter.width || '200px' }}
             allowClear
             showSearch={filter.showSearch !== false}
-            filterOption={filter.showSearch !== false ? (input, option) => {
+            filterOption={filter.showSearch !== false ? (input: string, option: any) => {
               const optionText = option?.children?.toString() || '';
               return optionText.toLowerCase().includes(input.toLowerCase());
             } : undefined}
@@ -891,51 +705,6 @@ export const renderTableHeaderWithSearchAndFilter = ({
  * UNIVERSAL CARD TEMPLATE
  * 
  * Consolidated template for Filter Card, Form Card, and Date Selection Card.
- * This universal template includes:
- * - 2 date pickers
- * - 4 form fields (Select or Input)
- * - 1 quantity form field (InputNumber)
- * - 1 search bar (Input with SearchOutlined)
- * - 3 buttons
- * 
- * @param {Object} props
- * @param {string} props.title - Card title (default: "Filter")
- * @param {Object} props.cardConfig - Card configuration object (default: FILTER_CARD_CONFIG)
- * @param {Object} props.datePicker1 - First date picker configuration
- * @param {string} props.datePicker1.label - Label text (default: "Start Date")
- * @param {dayjs.Dayjs|null} props.datePicker1.value - Date value
- * @param {Function} props.datePicker1.onChange - onChange handler: (date) => void
- * @param {string} props.datePicker1.placeholder - Placeholder text
- * @param {Object} props.datePicker2 - Second date picker configuration
- * @param {string} props.datePicker2.label - Label text (default: "End Date")
- * @param {dayjs.Dayjs|null} props.datePicker2.value - Date value
- * @param {Function} props.datePicker2.onChange - onChange handler: (date) => void
- * @param {string} props.datePicker2.placeholder - Placeholder text
- * @param {Array<Object>} props.formFields - Array of 4 form field configurations
- * @param {string} props.formFields[].label - Field label
- * @param {string} props.formFields[].type - Field type: 'select' or 'input' (default: 'select')
- * @param {any} props.formFields[].value - Field value
- * @param {Function} props.formFields[].onChange - onChange handler
- * @param {string} props.formFields[].placeholder - Placeholder text
- * @param {Array} props.formFields[].options - Options array for Select/AutoComplete (for type: 'select' or 'autocomplete')
- * @param {Function} props.formFields[].onSearch - onSearch handler for AutoComplete (only for type: 'autocomplete')
- * @param {Function} props.formFields[].onSelect - onSelect handler for AutoComplete (only for type: 'autocomplete')
- * @param {Object} props.quantityField - Quantity field configuration
- * @param {string} props.quantityField.label - Label text (default: "Quantity")
- * @param {number|null} props.quantityField.value - Quantity value
- * @param {Function} props.quantityField.onChange - onChange handler: (value) => void
- * @param {string} props.quantityField.placeholder - Placeholder text
- * @param {Object} props.searchBar - Search bar configuration
- * @param {string} props.searchBar.placeholder - Placeholder text (default: "Search...")
- * @param {string} props.searchBar.value - Search value
- * @param {Function} props.searchBar.onChange - onChange handler: (e) => void
- * @param {Array<Object>} props.buttons - Array of 3 button configurations
- * @param {string} props.buttons[].label - Button label
- * @param {string} props.buttons[].type - Button type: 'primary', 'default', 'dashed', 'link', 'text' (default: 'default')
- * @param {Function} props.buttons[].onClick - onClick handler: () => void
- * @param {string|ReactNode} props.buttons[].icon - Button icon (optional)
- * @param {Array} props.gutter - Row gutter configuration (default: STANDARD_ROW_GUTTER)
- * @returns {JSX.Element} Universal card template JSX
  */
 export const UniversalCardTemplate = ({
   title = 'Filter',
@@ -947,7 +716,63 @@ export const UniversalCardTemplate = ({
   searchBar,
   buttons = [],
   gutter = STANDARD_ROW_GUTTER,
-}) => {
+}: {
+  title?: string;
+  cardConfig?: typeof UNIVERSAL_CARD_CONFIG;
+  datePicker1?: {
+    label?: string;
+    value: Dayjs | null;
+    onChange: (date: Dayjs | null) => void;
+    placeholder?: string;
+    disabledDate?: (current: Dayjs | null) => boolean;
+    dateRender?: (current: Dayjs) => ReactNode;
+  };
+  datePicker2?: {
+    label?: string;
+    value: Dayjs | null;
+    onChange: (date: Dayjs | null) => void;
+    placeholder?: string;
+    disabledDate?: (current: Dayjs | null) => boolean;
+    dateRender?: (current: Dayjs) => ReactNode;
+  };
+  formFields?: Array<{
+    label?: string;
+    type?: 'select' | 'input' | 'autocomplete';
+    value?: any;
+    onChange?: (value: any) => void;
+    placeholder?: string;
+    options?: Array<{ value: any; label: string }>;
+    onSearch?: (value: string) => void;
+    onSelect?: (value: any, option: any) => void;
+    enableTagDisplay?: boolean;
+    selectedItems?: Array<{ key: string | number; label: string }>;
+    onRemoveItem?: (key: string | number) => void;
+    allowClear?: boolean;
+    showSearch?: boolean;
+    onPressEnter?: () => void;
+  } | null>;
+  quantityField?: {
+    label?: string;
+    value?: number | null;
+    onChange?: (value: number | null) => void;
+    placeholder?: string;
+    min?: number;
+    max?: number;
+  };
+  searchBar?: {
+    placeholder?: string;
+    value?: string;
+    onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  };
+  buttons?: Array<{
+    label?: string;
+    type?: 'primary' | 'default' | 'dashed' | 'link' | 'text';
+    onClick?: () => void;
+    icon?: ReactNode;
+    disabled?: boolean;
+  } | null>;
+  gutter?: number | [number, number] | number[];
+}): ReactNode => {
   // Ensure we have exactly 4 form fields (pad with empty if needed)
   const paddedFormFields = [...formFields];
   while (paddedFormFields.length < 4) {
@@ -964,7 +789,7 @@ export const UniversalCardTemplate = ({
 
   return (
     <Card title={title} {...cardConfig}>
-      <Row gutter={gutter} align="top">
+      <Row gutter={gutter as number | [number, number]} align="top">
         {/* Date Pickers */}
         {datePicker1 && (
           <Col xs={24} sm={12} flex={1} style={{ maxWidth: '12.5rem' }}>
@@ -973,7 +798,8 @@ export const UniversalCardTemplate = ({
                 {datePicker1.label || 'Start Date'}
               </Text>
               <DatePicker
-                {...STANDARD_DATE_PICKER_CONFIG}
+                size={STANDARD_DATE_PICKER_CONFIG.size as 'small' | 'middle' | 'large'}
+                format={STANDARD_DATE_PICKER_CONFIG.format}
                 value={datePicker1.value}
                 onChange={datePicker1.onChange}
                 placeholder={datePicker1.placeholder || 'Select start date'}
@@ -991,7 +817,8 @@ export const UniversalCardTemplate = ({
                 {datePicker2.label || 'End Date'}
               </Text>
               <DatePicker
-                {...STANDARD_DATE_PICKER_CONFIG}
+                size={STANDARD_DATE_PICKER_CONFIG.size as 'small' | 'middle' | 'large'}
+                format={STANDARD_DATE_PICKER_CONFIG.format}
                 value={datePicker2.value}
                 onChange={datePicker2.onChange}
                 placeholder={datePicker2.placeholder || 'Select end date'}
@@ -1017,7 +844,7 @@ export const UniversalCardTemplate = ({
                     <Input
                       size={STANDARD_INPUT_SIZE}
                       value={field.value}
-                      onChange={field.onChange}
+                      onChange={field.onChange ? (e) => field.onChange && field.onChange(e.target.value) : undefined}
                       onPressEnter={field.onPressEnter}
                       placeholder={field.placeholder || `Enter ${field.label || 'value'}`}
                       style={{ width: '100%' }}
@@ -1060,7 +887,7 @@ export const UniversalCardTemplate = ({
                         style={{ width: '100%' }}
                         allowClear={field.allowClear !== false}
                         showSearch={field.showSearch !== false}
-                        filterOption={field.showSearch !== false ? (input, option) => {
+                        filterOption={field.showSearch !== false ? (input: string, option: any) => {
                           const optionText = option?.children?.toString() || '';
                           return optionText.toLowerCase().includes(input.toLowerCase());
                         } : undefined}

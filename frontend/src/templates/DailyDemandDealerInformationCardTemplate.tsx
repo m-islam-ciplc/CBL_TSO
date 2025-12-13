@@ -11,25 +11,20 @@
  * - Uses SINGLE_ROW_GUTTER for spacing
  */
 
+import { FC } from 'react';
 import { Card, Row, Col, Typography } from 'antd';
 import { 
   STANDARD_CARD_CONFIG, 
   SINGLE_ROW_GUTTER,
 } from './UITemplates';
+import type { DailyDemandDealerInformationCardTemplateProps } from './types';
 
 const { Text } = Typography;
 
 /**
  * Daily Demand Dealer Information Card Template
- * 
- * @param {Object} props
- * @param {string} props.title - Card title (default: "Dealer Information")
- * @param {Object} props.dealerInfo - Dealer information
- * @param {string} props.dealerInfo.name - Dealer name
- * @param {string} props.territory - Territory name
- * @returns {JSX.Element} Daily Demand Dealer Information card JSX
  */
-export const DailyDemandDealerInformationCardTemplate = ({
+export const DailyDemandDealerInformationCardTemplate: FC<DailyDemandDealerInformationCardTemplateProps> = ({
   title = 'Dealer Information',
   dealerInfo,
   territory,
@@ -56,5 +51,4 @@ export const DailyDemandDealerInformationCardTemplate = ({
     </Card>
   );
 };
-
 

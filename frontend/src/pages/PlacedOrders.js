@@ -198,8 +198,22 @@ function PlacedOrders({ refreshTrigger }) {
   const loadOrders = useCallback(async () => {
     try {
       setLoading(true);
-      // For TSO users, filter orders by their user_id
-      const params = isTSO && userId ? { user_id: userId } : {};
+      // Build params based on order type filter and user role
+      const params = {};
+      
+      // For TSO users, only filter by user_id for Sales Orders (not Daily Demands)
+      if (isTSO && userId && orderTypeFilter !== 'dd') {
+        params.user_id = userId;
+      }
+      
+      // Add order_source parameter based on orderTypeFilter
+      if (orderTypeFilter === 'tso') {
+        params.order_source = 'tso';
+      } else if (orderTypeFilter === 'dd') {
+        params.order_source = 'dealer';
+      }
+      // If orderTypeFilter === 'all', don't add order_source (load both)
+      
       const response = await axios.get('/api/orders', { params });
       setOrders(response.data);
 
@@ -232,7 +246,7 @@ function PlacedOrders({ refreshTrigger }) {
     } finally {
       setLoading(false);
     }
-  }, [isTSO, userId]);
+  }, [isTSO, userId, orderTypeFilter]);
 
   useEffect(() => {
     loadOrders();

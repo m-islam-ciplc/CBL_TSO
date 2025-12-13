@@ -11,15 +11,17 @@
  * - Submit button (conditional)
  */
 
+import { FC } from 'react';
 import { Card, Typography, Tabs, Input, Button, Row, Col } from 'antd';
 import { SearchOutlined, CheckOutlined, CalendarOutlined } from '@ant-design/icons';
-import dayjs from 'dayjs';
+import dayjs, { Dayjs } from 'dayjs';
 import { 
   STANDARD_CARD_CONFIG, 
   STANDARD_TABS_CONFIG, 
   STANDARD_BUTTON_SIZE 
 } from './UITemplates';
 import { DealerProductCard } from './DealerProductCard';
+import type { DailyDemandMultiDaySelectProductsCardTemplateProps } from './types';
 import '../pages/NewOrdersTablet.css';
 
 const { Title } = Typography;
@@ -27,25 +29,8 @@ const { TabPane } = Tabs;
 
 /**
  * Daily Demand Multi-Day Select Products Card Template
- * 
- * @param {Object} props
- * @param {Array} props.selectedDates - Array of dayjs date objects
- * @param {string} props.activeDateTab - Active tab key (date string)
- * @param {Function} props.setActiveDateTab - Function to set active tab
- * @param {Function} props.removeDate - Function to remove a date: (dateKey) => void
- * @param {string} props.searchTerm - Search term value
- * @param {Function} props.onSearchChange - Search change handler: (e) => void
- * @param {Array} props.filteredProducts - Filtered products array
- * @param {Object} props.quantities - Quantities object: { 'dateStr_productId': quantity }
- * @param {Function} props.onQuantityChange - Quantity change handler: (dateStr, productId, value) => void
- * @param {Function} props.onClearProduct - Clear product handler: (dateStr, productId) => void
- * @param {Array} props.presetValues - Preset quantity values (default: [5, 10, 15, 20])
- * @param {Function} props.getTotalItems - Function to get total items count
- * @param {Function} props.onSubmit - Submit handler
- * @param {boolean} props.loading - Loading state
- * @returns {JSX.Element} Daily Demand Multi-Day Select Products card JSX
  */
-export const DailyDemandMultiDaySelectProductsCardTemplate = ({
+export const DailyDemandMultiDaySelectProductsCardTemplate: FC<DailyDemandMultiDaySelectProductsCardTemplateProps> = ({
   selectedDates = [],
   activeDateTab,
   setActiveDateTab,
@@ -78,7 +63,7 @@ export const DailyDemandMultiDaySelectProductsCardTemplate = ({
           type="editable-card"
           onEdit={(targetKey, action) => {
             if (action === 'remove' && selectedDates.length > 1) {
-              removeDate(targetKey);
+              removeDate && removeDate(targetKey as string);
             }
           }}
           hideAdd
@@ -126,13 +111,13 @@ export const DailyDemandMultiDaySelectProductsCardTemplate = ({
                     const quantityKey = `${dateStr}_${product.id}`;
                     const quantity = quantities[quantityKey] || 0;
 
-                    const handleProductQuantityChange = (productId, value) => {
+                    const handleProductQuantityChange = (productId: number | string, value: number | null) => {
                       if (onQuantityChange) {
                         onQuantityChange(dateStr, productId, value);
                       }
                     };
 
-                    const handleProductClear = (productId) => {
+                    const handleProductClear = (productId: number | string) => {
                       if (onClearProduct) {
                         onClearProduct(dateStr, productId);
                       }

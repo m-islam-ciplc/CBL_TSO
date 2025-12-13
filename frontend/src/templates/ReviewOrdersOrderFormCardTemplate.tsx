@@ -12,7 +12,9 @@
  * - Uses MINIMAL_ROW_GUTTER for spacing
  */
 
+import { FC } from 'react';
 import { Card, Form, Select, Row, Col, Typography, Spin, Input } from 'antd';
+import type { Gutter } from 'antd/es/grid/row';
 import { 
   STANDARD_CARD_CONFIG, 
   STANDARD_FORM_SIZE,
@@ -21,27 +23,15 @@ import {
   MINIMAL_ROW_GUTTER,
   STANDARD_SPIN_SIZE,
 } from './UITemplates';
+import type { ReviewOrdersOrderFormCardTemplateProps } from './types';
 
 const { Text } = Typography;
 const { Option } = Select;
 
 /**
  * Review Orders Order Form Card Template
- * 
- * @param {Object} props
- * @param {boolean} props.loading - Whether form is loading (default: false)
- * @param {string} props.loadingText - Loading text (default: "Loading form data...")
- * @param {Object} props.dealerField - Dealer Select field configuration
- * @param {any} props.dealerField.value - Dealer value
- * @param {Array} props.dealerField.options - Dealer options array: [{ id, name }]
- * @param {Function} props.dealerField.removeMSPrefix - Function to remove M/S prefix: (name) => string
- * @param {Object} props.transportField - Transport Select field configuration
- * @param {any} props.transportField.value - Transport value
- * @param {Array} props.transportField.options - Transport options array: [{ id, truck_details }]
- * @param {Object} props.form - Ant Design Form instance (required)
- * @returns {JSX.Element} Review Orders Order Form card JSX
  */
-export const ReviewOrdersOrderFormCardTemplate = ({
+export const ReviewOrdersOrderFormCardTemplate: FC<ReviewOrdersOrderFormCardTemplateProps> = ({
   loading = false,
   loadingText = 'Loading form data...',
   dealerField,
@@ -71,7 +61,7 @@ export const ReviewOrdersOrderFormCardTemplate = ({
           <Form.Item name="orderType" hidden><Input /></Form.Item>
           <Form.Item name="warehouse" hidden><Input /></Form.Item>
           <Form.Item name="territoryCode" hidden><Input /></Form.Item>
-          <Row gutter={MINIMAL_ROW_GUTTER} align="middle">
+          <Row gutter={MINIMAL_ROW_GUTTER as Gutter} align="middle">
             <Col xs={24} sm={24} md={12} lg={12}>
               {dealerField && (
                 <Form.Item

@@ -12,7 +12,9 @@
  * - Horizontal layout with gutter spacing
  */
 
-import { Card, Form, Select, Row, Col, Typography, Space } from 'antd';
+import { FC } from 'react';
+import { Card, Form, Select, Row, Col, Typography } from 'antd';
+import type { Gutter } from 'antd/es/grid/row';
 import { DownOutlined, UpOutlined } from '@ant-design/icons';
 import { 
   STANDARD_CARD_CONFIG, 
@@ -20,41 +22,15 @@ import {
   STANDARD_FORM_LABEL_STYLE,
   COMPACT_ROW_GUTTER,
 } from './UITemplates';
+import type { PlaceNewOrdersOrderDetailsCardTemplateProps } from './types';
 
 const { Text } = Typography;
 const { Option } = Select;
 
 /**
  * Place New Orders Order Details Card Template
- * 
- * @param {Object} props
- * @param {string} props.title - Card title (default: "Order Details")
- * @param {boolean} props.collapsed - Whether the card is collapsed (default: false)
- * @param {Function} props.onToggleCollapse - Toggle collapse handler: () => void
- * @param {Object} props.summary - Summary display configuration
- * @param {string} props.summary.orderType - Order type name
- * @param {string} props.summary.warehouse - Warehouse name
- * @param {string} props.summary.territory - Territory name
- * @param {string} props.summary.dealer - Dealer name
- * @param {string} props.summary.transport - Transport truck details
- * @param {Object} props.dealerField - Dealer Select field configuration
- * @param {any} props.dealerField.value - Dealer value
- * @param {Function} props.dealerField.onChange - onChange handler: (value) => void
- * @param {string} props.dealerField.placeholder - Placeholder text
- * @param {Array} props.dealerField.options - Dealer options array: [{ id, name }]
- * @param {boolean} props.dealerField.disabled - Whether field is disabled
- * @param {Function} props.dealerField.removeMSPrefix - Function to remove M/S prefix from dealer names: (name) => string
- * @param {Object} props.transportField - Transport Select field configuration
- * @param {any} props.transportField.value - Transport value
- * @param {Function} props.transportField.onChange - onChange handler: (value) => void
- * @param {string} props.transportField.placeholder - Placeholder text
- * @param {Array} props.transportField.options - Transport options array: [{ id, truck_details }]
- * @param {boolean} props.transportField.disabled - Whether field is disabled
- * @param {Object} props.form - Ant Design Form instance (required)
- * @param {Function} props.onFormValuesChange - Form onValuesChange handler: (changedValues, allValues) => void
- * @returns {JSX.Element} Place New Orders Order Details card JSX
  */
-export const PlaceNewOrdersOrderDetailsCardTemplate = ({
+export const PlaceNewOrdersOrderDetailsCardTemplate: FC<PlaceNewOrdersOrderDetailsCardTemplateProps> = ({
   title = 'Order Details',
   collapsed = false,
   onToggleCollapse,
@@ -115,7 +91,7 @@ export const PlaceNewOrdersOrderDetailsCardTemplate = ({
           style={{ marginTop: '12px' }}
           onValuesChange={onFormValuesChange}
         >
-          <Row gutter={COMPACT_ROW_GUTTER} align="middle">
+          <Row gutter={COMPACT_ROW_GUTTER as Gutter} align="middle">
             {/* Dealer Field */}
             {dealerField && (
               <Col xs={24} md={12}>
@@ -192,5 +168,4 @@ export const PlaceNewOrdersOrderDetailsCardTemplate = ({
     </Card>
   );
 };
-
 

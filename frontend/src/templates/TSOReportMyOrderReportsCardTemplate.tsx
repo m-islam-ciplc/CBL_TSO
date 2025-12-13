@@ -14,7 +14,9 @@
  * - All fields and buttons in one row
  */
 
+import { FC } from 'react';
 import { Row, Col, Space, Typography, DatePicker, Button, Card } from 'antd';
+import type { Gutter } from 'antd/es/grid/row';
 import {
   FORM_CARD_CONFIG,
   STANDARD_FORM_LABEL_STYLE,
@@ -22,26 +24,14 @@ import {
   STANDARD_DATE_PICKER_CONFIG,
   COMPACT_ROW_GUTTER,
 } from './UITemplates';
+import type { TSOReportMyOrderReportsCardTemplateProps } from './types';
 
 const { Text } = Typography;
 
 /**
  * TSO Report My Order Reports Card Template
- * 
- * @param {Object} props
- * @param {string} props.title - Card title (default: "My Order Reports")
- * @param {Object} props.dateRangePicker - Date range picker configuration
- * @param {dayjs.Dayjs|null} props.dateRangePicker.startDate - Start date value
- * @param {Function} props.dateRangePicker.setStartDate - Function to update start date
- * @param {dayjs.Dayjs|null} props.dateRangePicker.endDate - End date value (optional)
- * @param {Function} props.dateRangePicker.setEndDate - Function to update end date
- * @param {Function} props.dateRangePicker.disabledDate - disabledDate function: (current) => boolean
- * @param {Function} props.dateRangePicker.dateRender - dateRender function: (current) => ReactNode
- * @param {Array<string>} props.dateRangePicker.availableDates - Array of available date strings
- * @param {Array<Object>} props.buttons - Array of button configurations (2 buttons: Preview, Download)
- * @returns {JSX.Element} TSO Report My Order Reports card JSX
  */
-export const TSOReportMyOrderReportsCardTemplate = ({
+export const TSOReportMyOrderReportsCardTemplate: FC<TSOReportMyOrderReportsCardTemplateProps> = ({
   title = 'My Order Reports',
   dateRangePicker,
   buttons = [],
@@ -58,15 +48,15 @@ export const TSOReportMyOrderReportsCardTemplate = ({
       title={title} 
       {...FORM_CARD_CONFIG}
     >
-      <Row gutter={COMPACT_ROW_GUTTER} align="bottom">
+      <Row gutter={COMPACT_ROW_GUTTER as Gutter} align="bottom">
         {/* Start Date Picker */}
         {dateRangePicker && (
           <Col xs={24} sm={12} flex={1} style={{ maxWidth: '12.5rem' }}>
             <Space direction="vertical" style={{ width: '100%' }}>
               <Text strong style={STANDARD_FORM_LABEL_STYLE}>Start Date</Text>
               <DatePicker
-                {...STANDARD_DATE_PICKER_CONFIG}
-                size="small"
+                size={STANDARD_DATE_PICKER_CONFIG.size as 'small' | 'middle' | 'large'}
+                format={STANDARD_DATE_PICKER_CONFIG.format}
                 value={dateRangePicker.startDate}
                 onChange={dateRangePicker.setStartDate}
                 placeholder="Select start date"
@@ -84,8 +74,8 @@ export const TSOReportMyOrderReportsCardTemplate = ({
             <Space direction="vertical" style={{ width: '100%' }}>
               <Text strong style={STANDARD_FORM_LABEL_STYLE}>End Date</Text>
               <DatePicker
-                {...STANDARD_DATE_PICKER_CONFIG}
-                size="small"
+                size={STANDARD_DATE_PICKER_CONFIG.size as 'small' | 'middle' | 'large'}
+                format={STANDARD_DATE_PICKER_CONFIG.format}
                 value={dateRangePicker.endDate}
                 onChange={dateRangePicker.setEndDate}
                 placeholder="Select end date"

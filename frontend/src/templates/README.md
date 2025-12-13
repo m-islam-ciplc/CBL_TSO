@@ -8,18 +8,18 @@ This folder contains **reusable template code** that is imported into applicatio
 
 ## Key Principle
 
-**SINGLE SOURCE OF TRUTH: `UITemplates.js`**
+**SINGLE SOURCE OF TRUTH: `UITemplates.tsx`**
 
-- All UI configs (cards, sizes, styles, gutters, typography, date/pagination helpers, table headers) live in `UITemplates.js`.  
+- All UI configs (cards, sizes, styles, gutters, typography, date/pagination helpers, table headers) live in `UITemplates.tsx`.  
 - Do **not** create new UI template files without confirmation. If unsure, ask for clarification.  
-- Every UI element must use the templates from `UITemplates.js`. No exceptions.
+- Every UI element must use the templates from `UITemplates.tsx`. No exceptions.
 
 Visual reference: See `TemplateCards.js`, `TSOTemplateCards.js`, and `DealerTemplateCards.js` in `frontend/src/pages/examples/` for standardized UI patterns. Access via the Templates menu.
 
 ## Available Templates
 
-### UITemplates.js
-**Type**: Single source of truth for ALL UI configurations  
+### UITemplates.tsx
+**Type**: Single source of truth for ALL UI configurations (TypeScript)  
 **Purpose**: Consolidated card configs, sizes, styles, gutters, typography, date helpers, pagination helpers, and table header renderers.
 
 **Key Exports (non-exhaustive):**
@@ -30,15 +30,8 @@ Visual reference: See `TemplateCards.js`, `TSOTemplateCards.js`, and `DealerTemp
 
 **Used in application pages:** All pages that render cards, forms, tables, or date pickers (e.g., PlacedOrders, DealerReports, DailyReport, TSOReport, ProductQuotaManagement, DealerManagement, ProductManagement, TransportManagement, UserManagement, Dashboard, etc.)
 
-### TableTemplate.js
-**Type**: Component template  
-**Purpose**: Standard design for expandable tables
-
-**Used in application pages:**
-- DealerReports.js
-
-### TableTemplate.js
-**Type**: Component template  
+### TableTemplate.tsx
+**Type**: Component template (TypeScript)
 **Purpose**: Standard design for expandable tables
 
 **Used in application pages:**
@@ -47,8 +40,8 @@ Visual reference: See `TemplateCards.js`, `TSOTemplateCards.js`, and `DealerTemp
 **Visual reference:**
 - `/template-cards` - See TemplateCards.js for all card patterns
 
-### useCascadingFilters.js
-**Type**: React Hook  
+### useCascadingFilters.ts
+**Type**: React Hook (TypeScript)  
 **Purpose**: Reusable hook for implementing cascading (dependent) filter behavior. When a parent filter changes, child filters are automatically updated and cleared if invalid.
 
 **Hook:**
@@ -114,8 +107,8 @@ const filteredDealers = filteredOptions.dealer || dealersList;
 const filteredProducts = filteredOptions.product || productsList;
 ```
 
-### DealerProductCard.js
-**Type**: Component template  
+### DealerProductCard.tsx
+**Type**: Component template (TypeScript)  
 **Purpose**: Reusable product card component based on Monthly Forecast design. Provides a consistent card layout for dealer products with quantity input, preset buttons, and optional clear functionality.
 
 **Component:**
@@ -149,8 +142,8 @@ const filteredProducts = filteredOptions.product || productsList;
 **Visual reference:**
 - `/dealer-template-cards` - See DealerTemplateCards.js for DealerProductCard pattern
 
-### useStandardPagination.js
-**Type**: React Hook  
+### useStandardPagination.ts
+**Type**: React Hook (TypeScript)  
 **Purpose**: Universal pagination hook for all tables in the application. Provides consistent pagination behavior across all pages.
 
 **Hook:**

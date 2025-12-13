@@ -1,3 +1,4 @@
+import { FC } from 'react';
 import { Card, Typography, Button, InputNumber, Space, Tag } from 'antd';
 import { ClearOutlined } from '@ant-design/icons';
 import { 
@@ -7,6 +8,7 @@ import {
   STANDARD_SPACE_SIZE_SMALL, 
   STANDARD_TAG_STYLE 
 } from './UITemplates';
+import type { DealerProductCardProps } from './types';
 
 const { Text } = Typography;
 
@@ -16,19 +18,8 @@ const { Text } = Typography;
  * Reusable product card component based on Monthly Forecast design.
  * Provides a consistent card layout for dealer products with quantity input,
  * preset buttons, and optional clear functionality.
- * 
- * @param {Object} product - Product object with id, name, product_code, and optional unit_tp
- * @param {number|null} quantity - Current quantity value
- * @param {Function} onQuantityChange - Callback when quantity changes: (productId, value) => void
- * @param {Function} onClear - Optional callback when clear button is clicked: (productId) => void
- * @param {boolean} canEdit - Whether the card is in edit mode (default: true)
- * @param {string} labelText - Label text for quantity input (default: "Quantity:")
- * @param {Array<number>} presetValues - Array of preset quantity values (default: [5, 10, 15, 20])
- * @param {boolean} showClearButton - Whether to show clear button (default: true)
- * @param {Object} cardStyle - Additional card style overrides
- * @param {Object} bodyStyle - Additional card body style overrides
  */
-export function DealerProductCard({
+export const DealerProductCard: FC<DealerProductCardProps> = ({
   product,
   quantity = null,
   onQuantityChange,
@@ -39,8 +30,8 @@ export function DealerProductCard({
   showClearButton = true,
   cardStyle = {},
   bodyStyle = {},
-}) {
-  const handleQuantityChange = (value) => {
+}) => {
+  const handleQuantityChange = (value: number | null) => {
     if (onQuantityChange) {
       onQuantityChange(product.id, value);
     }
@@ -103,7 +94,7 @@ export function DealerProductCard({
             display: 'flex', 
             gap: '6px', 
             marginTop: '8px',
-            flexWrap: 'nowrap'
+            flexWrap: 'nowrap' as const
           }}>
             {presetValues.map(presetQty => (
               <Button
@@ -138,7 +129,7 @@ export function DealerProductCard({
       )}
     </Card>
   );
-}
+};
 
 export default DealerProductCard;
 

@@ -11,30 +11,21 @@
  * - Uses DATE_SELECTION_CARD_CONFIG for styling
  */
 
+import { FC } from 'react';
 import { Card, Row, Col, Button, DatePicker } from 'antd';
+import type { Gutter } from 'antd/es/grid/row';
 import { 
   DATE_SELECTION_CARD_CONFIG, 
   STANDARD_BUTTON_SIZE,
   STANDARD_DATE_PICKER_CONFIG,
   COMPACT_ROW_GUTTER,
 } from './UITemplates';
+import type { DailyDemandMultiDayAddDatesCardTemplateProps } from './types';
 
 /**
  * Daily Demand Multi-Day Add Dates Card Template
- * 
- * @param {Object} props
- * @param {string} props.title - Card title (default: "Add Dates")
- * @param {Array<Object>} props.quickDateButtons - Array of quick date button configurations
- * @param {string} props.quickDateButtons[].label - Button label (e.g., "Today", "Tomorrow")
- * @param {Function} props.quickDateButtons[].onClick - onClick handler: () => void
- * @param {Object} props.datePicker - Date picker configuration
- * @param {dayjs.Dayjs|null} props.datePicker.value - Date value
- * @param {Function} props.datePicker.onChange - onChange handler: (date) => void
- * @param {string} props.datePicker.placeholder - Placeholder text (default: "Or select custom date")
- * @param {Function} props.datePicker.disabledDate - disabledDate function: (current) => boolean
- * @returns {JSX.Element} Daily Demand Multi-Day Add Dates card JSX
  */
-export const DailyDemandMultiDayAddDatesCardTemplate = ({
+export const DailyDemandMultiDayAddDatesCardTemplate: FC<DailyDemandMultiDayAddDatesCardTemplateProps> = ({
   title = 'Add Dates',
   quickDateButtons = [],
   datePicker,
@@ -44,7 +35,7 @@ export const DailyDemandMultiDayAddDatesCardTemplate = ({
       title={title} 
       {...DATE_SELECTION_CARD_CONFIG}
     >
-      <Row gutter={COMPACT_ROW_GUTTER}>
+      <Row gutter={COMPACT_ROW_GUTTER as Gutter}>
         {quickDateButtons.map((button, index) => (
           <Col key={`quick-date-${index}`}>
             <Button 
@@ -58,7 +49,8 @@ export const DailyDemandMultiDayAddDatesCardTemplate = ({
         {datePicker && (
           <Col>
             <DatePicker
-              {...STANDARD_DATE_PICKER_CONFIG}
+              size={STANDARD_DATE_PICKER_CONFIG.size as 'small' | 'middle' | 'large'}
+              format={STANDARD_DATE_PICKER_CONFIG.format}
               placeholder={datePicker.placeholder || 'Or select custom date'}
               onChange={datePicker.onChange}
               value={datePicker.value}
@@ -71,5 +63,4 @@ export const DailyDemandMultiDayAddDatesCardTemplate = ({
     </Card>
   );
 };
-
 

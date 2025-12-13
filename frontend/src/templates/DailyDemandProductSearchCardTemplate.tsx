@@ -10,25 +10,19 @@
  * - Uses STANDARD_CARD_CONFIG for styling
  */
 
+import { FC } from 'react';
 import { Card, Input } from 'antd';
 import { SearchOutlined, CloseOutlined } from '@ant-design/icons';
 import { 
   STANDARD_CARD_CONFIG, 
   STANDARD_INPUT_SIZE,
 } from './UITemplates';
+import type { DailyDemandProductSearchCardTemplateProps } from './types';
 
 /**
  * Daily Demand Product Search Card Template
- * 
- * @param {Object} props
- * @param {Object} props.searchInput - Search input configuration
- * @param {string} props.searchInput.value - Search value
- * @param {Function} props.searchInput.onChange - onChange handler: (e) => void
- * @param {string} props.searchInput.placeholder - Placeholder text (default: "Search products by name or code...")
- * @param {Function} props.searchInput.onClear - onClear handler: () => void (optional, shows clear button if provided)
- * @returns {JSX.Element} Daily Demand Product Search card JSX
  */
-export const DailyDemandProductSearchCardTemplate = ({
+export const DailyDemandProductSearchCardTemplate: FC<DailyDemandProductSearchCardTemplateProps> = ({
   searchInput,
 }) => {
   return (
@@ -57,5 +51,4 @@ export const DailyDemandProductSearchCardTemplate = ({
     </Card>
   );
 };
-
 

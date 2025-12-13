@@ -12,30 +12,23 @@
  * - Uses STANDARD_CARD_CONFIG for styling
  */
 
-import { Card, Button, Row, Col, Typography, Input } from 'antd';
+import { FC } from 'react';
+import { Card, Button, Row, Col, Typography } from 'antd';
+import type { Gutter } from 'antd/es/grid/row';
 import { DeleteOutlined } from '@ant-design/icons';
 import { 
   STANDARD_CARD_CONFIG, 
   STANDARD_SELECT_SIZE,
   TIGHT_ROW_GUTTER,
 } from './UITemplates';
+import type { ReviewOrdersOrderItemsCardTemplateProps } from './types';
 
 const { Title } = Typography;
 
 /**
  * Review Orders Order Items Card Template
- * 
- * @param {Object} props
- * @param {Array<Object>} props.orderItems - Array of order items
- * @param {number|string} props.orderItems[].id - Item ID
- * @param {string} props.orderItems[].product_name - Product name
- * @param {number} props.orderItems[].quantity - Item quantity
- * @param {Function} props.onQuantityChange - Quantity change handler: (itemId, newQuantity) => void
- * @param {Function} props.onDeleteItem - Delete item handler: (itemId) => void
- * @param {Function} props.onClearAll - Clear all items handler: () => void
- * @returns {JSX.Element} Review Orders Order Items card JSX
  */
-export const ReviewOrdersOrderItemsCardTemplate = ({
+export const ReviewOrdersOrderItemsCardTemplate: FC<ReviewOrdersOrderItemsCardTemplateProps> = ({
   orderItems = [],
   onQuantityChange,
   onDeleteItem,
@@ -69,7 +62,7 @@ export const ReviewOrdersOrderItemsCardTemplate = ({
               border: '2px solid #f0f0f0'
             }}
           >
-            <Row gutter={TIGHT_ROW_GUTTER} align="middle">
+            <Row gutter={TIGHT_ROW_GUTTER as Gutter} align="middle">
               <Col xs={2} sm={3}>
                 <div style={{ 
                   textAlign: 'center',
@@ -151,5 +144,4 @@ export const ReviewOrdersOrderItemsCardTemplate = ({
     </Card>
   );
 };
-
 

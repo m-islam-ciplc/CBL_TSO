@@ -8,22 +8,16 @@
  * - Filtering options based on parent selections
  * - Clearing dependent filters when parent changes
  * - Providing filtered options for each filter level
+ */
+
+import { useMemo, useEffect } from 'react';
+import type { UseCascadingFiltersConfig, UseCascadingFiltersReturn, FilterConfig } from './types';
+
+/**
+ * Cascading Filters Hook
  * 
- * @param {Object} config - Configuration object
- * @param {Object} config.filterConfigs - Filter configurations
- *   Each filter config should have:
- *   - name: string - Filter name (e.g., 'dealer', 'product')
- *   - allOptions: Array - All available options for this filter
- *   - dependsOn: Array<string> - Parent filter names this depends on
- *   - filterFn: Function(item, parentValues, context) - Custom filter function
- *   - getValueKey: Function(item) - Function to get the value/key for matching
- * @param {Object} config.filterValues - Current filter values (e.g., { territory: null, dealer: null })
- * @param {Object} config.setFilterValues - Setters for filter values (e.g., { dealer: setDealer })
- * @param {Object} config.context - Additional context data needed for filtering (e.g., orders, orderProducts)
- * 
- * @returns {Object} { filteredOptions, clearFilters }
- *   - filteredOptions: Object with filtered options for each filter (e.g., { dealer: [...], product: [...] })
- *   - clearFilters: Function(defaultValues) - Clear all filters
+ * @param config - Configuration object
+ * @returns Object with filteredOptions and clearFilters function
  * 
  * @example
  * // Territory -> Dealer -> Product cascading filters
@@ -70,24 +64,21 @@
  *   context: { orders, orderProducts },
  * });
  */
-
-import { useMemo, useEffect } from 'react';
-
 export const useCascadingFilters = ({
   filterConfigs = [],
   filterValues = {},
   setFilterValues = {},
   context = {},
-}) => {
+}: UseCascadingFiltersConfig): UseCascadingFiltersReturn => {
   // Compute filtered options for each filter level
   const filteredOptions = useMemo(() => {
-    const result = {};
+    const result: Record<string, any[]> = {};
     
-    filterConfigs.forEach((config) => {
+    filterConfigs.forEach((config: FilterConfig) => {
       const { name, allOptions = [], dependsOn = [], filterFn } = config;
       
       // Get parent filter values
-      const parentValues = {};
+      const parentValues: Record<string, any> = {};
       dependsOn.forEach((parentName) => {
         parentValues[parentName] = filterValues[parentName];
       });
@@ -121,7 +112,7 @@ export const useCascadingFilters = ({
 
   // Clear dependent filters when parent filters change
   useEffect(() => {
-    filterConfigs.forEach((config) => {
+    filterConfigs.forEach((config: FilterConfig) => {
       const { name, dependsOn = [], getValueKey } = config;
       
       if (dependsOn.length === 0) return;
@@ -130,7 +121,7 @@ export const useCascadingFilters = ({
       if (currentValue == null) return;
       
       const filteredItems = filteredOptions[name] || [];
-      const getKey = getValueKey || ((item) => item.id || item.value || item);
+      const getKey = getValueKey || ((item: any) => item.id || item.value || item);
       
       // Check if current value is still valid in filtered options
       const isValid = filteredItems.some((item) => {
@@ -146,8 +137,8 @@ export const useCascadingFilters = ({
   }, [filterConfigs, filterValues, filteredOptions, setFilterValues]);
 
   // Clear all filters function
-  const clearFilters = (defaultValues = {}) => {
-    filterConfigs.forEach((config) => {
+  const clearFilters = (defaultValues: Record<string, any> = {}) => {
+    filterConfigs.forEach((config: FilterConfig) => {
       const { name } = config;
       if (setFilterValues[name]) {
         setFilterValues[name](defaultValues[name] ?? null);

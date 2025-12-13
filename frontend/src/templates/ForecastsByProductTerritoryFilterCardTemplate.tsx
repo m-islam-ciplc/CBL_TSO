@@ -12,7 +12,9 @@
  * Route: /reports
  */
 
+import { FC } from 'react';
 import { Row, Col, Space, Typography, Select, Input, Button, Card } from 'antd';
+import type { Gutter } from 'antd/es/grid/row';
 import {
   UNIVERSAL_CARD_CONFIG,
   STANDARD_FORM_LABEL_STYLE,
@@ -20,24 +22,15 @@ import {
   STANDARD_BUTTON_SIZE,
   COMPACT_ROW_GUTTER,
 } from './UITemplates';
+import type { ForecastsByProductTerritoryFilterCardTemplateProps, FormSelectField, FormInputField } from './types';
 
 const { Text } = Typography;
 const { Option } = Select;
 
 /**
  * Forecasts By Product/Territory Filter Card Template
- * 
- * @param {Object} props
- * @param {string} props.title - Card title (default: "Filter Forecasts")
- * @param {Array<Object>} props.formFields - Array of form field configurations
- *   - formFields[0]: Period (select, maxWidth: '18rem')
- *   - formFields[1]: Territory (select, conditional) - optional
- *   - formFields[2]: Search (input with prefix)
- * @param {Array<Object>} props.buttons - Array of button configurations (1 button: Export Excel)
- * @param {Array} props.gutter - Row gutter configuration (default: COMPACT_ROW_GUTTER)
- * @returns {JSX.Element} Forecasts By Product/Territory Filter card JSX
  */
-export const ForecastsByProductTerritoryFilterCardTemplate = ({
+export const ForecastsByProductTerritoryFilterCardTemplate: FC<ForecastsByProductTerritoryFilterCardTemplateProps> = ({
   title = 'Filter Forecasts',
   formFields = [],
   buttons = [],
@@ -59,7 +52,7 @@ export const ForecastsByProductTerritoryFilterCardTemplate = ({
 
   return (
     <Card title={title} {...UNIVERSAL_CARD_CONFIG} headStyle={{ textAlign: 'left' }}>
-      <Row gutter={gutter} align="top">
+      <Row gutter={gutter as Gutter} align="top">
         {/* 3 Form Fields */}
         {displayFormFields.map((field, index) => {
           if (!field) return null;
@@ -77,8 +70,8 @@ export const ForecastsByProductTerritoryFilterCardTemplate = ({
                   {field.type === 'input' ? (
                     <Input
                       size={STANDARD_INPUT_SIZE}
-                      value={field.value}
-                      onChange={field.onChange}
+                      value={field.value as string | undefined}
+                      onChange={(e) => field.onChange(e.target.value)}
                       onPressEnter={field.onPressEnter}
                       placeholder={field.placeholder || `Enter ${field.label || 'value'}`}
                       style={{ width: '100%' }}
@@ -141,5 +134,4 @@ export const ForecastsByProductTerritoryFilterCardTemplate = ({
     </Card>
   );
 };
-
 
